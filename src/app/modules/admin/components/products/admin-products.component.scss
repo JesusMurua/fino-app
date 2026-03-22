@@ -329,6 +329,200 @@
 }
 
 // -----------------------------------------------------------------------
+// Import dialog
+// -----------------------------------------------------------------------
+.import-step {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-2 0;
+
+  &--success {
+    align-items: center;
+    text-align: center;
+    padding: $space-5 0;
+  }
+}
+
+.import-template {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: #F0FDF4;
+  border-radius: 8px;
+
+  &__text {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+  }
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2;
+  border: none;
+  background: transparent;
+  color: $color-primary;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover { text-decoration: underline; }
+}
+
+.import-divider {
+  border: none;
+  border-top: 1px solid #E5E7EB;
+  margin: 0;
+}
+
+.import-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-5;
+  border: 2px dashed #D1D5DB;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: $color-primary;
+    background: #F0FDF4;
+  }
+
+  &__icon {
+    font-size: 48px;
+    color: #9CA3AF;
+
+    &--ok {
+      color: $color-primary;
+    }
+  }
+
+  &__label {
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+
+  &__filename {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-primary;
+  }
+}
+
+.import-summary {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.badge--success {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px $space-3;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.badge--error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px $space-3;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #FEF2F2;
+  color: #DC2626;
+}
+
+.import-errors {
+  padding: $space-3;
+  background: #FEF2F2;
+  border-radius: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+
+  &__title {
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: #DC2626;
+    margin: 0 0 $space-2;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__row {
+    display: flex;
+    gap: $space-3;
+    font-size: 13px;
+    color: #991B1B;
+  }
+
+  &__cell {
+    &:first-child { font-weight: 600; min-width: 48px; }
+    &:nth-child(2) { font-weight: 600; min-width: 80px; }
+  }
+}
+
+.import-success {
+  &__icon {
+    font-size: 64px;
+    color: $color-primary;
+  }
+
+  &__title {
+    margin: $space-3 0 $space-2;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__count {
+    font-size: $font-size-price;
+    font-weight: 700;
+    color: $color-primary;
+    margin: 0;
+  }
+}
+
+.import-warnings {
+  margin-top: $space-3;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: $font-size-label;
+    color: #D97706;
+    margin: 0 0 4px;
+  }
+}
+
+.text-green { color: $color-primary; }
+.text-red { color: #DC2626; }
+
+// -----------------------------------------------------------------------
 // Dialog close button — override global green accent
 // -----------------------------------------------------------------------
 :host ::ng-deep .p-dialog-header-close {

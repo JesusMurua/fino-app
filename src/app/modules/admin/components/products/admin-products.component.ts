@@ -1,9 +1,11 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputSwitchModule } from 'primeng/inputswitch';
+import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
@@ -12,9 +14,11 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
-import { Category, DiscountPreset, Product } from '../../../../core/models';
+import { Category, DiscountPreset, Product, ProductImportPreview, ProductImportResult } from '../../../../core/models';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { ProductService } from '../../../../core/services/product.service';
 import { DiscountService } from '../../../../core/services/discount.service';
+import { ProductImportService } from '../../../../core/services/product-import.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Editable row for a product size inside the form */
@@ -61,6 +65,8 @@ const BRANCH_ID = 1;
   selector: 'app-admin-products',
   standalone: true,
   imports: [
+    ButtonModule,
+    CurrencyPipe,
     FormsModule,
     DialogModule,
     DropdownModule,
@@ -104,6 +110,14 @@ export class AdminProductsComponent implements OnInit {
   editingDiscount: DiscountPreset | null = null;
   discountForm: DiscountForm = this.emptyDiscountForm();
 
+  // ---- Import dialog ----
+  readonly showImportDialog = signal(false);
+  readonly importStep = signal<'upload' | 'preview' | 'success'>('upload');
+  readonly importPreview = signal<ProductImportPreview | null>(null);
+  readonly importResult = signal<ProductImportResult | null>(null);
+  readonly loadingImport = signal(false);
+  readonly selectedFile = signal<File | null>(null);
+
   /** Available PrimeIcons for category selection */
   readonly iconOptions: { label: string; value: string }[] = [
     { label: 'Caja',     value: 'pi-box' },
@@ -125,8 +139,10 @@ export class AdminProductsComponent implements OnInit {
   //#region Constructor
   constructor(
     private readonly db: DatabaseService,
+    private readonly productService: ProductService,
     private readonly discountService: DiscountService,
     private readonly confirmationService: ConfirmationService,
+    private readonly productImportService: ProductImportService,
   ) {}
   //#endregion
 
@@ -393,6 +409,74 @@ export class AdminProductsComponent implements OnInit {
   /** Handles value change for discount form (pesos → stored value) */
   onDiscountValueChange(value: number | null): void {
     this.discountForm.value = value ?? 0;
+  }
+
+  //#endregion
+
+  //#region Import Methods
+
+  /** Downloads Excel template for product import */
+  async onDownloadTemplate(): Promise<void> {
+    try {
+      await this.productImportService.downloadTemplate();
+    } catch {
+      console.error('Error downloading template');
+    }
+  }
+
+  /** Handles file selection from input */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) {
+      this.selectedFile.set(input.files[0]);
+    }
+  }
+
+  /** Sends file to API for preview validation */
+  async onPreviewImport(): Promise<void> {
+    if (!this.selectedFile()) return;
+    this.loadingImport.set(true);
+    try {
+      const result = await this.productImportService.previewImport(
+        this.selectedFile()!, BRANCH_ID
+      );
+      this.importPreview.set(result);
+      this.importStep.set('preview');
+    } catch {
+      console.error('Error previewing import');
+    } finally {
+      this.loadingImport.set(false);
+    }
+  }
+
+  /** Executes import with previewed rows */
+  async onExecuteImport(): Promise<void> {
+    if (!this.importPreview()?.validRows.length) return;
+    this.loadingImport.set(true);
+    try {
+      const result = await this.productImportService.executeImport(
+        this.importPreview()!.validRows, BRANCH_ID
+      );
+      this.importResult.set(result);
+      await this.db.products.clear();
+      await this.db.categories.clear();
+      await this.productService.loadCatalog();
+      await this.loadData();
+      this.importStep.set('success');
+    } catch {
+      console.error('Error executing import');
+    } finally {
+      this.loadingImport.set(false);
+    }
+  }
+
+  /** Resets import dialog to initial state */
+  resetImport(): void {
+    this.importStep.set('upload');
+    this.importPreview.set(null);
+    this.importResult.set(null);
+    this.selectedFile.set(null);
+    this.showImportDialog.set(false);
   }
 
   //#endregion

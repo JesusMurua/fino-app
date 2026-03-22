@@ -6,9 +6,7 @@
     <button
       type="button"
       class="btn-ghost"
-      [disabled]="true"
-      pTooltip="Disponible cuando se conecte el servidor"
-      tooltipPosition="left"
+      (click)="showImportDialog.set(true)"
     >
       <i class="pi pi-upload"></i>
       Importar Excel
@@ -583,6 +581,182 @@
       Guardar
     </button>
   </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Import Excel dialog                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Importar productos desde Excel"
+  [visible]="showImportDialog()"
+  (visibleChange)="showImportDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '600px' }"
+  [draggable]="false"
+  (onHide)="resetImport()"
+>
+
+  <!-- STEP 1 — Upload -->
+  @if (importStep() === 'upload') {
+    <div class="import-step">
+
+      <div class="import-template">
+        <span class="import-template__text">
+          <i class="pi pi-info-circle"></i>
+          ¿Primera vez? Descarga la plantilla con el formato correcto.
+        </span>
+        <button type="button" class="btn-link" (click)="onDownloadTemplate()">
+          <i class="pi pi-download"></i>
+          Descargar plantilla
+        </button>
+      </div>
+
+      <hr class="import-divider" />
+
+      <label class="import-dropzone" (click)="fileInput.click()">
+        <input
+          #fileInput
+          type="file"
+          accept=".xlsx"
+          (change)="onFileSelected($event)"
+          hidden
+        />
+        @if (selectedFile()) {
+          <i class="pi pi-check-circle import-dropzone__icon import-dropzone__icon--ok"></i>
+          <span class="import-dropzone__filename">{{ selectedFile()!.name }}</span>
+        } @else {
+          <i class="pi pi-file-excel import-dropzone__icon"></i>
+          <span class="import-dropzone__label">
+            Click para seleccionar archivo .xlsx
+          </span>
+        }
+      </label>
+
+    </div>
+  }
+
+  <!-- STEP 2 — Preview -->
+  @if (importStep() === 'preview') {
+    <div class="import-step">
+
+      <div class="import-summary">
+        <span class="badge badge--success">
+          <i class="pi pi-check"></i>
+          {{ importPreview()!.validRows.length }} productos válidos
+        </span>
+        @if (importPreview()!.hasErrors) {
+          <span class="badge badge--error">
+            <i class="pi pi-exclamation-triangle"></i>
+            {{ importPreview()!.errors.length }} errores
+          </span>
+        }
+      </div>
+
+      @if (importPreview()!.hasErrors) {
+        <div class="import-errors">
+          <p class="import-errors__title">Errores encontrados:</p>
+          <div class="import-errors__list">
+            @for (err of importPreview()!.errors; track $index) {
+              <div class="import-errors__row">
+                <span class="import-errors__cell">Fila {{ err.rowNumber }}</span>
+                <span class="import-errors__cell">{{ err.field }}</span>
+                <span class="import-errors__cell">{{ err.message }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (importPreview()!.validRows.length) {
+        <p-table
+          [value]="importPreview()!.validRows"
+          [scrollable]="true"
+          scrollHeight="260px"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Categoría</th>
+              <th>Disponible</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              <td>{{ row.rowNumber }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.price | currency:'MXN':'symbol':'1.2-2' }}</td>
+              <td>{{ row.categoryName }}</td>
+              <td>
+                <i [class]="row.isAvailable ? 'pi pi-check text-green' : 'pi pi-times text-red'"></i>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+
+    </div>
+  }
+
+  <!-- STEP 3 — Success -->
+  @if (importStep() === 'success') {
+    <div class="import-step import-step--success">
+      <i class="pi pi-check-circle import-success__icon"></i>
+      <h3 class="import-success__title">¡Importación completada!</h3>
+      <p class="import-success__count">
+        {{ importResult()!.importedCount }} productos importados
+      </p>
+      @if (importResult()!.warnings.length) {
+        <div class="import-warnings">
+          @for (w of importResult()!.warnings; track $index) {
+            <p class="import-warnings__item">
+              <i class="pi pi-info-circle"></i>
+              {{ w }}
+            </p>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Single unified footer — PrimeNG only renders the first pTemplate="footer" -->
+  <ng-template pTemplate="footer">
+    @if (importStep() === 'upload') {
+      <p-button
+        label="Cancelar"
+        styleClass="p-button-text"
+        (click)="resetImport()" />
+      <p-button
+        label="Siguiente"
+        icon="pi pi-arrow-right"
+        iconPos="right"
+        [loading]="loadingImport()"
+        [disabled]="!selectedFile() || loadingImport()"
+        (click)="onPreviewImport()" />
+    }
+    @if (importStep() === 'preview') {
+      <p-button
+        label="Volver"
+        icon="pi pi-arrow-left"
+        styleClass="p-button-text"
+        (click)="importStep.set('upload')" />
+      <p-button
+        [label]="'Importar ' + (importPreview()?.validRows?.length || 0) + ' productos'"
+        [loading]="loadingImport()"
+        [disabled]="loadingImport() || !importPreview()?.validRows?.length"
+        styleClass="p-button-success"
+        (click)="onExecuteImport()" />
+    }
+    @if (importStep() === 'success') {
+      <p-button
+        label="Cerrar"
+        (click)="resetImport()" />
+    }
+  </ng-template>
+
 </p-dialog>
 
 <!-- Confirm dialog for delete actions -->

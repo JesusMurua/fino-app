@@ -8,4 +8,5 @@ export * from './cart-item.model';
 export * from './cash-register.model';
 export * from './discount-preset.model';
 export * from './order.model';
+export * from './product-import.model';
 export * from './report.model';
