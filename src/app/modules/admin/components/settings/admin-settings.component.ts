@@ -44,28 +44,13 @@ export class AdminSettingsComponent implements OnInit {
   readonly pinError         = signal('');
   readonly pinSuccess       = signal(false);
 
-  readonly modes: { value: DeviceMode; label: string; description: string; badge?: string }[] = [
-    {
-      value:       'counter',
-      label:       'Mostrador',
-      description: 'Muestra número de orden. Ideal para fondas y taquerías.',
-    },
-    {
-      value:       'cashier',
-      label:       'Cajero',
-      description: 'Modo caja rápida sin selector de mesa.',
-    },
-    {
-      value:       'kiosk',
-      label:       'Kiosko self-service',
-      description: 'El cliente ordena solo en la pantalla.',
-      badge:       'Beta',
-    },
-    {
-      value:       'tables',
-      label:       'Mesas',
-      description: 'Con selector de mesa. Próximamente disponible.',
-    },
+  readonly modes: { value: DeviceMode; label: string; icon: string; description: string; badge?: string }[] = [
+    { value: 'counter', icon: '🏪', label: 'Mostrador', description: 'Cobra inmediato. Ideal para fondas' },
+    { value: 'cashier', icon: '💳', label: 'Cajero',    description: 'Caja rápida sin selector de mesa' },
+    { value: 'tables',  icon: '🪑', label: 'Mesas',     description: 'Pantalla fija de mesas compartida' },
+    { value: 'waiter',  icon: '🍽️', label: 'Mesero',    description: 'Tablet personal del mesero' },
+    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',    description: 'Pantalla KDS para la cocina' },
+    { value: 'kiosk',   icon: '📱', label: 'Kiosko',    description: 'Autoservicio para el cliente', badge: 'Beta' },
   ];
 
   //#endregion
@@ -115,19 +100,19 @@ export class AdminSettingsComponent implements OnInit {
 
     const mode = this.deviceConfig().mode;
 
-    if (mode === 'tables') {
-      // Not yet implemented — stay in settings
-      this.isSavingDevice.set(false);
-      this.saveDeviceSuccess.set(true);
-      setTimeout(() => this.saveDeviceSuccess.set(false), 3000);
-      return;
-    }
-
-    // Navigate based on selected mode
-    if (mode === 'kiosk') {
-      this.router.navigate(['/kiosk/welcome']);
-    } else {
-      this.router.navigate(['/pos']);
+    switch (mode) {
+      case 'tables':
+      case 'waiter':
+        this.router.navigate(['/tables']);
+        break;
+      case 'kitchen':
+        this.router.navigate(['/kitchen']);
+        break;
+      case 'kiosk':
+        this.router.navigate(['/kiosk/welcome']);
+        break;
+      default:
+        this.router.navigate(['/pos']);
     }
   }
 

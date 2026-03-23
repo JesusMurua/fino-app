@@ -11,35 +11,35 @@ export const appRoutes: Routes = [
   {
     path: 'pos',
     canActivate: [authGuard],
-    data: { roles: ['Cashier', 'Owner'] },
+    data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter'] },
     loadChildren: () =>
       import('./modules/pos/pos.routes').then(m => m.posRoutes),
   },
   {
     path: 'admin',
     canActivate: [authGuard],
-    data: { roles: ['Owner'] },
+    data: { roles: ['Owner', 'Manager'] },
     loadChildren: () =>
       import('./modules/admin/admin.routes').then(m => m.adminRoutes),
   },
   {
     path: 'kitchen',
     canActivate: [authGuard],
-    data: { roles: ['Kitchen', 'Owner'] },
+    data: { roles: ['Kitchen', 'Owner', 'Manager'] },
     loadChildren: () =>
       import('./modules/kitchen/kitchen.routes').then(m => m.kitchenRoutes),
   },
   {
     path: 'orders',
     canActivate: [authGuard],
-    data: { roles: ['Cashier', 'Kitchen', 'Owner'] },
+    data: { roles: ['Cashier', 'Kitchen', 'Owner', 'Manager', 'Waiter'] },
     loadChildren: () =>
       import('./modules/orders/orders.routes').then(m => m.ordersRoutes),
   },
   {
     path: 'tables',
     canActivate: [authGuard],
-    data: { roles: ['Cashier', 'Owner'] },
+    data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter'] },
     loadComponent: () =>
       import('./modules/tables/tables.component').then(m => m.TablesComponent),
   },

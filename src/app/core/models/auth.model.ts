@@ -1,5 +1,5 @@
 /** Roles returned by the API — PascalCase to match backend enum */
-export type UserRole = 'Owner' | 'Cashier' | 'Kitchen' | 'Waiter';
+export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk';
 
 /** Authenticated user state held in AuthService */
 export interface AuthUser {

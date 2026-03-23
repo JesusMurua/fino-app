@@ -11,3 +11,4 @@ export * from './order.model';
 export * from './product-import.model';
 export * from './report.model';
 export * from './table.model';
+export * from './user.model';
