@@ -52,6 +52,17 @@
   min-width: 44px;
 }
 
+.order-row__table-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  white-space: nowrap;
+}
+
 .order-row__badge {
   display: inline-flex;
   padding: 2px 10px;

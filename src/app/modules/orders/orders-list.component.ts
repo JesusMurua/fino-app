@@ -10,6 +10,7 @@ import { Order } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { OrdersService, getDisplayStatus } from '../../core/services/orders.service';
 import { PrintService } from '../../core/services/print.service';
+import { TableService } from '../../core/services/table.service';
 import { OrderRowComponent } from './order-row.component';
 
 /** Filter tabs for the order list */
@@ -88,6 +89,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     private readonly ordersService: OrdersService,
     private readonly authService: AuthService,
     private readonly printService: PrintService,
+    private readonly tableService: TableService,
     private readonly router: Router,
   ) {
     const role = this.authService.currentUser()?.role;
@@ -119,8 +121,13 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     this.searchQuery.set(query);
   }
 
-  async onMarkDelivered(orderId: string): Promise<void> {
-    await this.ordersService.markAsDelivered(orderId);
+  async onMarkDelivered(order: Order): Promise<void> {
+    await this.ordersService.markAsDelivered(order.id);
+
+    // Release table when order is delivered
+    if (order.tableId) {
+      this.tableService.updateTableStatus(order.tableId, 'available').catch(() => {});
+    }
   }
 
   goBack(): void {

@@ -115,6 +115,7 @@ export class PrintService {
         ${sep}
         <div style="font-size:12px;color:#6B7280;text-align:center">${date}</div>
         <div style="font-size:12px;color:#6B7280;text-align:center;margin-bottom:4px">Orden #${order.orderNumber}</div>
+        ${order.tableName ? `<div style="font-size:12px;color:#6B7280;text-align:center;margin-bottom:4px">Mesa: ${order.tableName}</div>` : ''}
         ${sep}
         ${itemRows}
         ${sep}

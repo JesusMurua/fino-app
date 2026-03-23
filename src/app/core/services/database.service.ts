@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, Order, Product } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, Order, Product, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -16,6 +16,7 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Disco
  *   v5 — added cancellationStatus index to orders (order cancellation)
  *   v6 — added discountPresets table
  *   v7 — added cashSessions and cashMovements tables
+ *   v8 — added restaurantTables table
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -29,6 +30,7 @@ export class DatabaseService extends Dexie {
   discountPresets!: Table<DiscountPreset, number>;
   cashSessions!: Table<CashRegisterSession, number>;
   cashMovements!: Table<CashMovement, number>;
+  restaurantTables!: Table<RestaurantTable, number>;
   //#endregion
 
   //#region Constructor
@@ -99,6 +101,18 @@ export class DatabaseService extends Dexie {
       discountPresets: '++id, branchId, isActive',
       cashSessions:    '++id, branchId, status, openedAt',
       cashMovements:   '++id, sessionId, createdAt',
+    });
+
+    this.version(8).stores({
+      products:         'id, categoryId, isAvailable',
+      categories:       'id, sortOrder',
+      cart:             'id',
+      orders:           'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
+      config:           'id',
+      discountPresets:  '++id, branchId, isActive',
+      cashSessions:     '++id, branchId, status, openedAt',
+      cashMovements:    '++id, sessionId, createdAt',
+      restaurantTables: '++id, branchId, status, isActive',
     });
   }
   //#endregion

@@ -12,6 +12,9 @@
         <span>Cancelar</span>
       </button>
       <span class="checkout-header__title">Cobrar orden</span>
+      @if (tableName()) {
+        <span class="checkout-header__table-badge">{{ tableName() }}</span>
+      }
     </header>
 
     <div class="checkout-body">
@@ -320,10 +323,28 @@
 
       }
 
-      <!-- New order -->
-      <button type="button" class="btn-new-order" (click)="startNewOrder()">
-        Nueva orden
-      </button>
+      <!-- Table release (only in tables mode) -->
+      @if (tableName()) {
+        <div class="table-release">
+          <p class="table-release__question">¿Los clientes ya se fueron de {{ tableName() }}?</p>
+          <div class="table-release__buttons">
+            <button type="button" class="table-release__btn table-release__btn--release" (click)="releaseTable()">
+              <i class="pi pi-check"></i>
+              Sí, liberar mesa
+            </button>
+            <button type="button" class="table-release__btn table-release__btn--keep" (click)="keepTable()">
+              No, seguir ocupada
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- New order (only shown when no table context) -->
+      @if (!tableName()) {
+        <button type="button" class="btn-new-order" (click)="startNewOrder()">
+          Nueva orden
+        </button>
+      }
 
     </div>
 

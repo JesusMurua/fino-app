@@ -26,6 +26,16 @@
     flex: 1;
   }
 
+  &__table-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: $color-primary;
+    color: white;
+    white-space: nowrap;
+  }
+
   &__badge {
     display: inline-flex;
     align-items: center;

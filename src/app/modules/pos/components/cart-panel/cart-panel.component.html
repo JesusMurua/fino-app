@@ -3,6 +3,9 @@
   <!-- Header -->
   <div class="cart-panel__header">
     <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
+    @if (activeTableName()) {
+      <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
+    }
     @if (itemCount() > 0) {
       <span class="cart-panel__badge">{{ itemCount() }}</span>
     }

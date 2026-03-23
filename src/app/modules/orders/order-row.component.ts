@@ -25,7 +25,7 @@ export class OrderRowComponent {
   //#endregion
 
   //#region Outputs
-  @Output() markDelivered = new EventEmitter<string>();
+  @Output() markDelivered = new EventEmitter<Order>();
   @Output() cancelOrder = new EventEmitter<string>();
   @Output() viewTicket = new EventEmitter<Order>();
   //#endregion
@@ -48,11 +48,17 @@ export class OrderRowComponent {
    */
   private get elapsedSeconds(): number {
     const created = new Date(this.order.createdAt).getTime();
-    const end = (this.isCancelled && this.order.cancelledAt)
-      ? new Date(this.order.cancelledAt).getTime()
-      : this.now.getTime();
-    return Math.max(0, Math.floor((end - created) / 1000));
+    // Freeze timer when order is finalized
+    if (this.isCancelled && this.order.cancelledAt) {
+      return Math.max(0, Math.floor((new Date(this.order.cancelledAt).getTime() - created) / 1000));
+    }
+    if (this.isDelivered && !this._frozenElapsed) {
+      this._frozenElapsed = Math.max(0, Math.floor((this.now.getTime() - created) / 1000));
+    }
+    if (this._frozenElapsed) return this._frozenElapsed;
+    return Math.max(0, Math.floor((this.now.getTime() - created) / 1000));
   }
+  private _frozenElapsed: number | null = null;
 
   /** Formatted elapsed time as "M:SS" */
   get elapsedFormatted(): string {
@@ -75,7 +81,7 @@ export class OrderRowComponent {
   }
 
   onDeliver(): void {
-    this.markDelivered.emit(this.order.id);
+    this.markDelivered.emit(this.order);
   }
 
   onCancel(): void {

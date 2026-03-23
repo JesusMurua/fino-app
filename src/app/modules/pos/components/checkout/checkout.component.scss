@@ -53,6 +53,16 @@
     text-align: center;
     margin-right: 80px; // compensate for back button width so title appears centered
   }
+
+  &__table-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    background: $color-primary;
+    color: white;
+    white-space: nowrap;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -635,6 +645,62 @@
   &:hover { background: #15803D; }
   &:active { background: #166534; }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
+}
+
+// -----------------------------------------------------------------------
+// Table release section (confirmed step, tables mode)
+// -----------------------------------------------------------------------
+.table-release {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+  background: #F0FDF4;
+  border-radius: 12px;
+  border: 1px solid #BBF7D0;
+
+  &__question {
+    margin: 0;
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+    text-align: center;
+  }
+
+  &__buttons {
+    display: flex;
+    gap: $space-3;
+  }
+
+  &__btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 56px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &--release {
+      background: $color-primary;
+      color: white;
+
+      &:hover { background: #15803D; }
+    }
+
+    &--keep {
+      background: #E5E7EB;
+      color: $color-text-title;
+
+      &:hover { background: #D1D5DB; }
+    }
+  }
 }
 
 .btn-ticket {

@@ -98,7 +98,12 @@ export class PinComponent {
         case 'Owner':   this.router.navigate(['/admin']); break;
         case 'Kitchen':  this.router.navigate(['/kitchen']); break;
         case 'Cashier':
-        default:         this.router.navigate(['/pos']); break;
+        default: {
+          const raw = localStorage.getItem('pos-device-config');
+          const mode = raw ? JSON.parse(raw).mode : 'counter';
+          this.router.navigate([mode === 'tables' ? '/tables' : '/pos']);
+          break;
+        }
       }
     } else {
       this.hasError.set(true);

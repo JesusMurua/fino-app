@@ -1,0 +1,97 @@
+<div class="tables-view">
+
+  <!-- Header -->
+  <header class="tables-header">
+    <div class="tables-header__left">
+      <h1 class="tables-header__title">Mesas</h1>
+      <span class="tables-badge tables-badge--green">
+        {{ availableTables().length }} disponibles
+      </span>
+      <span class="tables-badge tables-badge--red">
+        {{ occupiedTables().length }} ocupadas
+      </span>
+    </div>
+    <button type="button" class="tables-header__back" (click)="goBack()">
+      <i class="pi pi-arrow-left"></i>
+      Volver
+    </button>
+  </header>
+
+  <!-- Loading -->
+  @if (loading() && tables().length === 0) {
+    <div class="tables-loading">
+      <p-progressSpinner strokeWidth="3" />
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && tables().length === 0) {
+    <div class="tables-empty">
+      <i class="pi pi-table tables-empty__icon"></i>
+      <h2 class="tables-empty__title">No hay mesas configuradas</h2>
+      <p class="tables-empty__sub">
+        El administrador debe configurar las mesas en el backoffice
+      </p>
+    </div>
+  }
+
+  <!-- Grid -->
+  @if (tables().length > 0) {
+    <div class="tables-grid">
+      @for (table of tables(); track table.id) {
+        <button
+          type="button"
+          class="table-card"
+          [class.table-card--available]="table.status === 'available'"
+          [class.table-card--occupied]="table.status === 'occupied'"
+          (click)="onTableClick(table)"
+        >
+          <i
+            class="pi pi-circle-fill table-card__status-icon"
+            [class.table-card__status-icon--green]="table.status === 'available'"
+            [class.table-card__status-icon--red]="table.status === 'occupied'"
+          ></i>
+
+          @if (table.status === 'occupied') {
+            <span class="table-card__badge-used">En uso</span>
+          }
+
+          <span class="table-card__name">{{ table.name }}</span>
+
+          @if (table.capacity) {
+            <span class="table-card__capacity">{{ table.capacity }} personas</span>
+          }
+
+          <span class="table-card__status-text">
+            {{ table.status === 'available' ? 'Disponible' : 'Ocupada' }}
+          </span>
+        </button>
+      }
+    </div>
+  }
+
+</div>
+
+<!-- Occupied table dialog -->
+<p-dialog
+  [header]="'Mesa ocupada — ' + (selectedTable()?.name ?? '')"
+  [visible]="showTableDialog()"
+  (visibleChange)="showTableDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <p class="table-dialog__question">¿Qué deseas hacer con esta mesa?</p>
+
+  <div class="table-dialog__actions">
+    <button type="button" class="table-dialog__btn table-dialog__btn--orders" (click)="viewTableOrders()">
+      <i class="pi pi-receipt"></i>
+      Ver órdenes
+    </button>
+    <button type="button" class="table-dialog__btn table-dialog__btn--release" (click)="releaseTable()">
+      <i class="pi pi-check-circle"></i>
+      Liberar mesa
+    </button>
+  </div>
+</p-dialog>

@@ -1,0 +1,268 @@
+@use '../../../styles/variables' as *;
+
+.tables-view {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  padding: $space-4;
+  min-height: 100vh;
+  background: #F9FAFB;
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+.tables-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    min-height: 44px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: white;
+    color: $color-text-sub;
+    font-size: $font-size-base;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #F3F4F6; }
+  }
+}
+
+.tables-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+
+  &--green {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  &--red {
+    background: #FEE2E2;
+    color: #DC2626;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Loading / Empty
+// -----------------------------------------------------------------------
+.tables-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: $space-6;
+}
+
+.tables-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px $space-4;
+  text-align: center;
+
+  &__icon {
+    font-size: 64px;
+    color: #D1D5DB;
+    margin-bottom: $space-4;
+  }
+
+  &__title {
+    margin: 0 0 $space-2;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__sub {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    max-width: 320px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Grid
+// -----------------------------------------------------------------------
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-4;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (min-width: 1440px) {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+// -----------------------------------------------------------------------
+// Table card
+// -----------------------------------------------------------------------
+.table-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  min-height: 120px;
+  min-width: 120px;
+  padding: $space-4;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: box-shadow 0.2s, border-color 0.2s;
+
+  &--available {
+    border-color: $color-primary;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+    }
+  }
+
+  &--occupied {
+    border-color: #DC2626;
+    background: #FEF2F2;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+    }
+  }
+
+  &__status-icon {
+    font-size: 12px;
+
+    &--green { color: $color-primary; }
+    &--red { color: #DC2626; }
+  }
+
+  &__badge-used {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #FEE2E2;
+    color: #DC2626;
+  }
+
+  &__name {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__capacity {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+
+  &__status-text {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &--available &__status-text { color: $color-primary; }
+  &--occupied &__status-text { color: #DC2626; }
+}
+
+// -----------------------------------------------------------------------
+// Occupied table dialog
+// -----------------------------------------------------------------------
+.table-dialog {
+  &__question {
+    margin: 0 0 $space-4;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    text-align: center;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+  }
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 64px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    &--orders {
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border-color: #BFDBFE;
+
+      &:hover { background: #DBEAFE; }
+    }
+
+    &--release {
+      background: #F0FDF4;
+      color: #15803D;
+      border-color: #BBF7D0;
+
+      &:hover { background: #DCFCE7; }
+    }
+  }
+}
+
+// Dialog close button fix
+:host ::ng-deep .p-dialog-header-close {
+  background: transparent !important;
+  border: none !important;
+  color: #6B7280 !important;
+
+  &:hover {
+    background: #F3F4F6 !important;
+    color: #374151 !important;
+  }
+}

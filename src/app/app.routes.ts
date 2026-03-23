@@ -37,6 +37,13 @@ export const appRoutes: Routes = [
       import('./modules/orders/orders.routes').then(m => m.ordersRoutes),
   },
   {
+    path: 'tables',
+    canActivate: [authGuard],
+    data: { roles: ['Cashier', 'Owner'] },
+    loadComponent: () =>
+      import('./modules/tables/tables.component').then(m => m.TablesComponent),
+  },
+  {
     path: 'pin',
     loadComponent: () =>
       import('./modules/pin/pin.component').then(m => m.PinComponent),

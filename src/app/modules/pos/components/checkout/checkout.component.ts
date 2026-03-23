@@ -1,18 +1,22 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
 
+import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, DiscountPreset, Order, PaymentMethod } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { TableService } from '../../../../core/services/table.service';
 
 /** Internal step of the checkout flow */
 type CheckoutStep = 'payment' | 'confirmed';
@@ -85,6 +89,10 @@ export class CheckoutComponent implements OnInit {
 
   /** Whether the discount section is expanded */
   readonly showDiscountSection = signal(false);
+
+  // ---- Table context (from /tables navigation state) ----
+  readonly tableId = signal<number | null>(null);
+  readonly tableName = signal<string | null>(null);
 
   // -----------------------------------------------------------------------
   // Derived state
@@ -159,6 +167,8 @@ export class CheckoutComponent implements OnInit {
     private readonly syncService: SyncService,
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
+    private readonly tableService: TableService,
+    private readonly http: HttpClient,
     private readonly router: Router,
   ) {}
   //#endregion
@@ -166,6 +176,14 @@ export class CheckoutComponent implements OnInit {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
+    // Read table context from sessionStorage
+    const activeTable = sessionStorage.getItem('activeTable');
+    if (activeTable) {
+      const { tableId, tableName } = JSON.parse(activeTable);
+      this.tableId.set(tableId);
+      this.tableName.set(tableName ?? null);
+    }
+
     // Load discount presets
     await this.discountService.loadPresets(BRANCH_ID);
     const presets = await this.discountService.getPresets(BRANCH_ID);
@@ -269,6 +287,8 @@ export class CheckoutComponent implements OnInit {
       createdAt: new Date(),
       syncStatus: 'pending',
       businessId: BRANCH_ID,
+      tableId: this.tableId() ?? undefined,
+      tableName: this.tableName() ?? undefined,
     };
 
     await this.syncService.saveOrder(order);
@@ -277,11 +297,45 @@ export class CheckoutComponent implements OnInit {
     this.completedOrder.set(order);
     this.step.set('confirmed');
     await this.cartService.clearCart();
+
+    // sessionStorage('activeTable') is cleaned by releaseTable() or keepTable()
   }
 
   /** Navigates back to the POS grid without completing the order */
   cancel(): void {
     this.router.navigate(['/pos']);
+  }
+
+  /** Releases the table — awaits full HTTP response before navigating */
+  async releaseTable(): Promise<void> {
+    const raw = sessionStorage.getItem('activeTable');
+    sessionStorage.removeItem('activeTable');
+
+    if (raw) {
+      const { tableId } = JSON.parse(raw);
+      if (tableId) {
+        const token = localStorage.getItem('pos_auth_token');
+        try {
+          await firstValueFrom(
+            this.http.patch(
+              `${environment.apiUrl}/table/${tableId}/status`,
+              { status: 'available' },
+              { headers: { Authorization: `Bearer ${token}` } },
+            )
+          );
+        } catch (e) {
+          console.error('Error liberando mesa:', e);
+        }
+      }
+    }
+
+    this.router.navigate(['/tables']);
+  }
+
+  /** Keeps the table occupied and navigates back to tables */
+  keepTable(): void {
+    sessionStorage.removeItem('activeTable');
+    this.router.navigate(['/tables']);
   }
 
   /** Starts a new order — cart is already cleared, navigate back to POS */

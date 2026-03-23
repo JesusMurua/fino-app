@@ -3,6 +3,9 @@
   <!-- Summary row (always visible) -->
   <button type="button" class="order-row__summary" (click)="toggle()">
     <span class="order-row__number">#{{ order.orderNumber }}</span>
+    @if (order.tableName) {
+      <span class="order-row__table-badge">{{ order.tableName }}</span>
+    }
     <span class="order-row__time">{{ order.createdAt | date:'HH:mm' }}</span>
     <span
       class="order-row__badge"

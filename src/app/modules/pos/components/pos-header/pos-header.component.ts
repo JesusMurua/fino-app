@@ -56,6 +56,11 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     window.removeEventListener('offline', this.onOffline);
   }
 
+  /** Navigates to the tables view */
+  openTables(): void {
+    this.router.navigate(['/tables']);
+  }
+
   /** Navigates to the orders list */
   openOrders(): void {
     this.router.navigate(['/orders']);

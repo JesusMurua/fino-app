@@ -69,4 +69,8 @@ export interface Order {
   discountLabel?: string;
   /** Free-text reason for applying the discount */
   discountReason?: string;
+  /** Table assigned to this order (tables mode) */
+  tableId?: number;
+  /** Snapshot of the table name at order creation */
+  tableName?: string;
 }

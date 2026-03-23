@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -16,13 +16,14 @@ import { SyncService } from '../../../../core/services/sync.service';
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
-export class CartPanelComponent {
+export class CartPanelComponent implements OnInit {
 
   //#region Properties
   readonly cart$ = this.cartService.cart$;
   readonly totalCents = this.cartService.totalCents;
   readonly itemCount = this.cartService.itemCount;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
+  readonly activeTableName = signal<string | null>(null);
   //#endregion
 
   //#region Constructor
@@ -31,6 +32,16 @@ export class CartPanelComponent {
     private readonly syncService: SyncService,
     private readonly router: Router,
   ) {}
+  //#endregion
+
+  //#region Lifecycle
+  ngOnInit(): void {
+    const activeTable = sessionStorage.getItem('activeTable');
+    if (activeTable) {
+      const { tableName } = JSON.parse(activeTable);
+      this.activeTableName.set(tableName);
+    }
+  }
   //#endregion
 
   //#region Cart Methods

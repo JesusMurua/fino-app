@@ -27,6 +27,14 @@
       <button
         type="button"
         class="pos-header__settings"
+        aria-label="Ver mesas"
+        (click)="openTables()"
+      >
+        <i class="pi pi-table"></i>
+      </button>
+      <button
+        type="button"
+        class="pos-header__settings"
         aria-label="Ver órdenes activas"
         (click)="openOrders()"
       >
