@@ -12,6 +12,7 @@ import {
   RETURN_URL_KEY,
 } from '../models';
 import { ApiService } from './api.service';
+import { DatabaseService } from './database.service';
 
 /**
  * Manages authentication state for the POS application.
@@ -53,6 +54,7 @@ export class AuthService {
   //#region Constructor
   constructor(
     private readonly api: ApiService,
+    private readonly db: DatabaseService,
     private readonly router: Router,
   ) {}
   //#endregion
@@ -151,6 +153,11 @@ export class AuthService {
     localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
     this.activeBranchId.set(0);
+
+    // Clear cached catalog from IndexedDB (orders are preserved)
+    this.db.products.clear().catch(() => {});
+    this.db.categories.clear().catch(() => {});
+
     this.router.navigate(['/pin']);
   }
 
@@ -220,6 +227,7 @@ export class AuthService {
 
   /**
    * Restores user from localStorage on service creation.
+   * Returns null if the stored token is missing, malformed, or expired.
    */
   private loadUserFromStorage(): AuthUser | null {
     try {
@@ -227,9 +235,27 @@ export class AuthService {
       if (!raw) return null;
       const user: AuthUser = JSON.parse(raw);
       if (!user.token || !user.role) return null;
+      if (this.isTokenExpired(user.token)) return null;
       return user;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Checks whether a JWT is expired by decoding its payload.
+   * Uses native atob() — no external libraries needed.
+   * Returns true if the token is expired or cannot be decoded.
+   */
+  private isTokenExpired(token: string): boolean {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return true;
+      return Date.now() / 1000 > payload.exp;
+    } catch {
+      return true;
     }
   }
 
