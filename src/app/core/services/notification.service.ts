@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { SwPush } from '@angular/service-worker';
 import { MessageService } from 'primeng/api';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout, catchError, EMPTY } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
@@ -24,6 +25,7 @@ export class NotificationService {
 
   private readonly swPush = inject(SwPush);
   private readonly api = inject(ApiService);
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
   private readonly kitchenService = inject(KitchenService);
@@ -93,16 +95,22 @@ export class NotificationService {
 
   /**
    * Removes the push subscription from the backend.
-   * Called before logout — best-effort, never throws.
+   * Called before logout — fire-and-forget, never blocks.
+   * Uses HttpClient directly (bypasses authInterceptor) to avoid
+   * a 401 → logout loop when the token is already cleared.
    */
-  async unsubscribe(): Promise<void> {
+  unsubscribe(): void {
     if (!this.swPush.isEnabled) return;
 
-    try {
-      await firstValueFrom(this.api.delete('/push/unsubscribe'));
-    } catch {
-      // Silent — user is logging out anyway
-    }
+    const token = localStorage.getItem('pos_auth_token');
+    if (!token) return;
+
+    this.http.delete(`${environment.apiUrl}/push/unsubscribe`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).pipe(
+      timeout(3000),
+      catchError(() => EMPTY),
+    ).subscribe();
   }
 
   //#endregion
