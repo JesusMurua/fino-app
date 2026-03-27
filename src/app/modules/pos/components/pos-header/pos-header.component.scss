@@ -98,6 +98,32 @@
   }
 
   // -----------------------------------------------------------------------
+  // Notification permission button (visible only when permission is 'default')
+  // -----------------------------------------------------------------------
+  &__notify-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 $space-3;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    background: transparent;
+    color: $color-text-sub;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    i { font-size: 14px; }
+
+    &:hover {
+      background: #F3F4F6;
+      color: $color-text-title;
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Kiosk mode warning banner (shown below header when device is in kiosk mode)
   // -----------------------------------------------------------------------
   &__kiosk-banner {

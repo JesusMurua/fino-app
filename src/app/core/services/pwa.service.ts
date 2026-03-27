@@ -40,6 +40,11 @@ export class PwaService {
   /** True when running on an iOS device (manual install instructions needed) */
   readonly isIos = signal(/iPad|iPhone|iPod/.test(navigator.userAgent));
 
+  /** Current Notification permission state ('default' | 'granted' | 'denied') */
+  readonly notificationStatus = signal<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied',
+  );
+
   /**
    * True when the install banner should be visible:
    * - App is not already installed

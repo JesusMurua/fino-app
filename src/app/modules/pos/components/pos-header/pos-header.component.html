@@ -23,6 +23,19 @@
       <span class="pos-header__status-label">{{ isOnline() ? 'En línea' : 'Sin conexión' }}</span>
     </div>
 
+    @if (pwaService.notificationStatus() === 'default') {
+      <button
+        type="button"
+        class="pos-header__notify-btn"
+        (click)="enableNotifications()"
+        pTooltip="Activar notificaciones"
+        tooltipPosition="bottom"
+      >
+        <i class="pi pi-bell"></i>
+        <span>Activar</span>
+      </button>
+    }
+
     @if (showStockButton) {
       <button
         type="button"

@@ -15,7 +15,9 @@ import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, Inv
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { PwaService } from '../../../../core/services/pwa.service';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -69,9 +71,11 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   stockReason = '';
 
   private readonly inventoryService = inject(InventoryService);
+  private readonly notificationService = inject(NotificationService);
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
   private readonly http = inject(HttpClient);
+  readonly pwaService = inject(PwaService);
 
   private readonly onOnline  = (): void => this.isOnline.set(true);
   private readonly onOffline = (): void => this.isOnline.set(false);
@@ -136,6 +140,12 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     this.stockQuantity = 1;
     this.stockReason = '';
     this.showStockDialog.set(true);
+  }
+
+  /** Requests notification permission and updates the PwaService signal */
+  async enableNotifications(): Promise<void> {
+    await this.notificationService.requestPermission();
+    this.pwaService.notificationStatus.set(Notification.permission);
   }
 
   /** Registers stock entry for selected item */
