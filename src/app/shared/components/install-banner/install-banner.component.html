@@ -1,0 +1,24 @@
+@if (pwaService.canShowBanner()) {
+  <div class="install-banner">
+    <div class="install-banner__content">
+      @if (pwaService.isIos()) {
+        <span class="install-banner__text">
+          Instala la app: toca
+          <strong>Compartir</strong>
+          <i class="pi pi-external-link"></i>
+          y luego <strong>Agregar a inicio</strong>
+        </span>
+      } @else {
+        <span class="install-banner__text">Instala POS Táctil para acceso rápido</span>
+        <button class="install-banner__btn install-banner__btn--install"
+                (click)="pwaService.showInstallPrompt()">
+          Instalar
+        </button>
+      }
+      <button class="install-banner__btn install-banner__btn--dismiss"
+              (click)="pwaService.dismissBanner()">
+        Ahora no
+      </button>
+    </div>
+  </div>
+}
