@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
+import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
@@ -40,6 +41,7 @@ export class PinComponent {
 
   //#endregion
 
+  private readonly configService = inject(ConfigService);
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
@@ -92,7 +94,9 @@ export class PinComponent {
     const pin = this.digits().join('');
     this.isLoading.set(true);
 
-    const user = await this.authService.pinLogin(this.authService.branchId, pin);
+    const deviceBranchId = this.configService.deviceConfig$.getValue().branchId;
+    const branchId = deviceBranchId > 0 ? deviceBranchId : this.authService.branchId;
+    const user = await this.authService.pinLogin(branchId, pin);
 
     this.isLoading.set(false);
 

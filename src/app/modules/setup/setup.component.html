@@ -1,0 +1,230 @@
+<div class="setup-page">
+  <div class="setup-card">
+
+    <!-- ============================================================== -->
+    <!-- STEP: Choose method                                             -->
+    <!-- ============================================================== -->
+    @if (step() === 'choose') {
+      <div class="setup-header">
+        <div class="setup-header__icon">
+          <i class="pi pi-cog"></i>
+        </div>
+        <h1 class="setup-header__title">Configurar dispositivo</h1>
+        <p class="setup-header__sub">Primera vez en este equipo</p>
+      </div>
+
+      <div class="setup-options">
+        <button class="setup-option" (click)="goToEmail()">
+          <span class="setup-option__icon">
+            <i class="pi pi-envelope"></i>
+          </span>
+          <span class="setup-option__text">
+            <strong>Soy el administrador</strong>
+            <span>Iniciar con email y contraseña</span>
+          </span>
+          <i class="pi pi-chevron-right setup-option__arrow"></i>
+        </button>
+
+        <button class="setup-option" (click)="goToCode()">
+          <span class="setup-option__icon">
+            <i class="pi pi-key"></i>
+          </span>
+          <span class="setup-option__text">
+            <strong>Tengo un código</strong>
+            <span>Código de activación de 6 dígitos</span>
+          </span>
+          <i class="pi pi-chevron-right setup-option__arrow"></i>
+        </button>
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Email + Password                                          -->
+    <!-- ============================================================== -->
+    @if (step() === 'email') {
+      <div class="setup-header">
+        <button class="setup-back" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <h1 class="setup-header__title">Iniciar sesión</h1>
+        <p class="setup-header__sub">Usa tu cuenta de administrador</p>
+      </div>
+
+      <div class="setup-form">
+        <div class="setup-field">
+          <label class="setup-field__label" for="setup-email">Email</label>
+          <input
+            id="setup-email"
+            type="email"
+            pInputText
+            [(ngModel)]="email"
+            placeholder="admin@tuempresa.com"
+            class="setup-field__input"
+          />
+        </div>
+
+        <div class="setup-field">
+          <label class="setup-field__label" for="setup-pass">Contraseña</label>
+          <p-password
+            inputId="setup-pass"
+            [(ngModel)]="password"
+            [feedback]="false"
+            [toggleMask]="true"
+            placeholder="••••••••"
+            styleClass="w-full"
+            inputStyleClass="setup-field__input"
+          />
+        </div>
+
+        @if (error()) {
+          <p class="setup-error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ error() }}
+          </p>
+        }
+
+        <button
+          class="setup-btn"
+          [disabled]="isLoading() || !email.trim() || !password"
+          (click)="submitEmail()"
+        >
+          @if (isLoading()) { <i class="pi pi-spin pi-spinner"></i> }
+          Continuar
+        </button>
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Activation code                                           -->
+    <!-- ============================================================== -->
+    @if (step() === 'code') {
+      <div class="setup-header">
+        <button class="setup-back" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <h1 class="setup-header__title">Código de activación</h1>
+        <p class="setup-header__sub">Ingresa el código de 6 dígitos</p>
+      </div>
+
+      <div class="setup-code">
+        <div class="setup-code__boxes">
+          @for (digit of codeDigits(); track $index) {
+            <input
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              class="setup-code__box"
+              [value]="digit"
+              (input)="onCodeInput($index, $event)"
+              (keydown)="onCodeKeydown($index, $event)"
+            />
+          }
+        </div>
+
+        @if (error()) {
+          <p class="setup-error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ error() }}
+          </p>
+        }
+
+        @if (isLoading()) {
+          <p class="setup-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+            Verificando código...
+          </p>
+        }
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Select branch (email flow)                                -->
+    <!-- ============================================================== -->
+    @if (step() === 'branch') {
+      <div class="setup-header">
+        <h1 class="setup-header__title">Elige la sucursal</h1>
+        <p class="setup-header__sub">{{ businessName }}</p>
+      </div>
+
+      <div class="setup-branches">
+        @for (branch of branches(); track branch.id) {
+          <button class="setup-branch" (click)="selectBranch(branch)">
+            <i class="pi pi-building"></i>
+            <span>{{ branch.name }}</span>
+            <i class="pi pi-chevron-right"></i>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Select mode + device name (email flow)                    -->
+    <!-- ============================================================== -->
+    @if (step() === 'mode') {
+      <div class="setup-header">
+        <h1 class="setup-header__title">Configura el dispositivo</h1>
+        <p class="setup-header__sub">{{ selectedBranchName }}</p>
+      </div>
+
+      <div class="setup-form">
+        <div class="setup-field">
+          <label class="setup-field__label">Nombre del dispositivo</label>
+          <input
+            type="text"
+            pInputText
+            [(ngModel)]="deviceName"
+            placeholder="Ej. Caja 1"
+            class="setup-field__input"
+          />
+        </div>
+
+        <label class="setup-field__label">Modo de operación</label>
+        <div class="setup-modes">
+          @for (mode of modes; track mode.value) {
+            <button
+              class="setup-mode"
+              [class.setup-mode--active]="selectedMode === mode.value"
+              (click)="selectedMode = mode.value"
+            >
+              <span class="setup-mode__icon">{{ mode.icon }}</span>
+              <strong>{{ mode.label }}</strong>
+              <span class="setup-mode__desc">{{ mode.description }}</span>
+            </button>
+          }
+        </div>
+
+        <button class="setup-btn" (click)="saveEmailSetup()">
+          Configurar dispositivo
+        </button>
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Device name only (code flow)                              -->
+    <!-- ============================================================== -->
+    @if (step() === 'code-name') {
+      <div class="setup-header">
+        <h1 class="setup-header__title">Nombre del dispositivo</h1>
+        <p class="setup-header__sub">{{ activateData?.businessName }} — {{ activateData?.branchName }}</p>
+      </div>
+
+      <div class="setup-form">
+        <div class="setup-field">
+          <label class="setup-field__label">Nombre (opcional)</label>
+          <input
+            type="text"
+            pInputText
+            [(ngModel)]="deviceName"
+            placeholder="Ej. Caja 1"
+            class="setup-field__input"
+          />
+        </div>
+
+        <button class="setup-btn" (click)="saveCodeSetup()">
+          Activar dispositivo
+        </button>
+      </div>
+    }
+
+  </div>
+</div>

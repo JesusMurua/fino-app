@@ -3,19 +3,24 @@ import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
 
 import { RETURN_URL_KEY, UserRole } from '../models';
 import { AuthService } from '../services/auth.service';
+import { ConfigService } from '../services/config.service';
 
 /**
- * Role-based route guard.
+ * Role-based route guard with device setup check.
  *
- * Routes declare allowed roles via route data:
- *   { path: 'pos', canActivate: [authGuard], data: { roles: ['Cashier', 'Owner'] } }
- *
- * If the user is not authenticated → saves the attempted URL and redirects to /pin.
- * If authenticated but wrong role → redirects to /pin.
+ * Guard priority:
+ *   1. If device is not configured → redirect to /setup
+ *   2. If user is not authenticated → redirect to /pin
+ *   3. If authenticated but wrong role → redirect to /pin
  */
 export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const authService = inject(AuthService);
+  const configService = inject(ConfigService);
   const router = inject(Router);
+
+  if (!configService.isDeviceConfigured()) {
+    return router.createUrlTree(['/setup']);
+  }
 
   if (!authService.isAuthenticated()) {
     localStorage.setItem(RETURN_URL_KEY, route.routeConfig?.path ?? '/');

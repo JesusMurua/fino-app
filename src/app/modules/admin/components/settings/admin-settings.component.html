@@ -223,6 +223,36 @@
         </div>
       </section>
 
+      <!-- Activation code card — Owner/Manager only -->
+      @if (authService.currentUser()?.role === 'Owner' || authService.currentUser()?.role === 'Manager') {
+        <section class="settings-card">
+          <div class="settings-card__header">
+            <span class="settings-card__icon">🔑</span>
+            <h2 class="settings-card__title">Agregar otro dispositivo</h2>
+          </div>
+          <p class="settings-card__desc">Genera un código de 6 dígitos para configurar otro equipo. Válido por 24 horas.</p>
+
+          @if (activationCode()) {
+            <div class="activation-code">
+              <span class="activation-code__value">{{ activationCode() }}</span>
+              <span class="activation-code__hint">Ingresa este código en el nuevo dispositivo</span>
+            </div>
+          }
+
+          <div class="settings-card__footer">
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="generatingCode()"
+              (click)="generateActivationCode()"
+            >
+              @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
+              Generar código
+            </button>
+          </div>
+        </section>
+      }
+
     </div>
 
   </div>

@@ -54,6 +54,11 @@ export const appRoutes: Routes = [
       import('./modules/login/login.component').then(m => m.LoginComponent),
   },
   {
+    path: 'setup',
+    loadComponent: () =>
+      import('./modules/setup/setup.component').then(m => m.SetupComponent),
+  },
+  {
     path: 'kiosk',
     loadChildren: () =>
       import('./modules/kiosk/kiosk.routes').then(m => m.kioskRoutes),

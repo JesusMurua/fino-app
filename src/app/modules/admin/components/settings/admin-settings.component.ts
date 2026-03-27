@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -8,6 +9,7 @@ import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig } from '../../../../core/models';
+import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -32,6 +34,7 @@ export class AdminSettingsComponent implements OnInit {
 
   //#region Injections
 
+  private readonly api = inject(ApiService);
   readonly authService = inject(AuthService);
   private readonly branchService = inject(BranchService);
   private readonly messageService = inject(MessageService);
@@ -79,6 +82,10 @@ export class AdminSettingsComponent implements OnInit {
   readonly copyTarget = signal<Branch | null>(null);
   readonly showCopyDialog = signal(false);
   readonly copyingCatalog = signal(false);
+
+  /** Activation code generation */
+  readonly activationCode = signal('');
+  readonly generatingCode = signal(false);
 
   //#endregion
 
@@ -301,6 +308,34 @@ export class AdminSettingsComponent implements OnInit {
       });
     } finally {
       this.copyingCatalog.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Activation Code
+
+  /**
+   * Generates a 6-digit activation code for configuring another device.
+   * The code is valid for 24 hours.
+   */
+  async generateActivationCode(): Promise<void> {
+    this.generatingCode.set(true);
+    this.activationCode.set('');
+
+    try {
+      const response = await firstValueFrom(
+        this.api.post<{ code: string }>('/device/generate-code', {}),
+      );
+      this.activationCode.set(response.code);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo generar el código',
+      });
+    } finally {
+      this.generatingCode.set(false);
     }
   }
 

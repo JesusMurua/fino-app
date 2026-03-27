@@ -129,6 +129,15 @@ export class ConfigService {
   //#region Device config (localStorage)
 
   /**
+   * Returns true if the device has been configured with a valid
+   * businessId and branchId (set during the /setup flow).
+   */
+  isDeviceConfigured(): boolean {
+    const config = this.deviceConfig$.getValue();
+    return config.businessId > 0 && config.branchId > 0;
+  }
+
+  /**
    * Reads the device config from localStorage and emits to deviceConfig$.
    * Falls back to DEFAULT_DEVICE_CONFIG if no value has been saved yet.
    */
