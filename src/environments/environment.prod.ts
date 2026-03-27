@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.postactil.com/api',
+  apiUrl: 'https://pos-api-kw8n.onrender.com/api',
 };
