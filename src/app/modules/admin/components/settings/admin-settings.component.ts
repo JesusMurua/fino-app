@@ -324,8 +324,12 @@ export class AdminSettingsComponent implements OnInit {
     this.activationCode.set('');
 
     try {
+      const device = this.configService.deviceConfig$.getValue();
       const response = await firstValueFrom(
-        this.api.post<{ code: string }>('/device/generate-code', {}),
+        this.api.post<{ code: string }>('/device/generate-code', {
+          branchId: device.branchId,
+          mode: device.mode,
+        }),
       );
       this.activationCode.set(response.code);
     } catch {
