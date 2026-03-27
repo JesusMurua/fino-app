@@ -18,7 +18,7 @@ export class UserService {
    */
   async getUsers(branchId: number): Promise<UserDto[]> {
     return firstValueFrom(
-      this.http.get<UserDto[]>(`${this.baseUrl}/user?branchId=${branchId}`)
+      this.http.get<UserDto[]>(`${this.baseUrl}/user`)
     );
   }
 
@@ -31,7 +31,7 @@ export class UserService {
   ): Promise<{ id: number }> {
     return firstValueFrom(
       this.http.post<{ id: number }>(
-        `${this.baseUrl}/user?branchId=${branchId}`,
+        `${this.baseUrl}/user`,
         request,
       )
     );
@@ -57,6 +57,41 @@ export class UserService {
       this.http.patch<{ isActive: boolean }>(`${this.baseUrl}/user/${id}/toggle`, {})
     );
     return result.isActive;
+  }
+
+  /**
+   * Gets the branch assignments for a user.
+   * API returns an array of { branchId, branchName, isDefault }.
+   * This method normalizes it into { branchIds, defaultBranchId }.
+   * @param userId User to query
+   */
+  async getUserBranches(userId: number): Promise<{ branchIds: number[]; defaultBranchId: number }> {
+    type ApiBranchAssignment = { branchId: number; branchName: string; isDefault: boolean };
+    const items = await firstValueFrom(
+      this.http.get<ApiBranchAssignment[]>(`${this.baseUrl}/user/${userId}/branches`),
+    );
+    const branchIds = items.map(b => b.branchId);
+    const defaultBranchId = items.find(b => b.isDefault)?.branchId ?? branchIds[0] ?? 0;
+    return { branchIds, defaultBranchId };
+  }
+
+  /**
+   * Assigns branches to a user and sets the default branch.
+   * @param userId User to update
+   * @param branchIds Array of branch IDs to assign
+   * @param defaultBranchId The user's default branch
+   */
+  async assignBranches(
+    userId: number,
+    branchIds: number[],
+    defaultBranchId: number,
+  ): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${this.baseUrl}/user/${userId}/branches`, {
+        branchIds,
+        defaultBranchId,
+      })
+    );
   }
 
   //#endregion

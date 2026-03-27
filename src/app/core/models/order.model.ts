@@ -34,7 +34,8 @@ export interface Order {
   items: CartItem[];
   /** Order total in cents */
   totalCents: number;
-  paymentMethod: PaymentMethod;
+  /** null when order is sent to kitchen without payment (tables/waiter mode) */
+  paymentMethod: PaymentMethod | null;
   /** Amount tendered in cents (for cash payments) */
   tenderedCents?: number;
   /**
@@ -50,7 +51,7 @@ export interface Order {
   /** Set when the order is successfully persisted in the backend */
   syncedAt?: Date;
   syncStatus: OrderSyncStatus;
-  businessId: number;
+  branchId: number;
   /** Kitchen display status — undefined on legacy orders treated as 'new' */
   kitchenStatus?: KitchenStatus;
   /** Delivery status — undefined means not yet delivered */

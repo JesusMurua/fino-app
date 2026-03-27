@@ -1,10 +1,11 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
@@ -13,16 +14,17 @@ import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, DiscountPreset, Order, PaymentMethod } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
+import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
+import { InventoryService } from '../../../../core/services/inventory.service';
+import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableService } from '../../../../core/services/table.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 /** Internal step of the checkout flow */
 type CheckoutStep = 'payment' | 'confirmed';
-
-/** Branch ID — hardcoded until multi-branch support */
-const BRANCH_ID = 1;
 
 @Component({
   selector: 'app-checkout',
@@ -31,6 +33,7 @@ const BRANCH_ID = 1;
     AsyncPipe,
     FormsModule,
     ButtonModule,
+    DialogModule,
     InputNumberModule,
     InputTextModule,
     RadioButtonModule,
@@ -57,6 +60,12 @@ export class CheckoutComponent implements OnInit {
 
   /** The completed order, available after confirmPayment() succeeds */
   readonly completedOrder = signal<Order | null>(null);
+
+  /** Whether the kitchen confirmation dialog is visible */
+  readonly showKitchenConfirm = signal(false);
+
+  /** Whether to show the table release prompt (false if other active orders remain) */
+  readonly showTableRelease = signal(false);
 
   /** Snapshot of cart items taken at mount — cart is cleared after confirm */
   cartItems: CartItem[] = [];
@@ -94,12 +103,19 @@ export class CheckoutComponent implements OnInit {
   readonly tableId = signal<number | null>(null);
   readonly tableName = signal<string | null>(null);
 
+  // ---- Existing order context (charging a table order from /orders) ----
+  /** When set, checkout updates an existing order instead of creating a new one */
+  readonly existingOrderId = signal<string | null>(null);
+
   // -----------------------------------------------------------------------
   // Derived state
   // -----------------------------------------------------------------------
 
-  /** Subtotal before discount — sum of all cart items */
-  readonly subtotalCents = computed(() => this.cartService.totalCents());
+  /** Subtotal before discount — from cart or existing order */
+  readonly existingTotalCents = signal(0);
+  readonly subtotalCents = computed(() =>
+    this.existingOrderId() ? this.existingTotalCents() : this.cartService.totalCents()
+  );
 
   /** Discount amount in cents */
   readonly discountCents = computed(() => {
@@ -168,8 +184,13 @@ export class CheckoutComponent implements OnInit {
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
     private readonly tableService: TableService,
+    private readonly inventoryService: InventoryService,
+    private readonly productService: ProductService,
+    private readonly db: DatabaseService,
     private readonly http: HttpClient,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly authService: AuthService,
   ) {}
   //#endregion
 
@@ -184,16 +205,24 @@ export class CheckoutComponent implements OnInit {
       this.tableName.set(tableName ?? null);
     }
 
+    // Check if charging an existing table order
+    const orderId = this.route.snapshot.queryParamMap.get('orderId');
+    if (orderId) {
+      await this.loadExistingOrder(orderId);
+    }
+
     // Load discount presets
-    await this.discountService.loadPresets(BRANCH_ID);
-    const presets = await this.discountService.getPresets(BRANCH_ID);
+    await this.discountService.loadPresets(this.authService.branchId);
+    const presets = await this.discountService.getPresets(this.authService.branchId);
     this.presets.set(presets);
 
     // Subscribe to cart updates — also handles the empty-cart redirect
     this.cartService.cart$.subscribe(items => {
       if (this.step() !== 'payment') return;
-      this.cartItems = items;
-      if (items.length === 0 && (Date.now() - this.initTime) > 1000) {
+      if (!this.existingOrderId()) {
+        this.cartItems = items;
+      }
+      if (items.length === 0 && !this.existingOrderId() && (Date.now() - this.initTime) > 1000) {
         this.router.navigate(['/pos']);
       }
     });
@@ -262,43 +291,129 @@ export class CheckoutComponent implements OnInit {
   //#region Checkout Flow
 
   /**
+   * Loads an existing table order from Dexie for payment.
+   * Pre-fills cart items and table context.
+   */
+  private async loadExistingOrder(orderId: string): Promise<void> {
+    const order = await this.db.orders.get(orderId);
+    if (!order) return;
+
+    this.existingOrderId.set(order.id);
+    this.cartItems = order.items;
+    this.existingTotalCents.set(order.totalCents);
+    this.tableId.set(order.tableId ?? null);
+    this.tableName.set(order.tableName ?? null);
+
+    // Set table context in sessionStorage for releaseTable/keepTable
+    if (order.tableId && order.tableName) {
+      sessionStorage.setItem('activeTable', JSON.stringify({
+        tableId: order.tableId,
+        tableName: order.tableName,
+      }));
+    }
+  }
+
+  /**
+   * Checks kitchen status before confirming payment.
+   * If order is still in kitchen, shows a confirmation dialog first.
+   */
+  async onConfirmPayment(): Promise<void> {
+    if (!this.canConfirm()) return;
+
+    // Check if existing order is still in kitchen
+    if (this.existingOrderId()) {
+      const existing = await this.db.orders.get(this.existingOrderId()!);
+      const ks = existing?.kitchenStatus;
+      if (ks === 'new') {
+        this.showKitchenConfirm.set(true);
+        return;
+      }
+    }
+
+    await this.confirmPayment();
+  }
+
+  /**
    * Confirms the payment and completes the order.
    * Order: save to IndexedDB → print ticket → advance to confirmed step → clear cart.
    */
   async confirmPayment(): Promise<void> {
+    this.showKitchenConfirm.set(false);
     if (!this.canConfirm()) return;
 
     const method = this.selectedMethod()!;
-    const orderNumber = this.syncService.consumeOrderNumber();
     const discount = this.discountCents();
+    let order: Order;
 
-    const order: Order = {
-      id: crypto.randomUUID(),
-      orderNumber,
-      items: this.cartItems,
-      subtotalCents: this.subtotalCents(),
-      discountCents: discount > 0 ? discount : undefined,
-      discountLabel: this.discountLabel() || undefined,
-      discountReason: this.discountReason().trim() || undefined,
-      totalCents: this.totalWithDiscount(),
-      paymentMethod: method,
-      tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
-      paymentProvider: null,
-      createdAt: new Date(),
-      syncStatus: 'pending',
-      businessId: BRANCH_ID,
-      tableId: this.tableId() ?? undefined,
-      tableName: this.tableName() ?? undefined,
-    };
+    if (this.existingOrderId()) {
+      // Charging an existing table order — update it
+      const existing = await this.db.orders.get(this.existingOrderId()!);
+      if (!existing) return;
 
-    await this.syncService.saveOrder(order);
+      order = {
+        ...existing,
+        paymentMethod: method,
+        tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
+        subtotalCents: existing.totalCents,
+        discountCents: discount > 0 ? discount : undefined,
+        discountLabel: this.discountLabel() || undefined,
+        discountReason: this.discountReason().trim() || undefined,
+        totalCents: discount > 0 ? Math.max(0, existing.totalCents - discount) : existing.totalCents,
+        syncStatus: 'pending',
+      };
+
+      await this.db.orders.put(order);
+      await this.syncService.syncPendingOrders();
+    } else {
+      // Normal new order flow
+      const orderNumber = this.syncService.consumeOrderNumber();
+
+      order = {
+        id: crypto.randomUUID(),
+        orderNumber,
+        items: this.cartItems,
+        subtotalCents: this.subtotalCents(),
+        discountCents: discount > 0 ? discount : undefined,
+        discountLabel: this.discountLabel() || undefined,
+        discountReason: this.discountReason().trim() || undefined,
+        totalCents: this.totalWithDiscount(),
+        paymentMethod: method,
+        tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
+        paymentProvider: null,
+        createdAt: new Date(),
+        syncStatus: 'pending',
+        branchId: this.authService.branchId,
+        tableId: this.tableId() ?? undefined,
+        tableName: this.tableName() ?? undefined,
+      };
+
+      await this.syncService.saveOrder(order);
+    }
+
+    // Deduct inventory (best-effort — does not block payment)
+    try {
+      await this.inventoryService.deductFromSale(order.id, order.items);
+      await this.inventoryService.loadFromApi();
+      await this.productService.loadCatalog();
+    } catch {
+      console.warn('[Checkout] Inventory deduction failed for order', order.id);
+    }
+
     await this.printService.printTicket(order);
 
     this.completedOrder.set(order);
     this.step.set('confirmed');
     await this.cartService.clearCart();
 
-    // sessionStorage('activeTable') is cleaned by releaseTable() or keepTable()
+    // Check if table has remaining active orders before showing release prompt
+    if (order.tableId) {
+      try {
+        const remaining = await this.tableService.getActiveOrdersByTable(order.tableId);
+        this.showTableRelease.set(remaining.length === 0);
+      } catch {
+        this.showTableRelease.set(true); // Fallback: show prompt if check fails
+      }
+    }
   }
 
   /** Navigates back to the POS grid without completing the order */

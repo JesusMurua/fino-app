@@ -31,7 +31,7 @@ export class DiscountService {
   async loadPresets(branchId: number): Promise<void> {
     try {
       const presets = await firstValueFrom(
-        this.api.get<DiscountPreset[]>(`/discountpreset?branchId=${branchId}`),
+        this.api.get<DiscountPreset[]>('/discountpreset'),
       );
       await this.db.transaction('rw', this.db.discountPresets, async () => {
         await this.db.discountPresets.where('branchId').equals(branchId).delete();

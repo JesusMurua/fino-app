@@ -64,6 +64,9 @@
               <th pSortableColumn="priceCents" style="min-width: 8rem">
                 Precio <p-sortIcon field="priceCents" />
               </th>
+              <th pSortableColumn="currentStock" style="min-width: 6rem">
+                Stock <p-sortIcon field="currentStock" />
+              </th>
               <th style="min-width: 6rem">Activo</th>
               <th style="min-width: 5rem">Acciones</th>
             </tr>
@@ -74,6 +77,19 @@
               <td class="products-table__name">{{ product.name }}</td>
               <td class="products-table__category">{{ categoryName(product.categoryId) }}</td>
               <td class="products-table__price">{{ product.priceCents | price }}</td>
+              <td>
+                @if (product.trackStock) {
+                  @if (product.currentStock <= 0) {
+                    <span class="stock-badge stock-badge--out">Agotado</span>
+                  } @else if (product.currentStock <= (product.lowStockThreshold ?? 0)) {
+                    <span class="stock-badge stock-badge--low">{{ product.currentStock }}</span>
+                  } @else {
+                    <span class="stock-badge stock-badge--ok">{{ product.currentStock }}</span>
+                  }
+                } @else {
+                  <span class="stock-badge stock-badge--na">—</span>
+                }
+              </td>
               <td>
                 <p-inputSwitch
                   [ngModel]="product.isAvailable"
@@ -89,13 +105,35 @@
                 >
                   <i class="pi pi-pencil"></i>
                 </button>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  aria-label="Configurar insumos"
+                  pTooltip="Configurar insumos"
+                  tooltipPosition="left"
+                  (click)="openConsumptionDialog(product)"
+                >
+                  <i class="pi pi-link"></i>
+                </button>
+                @if (product.trackStock) {
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Ver movimientos de stock"
+                    pTooltip="Ver movimientos"
+                    tooltipPosition="left"
+                    (click)="openMovementDialog(product)"
+                  >
+                    <i class="pi pi-history"></i>
+                  </button>
+                }
               </td>
             </tr>
           </ng-template>
 
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="5" class="products-table__empty">No hay productos registrados.</td>
+              <td colspan="6" class="products-table__empty">No hay productos registrados.</td>
             </tr>
           </ng-template>
 
@@ -328,6 +366,46 @@
     <div class="form-field form-field--row">
       <label class="form-field__label" for="pf-active">Disponible</label>
       <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Stock control                                                       -->
+    <!-- ------------------------------------------------------------------ -->
+    <div class="form-section">
+      <div class="form-section__header">
+        <span class="form-section__title">Control de stock</span>
+      </div>
+
+      <div class="form-field form-field--row">
+        <label class="form-field__label" for="pf-track-stock">Controlar stock de este producto</label>
+        <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
+      </div>
+
+      @if (form.trackStock) {
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-field__label" for="pf-stock">Stock inicial</label>
+            <p-inputNumber
+              inputId="pf-stock"
+              [(ngModel)]="form.currentStock"
+              [min]="0"
+              placeholder="0"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
+            <p-inputNumber
+              inputId="pf-threshold"
+              [(ngModel)]="form.lowStockThreshold"
+              [min]="0"
+              placeholder="0"
+              styleClass="w-full"
+            />
+          </div>
+        </div>
+        <p class="form-hint">Al vender este producto se descontará el stock automáticamente.</p>
+      }
     </div>
 
     <!-- ------------------------------------------------------------------ -->
@@ -757,6 +835,155 @@
     }
   </ng-template>
 
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Consumption dialog                                                     -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Insumos — ' + (consumptionProduct()?.name ?? '')"
+  [visible]="showConsumptionDialog()"
+  (visibleChange)="showConsumptionDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '560px' }"
+  [draggable]="false"
+>
+  <!-- Current consumption rules -->
+  <p-table
+    [value]="consumptions()"
+    [loading]="loadingConsumptions()"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Insumo</th>
+        <th>Cant. por venta</th>
+        <th>Unidad</th>
+        <th style="width: 60px"></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-c>
+      <tr>
+        <td class="products-table__name">{{ c.inventoryItem?.name ?? inventoryItemName(c.inventoryItemId) }}</td>
+        <td>{{ c.quantityPerSale }}</td>
+        <td>
+          <span class="consumption-unit">{{ c.inventoryItem?.unit ?? inventoryItemUnit(c.inventoryItemId) }}</span>
+        </td>
+        <td>
+          <button
+            type="button"
+            class="btn-icon btn-icon--danger"
+            aria-label="Eliminar vínculo"
+            (click)="deleteConsumption(c.id)"
+          >
+            <i class="pi pi-times"></i>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="4" class="products-table__empty">
+          Sin insumos vinculados. Agrega uno abajo.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <!-- Add new consumption -->
+  <div class="consumption-add">
+    <p-dropdown
+      [options]="inventoryItems()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="selectedInventoryItemId"
+      placeholder="Seleccionar insumo"
+      styleClass="consumption-add__dropdown"
+      [appendTo]="'body'"
+    />
+    <p-inputNumber
+      [(ngModel)]="consumptionQuantity"
+      [min]="0.01"
+      [minFractionDigits]="0"
+      [maxFractionDigits]="2"
+      styleClass="consumption-add__qty"
+      placeholder="Cant."
+    />
+    <button
+      type="button"
+      class="btn-primary btn-primary--sm"
+      [disabled]="!selectedInventoryItemId || consumptionQuantity <= 0"
+      (click)="addConsumption()"
+    >
+      <i class="pi pi-plus"></i>
+      Agregar
+    </button>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showConsumptionDialog.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Product movement history dialog                                        -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Movimientos — ' + (movementProduct()?.name ?? '')"
+  [visible]="showMovementDialog()"
+  (visibleChange)="showMovementDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [draggable]="false"
+>
+  <p-table
+    [value]="productMovements()"
+    [loading]="loadingMovements()"
+    [rowHover]="true"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="min-width: 10rem">Fecha / Hora</th>
+        <th style="min-width: 6rem">Tipo</th>
+        <th style="min-width: 5rem">Cantidad</th>
+        <th style="min-width: 10rem">Motivo</th>
+        <th style="min-width: 5rem">Orden</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-m>
+      <tr>
+        <td>{{ m.createdAt | date:'dd MMM y, h:mm a' }}</td>
+        <td>
+          <span class="movement-badge" [class]="movementTypeSeverity(m.type)">
+            {{ movementTypeLabel(m.type) }}
+          </span>
+        </td>
+        <td class="movement-qty" [class.movement-qty--in]="m.type === 'in'" [class.movement-qty--out]="m.type === 'out'">
+          {{ m.type === 'in' ? '+' : m.type === 'out' ? '-' : '' }}{{ m.quantity }}
+        </td>
+        <td>{{ m.reason || '—' }}</td>
+        <td>
+          @if (m.orderId) {
+            <span class="movement-order-ref">#{{ m.orderId }}</span>
+          } @else {
+            —
+          }
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" class="products-table__empty">Sin movimientos registrados.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showMovementDialog.set(false)">Cerrar</button>
+  </ng-template>
 </p-dialog>
 
 <!-- Confirm dialog for delete actions -->

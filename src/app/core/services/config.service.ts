@@ -10,10 +10,8 @@ import {
   DeviceConfig,
 } from '../models';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
-
-/** Branch ID — hardcoded until multi-branch support is implemented */
-const BRANCH_ID = 1;
 
 /**
  * API response shape for branch config endpoint.
@@ -50,6 +48,7 @@ export class ConfigService {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
+    private readonly authService: AuthService,
   ) {
     // Eagerly load device config so subscribers get the real value immediately
     this.loadDeviceConfig();
@@ -78,7 +77,7 @@ export class ConfigService {
     // Step 2 — Try to fetch from API in background
     try {
       const remote = await firstValueFrom(
-        this.api.get<BranchConfigResponse>(`/branch/${BRANCH_ID}/config`),
+        this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
       );
 
       config = {

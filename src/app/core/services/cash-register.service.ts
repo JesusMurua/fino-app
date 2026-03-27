@@ -37,7 +37,7 @@ export class CashRegisterService {
   async getOpenSession(branchId: number): Promise<CashRegisterSession | null> {
     try {
       const response = await firstValueFrom(
-        this.api.get<CashRegisterSession | null>(`/cashregister/session?branchId=${branchId}`),
+        this.api.get<CashRegisterSession | null>('/cashregister/session'),
       );
 
       if (!response) return null;
@@ -61,7 +61,7 @@ export class CashRegisterService {
    */
   async openSession(branchId: number, request: OpenSessionRequest): Promise<CashRegisterSession> {
     const session = await firstValueFrom(
-      this.api.post<CashRegisterSession>(`/cashregister/session/open?branchId=${branchId}`, request),
+      this.api.post<CashRegisterSession>('/cashregister/session/open', request),
     );
     await this.db.cashSessions.put(session);
     return session;
@@ -74,7 +74,7 @@ export class CashRegisterService {
    */
   async closeSession(branchId: number, request: CloseSessionRequest): Promise<CashRegisterSession> {
     const session = await firstValueFrom(
-      this.api.post<CashRegisterSession>(`/cashregister/session/close?branchId=${branchId}`, request),
+      this.api.post<CashRegisterSession>('/cashregister/session/close', request),
     );
     await this.db.cashSessions.put(session);
     return session;
@@ -87,7 +87,7 @@ export class CashRegisterService {
    */
   async addMovement(branchId: number, request: AddMovementRequest): Promise<CashMovement> {
     const movement = await firstValueFrom(
-      this.api.post<CashMovement>(`/cashregister/movement?branchId=${branchId}`, request),
+      this.api.post<CashMovement>('/cashregister/movement', request),
     );
     await this.db.cashMovements.put(movement);
     return movement;
@@ -102,7 +102,7 @@ export class CashRegisterService {
   async getHistory(branchId: number, from: Date, to: Date): Promise<CashRegisterSession[]> {
     return firstValueFrom(
       this.api.get<CashRegisterSession[]>(
-        `/cashregister/history?branchId=${branchId}&from=${from.toISOString()}&to=${to.toISOString()}`,
+        `/cashregister/history?from=${from.toISOString()}&to=${to.toISOString()}`,
       ),
     );
   }

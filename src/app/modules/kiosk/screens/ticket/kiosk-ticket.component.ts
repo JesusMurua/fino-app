@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { CartItem, Order } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
@@ -37,6 +38,7 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
   //#region Constructor
   constructor(
     private readonly cartService: CartService,
+    private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly db: DatabaseService,
     private readonly router: Router,
@@ -74,7 +76,7 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       paymentProvider: null,
       syncStatus:    'pending',
       createdAt:     new Date(),
-      businessId:    1, // local-only until backend is connected
+      branchId:      this.authService.branchId,
     };
     await this.db.orders.add(order);
 

@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 
 import { Order, PaymentMethod } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
@@ -39,18 +40,33 @@ interface DashboardData {
 })
 export class DashboardComponent implements OnInit {
 
+  private readonly authService = inject(AuthService);
+
   readonly data = signal<DashboardData | null>(null);
   readonly isLoading = signal(true);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) {
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) this.loadData();
+    }, { allowSignalWrites: true });
+  }
 
   async ngOnInit(): Promise<void> {
+    await this.loadData();
+  }
+
+  /** Loads today's orders for the active branch and computes dashboard KPIs */
+  async loadData(): Promise<void> {
+    this.isLoading.set(true);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const branchId = this.authService.activeBranchId();
 
     const allOrders = await this.db.orders
       .where('createdAt')
       .aboveOrEqual(todayStart)
+      .filter(o => o.branchId === branchId)
       .toArray();
 
     // Separate completed from cancelled

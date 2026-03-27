@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
@@ -12,10 +12,8 @@ import { MessageService } from 'primeng/api';
 
 import { ReportPeriod, ReportSummary } from '../../../../core/models';
 import { ReportService } from '../../../../core/services/report.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-
-/** Branch ID — hardcoded until multi-branch support */
-const BRANCH_ID = 1;
 
 @Component({
   selector: 'app-reports',
@@ -111,7 +109,13 @@ export class ReportsComponent implements OnInit {
   constructor(
     private readonly reportService: ReportService,
     private readonly messageService: MessageService,
-  ) {}
+    private readonly authService: AuthService,
+  ) {
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) this.loadReport();
+    }, { allowSignalWrites: true });
+  }
   //#endregion
 
   //#region Lifecycle
@@ -152,7 +156,7 @@ export class ReportsComponent implements OnInit {
 
     try {
       const { from, to } = this.dateRange();
-      const result = await this.reportService.getSummary(BRANCH_ID, from, to);
+      const result = await this.reportService.getSummary(this.authService.branchId, from, to);
       this.summary.set(result);
     } catch (error) {
       console.error('[ReportsComponent] Failed to load report:', error);
@@ -171,7 +175,7 @@ export class ReportsComponent implements OnInit {
     this.loadingExcel.set(true);
     try {
       const { from, to } = this.dateRange();
-      await this.reportService.downloadExcel(BRANCH_ID, from, to);
+      await this.reportService.downloadExcel(this.authService.branchId, from, to);
       this.messageService.add({
         severity: 'success',
         summary: 'Excel descargado',
@@ -193,7 +197,7 @@ export class ReportsComponent implements OnInit {
     this.loadingPdf.set(true);
     try {
       const { from, to } = this.dateRange();
-      await this.reportService.downloadPdf(BRANCH_ID, from, to);
+      await this.reportService.downloadPdf(this.authService.branchId, from, to);
       this.messageService.add({
         severity: 'success',
         summary: 'PDF descargado',

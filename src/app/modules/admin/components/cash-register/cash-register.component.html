@@ -268,7 +268,7 @@
         type="button"
         [class]="closeAmount > 0 && difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
         [disabled]="closeAmount <= 0"
-        (click)="closeSession()"
+        (click)="onCloseSession()"
       >
         Cerrar turno
       </button>
@@ -415,4 +415,34 @@
       </table>
     </div>
   }
+</p-dialog>
+
+<!-- Unpaid orders confirmation -->
+<p-dialog
+  header="Órdenes sin cobrar"
+  [visible]="showCloseConfirm()"
+  (visibleChange)="showCloseConfirm.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '400px' }"
+  [draggable]="false"
+>
+  <div class="close-confirm">
+    <i class="pi pi-exclamation-triangle close-confirm__icon"></i>
+    <p class="close-confirm__text">
+      Hay <strong>{{ unpaidOrderCount() }}</strong> orden{{ unpaidOrderCount() > 1 ? 'es' : '' }}
+      activa{{ unpaidOrderCount() > 1 ? 's' : '' }} sin cobrar.
+      ¿Deseas cerrar de todas formas?
+    </p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="close-confirm__footer">
+      <button type="button" class="btn-ghost" (click)="showCloseConfirm.set(false)">Cancelar</button>
+      <button type="button" class="btn-warning" (click)="closeSession()">
+        <i class="pi pi-lock"></i>
+        Sí, cerrar
+      </button>
+    </div>
+  </ng-template>
 </p-dialog>

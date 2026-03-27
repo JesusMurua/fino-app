@@ -3,6 +3,7 @@ import { catchError, EMPTY } from 'rxjs';
 
 import { Order } from '../models';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
 /** Polling interval for order list refresh (milliseconds) */
@@ -61,6 +62,7 @@ export class OrdersService implements OnDestroy {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
+    private readonly authService: AuthService,
   ) {}
 
   ngOnDestroy(): void {
@@ -128,14 +130,19 @@ export class OrdersService implements OnDestroy {
 
   //#region Private Helpers
 
-  /** Loads all orders created today, sorted oldest first. */
+  /**
+   * Loads today's orders for the active branch from Dexie, sorted oldest first.
+   * Filters by branchId so only the current branch's orders are shown.
+   */
   private async loadTodayOrders(): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const branchId = this.authService.branchId;
 
     const orders = await this.db.orders
       .where('createdAt')
       .aboveOrEqual(todayStart)
+      .filter(o => o.branchId === branchId)
       .toArray();
 
     orders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());

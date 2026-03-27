@@ -481,15 +481,22 @@
 .text-red   { color: #DC2626; }
 
 // -----------------------------------------------------------------------
-// Dialog close button — override global green accent
+// Close confirmation dialog
 // -----------------------------------------------------------------------
-:host ::ng-deep .p-dialog-header-close {
-  background: transparent !important;
-  border: none !important;
-  color: #6B7280 !important;
+.close-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: $space-3 0;
 
-  &:hover {
-    background: #F3F4F6 !important;
-    color: #374151 !important;
+  &__icon { font-size: 48px; color: #D97706; margin-bottom: $space-3; }
+  &__text { font-size: 15px; color: #374151; line-height: 1.6; }
+
+  &__footer {
+    display: flex;
+    gap: $space-3;
+    width: 100%;
+    justify-content: flex-end;
   }
 }

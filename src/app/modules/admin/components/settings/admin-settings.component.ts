@@ -1,11 +1,17 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { MessageService } from 'primeng/api';
+import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
+import { TableModule } from 'primeng/table';
+import { ToastModule } from 'primeng/toast';
 
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
+import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { ConfigService } from '../../../../core/services/config.service';
 
 type DeviceMode = DeviceConfig['mode'];
@@ -15,14 +21,26 @@ type DeviceMode = DeviceConfig['mode'];
   standalone: true,
   imports: [
     FormsModule,
+    DialogModule,
     InputTextModule,
     PasswordModule,
     RadioButtonModule,
+    TableModule,
+    ToastModule,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
+  providers: [MessageService],
 })
 export class AdminSettingsComponent implements OnInit {
+
+  //#region Injections
+
+  readonly authService = inject(AuthService);
+  private readonly branchService = inject(BranchService);
+  private readonly messageService = inject(MessageService);
+
+  //#endregion
 
   //#region Properties
 
@@ -53,6 +71,19 @@ export class AdminSettingsComponent implements OnInit {
     { value: 'kiosk',   icon: '📱', label: 'Kiosko',    description: 'Autoservicio para el cliente', badge: 'Beta' },
   ];
 
+  /** All branches for the current business */
+  readonly branches = signal<Branch[]>([]);
+  readonly loadingBranches = signal(false);
+  readonly showBranchDialog = signal(false);
+  readonly savingBranch = signal(false);
+  readonly editingBranch = signal<Branch | null>(null);
+  branchForm: { name: string; locationName: string } = { name: '', locationName: '' };
+
+  /** Branch targeted for catalog copy */
+  readonly copyTarget = signal<Branch | null>(null);
+  readonly showCopyDialog = signal(false);
+  readonly copyingCatalog = signal(false);
+
   //#endregion
 
   //#region Constructor
@@ -70,6 +101,10 @@ export class AdminSettingsComponent implements OnInit {
     ]);
     this.config.set(appConfig);
     this.deviceConfig.set(this.configService.loadDeviceConfig());
+
+    if (this.authService.currentUser()?.role === 'Owner') {
+      await this.loadBranches();
+    }
   }
 
   //#endregion
@@ -151,6 +186,126 @@ export class AdminSettingsComponent implements OnInit {
     this.confirmPin = '';
     this.pinSuccess.set(true);
     setTimeout(() => this.pinSuccess.set(false), 3000);
+  }
+
+  //#endregion
+
+  //#region Branch Management
+
+  /**
+   * Loads all branches from the API.
+   */
+  async loadBranches(): Promise<void> {
+    this.loadingBranches.set(true);
+    try {
+      const branches = await this.branchService.getAll();
+      this.branches.set(branches);
+    } catch (error) {
+      console.error('[AdminSettings] Failed to load branches:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudieron cargar las sucursales',
+      });
+    } finally {
+      this.loadingBranches.set(false);
+    }
+  }
+
+  /** Opens the dialog to create a new branch */
+  openNewBranch(): void {
+    this.editingBranch.set(null);
+    this.branchForm = { name: '', locationName: '' };
+    this.showBranchDialog.set(true);
+  }
+
+  /**
+   * Opens the dialog to edit an existing branch.
+   * @param branch Branch to edit
+   */
+  openEditBranch(branch: Branch): void {
+    this.editingBranch.set(branch);
+    this.branchForm = { name: branch.name, locationName: branch.locationName };
+    this.showBranchDialog.set(true);
+  }
+
+  /**
+   * Saves the branch form — creates or updates depending on editingBranch state.
+   */
+  async saveBranch(): Promise<void> {
+    const { name, locationName } = this.branchForm;
+    if (!name.trim() || !locationName.trim()) return;
+
+    this.savingBranch.set(true);
+    try {
+      const editing = this.editingBranch();
+      if (editing) {
+        await this.branchService.update(editing.id, name.trim(), locationName.trim());
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Sucursal',
+          detail: 'Sucursal actualizada',
+        });
+      } else {
+        await this.branchService.create(name.trim(), locationName.trim());
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Sucursal',
+          detail: 'Sucursal creada',
+        });
+      }
+      this.showBranchDialog.set(false);
+      await this.loadBranches();
+    } catch (error) {
+      console.error('[AdminSettings] Failed to save branch:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo guardar la sucursal',
+      });
+    } finally {
+      this.savingBranch.set(false);
+    }
+  }
+
+  /**
+   * Opens the confirmation dialog to copy the matrix catalog to a branch.
+   * @param branch Target branch to receive the catalog copy
+   */
+  openCopyCatalog(branch: Branch): void {
+    this.copyTarget.set(branch);
+    this.showCopyDialog.set(true);
+  }
+
+  /**
+   * Copies the catalog from the matrix branch to the selected target branch.
+   * Shows a toast on success or error and reloads the branch list.
+   */
+  async confirmCopyCatalog(): Promise<void> {
+    const target = this.copyTarget();
+    const matrix = this.branches().find(b => b.isMatrix);
+    if (!target || !matrix) return;
+
+    this.copyingCatalog.set(true);
+    try {
+      await this.branchService.copyCatalog(target.id, matrix.id);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Catálogo copiado',
+        detail: `Catálogo copiado a ${target.name}`,
+      });
+      this.showCopyDialog.set(false);
+      await this.loadBranches();
+    } catch (error) {
+      console.error('[AdminSettings] Failed to copy catalog:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo copiar el catálogo',
+      });
+    } finally {
+      this.copyingCatalog.set(false);
+    }
   }
 
   //#endregion

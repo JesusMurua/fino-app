@@ -1,10 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
-
-/** Branch ID — hardcoded until multi-branch support is implemented */
-const BRANCH_ID = 1;
+import { InventoryService } from '../../core/services/inventory.service';
+import { ProductService } from '../../core/services/product.service';
+import { TableService } from '../../core/services/table.service';
 
 /** Keys available on the PIN numpad */
 type NumpadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'del';
@@ -38,6 +38,10 @@ export class PinComponent {
   ];
 
   //#endregion
+
+  private readonly productService = inject(ProductService);
+  private readonly inventoryService = inject(InventoryService);
+  private readonly tableService = inject(TableService);
 
   //#region Constructor
   constructor(
@@ -78,16 +82,30 @@ export class PinComponent {
 
   //#region Auth
 
-  /** Verifies the entered PIN via API and redirects by role */
+  /**
+   * Verifies the entered PIN via API, preloads essential data into Dexie,
+   * and redirects by role. Preload runs in parallel and never blocks navigation.
+   */
   async submit(): Promise<void> {
     const pin = this.digits().join('');
     this.isLoading.set(true);
 
-    const user = await this.authService.pinLogin(BRANCH_ID, pin);
+    const user = await this.authService.pinLogin(this.authService.branchId, pin);
 
     this.isLoading.set(false);
 
     if (user) {
+      // Preload essential data into Dexie (best-effort, non-blocking)
+      try {
+        await Promise.all([
+          this.productService.loadCatalog(),
+          this.inventoryService.loadFromApi(),
+          this.tableService.loadTables(this.authService.activeBranchId()),
+        ]);
+      } catch (error) {
+        console.warn('[PinComponent] Preload failed — components will retry on mount:', error);
+      }
+
       const returnUrl = this.authService.consumeReturnUrl();
       if (returnUrl) {
         this.router.navigateByUrl(returnUrl);

@@ -1,86 +1,109 @@
-<div class="admin-shell">
+<p-toast />
+<div class="shell" [class.shell--collapsed]="isCollapsed()">
 
-  <!-- Top navigation header -->
-  <header class="admin-header">
-    <div class="admin-header__brand">
-      <div class="admin-header__logo" aria-hidden="true">
+  <!-- ================================================================== -->
+  <!-- SIDEBAR                                                             -->
+  <!-- ================================================================== -->
+  <aside class="sidebar">
+
+    <!-- Brand -->
+    <div class="sidebar__brand">
+      <div class="sidebar__logo" aria-hidden="true">
         <i class="pi pi-home"></i>
       </div>
-      <span class="admin-header__title">Back Office</span>
+      @if (!isCollapsed()) {
+        <span class="sidebar__title">Back Office</span>
+      }
     </div>
 
-    <nav class="admin-nav" aria-label="Navegación del back office">
-      <a
-        class="admin-nav__tab"
-        routerLink="dashboard"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-chart-bar"></i>
-        <span>Dashboard</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="products"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-list"></i>
-        <span>Catálogo</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="reports"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-chart-line"></i>
-        <span>Reportes</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="tables"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-table"></i>
-        <span>Mesas</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="users"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-users"></i>
-        <span>Usuarios</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="cash"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-wallet"></i>
-        <span>Caja</span>
-      </a>
-      <a
-        class="admin-nav__tab"
-        routerLink="settings"
-        routerLinkActive="admin-nav__tab--active"
-      >
-        <i class="pi pi-cog"></i>
-        <span>Configuración</span>
-      </a>
+    <div class="sidebar__divider"></div>
+
+    <!-- Branch Selector -->
+    @if (canSwitchBranch()) {
+      <div class="sidebar__branch">
+        @if (!isCollapsed()) {
+          <span class="sidebar__branch-label">Sucursal activa</span>
+          <p-dropdown
+            [options]="authService.availableBranches()"
+            optionLabel="name"
+            optionValue="id"
+            [(ngModel)]="selectedBranchId"
+            (onChange)="changeBranch($event.value)"
+            styleClass="w-full"
+            [disabled]="isSwitchingBranch()"
+          />
+        } @else {
+          <button
+            type="button"
+            class="sidebar__branch-icon"
+            [pTooltip]="currentBranchName()"
+            tooltipPosition="right"
+          >
+            <i class="pi pi-building"></i>
+          </button>
+        }
+      </div>
+
+      <div class="sidebar__divider"></div>
+    }
+
+    <!-- Navigation -->
+    <nav class="sidebar__nav" aria-label="Navegación del back office">
+      @for (item of navItems; track item.path) {
+        <a
+          class="nav-item"
+          [routerLink]="item.path"
+          routerLinkActive="nav-item--active"
+          [pTooltip]="isCollapsed() ? item.label : ''"
+          tooltipPosition="right"
+        >
+          <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
+          @if (!isCollapsed()) {
+            <span class="nav-item__label">{{ item.label }}</span>
+          }
+          @if (item.badge && lowStockCount() > 0) {
+            <span class="nav-item__badge">{{ lowStockCount() }}</span>
+          }
+        </a>
+      }
     </nav>
 
-    <button type="button" class="admin-header__back" (click)="goToPos()" aria-label="Ir al POS">
-      <i class="pi pi-arrow-left"></i>
-      <span>Ir al POS</span>
+    <!-- Toggle button at bottom -->
+    <button
+      type="button"
+      class="sidebar__toggle"
+      (click)="toggleSidebar()"
+      [attr.aria-label]="isCollapsed() ? 'Expandir menú' : 'Colapsar menú'"
+    >
+      <i [class]="isCollapsed() ? 'pi pi-chevron-right' : 'pi pi-chevron-left'"></i>
     </button>
-    <button type="button" class="admin-header__logout" (click)="logout()" aria-label="Cerrar sesión">
-      <i class="pi pi-sign-out"></i>
-      <span>Cerrar sesión</span>
-    </button>
-  </header>
 
-  <!-- Page content -->
-  <main class="admin-content">
-    <router-outlet />
-  </main>
+  </aside>
+
+  <!-- ================================================================== -->
+  <!-- MAIN AREA (top bar + content)                                       -->
+  <!-- ================================================================== -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar__actions">
+        <button type="button" class="topbar__btn" (click)="goToPos()">
+          <i class="pi pi-arrow-left"></i>
+          <span>Ir al POS</span>
+        </button>
+        <button type="button" class="topbar__btn topbar__btn--logout" (click)="logout()">
+          <i class="pi pi-sign-out"></i>
+          <span>Cerrar sesión</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="content">
+      <router-outlet />
+    </main>
+
+  </div>
 
 </div>

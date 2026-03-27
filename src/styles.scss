@@ -224,3 +224,17 @@ textarea.p-inputtextarea:enabled:focus {
     }
   }
 }
+
+// =============================================================================
+// PrimeNG Dialog — close button override (green accent removal)
+// =============================================================================
+.p-dialog-header-close {
+  background: transparent !important;
+  border: none !important;
+  color: #6B7280 !important;
+
+  &:hover {
+    background: #F3F4F6 !important;
+    color: #374151 !important;
+  }
+}

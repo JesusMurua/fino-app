@@ -263,6 +263,11 @@
     color: $color-primary;
     background: #F0FDF4;
   }
+
+  &--info {
+    color: #1D4ED8;
+    background: #EFF6FF;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -286,6 +291,93 @@
 
   &:hover:not(:disabled) { background: #15803D; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  &--sm {
+    padding: $space-1 $space-3;
+    min-height: 36px;
+    font-size: $font-size-label;
+    margin-left: auto;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Secondary button (cancel)
+// -----------------------------------------------------------------------
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 44px;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  background: white;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) { background: #F9FAFB; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// -----------------------------------------------------------------------
+// Icon button (edit)
+// -----------------------------------------------------------------------
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+}
+
+// -----------------------------------------------------------------------
+// Branches section
+// -----------------------------------------------------------------------
+.branches-section {
+  margin-top: $space-2;
+}
+
+.matrix-badge {
+  display: inline-block;
+  margin-left: $space-2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: $color-primary;
+  background: #F0FDF4;
+  vertical-align: middle;
+}
+
+.branch-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.branches-empty {
+  text-align: center;
+  color: $color-text-sub;
+  padding: $space-5 !important;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-3;
 }
 
 // -----------------------------------------------------------------------

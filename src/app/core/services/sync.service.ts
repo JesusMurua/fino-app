@@ -3,10 +3,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
-
-/** Branch ID — hardcoded until multi-branch support is implemented */
-const BRANCH_ID = 1;
 
 /** Polling interval for pending order sync (milliseconds) */
 const SYNC_POLL_INTERVAL_MS = 30_000;
@@ -43,6 +41,7 @@ export class SyncService implements OnDestroy {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
+    private readonly authService: AuthService,
   ) {
     window.addEventListener('online', this.onlineHandler);
     this.refreshPendingCount();
@@ -137,10 +136,11 @@ export class SyncService implements OnDestroy {
   private mapOrderToDto(order: Order): Record<string, unknown> {
     return {
       id: order.id,
-      branchId: BRANCH_ID,
+      branchId: this.authService.branchId,
       orderNumber: order.orderNumber,
       totalCents: order.totalCents,
-      paymentMethod: order.paymentMethod === 'cash' ? 'Cash' : 'Card',
+      paymentMethod: order.paymentMethod === 'cash' ? 'Cash' : order.paymentMethod === 'card' ? 'Card' : null,
+      isPaid: order.paymentMethod != null,
       tenderedCents: order.tenderedCents ?? null,
       changeCents: order.tenderedCents ? order.tenderedCents - order.totalCents : null,
       createdAt: order.createdAt,
@@ -174,7 +174,7 @@ export class SyncService implements OnDestroy {
 
     try {
       const result = await firstValueFrom(
-        this.api.get<{ lastOrderNumber: number }>(`/orders/last-number?branchId=${BRANCH_ID}`),
+        this.api.get<{ lastOrderNumber: number }>('/orders/last-number'),
       );
       if (result.lastOrderNumber >= next) {
         next = result.lastOrderNumber + 1;

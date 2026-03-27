@@ -6,8 +6,8 @@
       <i class="pi pi-home"></i>
     </div>
     <div class="pos-header__info">
-      <span class="pos-header__name">{{ config().businessName }}</span>
-      <span class="pos-header__location">{{ config().locationName }}</span>
+      <span class="pos-header__name">{{ branchName() }}</span>
+      <span class="pos-header__location">{{ userName() }} · {{ userRoleLabel() }}</span>
     </div>
   </div>
 
@@ -22,6 +22,19 @@
       <span class="pos-header__status-dot"></span>
       <span class="pos-header__status-label">{{ isOnline() ? 'En línea' : 'Sin conexión' }}</span>
     </div>
+
+    @if (showStockButton) {
+      <button
+        type="button"
+        class="pos-header__settings"
+        aria-label="Recibir mercancía"
+        pTooltip="Recibir mercancía"
+        tooltipPosition="bottom"
+        (click)="openStockDialog()"
+      >
+        <i class="pi pi-box"></i>
+      </button>
+    }
 
     @if (showOrdersButton) {
       <button
@@ -66,3 +79,65 @@
     </a>
   </div>
 }
+
+<!-- Stock receive dialog -->
+<p-toast />
+<p-dialog
+  header="Recibir mercancía"
+  [visible]="showStockDialog()"
+  (visibleChange)="showStockDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+>
+  <div class="stock-form">
+    <div class="stock-form__field">
+      <label class="stock-form__label">Insumo o producto</label>
+      <p-dropdown
+        [options]="stockItems()"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="selectedStockItem"
+        placeholder="Seleccionar..."
+        styleClass="w-full"
+        [filter]="true"
+        filterPlaceholder="Buscar..."
+        [appendTo]="'body'"
+      />
+    </div>
+
+    <div class="stock-form__field">
+      <label class="stock-form__label">Cantidad</label>
+      <p-inputNumber
+        [(ngModel)]="stockQuantity"
+        [min]="1"
+        styleClass="w-full"
+      />
+    </div>
+
+    <div class="stock-form__field">
+      <label class="stock-form__label">Motivo (opcional)</label>
+      <input
+        type="text"
+        pInputText
+        [(ngModel)]="stockReason"
+        placeholder="Ej. Compra proveedor"
+        class="w-full"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="pos-header__btn-ghost" (click)="showStockDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="pos-header__btn-primary"
+      [disabled]="!selectedStockItem || stockQuantity <= 0"
+      (click)="confirmStockReceive()"
+    >
+      <i class="pi pi-plus"></i>
+      Registrar entrada
+    </button>
+  </ng-template>
+</p-dialog>

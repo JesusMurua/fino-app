@@ -101,6 +101,15 @@
   font-size: $font-size-label;
   color: $color-text-sub;
   min-width: 64px;
+
+  &--unpaid {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    background: #F3F4F6;
+    color: #6B7280;
+  }
 }
 
 .order-row__chevron {
@@ -198,6 +207,12 @@
     background: $color-bg-page;
     color: $color-text-sub;
     &:hover { background: #E5E7EB; }
+  }
+
+  &--charge {
+    background: #2563EB;
+    color: white;
+    &:hover { background: #1D4ED8; }
   }
 
   &--deliver {

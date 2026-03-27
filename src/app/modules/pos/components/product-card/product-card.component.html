@@ -1,7 +1,9 @@
 <button
   class="product-card"
+  [class.product-card--unavailable]="!product.isAvailable"
   type="button"
   [attr.aria-label]="'Agregar ' + product.name"
+  [disabled]="!product.isAvailable"
   (click)="selected.emit(product)"
 >
   <!-- Popular badge -->
@@ -23,4 +25,11 @@
     <span class="product-card__name">{{ product.name }}</span>
     <span class="product-card__price">{{ product.priceCents | price }}</span>
   </div>
+
+  <!-- Out-of-stock overlay -->
+  @if (!product.isAvailable) {
+    <div class="product-card__overlay">
+      <span class="product-card__overlay-text">Agotado</span>
+    </div>
+  }
 </button>

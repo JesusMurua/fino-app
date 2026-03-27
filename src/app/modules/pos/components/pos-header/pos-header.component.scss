@@ -157,3 +157,41 @@
     }
   }
 }
+
+// Stock receive dialog
+.stock-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__field { display: flex; flex-direction: column; gap: $space-1; }
+  &__label { font-size: 14px; font-weight: 500; color: #374151; }
+}
+
+.pos-header__btn-ghost {
+  padding: $space-2 $space-4;
+  border: none;
+  background: transparent;
+  color: #6B7280;
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover { color: #374151; }
+}
+
+.pos-header__btn-primary {
+  padding: $space-2 $space-4;
+  border: none;
+  border-radius: 8px;
+  background: #16A34A;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}

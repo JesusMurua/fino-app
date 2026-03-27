@@ -254,7 +254,7 @@
         class="btn-confirm"
         [class.btn-confirm--disabled]="!canConfirm()"
         [disabled]="!canConfirm()"
-        (click)="confirmPayment()"
+        (click)="onConfirmPayment()"
       >
         <i class="pi pi-check"></i>
         Confirmar pago
@@ -323,8 +323,8 @@
 
       }
 
-      <!-- Table release (only in tables mode) -->
-      @if (tableName()) {
+      <!-- Table release (only if this was the last active order on the table) -->
+      @if (tableName() && showTableRelease()) {
         <div class="table-release">
           <p class="table-release__question">¿Los clientes ya se fueron de {{ tableName() }}?</p>
           <div class="table-release__buttons">
@@ -339,6 +339,13 @@
         </div>
       }
 
+      <!-- Back to tables (table mode but other orders remain) -->
+      @if (tableName() && !showTableRelease()) {
+        <button type="button" class="btn-new-order" (click)="keepTable()">
+          Volver a mesas
+        </button>
+      }
+
       <!-- New order (only shown when no table context) -->
       @if (!tableName()) {
         <button type="button" class="btn-new-order" (click)="startNewOrder()">
@@ -351,3 +358,33 @@
   }
 
 </div>
+
+<!-- Kitchen confirmation dialog -->
+<p-dialog
+  header="Orden en cocina"
+  [visible]="showKitchenConfirm()"
+  (visibleChange)="showKitchenConfirm.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="kitchen-confirm">
+    <i class="pi pi-exclamation-triangle kitchen-confirm__icon"></i>
+    <p class="kitchen-confirm__text">
+      Esta orden aún está en cocina. ¿Deseas cobrar de todas formas?
+    </p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="kitchen-confirm__footer">
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--cancel" (click)="showKitchenConfirm.set(false)">
+        Cancelar
+      </button>
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--confirm" (click)="confirmPayment()">
+        <i class="pi pi-check"></i>
+        Sí, cobrar
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

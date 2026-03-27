@@ -186,6 +186,18 @@
     color: #DC2626;
   }
 
+  &__badge-orders {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #DBEAFE;
+    color: #1D4ED8;
+  }
+
   &__name {
     font-size: 20px;
     font-weight: 700;
@@ -209,60 +221,129 @@
 // -----------------------------------------------------------------------
 // Occupied table dialog
 // -----------------------------------------------------------------------
-.table-dialog {
-  &__question {
-    margin: 0 0 $space-4;
-    font-size: $font-size-base;
+// -----------------------------------------------------------------------
+// Occupied table dialog — redesigned
+// -----------------------------------------------------------------------
+.td-header {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+
+  &__title { font-size: 18px; font-weight: 700; color: $color-text-title; }
+
+  &__badge {
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #DBEAFE;
+    color: #1D4ED8;
+  }
+}
+
+.td-loading {
+  display: flex;
+  justify-content: center;
+  padding: $space-5 0;
+}
+
+.td-orders {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.td-order-card {
+  border: 1px solid $color-border-soft;
+  border-radius: 12px;
+  padding: $space-3;
+  background: #FAFAFA;
+
+  &__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-2;
+  }
+
+  &__number { font-weight: 700; font-size: 15px; color: $color-text-title; }
+  &__total  { font-weight: 700; font-size: 15px; color: $color-text-title; }
+
+  &__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px $space-2;
+    margin-bottom: $space-2;
+  }
+
+  &__item {
+    font-size: 13px;
     color: $color-text-sub;
-    text-align: center;
+  }
+
+  &__badges {
+    margin-bottom: $space-2;
   }
 
   &__actions {
     display: flex;
-    flex-direction: column;
-    gap: $space-3;
-  }
-
-  &__btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     gap: $space-2;
-    min-height: 64px;
-    border: 2px solid transparent;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-
-    &--orders {
-      background: #EFF6FF;
-      color: #1D4ED8;
-      border-color: #BFDBFE;
-
-      &:hover { background: #DBEAFE; }
-    }
-
-    &--release {
-      background: #F0FDF4;
-      color: #15803D;
-      border-color: #BBF7D0;
-
-      &:hover { background: #DCFCE7; }
-    }
   }
 }
 
-// Dialog close button fix
-:host ::ng-deep .p-dialog-header-close {
-  background: transparent !important;
-  border: none !important;
-  color: #6B7280 !important;
+.td-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
 
-  &:hover {
-    background: #F3F4F6 !important;
-    color: #374151 !important;
+  &--pending { background: #F3F4F6; color: #6B7280; }
+  &--kitchen { background: #DBEAFE; color: #1D4ED8; }
+  &--ready   { background: #DCFCE7; color: #16A34A; }
+}
+
+.td-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: $space-2 $space-3;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &--green {
+    background: #16A34A;
+    color: #fff;
+    &:hover { background: #15803D; }
+  }
+
+  &--outline {
+    background: #fff;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+    &:hover { background: #F9FAFB; }
+  }
+
+  &--red-outline {
+    background: transparent;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    &:hover { background: #FEF2F2; }
   }
 }
+
+.td-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $space-5 0;
+
+  &__icon { font-size: 48px; color: #D1D5DB; margin-bottom: $space-3; }
+  &__text { font-size: 15px; color: $color-text-sub; }
+}
+

@@ -3,10 +3,9 @@ import { firstValueFrom, forkJoin } from 'rxjs';
 
 import { Category, Product } from '../models';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
-
-/** Branch ID — hardcoded until multi-branch support is implemented */
-const BRANCH_ID = 1;
+import { InventoryService } from './inventory.service';
 
 /**
  * Manages the product catalog state using Angular signals.
@@ -43,10 +42,12 @@ export class ProductService {
   readonly filteredProducts = computed(() => {
     const categoryId = this._selectedCategoryId();
     const all = this._products();
-    if (categoryId === null) {
-      return all.filter(p => p.isAvailable);
-    }
-    return all.filter(p => p.categoryId === categoryId && p.isAvailable);
+    // Show all products (including unavailable for "Agotado" overlay).
+    // Sort: available first, then unavailable at the end.
+    const filtered = categoryId === null
+      ? all
+      : all.filter(p => p.categoryId === categoryId);
+    return [...filtered].sort((a, b) => (b.isAvailable ? 1 : 0) - (a.isAvailable ? 1 : 0));
   });
   //#endregion
 
@@ -54,6 +55,8 @@ export class ProductService {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
+    private readonly inventoryService: InventoryService,
+    private readonly authService: AuthService,
   ) {}
   //#endregion
 
@@ -83,17 +86,23 @@ export class ProductService {
     // Step 2 — Try API (awaited so callers know when done)
     await this.revalidateFromApi();
 
+    // Step 3 — Auto-86: mark products as unavailable if inventory depleted
+    await this.applyOutOfStock();
+
     this.isLoading.set(false);
   }
 
   /**
-   * Persists products and categories to IndexedDB (upsert).
-   * Use this to seed data from the API or from a local fixture.
-   * @param products Products fetched from API or fixture
-   * @param categories Categories fetched from API or fixture
+   * Replaces the local product and category cache with fresh data.
+   * Clears existing Dexie tables first so only the active branch's
+   * catalog remains after a revalidation or branch switch.
+   * @param products Products fetched from API
+   * @param categories Categories fetched from API
    */
   async seedCatalog(products: Product[], categories: Category[]): Promise<void> {
     await this.db.transaction('rw', [this.db.products, this.db.categories], async () => {
+      await this.db.products.clear();
+      await this.db.categories.clear();
       await this.db.products.bulkPut(products);
       await this.db.categories.bulkPut(categories);
     });
@@ -117,15 +126,34 @@ export class ProductService {
   //#region Private Helpers
 
   /**
-   * Fetches products and categories from the API and updates local cache.
-   * Runs silently in background — errors are logged but never block the UI.
+   * Marks products as unavailable (in-memory only) if their inventory
+   * items are depleted. Does not persist — re-applied on every load.
    */
-  private async revalidateFromApi(): Promise<void> {
+  private async applyOutOfStock(): Promise<void> {
+    try {
+      const outOfStockIds = await this.inventoryService.getOutOfStockProductIds();
+      if (outOfStockIds.length === 0) return;
+
+      const idsSet = new Set(outOfStockIds);
+      this._products.update(products =>
+        products.map(p => idsSet.has(p.id) ? { ...p, isAvailable: false } : p)
+      );
+    } catch {
+      // Silent — auto-86 is best-effort
+    }
+  }
+
+  /**
+   * Fetches products and categories from the API and updates local cache.
+   * The API filters by the branch in the JWT automatically.
+   * Errors are logged but never thrown — callers can fire-and-forget.
+   */
+  async revalidateFromApi(): Promise<void> {
     try {
       const [products, categories] = await firstValueFrom(
         forkJoin([
-          this.api.get<Product[]>(`/products?branchId=${BRANCH_ID}`),
-          this.api.get<Category[]>(`/categories?branchId=${BRANCH_ID}`),
+          this.api.get<Product[]>('/products'),
+          this.api.get<Category[]>('/categories'),
         ]),
       );
       await this.seedCatalog(products, categories);

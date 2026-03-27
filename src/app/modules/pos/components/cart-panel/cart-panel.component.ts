@@ -1,20 +1,27 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem } from '../../../../core/models';
+import { CartItem, Order } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
+import { ConfigService } from '../../../../core/services/config.service';
+import { DatabaseService } from '../../../../core/services/database.service';
 import { SyncService } from '../../../../core/services/sync.service';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [AsyncPipe, ButtonModule, DividerModule, PricePipe],
+  imports: [AsyncPipe, ButtonModule, DividerModule, PricePipe, ToastModule],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
+  providers: [MessageService],
 })
 export class CartPanelComponent implements OnInit {
 
@@ -24,14 +31,32 @@ export class CartPanelComponent implements OnInit {
   readonly itemCount = this.cartService.itemCount;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
   readonly activeTableName = signal<string | null>(null);
+  readonly deviceMode = signal<string>('counter');
+
+  /** Context when adding items to an existing table order */
+  addingToOrder: { orderId: string; orderNumber: number } | null = null;
+
+  /** True when device is in waiter or tables mode */
+  readonly isTableMode = computed(() => {
+    const mode = this.deviceMode();
+    return mode === 'waiter' || mode === 'tables';
+  });
   //#endregion
 
   //#region Constructor
   constructor(
     private readonly cartService: CartService,
     private readonly syncService: SyncService,
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService,
+    private readonly db: DatabaseService,
+    private readonly messageService: MessageService,
     private readonly router: Router,
-  ) {}
+  ) {
+    this.configService.deviceConfig$
+      .pipe(takeUntilDestroyed())
+      .subscribe(cfg => this.deviceMode.set(cfg.mode));
+  }
   //#endregion
 
   //#region Lifecycle
@@ -40,6 +65,11 @@ export class CartPanelComponent implements OnInit {
     if (activeTable) {
       const { tableName } = JSON.parse(activeTable);
       this.activeTableName.set(tableName);
+    }
+
+    const addingTo = sessionStorage.getItem('addingToOrder');
+    if (addingTo) {
+      this.addingToOrder = JSON.parse(addingTo);
     }
   }
   //#endregion
@@ -64,9 +94,96 @@ export class CartPanelComponent implements OnInit {
     await this.cartService.removeItem(item.id);
   }
 
-  /** Navigates to the checkout page (Phase 7) */
+  /** Navigates to the checkout page */
   onCheckout(): void {
     this.router.navigate(['/pos/checkout']);
+  }
+
+  /**
+   * Sends order to kitchen or adds items to existing order.
+   * Used in waiter/tables mode.
+   */
+  async onSendToKitchen(): Promise<void> {
+    const newItems = this.cartService.getSnapshot();
+    if (newItems.length === 0) return;
+
+    if (this.addingToOrder) {
+      await this.addItemsToExistingOrder(newItems);
+    } else {
+      await this.createKitchenOrder(newItems);
+    }
+  }
+
+  /** Creates a new kitchen order for the active table */
+  private async createKitchenOrder(items: CartItem[]): Promise<void> {
+    const raw = sessionStorage.getItem('activeTable');
+    if (!raw) {
+      this.messageService.add({ severity: 'warn', summary: 'Selecciona una mesa primero', life: 3000 });
+      return;
+    }
+
+    const { tableId, tableName } = JSON.parse(raw);
+
+    const order: Order = {
+      id: crypto.randomUUID(),
+      orderNumber: this.syncService.consumeOrderNumber(),
+      items,
+      totalCents: this.cartService.totalCents(),
+      subtotalCents: this.cartService.totalCents(),
+      paymentMethod: null,
+      paymentProvider: null,
+      syncStatus: 'pending',
+      kitchenStatus: 'new',
+      tableId: tableId ?? undefined,
+      tableName: tableName ?? undefined,
+      createdAt: new Date(),
+      branchId: this.authService.branchId,
+    };
+
+    await this.syncService.saveOrder(order);
+    await this.cartService.clearCart();
+    sessionStorage.removeItem('activeTable');
+
+    this.messageService.add({ severity: 'success', summary: 'Orden enviada a cocina', life: 3000 });
+    setTimeout(() => this.router.navigate(['/tables']), 500);
+  }
+
+  /** Adds new items to an existing table order */
+  private async addItemsToExistingOrder(newItems: CartItem[]): Promise<void> {
+    const existing = await this.db.orders.get(this.addingToOrder!.orderId);
+    if (!existing) {
+      this.messageService.add({ severity: 'error', summary: 'Orden no encontrada', life: 3000 });
+      return;
+    }
+
+    existing.items = [...existing.items, ...newItems];
+    const totalCents = existing.items.reduce((sum, item) => sum + item.totalPriceCents, 0);
+    existing.subtotalCents = totalCents;
+    existing.totalCents = totalCents;
+    existing.syncStatus = 'pending';
+
+    await this.syncService.saveOrder(existing);
+    await this.cartService.clearCart();
+    sessionStorage.removeItem('addingToOrder');
+    sessionStorage.removeItem('activeTable');
+
+    const num = this.addingToOrder!.orderNumber;
+    this.addingToOrder = null;
+
+    this.messageService.add({ severity: 'success', summary: `Items agregados a Orden #${num}`, life: 3000 });
+    setTimeout(() => this.router.navigate(['/tables']), 500);
+  }
+
+  /**
+   * Cancels adding items to existing order.
+   * Clears context and navigates back to tables.
+   */
+  async onCancelAddingItems(): Promise<void> {
+    sessionStorage.removeItem('addingToOrder');
+    sessionStorage.removeItem('activeTable');
+    this.addingToOrder = null;
+    await this.cartService.clearCart();
+    this.router.navigate(['/tables']);
   }
 
   /** Clears the entire cart after user confirmation */

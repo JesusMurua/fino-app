@@ -159,6 +159,54 @@
       </p-dropdown>
     </div>
 
+    <!-- Branch assignment (Owner only, edit mode) -->
+    @if (isOwner() && editingUser() && availableBranches().length > 0) {
+      <div class="form-field">
+        <label class="form-field__label">Sucursales asignadas</label>
+        <p-table
+          [value]="availableBranches()"
+          dataKey="id"
+          styleClass="branch-table"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 3rem"></th>
+              <th>Sucursal</th>
+              <th style="width: 5rem; text-align: center">Principal</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-branch>
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="selectedBranchIds().includes(branch.id)"
+                  (change)="toggleBranch(branch.id)"
+                  class="branch-check"
+                />
+              </td>
+              <td>
+                {{ branch.name }}
+                @if (branch.isMatrix) {
+                  <span class="branch-matrix-badge">Matriz</span>
+                }
+              </td>
+              <td style="text-align: center">
+                <input
+                  type="radio"
+                  name="defaultBranch"
+                  [checked]="defaultBranchId() === branch.id"
+                  [disabled]="!selectedBranchIds().includes(branch.id)"
+                  (change)="setDefaultBranch(branch.id)"
+                  class="branch-radio"
+                />
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+
     <!-- PIN (for Cashier, Kitchen, Waiter) -->
     @if (usesPin()) {
       <div class="form-field">

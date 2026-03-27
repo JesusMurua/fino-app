@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 
 import { Order } from '../models';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
 /** Polling interval for kitchen order refresh (milliseconds) */
@@ -24,7 +25,10 @@ export class KitchenService implements OnDestroy {
   //#endregion
 
   //#region Constructor & Lifecycle
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly authService: AuthService,
+  ) {}
 
   ngOnDestroy(): void {
     this.stopPolling();
@@ -62,16 +66,19 @@ export class KitchenService implements OnDestroy {
   //#region Private Helpers
 
   /**
-   * Loads today's orders that are not marked as done.
+   * Loads today's orders for the active branch that are not marked as done.
+   * Filters by branchId so only the current branch's orders are shown.
    * Treats undefined kitchenStatus as 'new' (legacy orders).
    */
   private async loadTodayOrders(): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const branchId = this.authService.branchId;
 
     const allToday = await this.db.orders
       .where('createdAt')
       .aboveOrEqual(todayStart)
+      .filter(o => o.branchId === branchId)
       .toArray();
 
     const active = allToday

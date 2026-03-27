@@ -28,6 +28,7 @@ export class OrderRowComponent {
   @Output() markDelivered = new EventEmitter<Order>();
   @Output() cancelOrder = new EventEmitter<string>();
   @Output() viewTicket = new EventEmitter<Order>();
+  @Output() chargeOrder = new EventEmitter<Order>();
   //#endregion
 
   //#region State

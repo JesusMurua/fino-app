@@ -6,6 +6,17 @@ import { environment } from '../../../environments/environment';
 import { RestaurantTable } from '../models';
 import { DatabaseService } from './database.service';
 
+/** Lightweight order summary returned by the by-table endpoint */
+export interface OrderSummary {
+  id: string;
+  orderNumber: number;
+  totalCents: number;
+  kitchenStatus: string | null;
+  deliveryStatus: string | null;
+  createdAt: string;
+  items: { productName: string; quantity: number }[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class TableService {
 
@@ -21,7 +32,7 @@ export class TableService {
   async loadTables(branchId: number): Promise<void> {
     try {
       const tables = await firstValueFrom(
-        this.http.get<RestaurantTable[]>(`${this.baseUrl}/table?branchId=${branchId}`)
+        this.http.get<RestaurantTable[]>(`${this.baseUrl}/table`)
       );
       await this.db.restaurantTables.clear();
       await this.db.restaurantTables.bulkPut(tables);
@@ -47,7 +58,7 @@ export class TableService {
     try {
       return await firstValueFrom(
         this.http.get<RestaurantTable[]>(
-          `${this.baseUrl}/table?branchId=${branchId}&includeInactive=true`
+          `${this.baseUrl}/table?includeInactive=true`
         )
       );
     } catch {
@@ -66,7 +77,7 @@ export class TableService {
   ): Promise<RestaurantTable> {
     const created = await firstValueFrom(
       this.http.post<RestaurantTable>(
-        `${this.baseUrl}/table?branchId=${branchId}`,
+        `${this.baseUrl}/table`,
         table,
       )
     );
@@ -115,6 +126,20 @@ export class TableService {
     );
     await this.db.restaurantTables.update(id, { status });
     return updated;
+  }
+
+  /**
+   * Gets active (unpaid) orders for a specific table
+   * @param tableId The table to look up
+   */
+  async getActiveOrdersByTable(tableId: number): Promise<OrderSummary[]> {
+    try {
+      return await firstValueFrom(
+        this.http.get<OrderSummary[]>(`${this.baseUrl}/orders/by-table/${tableId}`)
+      );
+    } catch {
+      return [];
+    }
   }
 
   //#endregion

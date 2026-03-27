@@ -49,7 +49,7 @@ export class ProductImportService {
 
     return firstValueFrom(
       this.http.post<ProductImportPreview>(
-        `${this.baseUrl}/products/import/preview?branchId=${branchId}`,
+        `${this.baseUrl}/products/import/preview`,
         formData,
       )
     );
@@ -66,7 +66,7 @@ export class ProductImportService {
   ): Promise<ProductImportResult> {
     return firstValueFrom(
       this.http.post<ProductImportResult>(
-        `${this.baseUrl}/products/import/execute?branchId=${branchId}`,
+        `${this.baseUrl}/products/import/execute`,
         rows,
       )
     );

@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { Product } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../data/pos.fixture';
 import { CartPanelComponent } from '../cart-panel/cart-panel.component';
@@ -32,11 +33,18 @@ export class ProductGridComponent implements OnInit {
   readonly selectedCategoryId = this.productService.selectedCategoryId;
   //#endregion
 
+  private readonly authService = inject(AuthService);
+
   //#region Constructor
   constructor(
     private readonly productService: ProductService,
     private readonly router: Router,
-  ) {}
+  ) {
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) this.productService.loadCatalog();
+    }, { allowSignalWrites: true });
+  }
   //#endregion
 
   //#region Lifecycle

@@ -3,9 +3,11 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import {
+  ACTIVE_BRANCH_KEY,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   AuthUser,
+  BranchInfo,
   LoginResponse,
   RETURN_URL_KEY,
 } from '../models';
@@ -31,6 +33,21 @@ export class AuthService {
   /** True when a user is authenticated with a valid token */
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
 
+  /** Branches available for the current user */
+  readonly availableBranches = computed<BranchInfo[]>(() =>
+    this.currentUser()?.branches ?? [],
+  );
+
+  /**
+   * Reactive branch ID — components use effect() on this signal
+   * to reload data when the active branch changes.
+   * Restores from localStorage so the last-selected branch persists
+   * across navigation and page refreshes.
+   */
+  readonly activeBranchId = signal<number>(
+    this.loadStoredBranchId(),
+  );
+
   //#endregion
 
   //#region Constructor
@@ -38,6 +55,53 @@ export class AuthService {
     private readonly api: ApiService,
     private readonly router: Router,
   ) {}
+  //#endregion
+
+  //#region Branch Access
+
+  /**
+   * Returns the current branch ID.
+   * Reads from the activeBranchId signal for consistency.
+   * Falls back to 1 when no user is logged in.
+   */
+  get branchId(): number {
+    return this.activeBranchId() || 1;
+  }
+
+  /**
+   * Sets the active branch locally and persists it.
+   * Components with effect() on activeBranchId will reload automatically.
+   * @param branchId Branch ID to activate
+   */
+  setActiveBranch(branchId: number): void {
+    this.activeBranchId.set(branchId);
+    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    const user = this.currentUser();
+    if (user) {
+      const updated = { ...user, currentBranchId: branchId };
+      this.currentUser.set(updated);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+    }
+  }
+
+  /**
+   * Switches the active branch for the current user.
+   * Calls the backend to get a new token scoped to the target branch,
+   * then updates the local auth state (including activeBranchId signal).
+   * @param branchId Branch to switch to
+   */
+  async switchBranch(branchId: number): Promise<void> {
+    const response = await firstValueFrom(
+      this.api.post<LoginResponse>('/auth/switch-branch', { branchId }),
+    );
+    // Write the target branch BEFORE handleLoginSuccess so it takes priority
+    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    if (!response.currentBranchId) {
+      response.currentBranchId = branchId;
+    }
+    this.handleLoginSuccess(response);
+  }
+
   //#endregion
 
   //#region Login Methods
@@ -84,7 +148,9 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
+    this.activeBranchId.set(0);
     this.router.navigate(['/pin']);
   }
 
@@ -113,19 +179,43 @@ export class AuthService {
   /**
    * Persists auth state after a successful login response.
    */
+  /**
+   * Persists auth state after a successful login response.
+   * Preserves the previously selected branch if one was stored,
+   * so re-authenticating via PIN doesn't reset the active branch.
+   */
   private handleLoginSuccess(response: LoginResponse): AuthUser {
+    const responseBranchId = response.currentBranchId ?? response.branchId;
+    // Preserve the user's last-selected branch across re-authentication
+    const storedBranchId = parseInt(localStorage.getItem(ACTIVE_BRANCH_KEY) ?? '', 10);
+    const effectiveBranchId = storedBranchId || responseBranchId;
+
     const user: AuthUser = {
       token: response.token,
       role: response.role,
       name: response.name,
       branchId: response.branchId,
+      branches: response.branches ?? [],
+      currentBranchId: effectiveBranchId,
     };
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    localStorage.setItem(ACTIVE_BRANCH_KEY, effectiveBranchId.toString());
     this.currentUser.set(user);
+    this.activeBranchId.set(effectiveBranchId);
 
     return user;
+  }
+
+  /**
+   * Restores the active branch ID from localStorage.
+   * Falls back to the user's currentBranchId, then 0.
+   */
+  private loadStoredBranchId(): number {
+    const stored = localStorage.getItem(ACTIVE_BRANCH_KEY);
+    if (stored) return parseInt(stored, 10) || 0;
+    return this.loadUserFromStorage()?.currentBranchId ?? 0;
   }
 
   /**

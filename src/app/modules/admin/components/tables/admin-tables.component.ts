@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
@@ -10,8 +10,7 @@ import { ToastModule } from 'primeng/toast';
 
 import { RestaurantTable } from '../../../../core/models';
 import { TableService } from '../../../../core/services/table.service';
-
-const BRANCH_ID = 1;
+import { AuthService } from '../../../../core/services/auth.service';
 
 /** Shape of the table form used in create/edit dialog */
 interface TableForm {
@@ -40,6 +39,14 @@ export class AdminTablesComponent implements OnInit {
 
   private readonly tableService = inject(TableService);
   private readonly messageService = inject(MessageService);
+  private readonly authService = inject(AuthService);
+
+  constructor() {
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) this.loadTables();
+    }, { allowSignalWrites: true });
+  }
 
   readonly tables = signal<RestaurantTable[]>([]);
   readonly loading = signal(false);
@@ -61,7 +68,7 @@ export class AdminTablesComponent implements OnInit {
   /** Loads all tables including inactive */
   async loadTables(): Promise<void> {
     this.loading.set(true);
-    const tables = await this.tableService.getAllTables(BRANCH_ID);
+    const tables = await this.tableService.getAllTables(this.authService.branchId);
     this.tables.set(tables);
     this.loading.set(false);
   }
@@ -107,7 +114,7 @@ export class AdminTablesComponent implements OnInit {
           severity: 'success', summary: 'Mesa actualizada', life: 3000,
         });
       } else {
-        await this.tableService.createTable(BRANCH_ID, {
+        await this.tableService.createTable(this.authService.branchId, {
           name: this.form.name.trim(),
           capacity: this.form.capacity ?? undefined,
           isActive: this.form.isActive,

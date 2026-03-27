@@ -1,6 +1,6 @@
 @use '../../../../../styles/variables' as *;
 
-.admin-tables {
+.admin-inventory {
   display: flex;
   flex-direction: column;
   gap: $space-5;
@@ -25,18 +25,52 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
     overflow: hidden;
   }
-
-  &__name { font-weight: 600; }
-  &__capacity { color: $color-text-sub; }
-  &__empty {
-    text-align: center;
-    color: $color-text-sub;
-    padding: $space-6 !important;
-  }
 }
 
 // -----------------------------------------------------------------------
-// Buttons (reuse pattern from admin-products)
+// Table cells
+// -----------------------------------------------------------------------
+.inv-name { font-weight: 600; }
+.inv-threshold { color: $color-text-sub; }
+.inv-cost { font-weight: 600; color: $color-primary; }
+.inv-empty {
+  text-align: center;
+  color: $color-text-sub;
+  padding: $space-6 !important;
+}
+
+.unit-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.stock-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+
+  &--ok { color: $color-primary; }
+
+  &--low {
+    color: #DC2626;
+    i { font-size: 14px; }
+  }
+}
+
+.inv-actions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+// -----------------------------------------------------------------------
+// Buttons
 // -----------------------------------------------------------------------
 .btn-primary {
   display: inline-flex;
@@ -55,6 +89,12 @@
   transition: background 0.15s;
 
   &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  &--red {
+    background: #DC2626;
+    &:hover { background: #B91C1C; }
+  }
 }
 
 .btn-ghost {
@@ -84,35 +124,18 @@
   background: transparent;
   color: $color-text-sub;
   cursor: pointer;
+  transition: background 0.15s;
 
   &:hover { background: #F3F4F6; color: $color-text-title; }
-}
 
-// -----------------------------------------------------------------------
-// Status badges
-// -----------------------------------------------------------------------
-.status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 700;
-
-  &--green {
-    background: #DCFCE7;
-    color: #15803D;
-  }
-
-  &--red {
-    background: #FEE2E2;
-    color: #DC2626;
-  }
+  &--green:hover { background: #F0FDF4; color: $color-primary; }
+  &--red:hover { background: #FEF2F2; color: #DC2626; }
 }
 
 // -----------------------------------------------------------------------
 // Form
 // -----------------------------------------------------------------------
-.table-form {
+.inv-form {
   display: flex;
   flex-direction: column;
   gap: $space-4;
@@ -123,12 +146,6 @@
   display: flex;
   flex-direction: column;
   gap: $space-2;
-
-  &--row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
 
   &__label {
     font-size: $font-size-base;
@@ -142,3 +159,28 @@
 }
 
 // -----------------------------------------------------------------------
+
+// Movement history
+.movement-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+
+  &--in  { background: #DCFCE7; color: #16A34A; }
+  &--out { background: #FEF2F2; color: #DC2626; }
+  &--adj { background: #FEF3C7; color: #D97706; }
+}
+
+.movement-qty {
+  font-weight: 700;
+  &--in  { color: #16A34A; }
+  &--out { color: #DC2626; }
+}
+
+.order-ref {
+  font-size: 12px;
+  color: #2563EB;
+  font-weight: 600;
+}

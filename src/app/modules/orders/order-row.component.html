@@ -24,7 +24,13 @@
       {{ elapsedFormatted }}
     </span>
     <span class="order-row__total">{{ order.totalCents | price }}</span>
-    <span class="order-row__payment">{{ order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta' }}</span>
+    @if (order.paymentMethod === 'cash') {
+      <span class="order-row__payment">Efectivo</span>
+    } @else if (order.paymentMethod === 'card') {
+      <span class="order-row__payment">Tarjeta</span>
+    } @else {
+      <span class="order-row__payment order-row__payment--unpaid">Sin cobrar</span>
+    }
     <i class="pi order-row__chevron" [class.pi-chevron-down]="!expanded()" [class.pi-chevron-up]="expanded()"></i>
   </button>
 
@@ -65,6 +71,12 @@
           <i class="pi pi-receipt"></i>
           <span>Ver ticket</span>
         </button>
+        @if (!order.paymentMethod && !isCancelled) {
+          <button type="button" class="order-row__action order-row__action--charge" (click)="chargeOrder.emit(order)">
+            <i class="pi pi-credit-card"></i>
+            <span>Cobrar</span>
+          </button>
+        }
         @if (canDeliver && !isDelivered && !isCancelled) {
           <button type="button" class="order-row__action order-row__action--deliver" (click)="onDeliver()">
             <i class="pi pi-check"></i>

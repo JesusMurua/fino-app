@@ -19,9 +19,6 @@ import { CashRegisterService } from '../../../../core/services/cash-register.ser
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
-/** Branch ID — hardcoded until multi-branch support */
-const BRANCH_ID = 1;
-
 /** Movement type options for the dialog */
 interface MovementTypeOption {
   key: 'withdrawal' | 'expense' | 'adjustment';
@@ -67,6 +64,10 @@ export class CashRegisterComponent implements OnInit {
   // History
   readonly history = signal<CashRegisterSession[]>([]);
   readonly loadingHistory = signal(false);
+
+  // ---- Close confirmation ----
+  readonly showCloseConfirm = signal(false);
+  readonly unpaidOrderCount = signal(0);
 
   // Forms
   openAmount = 0;
@@ -135,7 +136,7 @@ export class CashRegisterComponent implements OnInit {
   async loadSession(): Promise<void> {
     this.loading.set(true);
 
-    const session = await this.cashRegisterService.getOpenSession(BRANCH_ID);
+    const session = await this.cashRegisterService.getOpenSession(this.authService.branchId);
     this.currentSession.set(session);
     this.movements.set(session?.movements ?? []);
 
@@ -149,7 +150,7 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
-    const session = await this.cashRegisterService.openSession(BRANCH_ID, {
+    const session = await this.cashRegisterService.openSession(this.authService.branchId, {
       initialAmountCents: Math.round(this.openAmount * 100),
       openedBy: user.name,
     });
@@ -167,12 +168,38 @@ export class CashRegisterComponent implements OnInit {
     });
   }
 
+  /**
+   * Validates unpaid orders before closing the session.
+   * If active orders exist, shows a confirmation dialog.
+   */
+  async onCloseSession(): Promise<void> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const unpaid = await this.db.orders
+      .filter(o =>
+        o.paymentMethod == null &&
+        (o.cancellationStatus === undefined || o.cancellationStatus === 'none') &&
+        new Date(o.createdAt) >= todayStart
+      )
+      .toArray();
+
+    if (unpaid.length > 0) {
+      this.unpaidOrderCount.set(unpaid.length);
+      this.showCloseConfirm.set(true);
+      return;
+    }
+
+    await this.closeSession();
+  }
+
   /** Closes the current session */
   async closeSession(): Promise<void> {
+    this.showCloseConfirm.set(false);
     const user = this.authService.currentUser();
     if (!user) return;
 
-    await this.cashRegisterService.closeSession(BRANCH_ID, {
+    await this.cashRegisterService.closeSession(this.authService.branchId, {
       countedAmountCents: Math.round(this.closeAmount * 100),
       closedBy: user.name,
       notes: this.closeNotes.trim() || undefined,
@@ -196,7 +223,7 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
-    await this.cashRegisterService.addMovement(BRANCH_ID, {
+    await this.cashRegisterService.addMovement(this.authService.branchId, {
       type: this.movementType,
       amountCents: Math.round(this.movementAmount * 100),
       description: this.movementDescription.trim(),
@@ -233,7 +260,7 @@ export class CashRegisterComponent implements OnInit {
     const from = new Date();
     from.setDate(from.getDate() - 30);
 
-    const sessions = await this.cashRegisterService.getHistory(BRANCH_ID, from, to);
+    const sessions = await this.cashRegisterService.getHistory(this.authService.branchId, from, to);
     this.history.set(sessions);
 
     this.loadingHistory.set(false);

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, Order, Product, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, InventoryItem, InventoryMovement, Order, Product, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -17,6 +17,7 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Disco
  *   v6 — added discountPresets table
  *   v7 — added cashSessions and cashMovements tables
  *   v8 — added restaurantTables table
+ *   v9 — added inventoryItems and inventoryMovements tables
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -31,6 +32,8 @@ export class DatabaseService extends Dexie {
   cashSessions!: Table<CashRegisterSession, number>;
   cashMovements!: Table<CashMovement, number>;
   restaurantTables!: Table<RestaurantTable, number>;
+  inventoryItems!: Table<InventoryItem & { syncStatus?: string }, number>;
+  inventoryMovements!: Table<InventoryMovement, number>;
   //#endregion
 
   //#region Constructor
@@ -113,6 +116,35 @@ export class DatabaseService extends Dexie {
       cashSessions:     '++id, branchId, status, openedAt',
       cashMovements:    '++id, sessionId, createdAt',
       restaurantTables: '++id, branchId, status, isActive',
+    });
+
+    this.version(9).stores({
+      products:            'id, categoryId, isAvailable',
+      categories:          'id, sortOrder',
+      cart:                'id',
+      orders:              'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
+      config:              'id',
+      discountPresets:     '++id, branchId, isActive',
+      cashSessions:        '++id, branchId, status, openedAt',
+      cashMovements:       '++id, sessionId, createdAt',
+      restaurantTables:    '++id, branchId, status, isActive',
+      inventoryItems:      'id, branchId, isActive, currentStock',
+      inventoryMovements:  'id, inventoryItemId, type, createdAt',
+    });
+
+    this.version(10).stores({
+      orders:              'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus, branchId',
+    }).upgrade(async tx => {
+      // Migrate legacy orders from businessId to branchId
+      const table = tx.table('orders');
+      const orders = await table.toArray();
+      for (const order of orders) {
+        if ((order as any).businessId && !order.branchId) {
+          await table.update(order.id, {
+            branchId: (order as any).businessId,
+          });
+        }
+      }
     });
   }
   //#endregion

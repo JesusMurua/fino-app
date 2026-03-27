@@ -24,6 +24,11 @@
     font-weight: 700;
     color: $color-text-title;
     flex: 1;
+
+    &--adding {
+      color: #D97706;
+      font-size: 15px;
+    }
   }
 
   &__table-badge {
@@ -211,6 +216,36 @@
   border-radius: 10px !important;
   font-size: 16px !important;
   font-weight: 700 !important;
+}
+
+.btn-cancel-adding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  padding: $space-2;
+  border: none;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover { color: #DC2626; }
+}
+
+:host ::ng-deep .btn-kitchen {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 10px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  background: #2563EB !important;
+  border-color: #2563EB !important;
+
+  &:hover { background: #1D4ED8 !important; border-color: #1D4ED8 !important; }
 }
 
 // -----------------------------------------------------------------------

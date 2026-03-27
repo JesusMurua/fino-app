@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
@@ -94,6 +94,11 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   ) {
     const role = this.authService.currentUser()?.role;
     this.canDeliver = role === 'Cashier' || role === 'Owner';
+
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) this.ordersService.start();
+    }, { allowSignalWrites: true });
   }
   //#endregion
 
@@ -128,6 +133,13 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     if (order.tableId) {
       this.tableService.updateTableStatus(order.tableId, 'available').catch(() => {});
     }
+  }
+
+  /** Navigates to checkout to charge an unpaid table order */
+  onChargeOrder(order: Order): void {
+    this.router.navigate(['/pos/checkout'], {
+      queryParams: { orderId: order.id },
+    });
   }
 
   goBack(): void {

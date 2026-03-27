@@ -34,7 +34,7 @@ export class ReportService {
   async getSummary(branchId: number, from: Date, to: Date): Promise<ReportSummary> {
     return firstValueFrom(
       this.api.get<ReportSummary>(
-        `/report/summary?branchId=${branchId}&from=${from.toISOString()}&to=${to.toISOString()}`,
+        `/report/summary?from=${from.toISOString()}&to=${to.toISOString()}`,
       ),
     );
   }
@@ -46,7 +46,7 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadExcel(branchId: number, from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/excel?branchId=${branchId}&from=${from.toISOString()}&to=${to.toISOString()}`;
+    const url = `${environment.apiUrl}/report/export/excel?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
       this.http.get(url, { responseType: 'blob' }),
     );
@@ -60,7 +60,7 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadPdf(branchId: number, from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/pdf?branchId=${branchId}&from=${from.toISOString()}&to=${to.toISOString()}`;
+    const url = `${environment.apiUrl}/report/export/pdf?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
       this.http.get(url, { responseType: 'blob' }),
     );

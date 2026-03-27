@@ -1,0 +1,302 @@
+<p-toast />
+
+<div class="admin-inventory">
+
+  <!-- Header -->
+  <div class="admin-inventory__header">
+    <h1 class="admin-inventory__title">Inventario</h1>
+    <button type="button" class="btn-primary" (click)="openNewItemDialog()">
+      <i class="pi pi-plus"></i>
+      Nuevo insumo
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="admin-inventory__wrap">
+    <p-table
+      [value]="items()"
+      [loading]="isLoading()"
+      [rowHover]="true"
+      dataKey="id"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="min-width: 14rem">Nombre</th>
+          <th style="min-width: 6rem">Unidad</th>
+          <th style="min-width: 8rem">Stock</th>
+          <th style="min-width: 8rem">Alerta mín.</th>
+          <th style="min-width: 8rem">Costo unit.</th>
+          <th style="min-width: 12rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td class="inv-name">{{ item.name }}</td>
+          <td>
+            <span class="unit-badge">{{ item.unit }}</span>
+          </td>
+          <td>
+            <span
+              class="stock-value"
+              [class.stock-value--low]="isLowStock(item)"
+              [class.stock-value--ok]="!isLowStock(item)"
+            >
+              {{ item.currentStock }}
+              @if (isLowStock(item)) {
+                <i class="pi pi-exclamation-triangle"></i>
+              }
+            </span>
+          </td>
+          <td class="inv-threshold">{{ item.lowStockThreshold }}</td>
+          <td class="inv-cost">${{ (item.costCents / 100).toFixed(2) }}</td>
+          <td>
+            <div class="inv-actions">
+              <button
+                type="button"
+                class="btn-icon btn-icon--green"
+                aria-label="Entrada de stock"
+                (click)="openEntryDialog(item)"
+              >
+                <i class="pi pi-plus"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon btn-icon--red"
+                aria-label="Salida de stock"
+                (click)="openExitDialog(item)"
+              >
+                <i class="pi pi-minus"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                aria-label="Editar insumo"
+                (click)="openEditItemDialog(item)"
+              >
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                aria-label="Ver historial"
+                pTooltip="Ver historial"
+                tooltipPosition="left"
+                (click)="openHistoryDialog(item)"
+              >
+                <i class="pi pi-history"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="inv-empty">No hay insumos registrados.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+</div>
+
+<!-- ====================================================================== -->
+<!-- Item create / edit dialog                                               -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="editingItem() ? 'Editar insumo' : 'Nuevo insumo'"
+  [visible]="showItemDialog()"
+  (visibleChange)="showItemDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '460px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label" for="if-name">Nombre</label>
+      <input
+        id="if-name"
+        type="text"
+        pInputText
+        [(ngModel)]="form.name"
+        placeholder="Ej. Tortillas de maíz"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-unit">Unidad</label>
+      <p-dropdown
+        inputId="if-unit"
+        [options]="unitOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="form.unit"
+        styleClass="form-field__input"
+        [appendTo]="'body'"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-stock">Stock inicial</label>
+      <p-inputNumber
+        inputId="if-stock"
+        [(ngModel)]="form.currentStock"
+        [min]="0"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-threshold">Alerta mínima</label>
+      <p-inputNumber
+        inputId="if-threshold"
+        [(ngModel)]="form.lowStockThreshold"
+        [min]="0"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-cost">Costo unitario (MXN)</label>
+      <p-inputNumber
+        inputId="if-cost"
+        [(ngModel)]="form.costPesos"
+        [min]="0"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        styleClass="form-field__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showItemDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="!form.name.trim()"
+      (click)="saveItem()"
+    >
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Movement dialog (entry / exit)                                          -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="movementType() === 'in' ? 'Entrada de stock' : 'Salida de stock'"
+  [visible]="showMovementDialog()"
+  (visibleChange)="showMovementDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label" for="mf-qty">Cantidad</label>
+      <p-inputNumber
+        inputId="mf-qty"
+        [(ngModel)]="movementForm.quantity"
+        [min]="1"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="mf-reason">Motivo (opcional)</label>
+      <input
+        id="mf-reason"
+        type="text"
+        pInputText
+        [(ngModel)]="movementForm.reason"
+        [placeholder]="movementType() === 'in' ? 'Ej. Compra a proveedor' : 'Ej. Merma, caducidad'"
+        class="form-field__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showMovementDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [class.btn-primary--red]="movementType() === 'out'"
+      [disabled]="movementForm.quantity <= 0"
+      (click)="saveMovement()"
+    >
+      @if (movementType() === 'in') {
+        <i class="pi pi-plus"></i> Registrar entrada
+      } @else {
+        <i class="pi pi-minus"></i> Registrar salida
+      }
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Movement history dialog                                                 -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Movimientos — ' + (historyItem()?.name ?? '')"
+  [visible]="showHistoryDialog()"
+  (visibleChange)="showHistoryDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [draggable]="false"
+>
+  <p-table
+    [value]="movements()"
+    [loading]="loadingMovements()"
+    [rowHover]="true"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="min-width: 10rem">Fecha / Hora</th>
+        <th style="min-width: 6rem">Tipo</th>
+        <th style="min-width: 5rem">Cantidad</th>
+        <th style="min-width: 10rem">Motivo</th>
+        <th style="min-width: 5rem">Orden</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-m>
+      <tr>
+        <td>{{ m.createdAt | date:'dd MMM y, h:mm a' }}</td>
+        <td>
+          <span class="movement-badge" [class]="movementTypeSeverity(m.type)">
+            {{ movementTypeLabel(m.type) }}
+          </span>
+        </td>
+        <td class="movement-qty" [class.movement-qty--in]="m.type === 'in'" [class.movement-qty--out]="m.type === 'out'">
+          {{ m.type === 'in' ? '+' : m.type === 'out' ? '-' : '' }}{{ m.quantity }}
+        </td>
+        <td>{{ m.reason || '—' }}</td>
+        <td>
+          @if (m.orderId) {
+            <span class="order-ref">#{{ m.orderId }}</span>
+          } @else {
+            —
+          }
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" class="inv-empty">Sin movimientos registrados.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showHistoryDialog.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>

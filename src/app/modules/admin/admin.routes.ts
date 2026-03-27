@@ -42,6 +42,12 @@ export const adminRoutes: Routes = [
             .then(m => m.AdminTablesComponent),
       },
       {
+        path: 'inventory',
+        loadComponent: () =>
+          import('./components/inventory/admin-inventory.component')
+            .then(m => m.AdminInventoryComponent),
+      },
+      {
         path: 'users',
         loadComponent: () =>
           import('./components/users/admin-users.component')

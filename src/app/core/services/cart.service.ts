@@ -33,6 +33,11 @@ export class CartService {
 
   /** Number of individual items in the cart (sum of quantities) */
   readonly itemCount = signal(0);
+
+  /** Returns a snapshot of current cart items */
+  getSnapshot(): CartItem[] {
+    return [...this._cart$.getValue()];
+  }
   //#endregion
 
   //#region Constructor & Initialization

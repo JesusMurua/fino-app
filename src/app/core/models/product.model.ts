@@ -32,6 +32,12 @@ export interface Product {
   imageUrl?: string;
   isAvailable: boolean;
   isPopular?: boolean;
+  /** Whether this product tracks its own stock (useful for retail/abarrotes) */
+  trackStock?: boolean;
+  /** Current stock level (only meaningful when trackStock is true) */
+  currentStock?: number;
+  /** Alert threshold — stock at or below this triggers low-stock warning */
+  lowStockThreshold?: number;
   sizes: ProductSize[];
   extras: ProductExtra[];
 }

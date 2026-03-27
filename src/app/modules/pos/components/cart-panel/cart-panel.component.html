@@ -1,8 +1,13 @@
+<p-toast />
 <aside class="cart-panel">
 
   <!-- Header -->
   <div class="cart-panel__header">
-    <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
+    @if (addingToOrder) {
+      <span class="cart-panel__title cart-panel__title--adding">Agregando a Orden #{{ addingToOrder.orderNumber }}</span>
+    } @else {
+      <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
+    }
     @if (activeTableName()) {
       <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
     }
@@ -89,16 +94,42 @@
       <span class="cart-panel__total-amount">{{ totalCents() | price }}</span>
     </div>
 
-    <p-button
-      [label]="'Cobrar ' + (totalCents() | price)"
-      icon="pi pi-credit-card"
-      styleClass="w-full btn-checkout"
-      size="large"
-      [disabled]="itemCount() === 0"
-      (onClick)="onCheckout()"
-    />
+    @if (isTableMode()) {
+      @if (addingToOrder) {
+        <p-button
+          [label]="'Agregar a Orden #' + addingToOrder.orderNumber"
+          icon="pi pi-plus"
+          styleClass="w-full btn-kitchen"
+          size="large"
+          [disabled]="itemCount() === 0"
+          (onClick)="onSendToKitchen()"
+        />
+        <button type="button" class="btn-cancel-adding" (click)="onCancelAddingItems()">
+          <i class="pi pi-times"></i>
+          Cancelar
+        </button>
+      } @else {
+        <p-button
+          label="Enviar a cocina"
+          icon="pi pi-send"
+          styleClass="w-full btn-kitchen"
+          size="large"
+          [disabled]="itemCount() === 0"
+          (onClick)="onSendToKitchen()"
+        />
+      }
+    } @else {
+      <p-button
+        [label]="'Cobrar ' + (totalCents() | price)"
+        icon="pi pi-credit-card"
+        styleClass="w-full btn-checkout"
+        size="large"
+        [disabled]="itemCount() === 0"
+        (onClick)="onCheckout()"
+      />
+    }
 
-    @if (itemCount() > 0) {
+    @if (itemCount() > 0 && !addingToOrder) {
       <button
         type="button"
         class="btn-cancel"

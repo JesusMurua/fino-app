@@ -49,6 +49,7 @@
         (markDelivered)="onMarkDelivered($event)"
         (cancelOrder)="openCancelDialog(order)"
         (viewTicket)="onViewTicket($event)"
+        (chargeOrder)="onChargeOrder($event)"
       />
     } @empty {
       <div class="orders-empty">

@@ -1,3 +1,4 @@
+<p-toast />
 <div class="tables-view">
 
   <!-- Header -->
@@ -54,6 +55,11 @@
 
           @if (table.status === 'occupied') {
             <span class="table-card__badge-used">En uso</span>
+            @if (getOrderCount(table.id) > 0) {
+              <span class="table-card__badge-orders">
+                {{ getOrderCount(table.id) }} orden{{ getOrderCount(table.id) > 1 ? 'es' : '' }}
+              </span>
+            }
           }
 
           <span class="table-card__name">{{ table.name }}</span>
@@ -74,24 +80,85 @@
 
 <!-- Occupied table dialog -->
 <p-dialog
-  [header]="'Mesa ocupada — ' + (selectedTable()?.name ?? '')"
   [visible]="showTableDialog()"
   (visibleChange)="showTableDialog.set($event)"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '380px' }"
+  [style]="{ width: '480px' }"
   [draggable]="false"
 >
-  <p class="table-dialog__question">¿Qué deseas hacer con esta mesa?</p>
+  <!-- Custom header with order count badge -->
+  <ng-template pTemplate="header">
+    <span class="td-header">
+      <span class="td-header__title">{{ selectedTable()?.name }}</span>
+      @if (tableOrders().length > 0) {
+        <span class="td-header__badge">{{ tableOrders().length }} orden{{ tableOrders().length > 1 ? 'es' : '' }}</span>
+      }
+    </span>
+  </ng-template>
 
-  <div class="table-dialog__actions">
-    <button type="button" class="table-dialog__btn table-dialog__btn--orders" (click)="viewTableOrders()">
-      <i class="pi pi-receipt"></i>
-      Ver órdenes
+  <!-- Loading state -->
+  @if (loadingOrders()) {
+    <div class="td-loading">
+      <p-progressSpinner [style]="{ width: '40px', height: '40px' }" />
+    </div>
+  }
+
+  <!-- Orders list -->
+  @if (!loadingOrders() && tableOrders().length > 0) {
+    <div class="td-orders">
+      @for (order of tableOrders(); track order.id) {
+        <div class="td-order-card">
+          <div class="td-order-card__top">
+            <span class="td-order-card__number">Orden #{{ order.orderNumber }}</span>
+            <span class="td-order-card__total">{{ order.totalCents | price }}</span>
+          </div>
+
+          <div class="td-order-card__items">
+            @for (item of order.items; track item.productName) {
+              <span class="td-order-card__item">{{ item.quantity }}x {{ item.productName }}</span>
+            }
+          </div>
+
+          <div class="td-order-card__badges">
+            @if (order.kitchenStatus === 'pending' || order.kitchenStatus === 'new' || !order.kitchenStatus) {
+              <span class="td-badge td-badge--pending">En espera</span>
+            } @else if (order.kitchenStatus === 'sent' || order.kitchenStatus === 'preparing') {
+              <span class="td-badge td-badge--kitchen">En cocina</span>
+            } @else if (order.kitchenStatus === 'ready' || order.kitchenStatus === 'done') {
+              <span class="td-badge td-badge--ready">Lista</span>
+            }
+          </div>
+
+          <div class="td-order-card__actions">
+            <button type="button" class="td-btn td-btn--outline" (click)="addItemsToOrder(order)">
+              <i class="pi pi-plus"></i> Agregar items
+            </button>
+            <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
+              <i class="pi pi-credit-card"></i> Cobrar
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loadingOrders() && tableOrders().length === 0) {
+    <div class="td-empty">
+      <i class="pi pi-inbox td-empty__icon"></i>
+      <p class="td-empty__text">No hay órdenes activas</p>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--green" (click)="newOrderForTable()">
+      <i class="pi pi-plus"></i> Nueva orden
     </button>
-    <button type="button" class="table-dialog__btn table-dialog__btn--release" (click)="releaseTable()">
-      <i class="pi pi-check-circle"></i>
-      Liberar mesa
-    </button>
-  </div>
+    @if (tableOrders().length === 0) {
+      <button type="button" class="td-btn td-btn--red-outline" (click)="releaseTable()">
+        <i class="pi pi-check-circle"></i> Liberar mesa
+      </button>
+    }
+  </ng-template>
 </p-dialog>
