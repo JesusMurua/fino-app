@@ -8,6 +8,7 @@ import { TooltipModule } from 'primeng/tooltip';
 
 import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
@@ -26,6 +27,7 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 export class AdminShellComponent implements OnInit {
 
   private readonly inventoryService = inject(InventoryService);
+  private readonly notificationService = inject(NotificationService);
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
   readonly authService = inject(AuthService);
@@ -128,6 +130,7 @@ export class AdminShellComponent implements OnInit {
 
   /** Logs out and returns to the PIN screen */
   logout(): void {
+    this.notificationService.unsubscribe();
     this.authService.logout();
   }
 }

@@ -3,6 +3,7 @@ import { Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
 import { TableService } from '../../core/services/table.service';
 
@@ -41,6 +42,7 @@ export class PinComponent {
 
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
+  private readonly notificationService = inject(NotificationService);
   private readonly tableService = inject(TableService);
 
   //#region Constructor
@@ -135,6 +137,9 @@ export class PinComponent {
           break;
         }
       }
+
+      // Request push notification permission (best-effort, non-blocking)
+      this.notificationService.requestPermission();
     } else {
       this.hasError.set(true);
       setTimeout(() => {
