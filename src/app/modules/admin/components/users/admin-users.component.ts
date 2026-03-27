@@ -7,8 +7,6 @@ import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { TableModule } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
-
 import { CreateUserRequest, UpdateUserRequest, UserDto, UserRole } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
@@ -33,11 +31,9 @@ interface RoleOption {
     InputTextModule,
     PasswordModule,
     TableModule,
-    ToastModule,
   ],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',
-  providers: [MessageService],
 })
 export class AdminUsersComponent implements OnInit {
 

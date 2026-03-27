@@ -6,7 +6,6 @@ import { DialogModule } from 'primeng/dialog';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { MessageService } from 'primeng/api';
-import { ToastModule } from 'primeng/toast';
 
 import { RestaurantTable } from '../../core/models';
 import { DatabaseService } from '../../core/services/database.service';
@@ -19,10 +18,9 @@ const POLL_INTERVAL = 15_000;
 @Component({
   selector: 'app-tables',
   standalone: true,
-  imports: [DialogModule, ProgressSpinnerModule, ToastModule, PricePipe],
+  imports: [DialogModule, ProgressSpinnerModule, PricePipe],
   templateUrl: './tables.component.html',
   styleUrl: './tables.component.scss',
-  providers: [MessageService],
 })
 export class TablesComponent implements OnInit, OnDestroy {
 

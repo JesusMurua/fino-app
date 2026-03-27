@@ -6,8 +6,6 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
-
 import { InventoryItem, InventoryMovement } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
@@ -43,14 +41,12 @@ interface MovementForm {
     InputNumberModule,
     InputTextModule,
     TableModule,
-    ToastModule,
     DatePipe,
     ButtonModule,
     TooltipModule,
   ],
   templateUrl: './admin-inventory.component.html',
   styleUrl: './admin-inventory.component.scss',
-  providers: [MessageService],
 })
 export class AdminInventoryComponent implements OnInit {
 

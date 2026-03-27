@@ -5,7 +5,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { MessageService } from 'primeng/api';
-import { ToastModule } from 'primeng/toast';
 
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, Order } from '../../../../core/models';
@@ -18,10 +17,9 @@ import { SyncService } from '../../../../core/services/sync.service';
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [AsyncPipe, ButtonModule, DividerModule, PricePipe, ToastModule],
+  imports: [AsyncPipe, ButtonModule, DividerModule, PricePipe],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
-  providers: [MessageService],
 })
 export class CartPanelComponent implements OnInit {
 

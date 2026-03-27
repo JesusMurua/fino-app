@@ -7,7 +7,6 @@ import { ChartModule } from 'primeng/chart';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
-import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import { ReportPeriod, ReportSummary } from '../../../../core/models';
@@ -26,10 +25,8 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
     ProgressSpinnerModule,
     TableModule,
     TabViewModule,
-    ToastModule,
     PricePipe,
   ],
-  providers: [MessageService],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
 })

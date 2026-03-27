@@ -7,8 +7,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
-
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
@@ -26,11 +24,9 @@ type DeviceMode = DeviceConfig['mode'];
     PasswordModule,
     RadioButtonModule,
     TableModule,
-    ToastModule,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
-  providers: [MessageService],
 })
 export class AdminSettingsComponent implements OnInit {
 

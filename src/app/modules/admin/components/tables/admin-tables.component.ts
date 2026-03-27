@@ -6,8 +6,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
-
 import { RestaurantTable } from '../../../../core/models';
 import { TableService } from '../../../../core/services/table.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -29,11 +27,9 @@ interface TableForm {
     InputSwitchModule,
     InputTextModule,
     TableModule,
-    ToastModule,
   ],
   templateUrl: './admin-tables.component.html',
   styleUrl: './admin-tables.component.scss',
-  providers: [MessageService],
 })
 export class AdminTablesComponent implements OnInit {
 

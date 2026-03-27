@@ -1,6 +1,7 @@
 import { ApplicationConfig, isDevMode } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { MessageService } from 'primeng/api';
 
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
@@ -13,6 +14,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes, withComponentInputBinding()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideAnimations(),
+    MessageService,
     provideServiceWorker('ngsw-worker.js', {
       // Enabled only in production — dev mode uses live reload which conflicts with SW
       enabled: !isDevMode(),

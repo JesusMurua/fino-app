@@ -8,7 +8,6 @@ import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
@@ -22,8 +21,7 @@ import { environment } from '../../../../../environments/environment';
 @Component({
   selector: 'app-pos-header',
   standalone: true,
-  imports: [RouterModule, FormsModule, DialogModule, DropdownModule, InputNumberModule, InputTextModule, ToastModule, TooltipModule],
-  providers: [MessageService],
+  imports: [RouterModule, FormsModule, DialogModule, DropdownModule, InputNumberModule, InputTextModule, TooltipModule],
   templateUrl: './pos-header.component.html',
   styleUrl: './pos-header.component.scss',
 })

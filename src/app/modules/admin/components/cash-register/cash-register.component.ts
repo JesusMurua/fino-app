@@ -7,7 +7,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { TableModule } from 'primeng/table';
-import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import {
@@ -39,10 +38,8 @@ interface MovementTypeOption {
     InputTextModule,
     InputTextareaModule,
     TableModule,
-    ToastModule,
     PricePipe,
   ],
-  providers: [MessageService],
   templateUrl: './cash-register.component.html',
   styleUrl: './cash-register.component.scss',
 })

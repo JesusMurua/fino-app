@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { DropdownModule } from 'primeng/dropdown';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { AuthService } from '../../core/services/auth.service';
@@ -18,11 +17,10 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
   standalone: true,
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
-    FormsModule, DropdownModule, ToastModule, TooltipModule,
+    FormsModule, DropdownModule, TooltipModule,
   ],
   templateUrl: './admin-shell.component.html',
   styleUrl: './admin-shell.component.scss',
-  providers: [MessageService],
 })
 export class AdminShellComponent implements OnInit {
 
