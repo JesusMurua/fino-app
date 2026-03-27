@@ -1,17 +1,20 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { SwPush } from '@angular/service-worker';
+import { MessageService } from 'primeng/api';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
+import { KitchenService } from './kitchen.service';
 
 /**
  * Manages Web Push notification subscriptions.
  *
  * - Requests notification permission and subscribes via SwPush
  * - Sends the PushSubscription to the backend for server-side push
- * - Listens for incoming push messages and notification clicks
+ * - Shows a PrimeNG toast when a push arrives while the app is open
+ * - Refreshes KDS orders on notification click
  * - Unsubscribes on logout (called from logout-triggering components)
  */
 @Injectable({ providedIn: 'root' })
@@ -22,6 +25,8 @@ export class NotificationService {
   private readonly swPush = inject(SwPush);
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly messageService = inject(MessageService);
+  private readonly kitchenService = inject(KitchenService);
 
   //#endregion
 
@@ -30,14 +35,23 @@ export class NotificationService {
   constructor() {
     if (!this.swPush.isEnabled) return;
 
-    // Push received while app is in foreground
-    this.swPush.messages.subscribe((msg) => {
-      console.info('[NotificationService] Push received:', msg);
+    // Push received while app is in foreground — show toast
+    this.swPush.messages.subscribe((msg: Record<string, any>) => {
+      this.messageService.add({
+        severity: 'info',
+        summary: msg['title'] ?? 'Notificación',
+        detail: msg['body'] ?? '',
+        life: 5000,
+      });
+
+      // Refresh KDS if a kitchen-related push arrives
+      this.kitchenService.refreshOrders();
     });
 
-    // User clicked on a notification
+    // User clicked on a notification — navigate and refresh
     this.swPush.notificationClicks.subscribe(({ notification }) => {
       const orderId = notification?.data?.orderId;
+      this.kitchenService.refreshOrders();
       if (orderId) {
         this.router.navigate(['/orders'], { queryParams: { id: orderId } });
       }
