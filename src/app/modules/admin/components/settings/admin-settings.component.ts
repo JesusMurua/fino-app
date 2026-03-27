@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
@@ -22,6 +23,7 @@ type DeviceMode = DeviceConfig['mode'];
   imports: [
     FormsModule,
     DialogModule,
+    DropdownModule,
     InputTextModule,
     PasswordModule,
     RadioButtonModule,
@@ -86,6 +88,8 @@ export class AdminSettingsComponent implements OnInit {
   /** Activation code generation */
   readonly activationCode = signal('');
   readonly generatingCode = signal(false);
+  codeBranchId = 0;
+  codeMode: DeviceMode = 'counter';
 
   //#endregion
 
@@ -107,6 +111,8 @@ export class AdminSettingsComponent implements OnInit {
 
     if (this.authService.currentUser()?.role === 'Owner') {
       await this.loadBranches();
+      const first = this.branches()[0];
+      if (first) this.codeBranchId = first.id;
     }
   }
 
@@ -313,6 +319,20 @@ export class AdminSettingsComponent implements OnInit {
 
   //#endregion
 
+  //#region Activation Code Helpers
+
+  /** Display label for the selected branch in the code generator */
+  codeBranchLabel(): string {
+    return this.branches().find(b => b.id === this.codeBranchId)?.name ?? '';
+  }
+
+  /** Display label for the selected mode in the code generator */
+  codeModeLabel(): string {
+    return this.modes.find(m => m.value === this.codeMode)?.label ?? this.codeMode;
+  }
+
+  //#endregion
+
   //#region Activation Code
 
   /**
@@ -324,11 +344,10 @@ export class AdminSettingsComponent implements OnInit {
     this.activationCode.set('');
 
     try {
-      const device = this.configService.deviceConfig$.getValue();
       const response = await firstValueFrom(
         this.api.post<{ code: string }>('/device/generate-code', {
-          branchId: device.branchId,
-          mode: device.mode,
+          branchId: this.codeBranchId,
+          mode: this.codeMode,
         }),
       );
       this.activationCode.set(response.code);

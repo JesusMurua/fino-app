@@ -232,9 +232,38 @@
           </div>
           <p class="settings-card__desc">Genera un código de 6 dígitos para configurar otro equipo. Válido por 24 horas.</p>
 
+          <div class="settings-form">
+            <div class="form-field">
+              <label class="form-field__label">Sucursal</label>
+              <p-dropdown
+                [options]="branches()"
+                optionLabel="name"
+                optionValue="id"
+                [(ngModel)]="codeBranchId"
+                placeholder="Seleccionar sucursal"
+                styleClass="w-full"
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Modo del dispositivo</label>
+              <p-dropdown
+                [options]="modes"
+                optionLabel="label"
+                optionValue="value"
+                [(ngModel)]="codeMode"
+                styleClass="w-full"
+              />
+            </div>
+          </div>
+
           @if (activationCode()) {
             <div class="activation-code">
               <span class="activation-code__value">{{ activationCode() }}</span>
+              <span class="activation-code__summary">
+                Código para: <strong>{{ codeBranchLabel() }}</strong>
+                — Modo: <strong>{{ codeModeLabel() }}</strong>
+              </span>
               <span class="activation-code__hint">Ingresa este código en el nuevo dispositivo</span>
             </div>
           }
@@ -243,7 +272,7 @@
             <button
               type="button"
               class="btn-primary"
-              [disabled]="generatingCode()"
+              [disabled]="generatingCode() || !codeBranchId"
               (click)="generateActivationCode()"
             >
               @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }

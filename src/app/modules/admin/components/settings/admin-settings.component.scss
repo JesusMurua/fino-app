@@ -415,6 +415,11 @@
     font-family: monospace;
   }
 
+  &__summary {
+    font-size: 14px;
+    color: $color-text-title;
+  }
+
   &__hint {
     font-size: 14px;
     color: $color-text-sub;
