@@ -1,8 +1,9 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { KioskDataService } from '../../../../core/services/kiosk-data.service';
 
 /** Seconds of inactivity on the welcome screen before resetting an active cart */
 const WELCOME_IDLE_S = 60;
@@ -29,6 +30,8 @@ export class KioskWelcomeComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Constructor
+  private readonly kioskDataService = inject(KioskDataService);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly cartService: CartService,
@@ -39,7 +42,8 @@ export class KioskWelcomeComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    const config = await this.configService.load();
+    const branchId = this.configService.deviceConfig$.getValue().branchId;
+    const config = await this.kioskDataService.loadConfig(branchId);
     this.businessName.set(config.businessName);
 
     // If a cart exists from a previous abandoned order, reset it after 60s

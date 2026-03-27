@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { Product } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
+import { ConfigService } from '../../../../core/services/config.service';
+import { KioskDataService } from '../../../../core/services/kiosk-data.service';
 import { ProductService } from '../../../../core/services/product.service';
-import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../../pos/data/pos.fixture';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 @Component({
@@ -17,6 +18,9 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
 export class KioskCatalogComponent implements OnInit {
 
   //#region Properties
+
+  private readonly kioskDataService = inject(KioskDataService);
+  private readonly configService = inject(ConfigService);
 
   readonly isLoading       = this.productService.isLoading;
   readonly categories      = this.productService.categories;
@@ -39,11 +43,8 @@ export class KioskCatalogComponent implements OnInit {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    await this.productService.loadCatalog();
-
-    if (this.productService.products().length === 0) {
-      await this.productService.seedCatalog(SEED_PRODUCTS, SEED_CATEGORIES);
-    }
+    const branchId = this.configService.deviceConfig$.getValue().branchId;
+    await this.kioskDataService.loadCatalog(branchId);
   }
 
   //#endregion
