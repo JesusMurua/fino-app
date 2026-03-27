@@ -157,7 +157,7 @@
   display: inline-flex;
   align-items: center;
   gap: $space-2;
-  min-height: 80px;
+  height: 56px;
   padding: 0 $space-5;
   border: 2px solid #E5E7EB;
   border-radius: 16px;
@@ -176,23 +176,24 @@
 }
 
 .kiosk-summary__btn-confirm {
-  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: $space-3;
-  min-height: 80px;
+  height: 56px;
+  max-width: 320px;
+  flex: 1;
   border: none;
   border-radius: 16px;
   background: $color-primary;
   color: white;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 22px; }
+  i { font-size: 20px; }
 
   &:hover  { background: #15803D; }
   &:active { background: #166534; transform: scale(0.97); }

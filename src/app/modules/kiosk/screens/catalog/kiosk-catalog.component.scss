@@ -185,7 +185,8 @@
   display: inline-flex;
   align-items: center;
   gap: $space-3;
-  min-height: 80px;
+  height: 56px;
+  max-width: 320px;
   padding: 0 $space-6;
   border: none;
   border-radius: 16px;
@@ -197,6 +198,7 @@
   cursor: pointer;
   flex: 1;
   justify-content: center;
+  margin: 0 auto;
   transition: background 0.15s;
 
   i { font-size: 22px; }
