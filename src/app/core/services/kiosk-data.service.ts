@@ -54,12 +54,18 @@ export class KioskDataService {
 
     // Step 2 — Fetch from public API
     try {
-      const [products, categories] = await firstValueFrom(
+      const [rawProducts, categories] = await firstValueFrom(
         forkJoin([
           this.api.get<Product[]>(`/products/public?branchId=${branchId}`),
           this.api.get<Category[]>(`/categories/public?branchId=${branchId}`),
         ]),
       );
+      // Normalize sizes/extras — the public endpoint may omit these arrays
+      const products = rawProducts.map(p => ({
+        ...p,
+        sizes: p.sizes ?? [],
+        extras: p.extras ?? [],
+      }));
       await this.productService.seedCatalog(products, categories);
       console.info('[KioskDataService] Catalog loaded from public API');
     } catch {

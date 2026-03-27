@@ -50,6 +50,25 @@ export class KioskSummaryComponent implements OnInit {
 
   //#endregion
 
+  //#region Cart Item Actions
+
+  /** Decreases item quantity by 1 — removes item if quantity reaches 0 */
+  async decreaseQuantity(item: CartItem): Promise<void> {
+    await this.cartService.updateQuantity(item.id, item.quantity - 1);
+  }
+
+  /** Increases item quantity by 1 */
+  async increaseQuantity(item: CartItem): Promise<void> {
+    await this.cartService.updateQuantity(item.id, item.quantity + 1);
+  }
+
+  /** Removes item from cart entirely */
+  async removeItem(item: CartItem): Promise<void> {
+    await this.cartService.removeItem(item.id);
+  }
+
+  //#endregion
+
   //#region Helpers
 
   extrasLabel(item: CartItem): string {

@@ -82,12 +82,67 @@
   &:last-child { border-bottom: none; }
 }
 
+// -----------------------------------------------------------------------
+// Quantity controls (−  qty  +)
+// -----------------------------------------------------------------------
+.kiosk-summary__qty-controls {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  flex-shrink: 0;
+}
+
+.kiosk-summary__qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  background: transparent;
+  color: $color-text-sub;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+
+  i { font-size: 16px; }
+
+  &:hover  { background: #F3F4F6; border-color: #D1D5DB; }
+  &:active { transform: scale(0.93); }
+}
+
 .kiosk-summary__qty {
   font-size: 20px;
   font-weight: 700;
   color: $color-primary;
-  min-width: 36px;
+  min-width: 28px;
+  text-align: center;
   flex-shrink: 0;
+}
+
+// -----------------------------------------------------------------------
+// Remove button (trash icon)
+// -----------------------------------------------------------------------
+.kiosk-summary__remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  background: transparent;
+  color: $color-text-sub;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+
+  i { font-size: 17px; }
+
+  &:hover  { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
+  &:active { transform: scale(0.93); }
 }
 
 .kiosk-summary__item-info {
