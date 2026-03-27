@@ -98,6 +98,48 @@
   }
 
   // -----------------------------------------------------------------------
+  // Sync queue indicator
+  // -----------------------------------------------------------------------
+  &__sync {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+
+    &--active {
+      color: $color-text-sub;
+    }
+
+    &--pending {
+      color: #D97706;
+    }
+
+    &-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 10px;
+      background: #D97706;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    &-spin {
+      animation: sync-rotate 1s linear infinite;
+    }
+  }
+
+  @keyframes sync-rotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  // -----------------------------------------------------------------------
   // Notification permission button (visible only when permission is 'default')
   // -----------------------------------------------------------------------
   &__notify-btn {

@@ -18,6 +18,7 @@ import { InventoryService } from '../../../../core/services/inventory.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { PwaService } from '../../../../core/services/pwa.service';
+import { SyncService } from '../../../../core/services/sync.service';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -76,6 +77,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   private readonly messageService = inject(MessageService);
   private readonly http = inject(HttpClient);
   readonly pwaService = inject(PwaService);
+  readonly syncService = inject(SyncService);
 
   private readonly onOnline  = (): void => this.isOnline.set(true);
   private readonly onOffline = (): void => this.isOnline.set(false);

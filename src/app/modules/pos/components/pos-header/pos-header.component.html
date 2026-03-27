@@ -13,15 +13,28 @@
 
   <!-- Right side: order number + connection status + settings -->
   <div class="pos-header__right">
-    <div
-      class="pos-header__status"
-      [class.pos-header__status--online]="isOnline()"
-      [class.pos-header__status--offline]="!isOnline()"
-      [attr.aria-label]="isOnline() ? 'Conectado' : 'Sin conexión'"
-    >
-      <span class="pos-header__status-dot"></span>
-      <span class="pos-header__status-label">{{ isOnline() ? 'En línea' : 'Sin conexión' }}</span>
-    </div>
+    <!-- Sync status indicator -->
+    @if (syncService.isSyncing()) {
+      <div class="pos-header__sync pos-header__sync--active">
+        <i class="pi pi-sync pos-header__sync-spin"></i>
+        <span>Sincronizando...</span>
+      </div>
+    } @else if (syncService.pendingCount() > 0) {
+      <div class="pos-header__sync pos-header__sync--pending">
+        <span class="pos-header__sync-badge">{{ syncService.pendingCount() }}</span>
+        <span>{{ syncService.pendingCount() === 1 ? 'orden pendiente' : 'órdenes pendientes' }}</span>
+      </div>
+    } @else {
+      <div
+        class="pos-header__status"
+        [class.pos-header__status--online]="isOnline()"
+        [class.pos-header__status--offline]="!isOnline()"
+        [attr.aria-label]="isOnline() ? 'Conectado' : 'Sin conexión'"
+      >
+        <span class="pos-header__status-dot"></span>
+        <span class="pos-header__status-label">{{ isOnline() ? 'En línea' : 'Sin conexión' }}</span>
+      </div>
+    }
 
     @if (pwaService.notificationStatus() === 'default') {
       <button
