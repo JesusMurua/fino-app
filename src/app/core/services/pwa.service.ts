@@ -1,4 +1,6 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
+import { filter } from 'rxjs';
 
 /**
  * Minimal typing for the beforeinstallprompt event.
@@ -12,14 +14,17 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISSED_KEY = 'pos_install_dismissed';
 
 /**
- * Manages PWA install prompt state.
+ * Manages PWA install prompt and Service Worker update state.
  *
  * - Captures the browser's `beforeinstallprompt` event (Android / Desktop).
  * - Detects iOS devices where the prompt must be shown manually.
- * - Exposes a `canShowBanner` signal consumed by InstallBannerComponent.
+ * - Listens for SW version updates via SwUpdate.
+ * - Exposes signals consumed by InstallBannerComponent and UpdateBannerComponent.
  */
 @Injectable({ providedIn: 'root' })
 export class PwaService {
+
+  private readonly swUpdate = inject(SwUpdate);
 
   //#region Private Signals
 
@@ -57,6 +62,9 @@ export class PwaService {
     (this.deferredPrompt() !== null || this.isIos()),
   );
 
+  /** True when a new SW version has been downloaded and is ready to activate */
+  readonly updateAvailable = signal(false);
+
   //#endregion
 
   //#region Constructor
@@ -71,6 +79,13 @@ export class PwaService {
       this.isInstalled.set(true);
       this.deferredPrompt.set(null);
     });
+
+    // Listen for SW version updates
+    if (this.swUpdate.isEnabled) {
+      this.swUpdate.versionUpdates.pipe(
+        filter((e): e is VersionReadyEvent => e.type === 'VERSION_READY'),
+      ).subscribe(() => this.updateAvailable.set(true));
+    }
   }
 
   //#endregion
@@ -84,6 +99,13 @@ export class PwaService {
     prompt.prompt();
     await prompt.userChoice;
     this.deferredPrompt.set(null);
+  }
+
+  /** Activates the new SW version and reloads the page */
+  async applyUpdate(): Promise<void> {
+    if (!this.swUpdate.isEnabled) return;
+    await this.swUpdate.activateUpdate();
+    document.location.reload();
   }
 
   /** Hides the banner and persists the dismissal */
