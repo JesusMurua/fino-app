@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { setupGuard } from './core/guards/setup.guard';
 
 export const appRoutes: Routes = [
   {
@@ -45,11 +46,13 @@ export const appRoutes: Routes = [
   },
   {
     path: 'pin',
+    canActivate: [setupGuard],
     loadComponent: () =>
       import('./modules/pin/pin.component').then(m => m.PinComponent),
   },
   {
     path: 'login',
+    canActivate: [setupGuard],
     loadComponent: () =>
       import('./modules/login/login.component').then(m => m.LoginComponent),
   },
@@ -65,6 +68,8 @@ export const appRoutes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'pin',
+    canActivate: [setupGuard],
+    loadComponent: () =>
+      import('./modules/pin/pin.component').then(m => m.PinComponent),
   },
 ];
