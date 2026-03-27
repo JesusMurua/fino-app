@@ -11,42 +11,126 @@
 }
 
 // -----------------------------------------------------------------------
-// Header
+// Image carousel
 // -----------------------------------------------------------------------
-.kiosk-detail__header {
-  display: flex;
-  align-items: center;
-  gap: $space-4;
-  padding: $space-4 $space-5;
-  background: white;
-  border-bottom: 1px solid $color-border-soft;
+.kiosk-detail__carousel {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  background: $color-primary-light;
   flex-shrink: 0;
+  overflow: hidden;
+
+  &--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.kiosk-detail__carousel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.kiosk-detail__placeholder-icon {
+  font-size: 64px;
+  color: $color-primary;
+  opacity: 0.4;
 }
 
 .kiosk-detail__back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
-  min-height: 80px;
-  border: 2px solid #E5E7EB;
-  border-radius: 16px;
+  min-width: 48px;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
   background: transparent;
   color: $color-text-sub;
   cursor: pointer;
   transition: background 0.15s;
   flex-shrink: 0;
 
-  i { font-size: 22px; }
+  i { font-size: 20px; }
 
-  &:hover { background: #F3F4F6; }
+  &:hover { background: rgba(0, 0, 0, 0.1); }
   &:active { transform: scale(0.95); }
+
+  &--overlay {
+    position: absolute;
+    top: $space-3;
+    left: $space-3;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.85);
+    color: $color-text-title;
+
+    &:hover { background: white; }
+  }
 }
 
-.kiosk-detail__info {
+.kiosk-detail__carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: $color-text-title;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s;
+
+  i { font-size: 16px; }
+
+  &:hover { background: white; }
+
+  &--prev { left: $space-3; }
+  &--next { right: $space-3; }
+}
+
+.kiosk-detail__carousel-dots {
+  position: absolute;
+  bottom: $space-3;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: $space-2;
+  z-index: 2;
+}
+
+.kiosk-detail__dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+
+  &--active {
+    background: white;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Product info (name, price, description)
+// -----------------------------------------------------------------------
+.kiosk-detail__product-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: $space-4 $space-5;
+  background: white;
 }
 
 .kiosk-detail__name {
@@ -57,7 +141,15 @@
 }
 
 .kiosk-detail__base-price {
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 700;
+  color: $color-primary;
+}
+
+.kiosk-detail__description {
+  margin: $space-2 0 0;
+  font-size: 15px;
+  line-height: 1.5;
   color: $color-text-sub;
 }
 

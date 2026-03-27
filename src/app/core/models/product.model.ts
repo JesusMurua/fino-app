@@ -20,16 +20,31 @@ export interface ProductExtra {
 }
 
 /**
+ * An image associated with a product, stored in the backend.
+ */
+export interface ProductImage {
+  id: number;
+  productId: number;
+  url: string;
+  sortOrder: number;
+}
+
+/**
  * A product shown in the catalog grid.
  * All monetary values are stored in cents to avoid floating-point errors.
  */
 export interface Product {
   id: number;
   name: string;
+  /** Optional product description (ingredients, details, etc.) */
+  description?: string;
   /** Base price in cents (e.g. 4500 = $45.00 MXN) */
   priceCents: number;
   categoryId: number;
+  /** Legacy single image URL — kept for backward compatibility */
   imageUrl?: string;
+  /** Multiple product images ordered by sortOrder */
+  images?: ProductImage[];
   isAvailable: boolean;
   isPopular?: boolean;
   /** Whether this product tracks its own stock (useful for retail/abarrotes) */

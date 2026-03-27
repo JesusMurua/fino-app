@@ -1,7 +1,9 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, forkJoin } from 'rxjs';
 
-import { Category, Product } from '../models';
+import { environment } from '../../../environments/environment';
+import { Category, Product, ProductImage } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -55,6 +57,7 @@ export class ProductService {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
+    private readonly http: HttpClient,
     private readonly inventoryService: InventoryService,
     private readonly authService: AuthService,
   ) {}
@@ -121,6 +124,39 @@ export class ProductService {
   selectCategory(categoryId: number | null): void {
     this._selectedCategoryId.set(categoryId);
   }
+  //#endregion
+
+  //#region Product Image Methods
+
+  /**
+   * Uploads an image file for a product.
+   * Uses HttpClient directly because FormData requires multipart encoding.
+   * @param productId Product to attach the image to
+   * @param file Image file selected by the user
+   * @returns The created ProductImage from the API
+   */
+  async uploadProductImage(productId: number, file: File): Promise<ProductImage> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return firstValueFrom(
+      this.http.post<ProductImage>(
+        `${environment.apiUrl}/products/${productId}/images`,
+        formData,
+      ),
+    );
+  }
+
+  /**
+   * Deletes a product image from the backend.
+   * @param productId Product the image belongs to
+   * @param imageId Image to delete
+   */
+  async deleteProductImage(productId: number, imageId: number): Promise<void> {
+    await firstValueFrom(
+      this.api.delete(`/products/${productId}/images/${imageId}`),
+    );
+  }
+
   //#endregion
 
   //#region Private Helpers

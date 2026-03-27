@@ -15,10 +15,11 @@ import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
-import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImportPreview, ProductImportResult } from '../../../../core/models';
+import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult } from '../../../../core/models';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { DiscountService } from '../../../../core/services/discount.service';
@@ -43,6 +44,7 @@ interface ProductExtraForm {
 /** Shape of the product form used in the create/edit dialog */
 interface ProductForm {
   name: string;
+  description: string;
   priceCents: number;
   categoryId: number | null;
   isAvailable: boolean;
@@ -84,6 +86,7 @@ interface DiscountForm {
     TableModule,
     TabViewModule,
     TooltipModule,
+    InputTextareaModule,
     PricePipe,
     RadioButtonModule,
     ConfirmDialogModule,
@@ -140,6 +143,11 @@ export class AdminProductsComponent implements OnInit {
   readonly movementProduct = signal<Product | null>(null);
   readonly productMovements = signal<InventoryMovement[]>([]);
   readonly loadingMovements = signal(false);
+
+  // ---- Product images (edit mode only) ----
+  readonly productImages = signal<ProductImage[]>([]);
+  readonly uploadingImage = signal(false);
+  static readonly MAX_IMAGES = 5;
 
   /** Available PrimeIcons for category selection */
   readonly iconOptions: { label: string; value: string }[] = [
@@ -209,6 +217,7 @@ export class AdminProductsComponent implements OnInit {
   openCreate(): void {
     this.editingProduct = null;
     this.form = this.emptyProductForm();
+    this.productImages.set([]);
     this.dialogVisible = true;
   }
 
@@ -216,6 +225,7 @@ export class AdminProductsComponent implements OnInit {
     this.editingProduct = product;
     this.form = {
       name: product.name,
+      description: product.description ?? '',
       priceCents: product.priceCents,
       categoryId: product.categoryId,
       isAvailable: product.isAvailable,
@@ -225,6 +235,7 @@ export class AdminProductsComponent implements OnInit {
       sizes:  product.sizes.map(s => ({ label: s.label, priceDeltaCents: s.priceDeltaCents })),
       extras: product.extras.map(e => ({ label: e.label, priceCents: e.priceCents })),
     };
+    this.productImages.set(product.images ?? []);
     this.dialogVisible = true;
   }
 
@@ -245,6 +256,7 @@ export class AdminProductsComponent implements OnInit {
 
     const payload = {
       name: this.form.name.trim(),
+      description: this.form.description.trim() || undefined,
       priceCents: this.form.priceCents,
       categoryId: this.form.categoryId,
       isAvailable: this.form.isAvailable,
@@ -280,6 +292,37 @@ export class AdminProductsComponent implements OnInit {
 
     this.dialogVisible = false;
     await this.loadData();
+  }
+
+  /** Handles image file selection and uploads to the API */
+  async onImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length || !this.editingProduct) return;
+    if (this.productImages().length >= AdminProductsComponent.MAX_IMAGES) return;
+
+    this.uploadingImage.set(true);
+    try {
+      const image = await this.productService.uploadProductImage(
+        this.editingProduct.id, input.files[0],
+      );
+      this.productImages.update(imgs => [...imgs, image]);
+    } catch (e) {
+      console.warn('Image upload failed:', e);
+    } finally {
+      this.uploadingImage.set(false);
+      input.value = '';
+    }
+  }
+
+  /** Deletes a product image from the API */
+  async deleteImage(imageId: number): Promise<void> {
+    if (!this.editingProduct) return;
+    try {
+      await this.productService.deleteProductImage(this.editingProduct.id, imageId);
+      this.productImages.update(imgs => imgs.filter(i => i.id !== imageId));
+    } catch (e) {
+      console.warn('Image delete failed:', e);
+    }
   }
 
   async toggleActive(product: Product): Promise<void> {
@@ -667,7 +710,7 @@ export class AdminProductsComponent implements OnInit {
   }
 
   private emptyProductForm(): ProductForm {
-    return { name: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [] };
+    return { name: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [] };
   }
 
   private emptyCatForm(): CategoryForm {

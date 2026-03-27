@@ -40,7 +40,16 @@
         (click)="onProductTapped(product)"
       >
         <div class="kiosk-card__icon-box">
-          <i class="pi pi-box"></i>
+          @if (product.imageUrl || product.images?.[0]?.url) {
+            <img
+              [src]="product.imageUrl || product.images![0].url"
+              [alt]="product.name"
+              class="kiosk-card__img"
+              loading="lazy"
+            />
+          } @else {
+            <i class="pi pi-shopping-bag"></i>
+          }
         </div>
         <span class="kiosk-card__name">{{ product.name }}</span>
         <span class="kiosk-card__price">{{ product.priceCents | price }}</span>

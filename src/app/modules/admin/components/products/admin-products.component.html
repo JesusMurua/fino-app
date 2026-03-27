@@ -336,6 +336,21 @@
     </div>
 
     <div class="form-field">
+      <label class="form-field__label" for="pf-desc">Descripción (opcional)</label>
+      <textarea
+        id="pf-desc"
+        pInputTextarea
+        [(ngModel)]="form.description"
+        [autoResize]="true"
+        [maxlength]="1000"
+        rows="2"
+        placeholder="Describe el producto, ingredientes, etc."
+        class="form-field__input"
+      ></textarea>
+      <span class="form-hint">{{ form.description.length }} / 1000</span>
+    </div>
+
+    <div class="form-field">
       <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
       <p-inputNumber
         inputId="pf-price"
@@ -405,6 +420,54 @@
           </div>
         </div>
         <p class="form-hint">Al vender este producto se descontará el stock automáticamente.</p>
+      }
+    </div>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Images (edit mode only)                                             -->
+    <!-- ------------------------------------------------------------------ -->
+    <div class="form-section">
+      <div class="form-section__header">
+        <span class="form-section__title">Imágenes</span>
+        <span class="form-section__hint">Máximo 5 imágenes</span>
+      </div>
+
+      @if (!editingProduct) {
+        <p class="form-hint">Guarda el producto primero para poder agregar imágenes.</p>
+      } @else {
+        <div class="image-grid">
+          @for (img of productImages(); track img.id) {
+            <div class="image-grid__item">
+              <img [src]="img.url" [alt]="'Imagen del producto'" class="image-grid__img" />
+              <button
+                type="button"
+                class="image-grid__remove"
+                aria-label="Eliminar imagen"
+                (click)="deleteImage(img.id)"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          }
+
+          @if (productImages().length < 5) {
+            <label class="image-grid__add" (click)="imgInput.click()">
+              <input
+                #imgInput
+                type="file"
+                accept="image/*"
+                (change)="onImageSelected($event)"
+                hidden
+              />
+              @if (uploadingImage()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-plus"></i>
+                <span>Agregar</span>
+              }
+            </label>
+          }
+        </div>
       }
     </div>
 

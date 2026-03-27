@@ -1,21 +1,78 @@
 @if (product(); as p) {
   <div class="kiosk-detail">
 
-    <!-- Header with back button -->
-    <header class="kiosk-detail__header">
-      <button
-        type="button"
-        class="kiosk-detail__back"
-        aria-label="Regresar al catálogo"
-        (click)="goBack()"
-      >
-        <i class="pi pi-arrow-left"></i>
-      </button>
-      <div class="kiosk-detail__info">
-        <h1 class="kiosk-detail__name">{{ p.name }}</h1>
-        <span class="kiosk-detail__base-price">Precio base: {{ p.priceCents | price }}</span>
+    <!-- Image carousel -->
+    @if (allImageUrls().length > 0) {
+      <div class="kiosk-detail__carousel">
+        <button
+          type="button"
+          class="kiosk-detail__back kiosk-detail__back--overlay"
+          aria-label="Regresar al catálogo"
+          (click)="goBack()"
+        >
+          <i class="pi pi-arrow-left"></i>
+        </button>
+
+        <img
+          [src]="allImageUrls()[activeImageIndex()]"
+          [alt]="p.name"
+          class="kiosk-detail__carousel-img"
+        />
+
+        @if (allImageUrls().length > 1) {
+          <button
+            type="button"
+            class="kiosk-detail__carousel-nav kiosk-detail__carousel-nav--prev"
+            aria-label="Imagen anterior"
+            (click)="prevImage()"
+          >
+            <i class="pi pi-chevron-left"></i>
+          </button>
+          <button
+            type="button"
+            class="kiosk-detail__carousel-nav kiosk-detail__carousel-nav--next"
+            aria-label="Imagen siguiente"
+            (click)="nextImage()"
+          >
+            <i class="pi pi-chevron-right"></i>
+          </button>
+
+          <div class="kiosk-detail__carousel-dots">
+            @for (url of allImageUrls(); track $index) {
+              <button
+                type="button"
+                class="kiosk-detail__dot"
+                [class.kiosk-detail__dot--active]="activeImageIndex() === $index"
+                (click)="goToImage($index)"
+                [attr.aria-label]="'Imagen ' + ($index + 1)"
+              ></button>
+            }
+          </div>
+        }
       </div>
-    </header>
+    } @else {
+      <!-- No images — placeholder with back button -->
+      <div class="kiosk-detail__carousel kiosk-detail__carousel--placeholder">
+        <button
+          type="button"
+          class="kiosk-detail__back kiosk-detail__back--overlay"
+          aria-label="Regresar al catálogo"
+          (click)="goBack()"
+        >
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <i class="pi pi-shopping-bag kiosk-detail__placeholder-icon"></i>
+      </div>
+    }
+
+    <!-- Product info -->
+    <div class="kiosk-detail__product-info">
+      <h1 class="kiosk-detail__name">{{ p.name }}</h1>
+      <span class="kiosk-detail__base-price">{{ p.priceCents | price }}</span>
+      @if (p.description) {
+        <p class="kiosk-detail__description">{{ p.description }}</p>
+      }
+    </div>
 
     <div class="kiosk-detail__divider"></div>
 
