@@ -317,251 +317,280 @@
   [(visible)]="dialogVisible"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '560px' }"
+  [style]="{ width: '600px', 'max-height': '85vh' }"
+  [contentStyle]="{ padding: '0', overflow: 'hidden' }"
   [draggable]="false"
 >
-  <div class="product-form">
+  <p-tabView styleClass="product-dialog-tabs">
 
-    <!-- Basic fields -->
-    <div class="form-field">
-      <label class="form-field__label" for="pf-name">Nombre</label>
-      <input
-        id="pf-name"
-        type="text"
-        pInputText
-        [(ngModel)]="form.name"
-        placeholder="Ej. Torta de Milanesa"
-        class="form-field__input"
-      />
-    </div>
+    <!-- ================================================================ -->
+    <!-- TAB 1 — Info básica                                               -->
+    <!-- ================================================================ -->
+    <p-tabPanel header="Info básica">
+      <div class="product-form product-form--scrollable">
 
-    <div class="form-field">
-      <label class="form-field__label" for="pf-desc">Descripción (opcional)</label>
-      <textarea
-        id="pf-desc"
-        pInputTextarea
-        [(ngModel)]="form.description"
-        [autoResize]="true"
-        [maxlength]="1000"
-        rows="2"
-        placeholder="Describe el producto, ingredientes, etc."
-        class="form-field__input"
-      ></textarea>
-      <span class="form-hint">{{ form.description.length }} / 1000</span>
-    </div>
-
-    <div class="form-field">
-      <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
-      <p-inputNumber
-        inputId="pf-price"
-        mode="currency"
-        currency="MXN"
-        locale="es-MX"
-        [min]="0"
-        [ngModel]="form.priceCents / 100"
-        (onInput)="onPriceChange($event.value)"
-        styleClass="form-field__input"
-      />
-    </div>
-
-    <div class="form-field">
-      <label class="form-field__label" for="pf-category">Categoría</label>
-      <p-dropdown
-        inputId="pf-category"
-        [options]="categories()"
-        optionLabel="name"
-        optionValue="id"
-        [(ngModel)]="form.categoryId"
-        placeholder="Seleccionar categoría"
-        styleClass="form-field__input"
-        [appendTo]="'body'"
-      />
-    </div>
-
-    <div class="form-field form-field--row">
-      <label class="form-field__label" for="pf-active">Disponible</label>
-      <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
-    </div>
-
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Stock control                                                       -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Control de stock</span>
-      </div>
-
-      <div class="form-field form-field--row">
-        <label class="form-field__label" for="pf-track-stock">Controlar stock de este producto</label>
-        <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
-      </div>
-
-      @if (form.trackStock) {
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-field__label" for="pf-stock">Stock inicial</label>
-            <p-inputNumber
-              inputId="pf-stock"
-              [(ngModel)]="form.currentStock"
-              [min]="0"
-              placeholder="0"
-              styleClass="w-full"
-            />
-          </div>
-          <div class="form-field">
-            <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
-            <p-inputNumber
-              inputId="pf-threshold"
-              [(ngModel)]="form.lowStockThreshold"
-              [min]="0"
-              placeholder="0"
-              styleClass="w-full"
-            />
-          </div>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-name">Nombre</label>
+          <input
+            id="pf-name"
+            type="text"
+            pInputText
+            [(ngModel)]="form.name"
+            placeholder="Ej. Torta de Milanesa"
+            class="form-field__input"
+          />
         </div>
-        <p class="form-hint">Al vender este producto se descontará el stock automáticamente.</p>
-      }
-    </div>
 
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Images (edit mode only)                                             -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Imágenes</span>
-        <span class="form-section__hint">Máximo 5 imágenes</span>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
+          <p-inputNumber
+            inputId="pf-price"
+            mode="currency"
+            currency="MXN"
+            locale="es-MX"
+            [min]="0"
+            [ngModel]="form.priceCents / 100"
+            (onInput)="onPriceChange($event.value)"
+            styleClass="form-field__input"
+          />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-category">Categoría</label>
+          <p-dropdown
+            inputId="pf-category"
+            [options]="categories()"
+            optionLabel="name"
+            optionValue="id"
+            [(ngModel)]="form.categoryId"
+            placeholder="Seleccionar categoría"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+          />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-desc">Descripción (opcional)</label>
+          <textarea
+            id="pf-desc"
+            pInputTextarea
+            [(ngModel)]="form.description"
+            [autoResize]="true"
+            [maxlength]="1000"
+            rows="2"
+            placeholder="Describe el producto, ingredientes, etc."
+            class="form-field__input"
+          ></textarea>
+          <span class="form-hint">{{ form.description.length }} / 1000</span>
+        </div>
+
+        <div class="form-field form-field--row">
+          <label class="form-field__label" for="pf-active">Disponible</label>
+          <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
+        </div>
+
+        <!-- Stock control -->
+        <div class="form-section">
+          <div class="form-section__header">
+            <span class="form-section__title">Control de stock</span>
+          </div>
+
+          <div class="form-field form-field--row">
+            <label class="form-field__label" for="pf-track-stock">Controlar stock de este producto</label>
+            <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
+          </div>
+
+          @if (form.trackStock) {
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-field__label" for="pf-stock">Stock inicial</label>
+                <p-inputNumber
+                  inputId="pf-stock"
+                  [(ngModel)]="form.currentStock"
+                  [min]="0"
+                  placeholder="0"
+                  styleClass="w-full"
+                />
+              </div>
+              <div class="form-field">
+                <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
+                <p-inputNumber
+                  inputId="pf-threshold"
+                  [(ngModel)]="form.lowStockThreshold"
+                  [min]="0"
+                  placeholder="0"
+                  styleClass="w-full"
+                />
+              </div>
+            </div>
+            <p class="form-hint">Al vender este producto se descontará el stock automáticamente.</p>
+          }
+        </div>
+
       </div>
+    </p-tabPanel>
 
-      @if (!editingProduct) {
-        <p class="form-hint">Guarda el producto primero para poder agregar imágenes.</p>
-      } @else {
-        <div class="image-grid">
-          @for (img of productImages(); track img.id) {
-            <div class="image-grid__item">
-              <img [src]="img.url" [alt]="'Imagen del producto'" class="image-grid__img" />
+    <!-- ================================================================ -->
+    <!-- TAB 2 — Imágenes                                                  -->
+    <!-- ================================================================ -->
+    <p-tabPanel>
+      <ng-template pTemplate="header">
+        <span>Imágenes</span>
+        @if (productImages().length > 0) {
+          <span class="tab-badge">{{ productImages().length }}</span>
+        }
+      </ng-template>
+
+      <div class="product-form product-form--scrollable">
+        @if (!editingProduct) {
+          <div class="tab-empty-state">
+            <i class="pi pi-image tab-empty-state__icon"></i>
+            <p class="tab-empty-state__text">Guarda el producto primero para agregar imágenes.</p>
+          </div>
+        } @else {
+          <p class="form-hint" style="margin-bottom: 8px">Máximo 5 imágenes por producto.</p>
+          <div class="image-grid">
+            @for (img of productImages(); track img.id) {
+              <div class="image-grid__item">
+                <img [src]="img.url" [alt]="'Imagen del producto'" class="image-grid__img" />
+                <button
+                  type="button"
+                  class="image-grid__remove"
+                  aria-label="Eliminar imagen"
+                  (click)="deleteImage(img.id)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+
+            @if (productImages().length < 5) {
+              <label class="image-grid__add" (click)="imgInput.click()">
+                <input
+                  #imgInput
+                  type="file"
+                  accept="image/*"
+                  (change)="onImageSelected($event)"
+                  hidden
+                />
+                @if (uploadingImage()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                  <i class="pi pi-plus"></i>
+                  <span>Agregar</span>
+                }
+              </label>
+            }
+          </div>
+        }
+      </div>
+    </p-tabPanel>
+
+    <!-- ================================================================ -->
+    <!-- TAB 3 — Precios y extras                                          -->
+    <!-- ================================================================ -->
+    <p-tabPanel>
+      <ng-template pTemplate="header">
+        <span>Precios y extras</span>
+        @if (form.sizes.length > 0 || form.extras.length > 0) {
+          <span class="tab-badge">{{ form.sizes.length + form.extras.length }}</span>
+        }
+      </ng-template>
+
+      <div class="product-form product-form--scrollable">
+
+        <p class="form-hint">Los tamaños y extras son opcionales. Solo agrégalos si tu producto los necesita.</p>
+
+        <!-- Sizes -->
+        <div class="form-section">
+          <div class="form-section__header">
+            <span class="form-section__title">Tamaños</span>
+            <span class="form-section__hint">Precio = base + cargo extra</span>
+          </div>
+
+          @for (size of form.sizes; track $index) {
+            <div class="variant-row">
+              <input
+                type="text"
+                pInputText
+                [(ngModel)]="size.label"
+                placeholder="Ej. Chico, Grande"
+                class="variant-row__name"
+              />
+              <p-inputNumber
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [min]="0"
+                [ngModel]="size.priceDeltaCents / 100"
+                (onInput)="onSizePriceChange($index, $event.value)"
+                styleClass="variant-row__price"
+                placeholder="+$0.00"
+              />
               <button
                 type="button"
-                class="image-grid__remove"
-                aria-label="Eliminar imagen"
-                (click)="deleteImage(img.id)"
+                class="btn-icon btn-icon--danger"
+                aria-label="Eliminar tamaño"
+                (click)="removeSize($index)"
               >
-                <i class="pi pi-times"></i>
+                <i class="pi pi-trash"></i>
               </button>
             </div>
           }
 
-          @if (productImages().length < 5) {
-            <label class="image-grid__add" (click)="imgInput.click()">
+          <button type="button" class="btn-add-variant" (click)="addSize()">
+            <i class="pi pi-plus"></i>
+            Agregar tamaño
+          </button>
+        </div>
+
+        <!-- Extras -->
+        <div class="form-section">
+          <div class="form-section__header">
+            <span class="form-section__title">Extras</span>
+            <span class="form-section__hint">Precio $0 = gratis</span>
+          </div>
+
+          @for (extra of form.extras; track $index) {
+            <div class="variant-row">
               <input
-                #imgInput
-                type="file"
-                accept="image/*"
-                (change)="onImageSelected($event)"
-                hidden
+                type="text"
+                pInputText
+                [(ngModel)]="extra.label"
+                placeholder="Ej. Sin cebolla, Queso extra"
+                class="variant-row__name"
               />
-              @if (uploadingImage()) {
-                <i class="pi pi-spin pi-spinner"></i>
-              } @else {
-                <i class="pi pi-plus"></i>
-                <span>Agregar</span>
-              }
-            </label>
+              <p-inputNumber
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [min]="0"
+                [ngModel]="extra.priceCents / 100"
+                (onInput)="onExtraPriceChange($index, $event.value)"
+                styleClass="variant-row__price"
+                placeholder="$0.00"
+              />
+              <button
+                type="button"
+                class="btn-icon btn-icon--danger"
+                aria-label="Eliminar extra"
+                (click)="removeExtra($index)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
           }
-        </div>
-      }
-    </div>
 
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Sizes                                                               -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Tamaños</span>
-        <span class="form-section__hint">Precio = base + cargo extra</span>
-      </div>
-
-      @for (size of form.sizes; track $index) {
-        <div class="variant-row">
-          <input
-            type="text"
-            pInputText
-            [(ngModel)]="size.label"
-            placeholder="Ej. Chico, Grande"
-            class="variant-row__name"
-          />
-          <p-inputNumber
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            [ngModel]="size.priceDeltaCents / 100"
-            (onInput)="onSizePriceChange($index, $event.value)"
-            styleClass="variant-row__price"
-            placeholder="+$0.00"
-          />
-          <button
-            type="button"
-            class="btn-icon btn-icon--danger"
-            aria-label="Eliminar tamaño"
-            (click)="removeSize($index)"
-          >
-            <i class="pi pi-trash"></i>
+          <button type="button" class="btn-add-variant" (click)="addExtra()">
+            <i class="pi pi-plus"></i>
+            Agregar extra
           </button>
         </div>
-      }
 
-      <button type="button" class="btn-add-variant" (click)="addSize()">
-        <i class="pi pi-plus"></i>
-        Agregar tamaño
-      </button>
-    </div>
-
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Extras                                                              -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Extras</span>
-        <span class="form-section__hint">Precio $0 = gratis</span>
       </div>
+    </p-tabPanel>
 
-      @for (extra of form.extras; track $index) {
-        <div class="variant-row">
-          <input
-            type="text"
-            pInputText
-            [(ngModel)]="extra.label"
-            placeholder="Ej. Sin cebolla, Queso extra"
-            class="variant-row__name"
-          />
-          <p-inputNumber
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            [ngModel]="extra.priceCents / 100"
-            (onInput)="onExtraPriceChange($index, $event.value)"
-            styleClass="variant-row__price"
-            placeholder="$0.00"
-          />
-          <button
-            type="button"
-            class="btn-icon btn-icon--danger"
-            aria-label="Eliminar extra"
-            (click)="removeExtra($index)"
-          >
-            <i class="pi pi-trash"></i>
-          </button>
-        </div>
-      }
-
-      <button type="button" class="btn-add-variant" (click)="addExtra()">
-        <i class="pi pi-plus"></i>
-        Agregar extra
-      </button>
-    </div>
-
-  </div>
+  </p-tabView>
 
   <ng-template pTemplate="footer">
     <button type="button" class="btn-ghost" (click)="closeDialog()">Cancelar</button>

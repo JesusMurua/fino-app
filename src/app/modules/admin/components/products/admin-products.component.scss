@@ -187,6 +187,53 @@
 }
 
 // -----------------------------------------------------------------------
+// Product dialog tabs
+// -----------------------------------------------------------------------
+:host ::ng-deep .product-dialog-tabs {
+  .p-tabview-panels {
+    padding: 0 !important;
+  }
+  .p-tabview-nav-container {
+    padding: 0 $space-4;
+  }
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: $color-primary;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: $space-2;
+}
+
+.tab-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6 $space-4;
+  text-align: center;
+
+  &__icon {
+    font-size: 48px;
+    color: #D1D5DB;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
 // Dialog form
 // -----------------------------------------------------------------------
 .product-form {
@@ -194,6 +241,12 @@
   flex-direction: column;
   gap: $space-4;
   padding: $space-2 0;
+
+  &--scrollable {
+    max-height: calc(85vh - 200px);
+    overflow-y: auto;
+    padding: $space-4;
+  }
 }
 
 .form-field {
