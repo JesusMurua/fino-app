@@ -31,6 +31,24 @@ export interface MergeOrdersResult {
   sourceTableName: string;
 }
 
+/** A group of items to become a separate order when splitting */
+export interface SplitGroup {
+  itemIds: number[];
+  label: string;
+}
+
+/** Result of splitting an order into multiple orders by items */
+export interface SplitResult {
+  splitOrders: {
+    id: string;
+    folioNumber: string;
+    label: string;
+    totalCents: number;
+    itemCount: number;
+  }[];
+  sourceOrderCancelled: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TableService {
 
@@ -80,6 +98,40 @@ export class TableService {
     return this.http.post<MergeOrdersResult>(
       `${this.baseUrl}/orders/${targetOrderId}/merge`,
       { sourceOrderId },
+    );
+  }
+
+  /**
+   * Splits an order into multiple orders by item groups.
+   * Creates a new order per split group. Source order is cancelled.
+   * @param orderId Source order to split
+   * @param splits Array of item groups with labels
+   */
+  splitOrderByItems(
+    orderId: string,
+    splits: SplitGroup[],
+  ): Observable<SplitResult> {
+    return this.http.post<SplitResult>(
+      `${this.baseUrl}/orders/${orderId}/split`,
+      { splits },
+    );
+  }
+
+  /**
+   * Registers a single payment on an existing order.
+   * Used for equal-split sequential payment flow.
+   * @param orderId The order to pay
+   * @param method Payment method enum value
+   * @param amountCents Amount in cents
+   */
+  addPayment(
+    orderId: string,
+    method: string,
+    amountCents: number,
+  ): Observable<unknown> {
+    return this.http.post(
+      `${this.baseUrl}/orders/${orderId}/payments`,
+      { method, amountCents },
     );
   }
 

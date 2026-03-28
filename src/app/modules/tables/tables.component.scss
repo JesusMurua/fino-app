@@ -669,3 +669,302 @@
 
   strong { color: $color-text-title; }
 }
+
+// -----------------------------------------------------------------------
+// Split bill dialog
+// -----------------------------------------------------------------------
+.split-mode-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-3;
+}
+
+.split-mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-5 $space-4;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition: border-color 0.15s;
+
+  &:hover { border-color: $color-primary; }
+
+  &__icon { font-size: 24px; color: $color-primary; }
+  &__title { font-size: 14px; font-weight: 600; color: $color-text-title; }
+  &__desc  { font-size: 12px; color: $color-text-sub; }
+}
+
+.split-back {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  border: none;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: $space-3;
+
+  i { font-size: 12px; }
+  &:hover { color: $color-text-title; }
+}
+
+.split-total-display {
+  font-size: 14px;
+  color: $color-text-sub;
+  margin-bottom: $space-3;
+
+  strong { color: $color-text-title; font-weight: 700; }
+}
+
+.split-label {
+  margin: 0 0 $space-2;
+  font-size: 13px;
+  font-weight: 500;
+  color: $color-text-title;
+}
+
+.split-parts-row {
+  display: flex;
+  gap: $space-2;
+  margin-bottom: $space-3;
+}
+
+.split-parts-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid #E5E7EB;
+  background: white;
+  color: $color-text-title;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  &:hover { border-color: $color-primary; }
+
+  &--active {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+  }
+}
+
+.split-preview {
+  background: #F0FDF4;
+  border-radius: 10px;
+  padding: $space-3;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: $color-primary;
+}
+
+// ---- Equal split payment flow ----
+.split-payment-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: $color-text-title;
+  text-align: center;
+  margin-bottom: $space-3;
+}
+
+.split-progress-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: $space-4;
+}
+
+.split-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E5E7EB;
+
+  &--active { background: $color-primary; }
+  &--done   { background: #86EFAC; }
+}
+
+// ---- Items split ----
+.split-items-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+}
+
+.split-col-title {
+  margin: 0 0 $space-2;
+  font-size: 12px;
+  font-weight: 600;
+  color: $color-text-sub;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.split-unassigned {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.split-item-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: $space-2;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: white;
+
+  &__name {
+    font-size: 13px;
+    color: $color-text-title;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+.split-assign-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { border-color: $color-primary; color: $color-primary; background: #F0FDF4; }
+}
+
+.split-all-assigned {
+  margin: 0;
+  font-size: 12px;
+  color: $color-primary;
+  font-style: italic;
+}
+
+.split-groups {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.split-group-card {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: $space-2;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    margin-bottom: $space-1;
+  }
+
+  &__label {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid #E5E7EB;
+    font-size: 13px;
+    font-weight: 600;
+    color: $color-text-title;
+    font-family: inherit;
+    padding: 2px 0;
+    outline: none;
+
+    &:focus { border-color: $color-primary; }
+  }
+
+  &__remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #D1D5DB;
+    cursor: pointer;
+
+    i { font-size: 10px; }
+    &:hover { color: #DC2626; background: #FEF2F2; }
+  }
+}
+
+.split-group-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 12px;
+  color: $color-text-title;
+
+  &__remove {
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    color: #D1D5DB;
+    cursor: pointer;
+    padding: 0;
+
+    i { font-size: 10px; }
+    &:hover { color: #DC2626; }
+  }
+}
+
+.split-group-empty {
+  font-size: 11px;
+  color: #D1D5DB;
+  font-style: italic;
+}
+
+.split-add-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+  padding: $space-2;
+  border: 1px dashed #D1D5DB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { border-color: $color-primary; color: $color-primary; }
+}
+
+.split-warning {
+  margin-top: $space-3;
+  padding: $space-2 $space-3;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #92400E;
+  text-align: center;
+}

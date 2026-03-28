@@ -197,6 +197,9 @@
             <button type="button" class="td-btn td-btn--outline" (click)="openMergeFlow(order)">
               <i class="pi pi-link"></i> Unir con mesa
             </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openSplitFlow(order)">
+              <i class="pi pi-percentage"></i> Dividir cuenta
+            </button>
             <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
               <i class="pi pi-credit-card"></i> Cobrar
             </button>
@@ -406,5 +409,210 @@
       }
       Unir mesas
     </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Split bill dialog                                                       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showSplitDialog()"
+  (visibleChange)="showSplitDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '500px' }"
+  [draggable]="false"
+  header="Dividir cuenta"
+  (onHide)="cancelSplit()"
+>
+
+  <!-- VIEW: choice -->
+  @if (splitMode() === 'choice') {
+    <div class="split-mode-cards">
+      <button type="button" class="split-mode-card" (click)="setSplitMode('equal')">
+        <i class="pi pi-equals split-mode-card__icon"></i>
+        <span class="split-mode-card__title">En partes iguales</span>
+        <span class="split-mode-card__desc">Divide el total entre N personas</span>
+      </button>
+      <button type="button" class="split-mode-card" (click)="setSplitMode('items')">
+        <i class="pi pi-list split-mode-card__icon"></i>
+        <span class="split-mode-card__title">Por items</span>
+        <span class="split-mode-card__desc">Cada quien paga lo que pidió</span>
+      </button>
+    </div>
+  }
+
+  <!-- VIEW: equal -->
+  @if (splitMode() === 'equal') {
+    <button type="button" class="split-back" (click)="setSplitMode('choice')">
+      <i class="pi pi-arrow-left"></i> Cambiar modo
+    </button>
+
+    <div class="split-total-display">
+      Total de la orden: <strong>{{ splitOrderTotal() | price }}</strong>
+    </div>
+
+    @if (splitEqualPaymentStep() === 0) {
+      <!-- Parts selector -->
+      <p class="split-label">¿Entre cuántas personas?</p>
+      <div class="split-parts-row">
+        @for (n of [2,3,4,5,6]; track n) {
+          <button
+            type="button"
+            class="split-parts-btn"
+            [class.split-parts-btn--active]="splitPartsCount() === n"
+            (click)="splitPartsCount.set(n)"
+          >
+            {{ n }}
+          </button>
+        }
+      </div>
+
+      <div class="split-preview">
+        Cada persona paga: {{ splitEqualAmount() | price }}
+      </div>
+    }
+
+    @if (splitEqualPaymentStep() > 0) {
+      <!-- Sequential payment flow -->
+      <div class="split-payment-header">
+        Pago {{ splitEqualPaymentStep() }} de {{ splitPartsCount() }}
+        — {{ splitEqualAmount() | price }}
+      </div>
+
+      <div class="split-progress-dots">
+        @for (n of [].constructor(splitPartsCount()); track $index) {
+          <span
+            class="split-dot"
+            [class.split-dot--done]="$index < splitEqualPaymentStep() - 1"
+            [class.split-dot--active]="$index === splitEqualPaymentStep() - 1"
+          ></span>
+        }
+      </div>
+
+      <div class="payment-methods-row">
+        @for (opt of paymentMethodOptions; track opt.method) {
+          <button
+            type="button"
+            class="payment-method-btn"
+            [disabled]="splitBusy()"
+            (click)="registerEqualPayment(opt.method)"
+          >
+            <i [class]="'pi ' + opt.icon"></i>
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+    }
+  }
+
+  <!-- VIEW: items -->
+  @if (splitMode() === 'items') {
+    <button type="button" class="split-back" (click)="setSplitMode('choice')">
+      <i class="pi pi-arrow-left"></i> Cambiar modo
+    </button>
+
+    <div class="split-items-layout">
+      <!-- Left: unassigned items -->
+      <div class="split-unassigned">
+        <p class="split-col-title">Sin asignar ({{ splitItemsUnassigned().length }})</p>
+        @for (item of splitItemsUnassigned(); track item.id) {
+          <div class="split-item-chip">
+            <span class="split-item-chip__name">{{ item.productName }} ×{{ item.quantity }}</span>
+            <div class="split-item-chip__actions">
+              @for (group of splitGroups(); track group.id) {
+                <button
+                  type="button"
+                  class="split-assign-btn"
+                  (click)="assignItemToGroup(item.id, group.id)"
+                >
+                  {{ group.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        @if (splitItemsUnassigned().length === 0) {
+          <p class="split-all-assigned">Todos los items asignados</p>
+        }
+      </div>
+
+      <!-- Right: groups -->
+      <div class="split-groups">
+        <p class="split-col-title">Grupos ({{ splitGroups().length }})</p>
+        @for (group of splitGroups(); track group.id) {
+          <div class="split-group-card">
+            <div class="split-group-card__header">
+              <input
+                type="text"
+                class="split-group-card__label"
+                [value]="group.label"
+                (input)="updateGroupLabel(group.id, $any($event.target).value)"
+              />
+              @if (splitGroups().length > 2) {
+                <button
+                  type="button"
+                  class="split-group-card__remove"
+                  (click)="removeSplitGroup(group.id)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              }
+            </div>
+            @for (itemId of group.itemIds; track itemId) {
+              <div class="split-group-item">
+                <span>{{ splitItemName(itemId) }}</span>
+                <button type="button" class="split-group-item__remove" (click)="removeItemFromGroup(itemId)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+            @if (group.itemIds.length === 0) {
+              <span class="split-group-empty">Sin items</span>
+            }
+          </div>
+        }
+        <button type="button" class="split-add-group" (click)="addSplitGroup()">
+          <i class="pi pi-plus"></i> Agregar persona
+        </button>
+      </div>
+    </div>
+
+    @if (splitItemsUnassigned().length > 0) {
+      <div class="split-warning">
+        Faltan {{ splitItemsUnassigned().length }} item{{ splitItemsUnassigned().length > 1 ? 's' : '' }} por asignar
+      </div>
+    }
+  }
+
+  <!-- Footer -->
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelSplit()">
+      Cancelar
+    </button>
+
+    @if (splitMode() === 'equal' && splitEqualPaymentStep() === 0) {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        (click)="startEqualPayments()"
+      >
+        Dividir en {{ splitPartsCount() }} partes
+      </button>
+    }
+
+    @if (splitMode() === 'items') {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        [disabled]="!splitCanConfirmItems() || splitBusy()"
+        (click)="confirmItemsSplit()"
+      >
+        @if (splitBusy()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        }
+        Dividir
+      </button>
+    }
   </ng-template>
 </p-dialog>

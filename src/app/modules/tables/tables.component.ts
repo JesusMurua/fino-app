@@ -17,7 +17,8 @@ import {
   mapDisplayStatus,
 } from '../../core/models';
 import { DatabaseService } from '../../core/services/database.service';
-import { TableService, OrderSummary, MoveItemsResult } from '../../core/services/table.service';
+import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../core/services/table.service';
+import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
@@ -86,6 +87,26 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly mergeSourceTable = signal<TableStatusDto | null>(null);
   readonly mergeTargetOrderId = signal<string | null>(null);
   readonly mergeTargetTableName = signal('');
+
+  // ---- Split bill dialog ----
+  readonly showSplitDialog = signal(false);
+  readonly splitMode = signal<'choice' | 'equal' | 'items'>('choice');
+  readonly splitSourceOrderId = signal<string | null>(null);
+  readonly splitSourceTableName = signal('');
+  readonly splitSourceItems = signal<{ id: number; productName: string; quantity: number }[]>([]);
+  readonly splitOrderTotal = signal(0);
+  readonly splitBusy = signal(false);
+
+  // Equal split
+  readonly splitPartsCount = signal(2);
+  readonly splitEqualPaymentStep = signal(0);
+  readonly splitEqualMethod = signal<PaymentMethod | null>(null);
+
+  // Items split
+  private splitGroupCounter = 0;
+  readonly splitGroups = signal<{ id: number; label: string; itemIds: number[] }[]>([]);
+
+  readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 
   //#endregion
 
@@ -182,6 +203,34 @@ export class TablesComponent implements OnInit, OnDestroy {
     const items = this.moveOrderItems();
     return items.length > 0 && this.moveSelectedIds().size === items.length;
   });
+
+  //#endregion
+
+  //#region Split Bill Computeds
+
+  /** Amount each person pays in equal split */
+  readonly splitEqualAmount = computed(() =>
+    Math.ceil(this.splitOrderTotal() / this.splitPartsCount()),
+  );
+
+  /** All item IDs currently assigned to any split group */
+  readonly splitItemsAssigned = computed(() => {
+    const ids = new Set<number>();
+    for (const g of this.splitGroups()) {
+      for (const id of g.itemIds) ids.add(id);
+    }
+    return ids;
+  });
+
+  /** Items not yet assigned to any group */
+  readonly splitItemsUnassigned = computed(() =>
+    this.splitSourceItems().filter(i => !this.splitItemsAssigned().has(i.id)),
+  );
+
+  /** Whether items split can be confirmed */
+  readonly splitCanConfirmItems = computed(() =>
+    this.splitGroups().length >= 2 && this.splitItemsUnassigned().length === 0,
+  );
 
   //#endregion
 
@@ -615,6 +664,197 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.mergeSourceTable.set(null);
     this.mergeTargetOrderId.set(null);
     this.mergeTargetTableName.set('');
+  }
+
+  //#endregion
+
+  //#region Split Bill Methods
+
+  /**
+   * Opens the split bill dialog for a given order.
+   * @param order The order to split
+   */
+  openSplitFlow(order: OrderSummary): void {
+    const tableName = this.selectedTable()?.name ?? '';
+    this.splitSourceOrderId.set(order.id);
+    this.splitSourceTableName.set(tableName);
+    this.splitOrderTotal.set(order.totalCents);
+    this.splitSourceItems.set(order.items.map(i => ({
+      id: i.id, productName: i.productName, quantity: i.quantity,
+    })));
+    this.splitMode.set('choice');
+    this.splitPartsCount.set(2);
+    this.splitEqualPaymentStep.set(0);
+    this.splitEqualMethod.set(null);
+    this.splitGroupCounter = 0;
+    this.splitGroups.set([]);
+
+    this.showTableDialog.set(false);
+    this.showSplitDialog.set(true);
+  }
+
+  /** Sets split mode and initializes groups for items mode */
+  setSplitMode(mode: 'choice' | 'equal' | 'items'): void {
+    this.splitMode.set(mode);
+    if (mode === 'items' && this.splitGroups().length === 0) {
+      this.addSplitGroup();
+      this.addSplitGroup();
+    }
+  }
+
+  /** Resets ALL split signals and closes the dialog */
+  cancelSplit(): void {
+    this.showSplitDialog.set(false);
+    this.splitMode.set('choice');
+    this.splitSourceOrderId.set(null);
+    this.splitSourceTableName.set('');
+    this.splitSourceItems.set([]);
+    this.splitOrderTotal.set(0);
+    this.splitBusy.set(false);
+    this.splitPartsCount.set(2);
+    this.splitEqualPaymentStep.set(0);
+    this.splitEqualMethod.set(null);
+    this.splitGroupCounter = 0;
+    this.splitGroups.set([]);
+  }
+
+  // ---- Equal split ----
+
+  /**
+   * Starts the sequential payment flow for equal split.
+   * Sets step to 1 so the payment buttons appear.
+   */
+  startEqualPayments(): void {
+    this.splitEqualPaymentStep.set(1);
+  }
+
+  /**
+   * Registers one payment for the current equal-split step.
+   * Advances to next step or completes when all done.
+   * @param method Payment method to use
+   */
+  async registerEqualPayment(method: PaymentMethod): Promise<void> {
+    const orderId = this.splitSourceOrderId();
+    if (!orderId) return;
+
+    this.splitBusy.set(true);
+
+    try {
+      await firstValueFrom(
+        this.tableService.addPayment(orderId, method, this.splitEqualAmount()),
+      );
+
+      const currentStep = this.splitEqualPaymentStep();
+      if (currentStep >= this.splitPartsCount()) {
+        // All payments done
+        this.cancelSplit();
+        await this.loadTableStatuses();
+        this.messageService.add({
+          severity: 'success',
+          summary: `Cuenta dividida y pagada en ${currentStep} partes`,
+          life: 3000,
+        });
+      } else {
+        this.splitEqualPaymentStep.set(currentStep + 1);
+      }
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al registrar pago',
+        life: 4000,
+      });
+    } finally {
+      this.splitBusy.set(false);
+    }
+  }
+
+  // ---- Items split ----
+
+  /** Adds a new empty split group with auto-incrementing label */
+  addSplitGroup(): void {
+    this.splitGroupCounter++;
+    this.splitGroups.update(groups => [
+      ...groups,
+      { id: this.splitGroupCounter, label: `Persona ${this.splitGroupCounter}`, itemIds: [] },
+    ]);
+  }
+
+  /** Removes a split group and frees its items */
+  removeSplitGroup(groupId: number): void {
+    this.splitGroups.update(groups => groups.filter(g => g.id !== groupId));
+  }
+
+  /** Updates the label of a split group */
+  updateGroupLabel(groupId: number, label: string): void {
+    this.splitGroups.update(groups =>
+      groups.map(g => g.id === groupId ? { ...g, label } : g),
+    );
+  }
+
+  /** Assigns an unassigned item to a group */
+  assignItemToGroup(itemId: number, groupId: number): void {
+    this.splitGroups.update(groups =>
+      groups.map(g => g.id === groupId
+        ? { ...g, itemIds: [...g.itemIds, itemId] }
+        : g,
+      ),
+    );
+  }
+
+  /** Removes an item from its group (returns to unassigned) */
+  removeItemFromGroup(itemId: number): void {
+    this.splitGroups.update(groups =>
+      groups.map(g => ({
+        ...g,
+        itemIds: g.itemIds.filter(id => id !== itemId),
+      })),
+    );
+  }
+
+  /** Returns the product name for an item ID */
+  splitItemName(itemId: number): string {
+    return this.splitSourceItems().find(i => i.id === itemId)?.productName ?? '—';
+  }
+
+  /**
+   * Confirms the items split — calls splitOrderByItems API.
+   * Creates separate orders per group.
+   */
+  async confirmItemsSplit(): Promise<void> {
+    const orderId = this.splitSourceOrderId();
+    if (!orderId) return;
+
+    this.splitBusy.set(true);
+
+    const splits: SplitGroup[] = this.splitGroups().map(g => ({
+      itemIds: g.itemIds,
+      label: g.label,
+    }));
+
+    try {
+      const result = await firstValueFrom(
+        this.tableService.splitOrderByItems(orderId, splits),
+      );
+
+      this.cancelSplit();
+      await this.loadTableStatuses();
+
+      const names = result.splitOrders.map(o => `${o.label} (${o.folioNumber})`).join(', ');
+      this.messageService.add({
+        severity: 'success',
+        summary: `Orden dividida en ${result.splitOrders.length} partes`,
+        detail: names,
+        life: 5000,
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al dividir la orden',
+        life: 4000,
+      });
+    } finally {
+      this.splitBusy.set(false);
+    }
   }
 
   //#endregion
