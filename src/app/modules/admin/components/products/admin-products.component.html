@@ -433,7 +433,7 @@
       </ng-template>
 
       <div class="product-form product-form--scrollable">
-        @if (!editingProduct) {
+        @if (!showImageTab || !editingProduct) {
           <div class="tab-empty-state">
             <i class="pi pi-image tab-empty-state__icon"></i>
             <p class="tab-empty-state__text">Guarda el producto primero para agregar imágenes.</p>
