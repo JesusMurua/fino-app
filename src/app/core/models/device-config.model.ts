@@ -31,6 +31,12 @@ export interface DeviceConfig {
   printerProductId?: number;
   /** Saved printer display name */
   printerName?: string;
+  /** Connection type: serial (USB) or bluetooth */
+  printerType?: 'serial' | 'bluetooth';
+  /** Saved Bluetooth device ID for auto-reconnect */
+  bluetoothDeviceId?: string;
+  /** Saved Bluetooth device display name */
+  bluetoothDeviceName?: string;
 }
 
 /** localStorage key used to persist DeviceConfig */

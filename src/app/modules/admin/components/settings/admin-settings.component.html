@@ -332,11 +332,11 @@
     @case ('peripherals') {
       <div class="settings-content">
 
-        <!-- Web Serial not supported warning -->
+        <!-- No transport supported warning -->
         @if (!printerService.isSupported()) {
           <div class="msg msg--warning" style="grid-column: 1 / -1">
             <i class="pi pi-exclamation-triangle"></i>
-            Tu navegador no soporta Web Serial. Usa Chrome o Edge en escritorio.
+            Tu navegador no soporta impresión directa. Usa Chrome o Edge.
           </div>
         }
 
@@ -346,7 +346,7 @@
             <div class="card-icon"><i class="pi pi-print"></i></div>
             <div>
               <div class="card-title">Impresora térmica</div>
-              <div class="card-subtitle">ESC/POS vía Web Serial</div>
+              <div class="card-subtitle">ESC/POS vía {{ printerService.printerType() === 'bluetooth' ? 'Bluetooth' : 'USB Serial' }}</div>
             </div>
           </div>
 
@@ -394,15 +394,42 @@
               <button type="button" class="btn-secondary btn-secondary--sm" (click)="printerService.connect()">Cambiar</button>
             </div>
           } @else {
+            <!-- Transport type toggle -->
+            @if (printerService.serialSupported() && printerService.bluetoothSupported()) {
+              <div class="printer-type-toggle">
+                <button
+                  type="button"
+                  [class.active]="printerService.printerType() === 'serial'"
+                  (click)="printerService.printerType.set('serial')"
+                >
+                  USB / Serial
+                </button>
+                <button
+                  type="button"
+                  [class.active]="printerService.printerType() === 'bluetooth'"
+                  (click)="printerService.printerType.set('bluetooth')"
+                >
+                  Bluetooth
+                </button>
+              </div>
+            }
+
+            @if (printerService.printerType() === 'bluetooth' && !printerService.bluetoothSupported()) {
+              <div class="msg msg--info" style="font-size: 12px; margin-bottom: 8px">
+                <i class="pi pi-info-circle"></i>
+                Bluetooth no disponible en este navegador. Usa Chrome en Android o Chrome/Edge en escritorio.
+              </div>
+            }
+
             <button
               type="button"
               class="btn-primary"
               [disabled]="!printerService.isSupported()"
-              (click)="printerService.connect()"
+              (click)="printerService.connect(printerService.printerType())"
               style="align-self: center"
             >
               <i class="pi pi-link"></i>
-              Conectar impresora
+              {{ printerService.printerType() === 'bluetooth' ? 'Conectar vía Bluetooth' : 'Conectar vía USB' }}
             </button>
           }
         </section>

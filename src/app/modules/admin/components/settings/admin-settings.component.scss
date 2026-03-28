@@ -248,6 +248,35 @@
   color: $color-text-title;
 }
 
+.printer-type-toggle {
+  display: flex;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: $space-3;
+  align-self: center;
+
+  button {
+    flex: 1;
+    padding: 6px $space-3;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    background: white;
+    color: $color-text-sub;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover:not(.active) { background: #F3F4F6; }
+
+    &.active {
+      background: $color-primary;
+      color: white;
+    }
+  }
+}
+
 .periph-actions {
   display: flex;
   gap: $space-2;

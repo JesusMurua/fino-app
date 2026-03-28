@@ -1,6 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 
 import { ConfigService } from './config.service';
+import { PrinterTransport } from './printer-transport.interface';
+import { SerialTransport } from './serial-transport';
+import { BluetoothTransport } from './bluetooth-transport';
 
 // ============================================================================
 // ESC/POS Command Constants
@@ -39,10 +42,10 @@ interface TicketLine {
 }
 
 /**
- * Thermal printer service using Web Serial API (ESC/POS protocol).
+ * Thermal printer service supporting Web Serial and Web Bluetooth.
  *
  * Manages connection state, auto-reconnect, and ticket printing.
- * Only works in Chrome/Edge on desktop — gracefully degrades elsewhere.
+ * Delegates all I/O to a PrinterTransport implementation.
  */
 @Injectable({ providedIn: 'root' })
 export class PrinterService {
@@ -52,8 +55,22 @@ export class PrinterService {
   //#endregion
 
   //#region Properties
-  /** Whether the browser supports Web Serial API */
-  readonly isSupported = signal('serial' in navigator);
+
+  /** Whether any printer transport is available in this browser */
+  readonly isSupported = signal(
+    'serial' in navigator || 'bluetooth' in navigator,
+  );
+
+  /** Whether Web Bluetooth is available */
+  readonly bluetoothSupported = signal('bluetooth' in navigator);
+
+  /** Whether Web Serial is available */
+  readonly serialSupported = signal('serial' in navigator);
+
+  /** Current connection type */
+  readonly printerType = signal<'serial' | 'bluetooth'>(
+    this.configService.loadDeviceConfig().printerType ?? 'serial',
+  );
 
   /** Whether a printer is currently connected */
   readonly printerConnected = signal(false);
@@ -61,31 +78,42 @@ export class PrinterService {
   /** Display name of the connected printer */
   readonly printerName = signal('');
 
-  /** Port description of the connected printer */
+  /** Port/connection description */
   readonly printerPort = signal('');
 
-  /** Internal reference to the open serial port */
-  private port: SerialPort | null = null;
-
-  /** Internal reference to the writable stream writer */
-  private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+  /** Active transport instance */
+  private transport: PrinterTransport | null = null;
 
   /** Text encoder for converting strings to bytes */
   private readonly encoder = new TextEncoder();
+
   //#endregion
 
   //#region Public API
 
   /**
-   * Requests a serial port from the browser and connects to the printer.
+   * Connects to a printer using the specified or current transport type.
    * Must be called from a user gesture (button click).
+   * @param type Optional transport type override
    */
-  async connect(): Promise<void> {
-    if (!this.isSupported()) return;
+  async connect(type?: 'serial' | 'bluetooth'): Promise<void> {
+    if (type) this.printerType.set(type);
 
     try {
-      this.port = await navigator.serial!.requestPort();
-      await this.openPort();
+      // Disconnect existing transport first
+      if (this.transport) {
+        await this.transport.disconnect();
+      }
+
+      this.transport = this.createTransport(this.printerType());
+      await this.transport.connect();
+      this.syncStateFromTransport();
+
+      // Send ESC/POS init command
+      await this.sendBytes(ESC_INIT);
+
+      // Persist printer type
+      this.savePrinterType(this.printerType());
     } catch (error) {
       console.error('[PrinterService] Failed to connect:', error);
       this.resetState();
@@ -93,50 +121,50 @@ export class PrinterService {
   }
 
   /**
-   * Attempts to reconnect using a previously authorized port.
-   * Called on app init — silently fails if no port available.
+   * Attempts to reconnect using previously saved configuration.
+   * Tries serial first, then bluetooth if serial fails.
+   * Called on app init — silently fails if no device available.
    */
   async tryAutoConnect(): Promise<void> {
-    if (!this.isSupported()) return;
-
-    try {
-      const ports = await navigator.serial!.getPorts();
-      const saved = this.loadPrinterConfig();
-
-      if (ports.length === 0 || !saved) return;
-
-      // Try to match the saved vendor/product ID
-      for (const p of ports) {
-        const info = p.getInfo();
-        if (info.usbVendorId === saved.vendorId && info.usbProductId === saved.productId) {
-          this.port = p;
-          await this.openPort();
+    // Try serial first (most common)
+    if ('serial' in navigator) {
+      try {
+        const serial = this.createTransport('serial');
+        await serial.tryAutoConnect();
+        if (serial.isConnected) {
+          this.transport = serial;
+          this.printerType.set('serial');
+          this.syncStateFromTransport();
+          await this.sendBytes(ESC_INIT);
           return;
         }
-      }
+      } catch { /* try bluetooth next */ }
+    }
 
-      // Fallback: use first available port
-      if (ports.length > 0) {
-        this.port = ports[0];
-        await this.openPort();
-      }
-    } catch {
-      // Silent — auto-connect is best-effort
+    // Try bluetooth if serial failed and BT device was saved
+    const config = this.configService.loadDeviceConfig();
+    if ('bluetooth' in navigator && config.bluetoothDeviceId) {
+      try {
+        const bt = this.createTransport('bluetooth');
+        await bt.tryAutoConnect();
+        if (bt.isConnected) {
+          this.transport = bt;
+          this.printerType.set('bluetooth');
+          this.syncStateFromTransport();
+          await this.sendBytes(ESC_INIT);
+          return;
+        }
+      } catch { /* silent */ }
     }
   }
 
   /**
-   * Disconnects the current printer port.
+   * Disconnects the current printer.
    */
   async disconnect(): Promise<void> {
     try {
-      if (this.writer) {
-        await this.writer.close();
-        this.writer = null;
-      }
-      if (this.port) {
-        await this.port.close();
-        this.port = null;
+      if (this.transport) {
+        await this.transport.disconnect();
       }
     } catch (error) {
       console.error('[PrinterService] Failed to disconnect:', error);
@@ -175,9 +203,7 @@ export class PrinterService {
     await this.cutPaper();
   }
 
-  /**
-   * Sends ESC/POS paper cut command.
-   */
+  /** Sends ESC/POS paper cut command */
   async cutPaper(): Promise<void> {
     await this.sendBytes(CUT_PAPER);
   }
@@ -201,7 +227,6 @@ export class PrinterService {
       { text: '', align: 'center' },
     ];
 
-    // Items
     for (const item of order.items) {
       const price = `$${(item.priceCents / 100).toFixed(2)}`;
       const itemText = `${item.qty}x ${item.name}`;
@@ -215,7 +240,6 @@ export class PrinterService {
       { text: '', align: 'center', divider: true },
     );
 
-    // Total
     const totalStr = `$${(order.totalCents / 100).toFixed(2)}`;
     const totalLine = 'TOTAL' + ' '.repeat(PAPER_WIDTH - 5 - totalStr.length) + totalStr;
     lines.push(
@@ -238,84 +262,98 @@ export class PrinterService {
   //#region Private Helpers
 
   /**
-   * Opens the current port and sets up the writer.
+   * Creates a transport instance based on type.
+   * Wires up callbacks for config persistence.
    */
-  private async openPort(): Promise<void> {
-    if (!this.port) return;
-
-    await this.port.open({ baudRate: 9600 });
-
-    if (this.port.writable) {
-      this.writer = this.port.writable.getWriter();
+  private createTransport(type: 'serial' | 'bluetooth'): PrinterTransport {
+    if (type === 'bluetooth') {
+      const bt = new BluetoothTransport();
+      const config = this.configService.loadDeviceConfig();
+      bt.savedDeviceId = config.bluetoothDeviceId;
+      bt.onConnected = (deviceId, deviceName) => {
+        const cfg = this.configService.loadDeviceConfig();
+        this.configService.saveDeviceConfig({
+          ...cfg,
+          printerType: 'bluetooth',
+          bluetoothDeviceId: deviceId,
+          bluetoothDeviceName: deviceName,
+        });
+      };
+      return bt;
     }
 
-    const info = this.port.getInfo();
-    const saved = this.loadPrinterConfig();
-    const name = saved?.name || `USB ${info.usbVendorId ?? ''}:${info.usbProductId ?? ''}`;
-
-    this.printerConnected.set(true);
-    this.printerName.set(name);
-    this.printerPort.set(`USB Serial`);
-
-    // Save for auto-reconnect
-    if (info.usbVendorId != null && info.usbProductId != null) {
-      this.savePrinterConfig(info.usbVendorId, info.usbProductId, name);
-    }
-
-    // Send init command
-    await this.sendBytes(ESC_INIT);
-    console.info('[PrinterService] Printer connected:', name);
+    const serial = new SerialTransport();
+    serial.loadConfig = () => {
+      const cfg = this.configService.loadDeviceConfig();
+      if (cfg.printerVendorId != null && cfg.printerProductId != null) {
+        return { vendorId: cfg.printerVendorId, productId: cfg.printerProductId, name: cfg.printerName ?? '' };
+      }
+      return null;
+    };
+    serial.onConnected = (vendorId, productId, name) => {
+      const cfg = this.configService.loadDeviceConfig();
+      this.configService.saveDeviceConfig({
+        ...cfg,
+        printerType: 'serial',
+        printerVendorId: vendorId,
+        printerProductId: productId,
+        printerName: name,
+      });
+    };
+    return serial;
   }
 
-  /**
-   * Sends a Uint8Array of ESC/POS bytes to the printer port.
-   */
+  /** Sends raw bytes through the active transport */
   private async sendBytes(data: Uint8Array): Promise<void> {
-    if (!this.writer) {
-      console.warn('[PrinterService] No writer available — printer not connected');
+    if (!this.transport?.isConnected) {
+      console.warn('[PrinterService] No transport connected');
       return;
     }
 
     try {
-      await this.writer.write(data);
+      await this.transport.write(data);
     } catch (error) {
       console.error('[PrinterService] Failed to send bytes:', error);
       this.resetState();
     }
   }
 
-  /**
-   * Builds ESC/POS byte array for a ticket from structured lines.
-   */
+  /** Syncs component signals from the active transport state */
+  private syncStateFromTransport(): void {
+    if (!this.transport) return;
+    this.printerConnected.set(this.transport.isConnected);
+    this.printerName.set(this.transport.deviceName);
+    this.printerPort.set(this.transport.portLabel);
+  }
+
+  /** Persists printer type to DeviceConfig */
+  private savePrinterType(type: 'serial' | 'bluetooth'): void {
+    const config = this.configService.loadDeviceConfig();
+    this.configService.saveDeviceConfig({ ...config, printerType: type });
+  }
+
+  /** Builds ESC/POS byte array for a ticket from structured lines */
   private buildTicketBytes(lines: TicketLine[]): Uint8Array {
     const chunks: Uint8Array[] = [ESC_INIT];
 
     for (const line of lines) {
-      // Divider
       if (line.divider) {
         chunks.push(ALIGN_LEFT, this.encoder.encode('-'.repeat(PAPER_WIDTH)), LINE_FEED);
         continue;
       }
 
-      // Alignment
       if (line.align === 'center') chunks.push(ALIGN_CENTER);
       else chunks.push(ALIGN_LEFT);
 
-      // Font size
       if (line.large) chunks.push(FONT_LARGE);
-
-      // Bold
       if (line.bold) chunks.push(BOLD_ON);
 
-      // Text content
       chunks.push(this.encoder.encode(line.text), LINE_FEED);
 
-      // Reset
       if (line.bold) chunks.push(BOLD_OFF);
       if (line.large) chunks.push(FONT_NORMAL);
     }
 
-    // Calculate total length
     const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
     const result = new Uint8Array(totalLength);
     let offset = 0;
@@ -327,43 +365,12 @@ export class PrinterService {
     return result;
   }
 
-  /**
-   * Saves printer info to DeviceConfig in localStorage.
-   */
-  private savePrinterConfig(vendorId: number, productId: number, name: string): void {
-    const config = this.configService.loadDeviceConfig();
-    this.configService.saveDeviceConfig({
-      ...config,
-      printerVendorId: vendorId,
-      printerProductId: productId,
-      printerName: name,
-    });
-  }
-
-  /**
-   * Loads printer config from DeviceConfig.
-   */
-  private loadPrinterConfig(): { vendorId: number; productId: number; name: string } | null {
-    const config = this.configService.loadDeviceConfig();
-    if (config.printerVendorId != null && config.printerProductId != null) {
-      return {
-        vendorId: config.printerVendorId,
-        productId: config.printerProductId,
-        name: config.printerName ?? '',
-      };
-    }
-    return null;
-  }
-
-  /**
-   * Resets all connection state signals.
-   */
+  /** Resets all connection state signals */
   private resetState(): void {
     this.printerConnected.set(false);
     this.printerName.set('');
     this.printerPort.set('');
-    this.writer = null;
-    this.port = null;
+    this.transport = null;
   }
 
   //#endregion
