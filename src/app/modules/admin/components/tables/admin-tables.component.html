@@ -3,12 +3,6 @@
   <!-- Header -->
   <div class="admin-tables__header">
     <h1 class="admin-tables__title">Mesas</h1>
-    @if (activeTab() === 'tables') {
-      <button type="button" class="btn-primary" (click)="openNewDialog()">
-        <i class="pi pi-plus"></i>
-        Nueva mesa
-      </button>
-    }
   </div>
 
   <!-- Tab navigation -->
@@ -16,197 +10,265 @@
     <button
       type="button"
       class="tab-btn"
-      [class.tab-btn--active]="activeTab() === 'tables'"
-      (click)="activeTab.set('tables')"
+      [class.tab-btn--active]="activeTab() === 'map'"
+      (click)="activeTab.set('map')"
     >
-      <i class="pi pi-list"></i>
-      Mesas
+      <i class="pi pi-map"></i>
+      Mapa
     </button>
-    @if (showZonesTab()) {
-      <button
-        type="button"
-        class="tab-btn"
-        [class.tab-btn--active]="activeTab() === 'zones'"
-        (click)="activeTab.set('zones')"
-      >
-        <i class="pi pi-th-large"></i>
-        Zonas
-      </button>
-    }
+    <button
+      type="button"
+      class="tab-btn"
+      [class.tab-btn--active]="activeTab() === 'config'"
+      (click)="activeTab.set('config')"
+    >
+      <i class="pi pi-cog"></i>
+      Configuración
+    </button>
   </nav>
 
   <!-- ================================================================ -->
-  <!-- TAB: Tables                                                       -->
+  <!-- TAB: Map (placeholder — floor map lives in /tables route)        -->
   <!-- ================================================================ -->
-  @if (activeTab() === 'tables') {
-    <div class="tab-content">
-
-      <div class="admin-tables__wrap">
-        <p-table
-          [value]="tables()"
-          [loading]="loading()"
-          [rowHover]="true"
-          dataKey="id"
-          styleClass="p-datatable-sm"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              <th style="min-width: 14rem">Nombre</th>
-              <th style="min-width: 8rem">Capacidad</th>
-              <th style="min-width: 8rem">Zona</th>
-              <th style="min-width: 8rem">Estado</th>
-              <th style="min-width: 6rem">Activa</th>
-              <th style="min-width: 5rem">Acciones</th>
-            </tr>
-          </ng-template>
-
-          <ng-template pTemplate="body" let-table>
-            <tr>
-              <td class="admin-tables__name">{{ table.name }}</td>
-              <td class="admin-tables__capacity">
-                {{ table.capacity ? table.capacity + ' personas' : '—' }}
-              </td>
-              <td>{{ zoneName(table.zoneId) }}</td>
-              <td>
-                @if (table.status === 'available') {
-                  <span class="status-badge status-badge--green">Disponible</span>
-                } @else {
-                  <span class="status-badge status-badge--red">Ocupada</span>
-                }
-              </td>
-              <td>
-                <p-inputSwitch
-                  [ngModel]="table.isActive"
-                  (onChange)="onToggleTable(table)"
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  class="btn-icon"
-                  aria-label="Editar mesa"
-                  (click)="openEditDialog(table)"
-                >
-                  <i class="pi pi-pencil"></i>
-                </button>
-              </td>
-            </tr>
-          </ng-template>
-
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="6" class="admin-tables__empty">
-                No hay mesas configuradas. Agrega tu primera mesa para comenzar.
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </div>
+  @if (activeTab() === 'map') {
+    <div class="map-placeholder">
+      <i class="pi pi-map"></i>
+      <p>El mapa en tiempo real está disponible en la vista de mesas del POS.</p>
+      <small>Navega a "Ir al POS" → Mesas para ver el mapa interactivo.</small>
     </div>
   }
 
   <!-- ================================================================ -->
-  <!-- TAB: Zones                                                        -->
+  <!-- TAB: Configuration (kanban)                                       -->
   <!-- ================================================================ -->
-  @if (activeTab() === 'zones') {
-    <div class="tab-content">
+  @if (activeTab() === 'config') {
 
-      <div class="zone-intro">
-        <p class="zone-intro__sub">
-          Organiza tu local en zonas: salón, barra, terraza...
-        </p>
+    <!-- Branch context banner -->
+    <div class="branch-context-banner">
+      <i class="pi pi-map-marker"></i>
+      <span>Configurando mesas para:</span>
+      <strong>{{ authService.authService ? '' : '' }}{{ authService.currentUser()?.name ?? 'tu sucursal' }}</strong>
+      <span class="branch-hint">(cambia la sucursal desde el menú lateral)</span>
+    </div>
+
+    <!-- Plan gate: upgrade banner when zones not available -->
+    @if (!canUseZones()) {
+      <div class="zones-upgrade-banner">
+        <i class="pi pi-lock"></i>
+        <div class="zones-upgrade-banner__text">
+          <strong>Zonas disponibles en Plan Básico</strong>
+          <p>Organiza tu local en salón, barra, terraza y más.</p>
+        </div>
+        <button type="button" class="zones-upgrade-banner__cta" (click)="goToPlans()">
+          Ver planes
+        </button>
       </div>
+    }
 
-      <!-- Zone list -->
-      @for (zone of zones(); track zone.id) {
-        <div class="zone-card" [class.zone-card--inactive]="!zone.isActive">
-          <div class="zone-card__info">
-            <span class="zone-card__name">{{ zone.name }}</span>
-            <span class="zone-type-badge zone-type-badge--{{ zone.type.toLowerCase() }}">
-              {{ zoneTypeLabel(zone.type) }}
-            </span>
-            <span class="zone-card__order">Orden: {{ zone.sortOrder }}</span>
-          </div>
-          <div class="zone-card__actions">
-            <p-inputSwitch
-              [ngModel]="zone.isActive"
-              (onChange)="toggleZoneActive(zone)"
-            />
-            <button type="button" class="btn-icon" aria-label="Editar zona" (click)="openEditZoneForm(zone)">
-              <i class="pi pi-pencil"></i>
-            </button>
-            <button type="button" class="btn-icon btn-icon--red" aria-label="Eliminar zona" (click)="deleteZone(zone)">
-              <i class="pi pi-trash"></i>
-            </button>
-          </div>
+    <!-- Kanban board (when zones available) -->
+    @if (canUseZones()) {
+      @if (configZones().length > 0 || tablesWithoutZone().length > 0) {
+        <div class="zones-kanban">
+
+          <!-- One column per zone -->
+          @for (zone of configZones(); track zone.id) {
+            <div class="zone-column">
+
+              <!-- Zone header -->
+              <div class="zone-column__header">
+                <div class="zone-column__info">
+                  <span class="zone-type-dot zone-type-dot--{{ zone.type.toLowerCase() }}"></span>
+                  <span class="zone-column__name">{{ zone.name }}</span>
+                  <span class="zone-column__count">{{ getTablesForZone(zone.id).length }}</span>
+                </div>
+                <div class="zone-column__actions">
+                  <button class="btn-icon-sm" (click)="editZone(zone)" pTooltip="Editar zona" tooltipPosition="top">
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button class="btn-icon-sm btn-icon-sm--danger" (click)="deleteZone(zone)" pTooltip="Eliminar zona" tooltipPosition="top">
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tables in this zone -->
+              <div class="zone-column__tables">
+                @for (table of getTablesForZone(zone.id); track table.id) {
+                  <div class="table-config-card" [class.table-config-card--inactive]="!table.isActive">
+                    <div class="table-config-card__main">
+                      <span class="table-config-card__name">{{ table.name }}</span>
+                      @if (table.capacity) {
+                        <span class="table-config-card__capacity">{{ table.capacity }} personas</span>
+                      }
+                    </div>
+                    <div class="table-config-card__actions">
+                      <button class="btn-icon-sm" (click)="editTable(table)">
+                        <i class="pi pi-pencil"></i>
+                      </button>
+                      <p-inputSwitch
+                        [ngModel]="table.isActive"
+                        (onChange)="toggleTableActive(table)"
+                        [style]="{'transform': 'scale(0.7)'}"
+                      />
+                    </div>
+                  </div>
+                }
+
+                <!-- Add table to this zone -->
+                <button class="btn-add-table" (click)="openAddTable(zone.id)">
+                  <i class="pi pi-plus"></i>
+                  @if (zone.type === ZoneType.BarSeats) {
+                    Agregar asiento
+                  } @else {
+                    Agregar mesa
+                  }
+                </button>
+              </div>
+
+            </div>
+          }
+
+          <!-- Tables without zone -->
+          @if (tablesWithoutZone().length > 0) {
+            <div class="zone-column zone-column--unzoned">
+              <div class="zone-column__header">
+                <div class="zone-column__info">
+                  <span class="zone-column__name">Sin zona</span>
+                  <span class="zone-column__count">{{ tablesWithoutZone().length }}</span>
+                </div>
+              </div>
+              <div class="zone-column__tables">
+                @for (table of tablesWithoutZone(); track table.id) {
+                  <div class="table-config-card" [class.table-config-card--inactive]="!table.isActive">
+                    <div class="table-config-card__main">
+                      <span class="table-config-card__name">{{ table.name }}</span>
+                      @if (table.capacity) {
+                        <span class="table-config-card__capacity">{{ table.capacity }} personas</span>
+                      }
+                    </div>
+                    <div class="table-config-card__actions">
+                      <button class="btn-icon-sm" (click)="editTable(table)">
+                        <i class="pi pi-pencil"></i>
+                      </button>
+                      <p-inputSwitch
+                        [ngModel]="table.isActive"
+                        (onChange)="toggleTableActive(table)"
+                        [style]="{'transform': 'scale(0.7)'}"
+                      />
+                    </div>
+                  </div>
+                }
+                <button class="btn-add-table" (click)="openAddTable(null)">
+                  <i class="pi pi-plus"></i> Agregar mesa
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Add new zone column -->
+          @if (!showAddZoneForm()) {
+            <div class="zone-column zone-column--add" (click)="showAddZoneForm.set(true)">
+              <i class="pi pi-plus"></i>
+              <span>Nueva zona</span>
+            </div>
+          } @else {
+            <div class="zone-column zone-column--add-form">
+              <input
+                type="text"
+                pInputText
+                [ngModel]="newZoneName()"
+                (ngModelChange)="newZoneName.set($event)"
+                placeholder="Nombre de la zona"
+                (keydown.enter)="saveNewZone()"
+                (keydown.escape)="showAddZoneForm.set(false)"
+                class="zone-add-input"
+              />
+              <div class="zone-type-selector">
+                @for (type of zoneTypeOptions; track type.value) {
+                  <button
+                    type="button"
+                    class="zone-type-btn"
+                    [class.zone-type-btn--active]="newZoneType() === type.value"
+                    (click)="newZoneType.set(type.value)"
+                  >
+                    {{ type.label }}
+                  </button>
+                }
+              </div>
+              <div class="zone-add-form__actions">
+                <button type="button" class="btn-ghost-sm" (click)="showAddZoneForm.set(false)">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  [disabled]="!newZoneName().trim()"
+                  (click)="saveNewZone()"
+                >
+                  Crear zona
+                </button>
+              </div>
+            </div>
+          }
+
         </div>
       }
 
-      @if (zones().length === 0 && !loadingZones()) {
-        <div class="zone-empty">
+      <!-- Empty state: no zones and no tables -->
+      @if (configZones().length === 0 && tablesWithoutZone().length === 0 && !isLoadingConfig()) {
+        <div class="zones-empty-state">
           <i class="pi pi-th-large"></i>
           <p>No hay zonas configuradas</p>
+          <small>Crea tu primera zona para organizar las mesas</small>
+          <button type="button" class="btn-primary" (click)="showAddZoneForm.set(true)">
+            <i class="pi pi-plus"></i>
+            Crear primera zona
+          </button>
         </div>
       }
+    }
 
-      <!-- Inline zone form -->
-      @if (showZoneForm()) {
-        <div class="zone-inline-form">
-          <div class="form-field">
-            <label class="form-field__label" for="zf-name">Nombre de la zona</label>
-            <input
-              id="zf-name"
-              type="text"
-              pInputText
-              [(ngModel)]="zoneForm.name"
-              placeholder="Ej. Terraza"
-              class="form-field__input"
-            />
+    <!-- Flat table list for Free plan (no zones) -->
+    @if (!canUseZones()) {
+      <div class="flat-tables">
+        <div class="flat-tables__header">
+          <span class="flat-tables__title">Tus mesas</span>
+          <button type="button" class="btn-primary" (click)="openAddTable(null)">
+            <i class="pi pi-plus"></i> Nueva mesa
+          </button>
+        </div>
+        @for (table of configTables(); track table.id) {
+          <div class="table-config-card" [class.table-config-card--inactive]="!table.isActive">
+            <div class="table-config-card__main">
+              <span class="table-config-card__name">{{ table.name }}</span>
+              @if (table.capacity) {
+                <span class="table-config-card__capacity">{{ table.capacity }} personas</span>
+              }
+            </div>
+            <div class="table-config-card__actions">
+              <button class="btn-icon-sm" (click)="editTable(table)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <p-inputSwitch
+                [ngModel]="table.isActive"
+                (onChange)="toggleTableActive(table)"
+                [style]="{'transform': 'scale(0.7)'}"
+              />
+            </div>
           </div>
-
-          <div class="form-field">
-            <label class="form-field__label">Tipo</label>
-            <p-selectButton
-              [options]="zoneTypeOptions"
-              optionLabel="label"
-              optionValue="value"
-              [(ngModel)]="zoneForm.type"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="zf-order">Orden de aparición</label>
-            <p-inputNumber
-              inputId="zf-order"
-              [(ngModel)]="zoneForm.sortOrder"
-              [min]="0"
-              placeholder="0"
-              styleClass="form-field__input"
-            />
-          </div>
-
-          <div class="zone-inline-form__actions">
-            <button type="button" class="btn-ghost" (click)="cancelZoneForm()">Cancelar</button>
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="!zoneForm.name.trim()"
-              (click)="saveZone()"
-            >
-              Guardar
+        }
+        @if (configTables().length === 0 && !isLoadingConfig()) {
+          <div class="zones-empty-state">
+            <i class="pi pi-table"></i>
+            <p>No hay mesas configuradas</p>
+            <button type="button" class="btn-primary" (click)="openAddTable(null)">
+              <i class="pi pi-plus"></i> Agregar primera mesa
             </button>
           </div>
-        </div>
-      }
+        }
+      </div>
+    }
 
-      @if (!showZoneForm()) {
-        <button type="button" class="btn-add-zone" (click)="openNewZoneForm()">
-          <i class="pi pi-plus"></i>
-          Agregar zona
-        </button>
-      }
-
-    </div>
   }
 
 </div>
@@ -214,8 +276,8 @@
 <!-- Table create/edit dialog -->
 <p-dialog
   [header]="editingTable() ? 'Editar mesa' : 'Nueva mesa'"
-  [visible]="showDialog()"
-  (visibleChange)="showDialog.set($event)"
+  [visible]="showTableDialog()"
+  (visibleChange)="showTableDialog.set($event)"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '380px' }"
@@ -246,12 +308,12 @@
       />
     </div>
 
-    @if (zones().length > 0) {
+    @if (configZones().length > 0) {
       <div class="form-field">
         <label class="form-field__label" for="tf-zone">Zona</label>
         <p-dropdown
           inputId="tf-zone"
-          [options]="zones()"
+          [options]="configZones()"
           optionLabel="name"
           optionValue="id"
           [(ngModel)]="form.zoneId"
@@ -270,7 +332,7 @@
   </div>
 
   <ng-template pTemplate="footer">
-    <button type="button" class="btn-ghost" (click)="showDialog.set(false)">Cancelar</button>
+    <button type="button" class="btn-ghost" (click)="showTableDialog.set(false)">Cancelar</button>
     <button
       type="button"
       class="btn-primary"
@@ -282,5 +344,50 @@
   </ng-template>
 </p-dialog>
 
-<!-- Confirm dialog for zone delete -->
+<!-- Zone edit dialog -->
+<p-dialog
+  header="Editar zona"
+  [visible]="showZoneEditDialog()"
+  (visibleChange)="showZoneEditDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '340px' }"
+  [draggable]="false"
+>
+  <div class="table-form">
+    <div class="form-field">
+      <label class="form-field__label" for="ez-name">Nombre</label>
+      <input
+        id="ez-name"
+        type="text"
+        pInputText
+        [(ngModel)]="editZoneName"
+        class="form-field__input"
+      />
+    </div>
+    <div class="form-field">
+      <label class="form-field__label">Tipo</label>
+      <div class="zone-type-selector">
+        @for (type of zoneTypeOptions; track type.value) {
+          <button
+            type="button"
+            class="zone-type-btn"
+            [class.zone-type-btn--active]="editZoneType === type.value"
+            (click)="editZoneType = type.value"
+          >
+            {{ type.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showZoneEditDialog.set(false)">Cancelar</button>
+    <button type="button" class="btn-primary" [disabled]="!editZoneName.trim()" (click)="saveEditZone()">
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Confirm dialog -->
 <p-confirmDialog />

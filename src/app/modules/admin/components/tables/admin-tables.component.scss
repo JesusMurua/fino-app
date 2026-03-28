@@ -3,7 +3,7 @@
 .admin-tables {
   display: flex;
   flex-direction: column;
-  gap: $space-5;
+  gap: $space-4;
 
   &__header {
     display: flex;
@@ -24,25 +24,10 @@
     gap: 0;
     border-bottom: 1px solid #E5E7EB;
   }
-
-  &__wrap {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-    overflow: hidden;
-  }
-
-  &__name { font-weight: 600; }
-  &__capacity { color: $color-text-sub; }
-  &__empty {
-    text-align: center;
-    color: $color-text-sub;
-    padding: $space-6 !important;
-  }
 }
 
 // -----------------------------------------------------------------------
-// Tab buttons
+// Tab buttons (underline style)
 // -----------------------------------------------------------------------
 .tab-btn {
   display: inline-flex;
@@ -72,19 +57,386 @@
   }
 }
 
-.tab-content {
+// -----------------------------------------------------------------------
+// Map placeholder
+// -----------------------------------------------------------------------
+.map-placeholder {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: 80px $space-4;
+  text-align: center;
+  color: $color-text-sub;
 
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
+  i { font-size: 48px; opacity: 0.2; }
+  p { margin: 0; font-size: $font-size-base; }
+  small { font-size: 12px; opacity: 0.7; }
+}
+
+// -----------------------------------------------------------------------
+// Branch context banner
+// -----------------------------------------------------------------------
+.branch-context-banner {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: 10px $space-4;
+  background: #F9FAFB;
+  border-radius: 8px;
+  font-size: 13px;
+  color: $color-text-sub;
+
+  i { font-size: 14px; }
+  strong { color: $color-text-title; font-weight: 500; }
+
+  .branch-hint {
+    font-size: 11px;
+    opacity: 0.7;
   }
 }
 
 // -----------------------------------------------------------------------
-// Buttons
+// Plan gate — upgrade banner
+// -----------------------------------------------------------------------
+.zones-upgrade-banner {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-4 $space-5;
+  background: #FEF3C7;
+  border-radius: 12px;
+  border: 1px solid #FDE68A;
+
+  > i { font-size: 20px; color: #D97706; flex-shrink: 0; }
+
+  &__text {
+    flex: 1;
+
+    strong { display: block; font-size: 14px; color: #92400E; }
+    p { margin: 4px 0 0; font-size: 13px; color: #A16207; }
+  }
+
+  &__cta {
+    display: inline-flex;
+    align-items: center;
+    padding: $space-2 $space-3;
+    border: 1px solid #D97706;
+    border-radius: 8px;
+    background: transparent;
+    color: #D97706;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover { background: rgba(#D97706, 0.08); }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Kanban board
+// -----------------------------------------------------------------------
+.zones-kanban {
+  display: flex;
+  gap: $space-4;
+  overflow-x: auto;
+  padding-bottom: $space-4;
+  align-items: flex-start;
+  min-height: 400px;
+}
+
+.zone-column {
+  min-width: 220px;
+  max-width: 260px;
+  background: #F9FAFB;
+  border-radius: 12px;
+  padding: $space-3;
+  flex-shrink: 0;
+
+  &--unzoned {
+    border: 1px dashed #D1D5DB;
+    background: transparent;
+  }
+
+  &--add {
+    min-width: 180px;
+    cursor: pointer;
+    border: 2px dashed #D1D5DB;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 120px;
+    color: $color-text-sub;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: 12px;
+    transition: border-color 0.15s, color 0.15s;
+
+    i { font-size: 20px; }
+
+    &:hover { border-color: $color-primary; color: $color-primary; }
+  }
+
+  &--add-form {
+    min-width: 220px;
+    border: 1.5px solid $color-primary;
+    padding: $space-3;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+}
+
+.zone-column__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $space-3;
+  padding-bottom: $space-2;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.zone-column__info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zone-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--salon    { background: $color-primary; }
+  &--barseats { background: #2563EB; }
+  &--other    { background: #D97706; }
+}
+
+.zone-column__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.zone-column__count {
+  font-size: 11px;
+  padding: 1px 6px;
+  background: white;
+  border-radius: 99px;
+  color: $color-text-sub;
+}
+
+.zone-column__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.zone-column__tables {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+// -----------------------------------------------------------------------
+// Table config card
+// -----------------------------------------------------------------------
+.table-config-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: $space-2 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &--inactive { opacity: 0.5; }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-title;
+  }
+
+  &__capacity {
+    font-size: 11px;
+    color: $color-text-sub;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Small buttons
+// -----------------------------------------------------------------------
+.btn-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: $color-text-sub;
+  font-size: 12px;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+  &--danger:hover { color: #DC2626; background: #FEF2F2; }
+}
+
+.btn-add-table {
+  width: 100%;
+  padding: $space-2;
+  border: 1px dashed #D1D5DB;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  color: $color-text-sub;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover { border-color: $color-primary; color: $color-primary; }
+}
+
+.btn-primary-sm {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px $space-3;
+  min-height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: $color-primary;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost-sm {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px $space-3;
+  min-height: 32px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+}
+
+// -----------------------------------------------------------------------
+// Zone add form (inline in kanban)
+// -----------------------------------------------------------------------
+.zone-add-input {
+  width: 100%;
+  font-size: 13px;
+}
+
+.zone-type-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.zone-type-btn {
+  flex: 1;
+  padding: 4px $space-2;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: white;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  &:hover { border-color: $color-primary; }
+
+  &--active {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+  }
+}
+
+.zone-add-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-2;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+.zones-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: 60px $space-5;
+  text-align: center;
+  color: $color-text-sub;
+
+  i { font-size: 48px; opacity: 0.2; }
+  p { margin: 0; font-size: $font-size-base; }
+  small { font-size: 12px; opacity: 0.7; }
+}
+
+// -----------------------------------------------------------------------
+// Flat table list (free plan — no zones)
+// -----------------------------------------------------------------------
+.flat-tables {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Buttons (shared)
 // -----------------------------------------------------------------------
 .btn-primary {
   display: inline-flex;
@@ -122,153 +474,8 @@
   &:hover { background: #F3F4F6; }
 }
 
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: $color-text-sub;
-  cursor: pointer;
-
-  &:hover { background: #F3F4F6; color: $color-text-title; }
-  &--red:hover { background: #FEF2F2; color: #DC2626; }
-}
-
 // -----------------------------------------------------------------------
-// Status badges
-// -----------------------------------------------------------------------
-.status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 700;
-
-  &--green { background: #DCFCE7; color: #15803D; }
-  &--red   { background: #FEE2E2; color: #DC2626; }
-}
-
-// -----------------------------------------------------------------------
-// Zone cards
-// -----------------------------------------------------------------------
-.zone-intro {
-  &__sub {
-    margin: 0;
-    font-size: $font-size-base;
-    color: $color-text-sub;
-  }
-}
-
-.zone-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $space-3;
-  padding: $space-3 $space-4;
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #E5E7EB;
-  transition: border-color 0.15s;
-
-  &:hover { border-color: #D1D5DB; }
-
-  &--inactive {
-    opacity: 0.5;
-  }
-
-  &__info {
-    display: flex;
-    align-items: center;
-    gap: $space-3;
-  }
-
-  &__name {
-    font-size: $font-size-base;
-    font-weight: 600;
-    color: $color-text-title;
-  }
-
-  &__order {
-    font-size: 12px;
-    color: $color-text-sub;
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-  }
-}
-
-.zone-type-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-
-  &--salon    { background: #EFF6FF; color: #2563EB; }
-  &--barseats { background: #FEF3C7; color: #92400E; }
-  &--other    { background: #F3F4F6; color: #6B7280; }
-}
-
-.zone-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-6;
-  color: $color-text-sub;
-
-  i { font-size: 32px; }
-  p { margin: 0; font-size: $font-size-base; }
-}
-
-.btn-add-zone {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-3;
-  border: 1px dashed #D1D5DB;
-  border-radius: 10px;
-  background: transparent;
-  color: $color-text-sub;
-  font-size: $font-size-base;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  width: 100%;
-  justify-content: center;
-
-  &:hover { border-color: $color-primary; color: $color-primary; }
-}
-
-// -----------------------------------------------------------------------
-// Zone inline form
-// -----------------------------------------------------------------------
-.zone-inline-form {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-  padding: $space-4;
-  background: white;
-  border-radius: 10px;
-  border: 1.5px solid $color-primary;
-
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: $space-2;
-  }
-}
-
-// -----------------------------------------------------------------------
-// Form (shared with table dialog)
+// Form (table dialog + zone edit dialog)
 // -----------------------------------------------------------------------
 .table-form {
   display: flex;
