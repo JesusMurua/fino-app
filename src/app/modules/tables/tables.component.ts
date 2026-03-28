@@ -80,6 +80,13 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly moveSelectedIds = signal<Set<number>>(new Set());
   readonly moveBusy = signal(false);
 
+  // ---- Merge tables dialog ----
+  readonly showMergeDialog = signal(false);
+  readonly mergeBusy = signal(false);
+  readonly mergeSourceTable = signal<TableStatusDto | null>(null);
+  readonly mergeTargetOrderId = signal<string | null>(null);
+  readonly mergeTargetTableName = signal('');
+
   //#endregion
 
   //#region KPI Computeds
@@ -538,6 +545,76 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.moveTargetTable.set(null);
     this.moveOrderItems.set([]);
     this.moveSelectedIds.set(new Set());
+  }
+
+  //#endregion
+
+  //#region Merge Tables Methods
+
+  /**
+   * Opens the merge dialog for the current active order.
+   * Shows list of other occupied tables to merge from.
+   * @param order The order that will survive (target)
+   */
+  openMergeFlow(order: OrderSummary): void {
+    const tableName = this.selectedTable()?.name ?? '';
+    this.mergeTargetOrderId.set(order.id);
+    this.mergeTargetTableName.set(tableName);
+    this.mergeSourceTable.set(null);
+
+    this.showTableDialog.set(false);
+    this.showMergeDialog.set(true);
+  }
+
+  /**
+   * Confirms the merge — calls mergeOrders API.
+   * All items from source table's order move to the target order.
+   */
+  async confirmMerge(): Promise<void> {
+    const targetId = this.mergeTargetOrderId();
+    const source = this.mergeSourceTable();
+    if (!targetId || !source?.orderId) return;
+
+    this.mergeBusy.set(true);
+
+    try {
+      const result = await firstValueFrom(
+        this.tableService.mergeOrders(targetId, source.orderId),
+      );
+
+      this.cancelMerge();
+      await this.loadTableStatuses();
+
+      this.messageService.add({
+        severity: 'success',
+        summary: `${source.tableName} unida con ${this.mergeTargetTableName()}`,
+        life: 3000,
+      });
+
+      if (result.sourceTableFreed) {
+        this.messageService.add({
+          severity: 'info',
+          summary: `${source.tableName} quedó libre`,
+          life: 3000,
+        });
+      }
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al unir mesas',
+        life: 4000,
+      });
+    } finally {
+      this.mergeBusy.set(false);
+    }
+  }
+
+  /** Resets all merge state and closes the dialog */
+  cancelMerge(): void {
+    this.showMergeDialog.set(false);
+    this.mergeSourceTable.set(null);
+    this.mergeTargetOrderId.set(null);
+    this.mergeTargetTableName.set('');
   }
 
   //#endregion

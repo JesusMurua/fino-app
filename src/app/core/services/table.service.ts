@@ -24,6 +24,13 @@ export interface MoveItemsResult {
   sourceTableFreed: boolean;
 }
 
+/** Result of merging two orders (all items from source → target) */
+export interface MergeOrdersResult {
+  targetOrder: { id: string; totalCents: number; itemCount: number };
+  sourceTableFreed: boolean;
+  sourceTableName: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TableService {
 
@@ -57,6 +64,22 @@ export class TableService {
     return this.http.post<MoveItemsResult>(
       `${this.baseUrl}/orders/${sourceOrderId}/move-items`,
       { targetOrderId, itemIds },
+    );
+  }
+
+  /**
+   * Merges source order into target order.
+   * All items from source move to target. Source table is freed automatically.
+   * @param targetOrderId The order that survives
+   * @param sourceOrderId The order to absorb
+   */
+  mergeOrders(
+    targetOrderId: string,
+    sourceOrderId: string,
+  ): Observable<MergeOrdersResult> {
+    return this.http.post<MergeOrdersResult>(
+      `${this.baseUrl}/orders/${targetOrderId}/merge`,
+      { sourceOrderId },
     );
   }
 

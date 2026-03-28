@@ -632,3 +632,40 @@
   color: $color-text-sub;
   padding: $space-2 0 0;
 }
+
+// -----------------------------------------------------------------------
+// Merge tables dialog
+// -----------------------------------------------------------------------
+.merge-subtitle {
+  margin: 0 0 $space-3;
+  font-size: 13px;
+  color: $color-text-sub;
+}
+
+.move-target-card--selected {
+  border-color: $color-primary;
+  border-width: 2px;
+  background: #F0FDF4;
+  position: relative;
+}
+
+.merge-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 10px;
+  color: $color-primary;
+}
+
+.merge-confirmation {
+  margin-top: $space-3;
+  padding: $space-3;
+  background: #F9FAFB;
+  border-radius: 8px;
+  border-left: 3px solid $color-primary;
+  font-size: 12px;
+  color: $color-text-sub;
+  line-height: 1.6;
+
+  strong { color: $color-text-title; }
+}

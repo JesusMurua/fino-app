@@ -194,6 +194,9 @@
             <button type="button" class="td-btn td-btn--outline" (click)="openMoveFlow(order)">
               <i class="pi pi-arrows-h"></i> Mover items
             </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openMergeFlow(order)">
+              <i class="pi pi-link"></i> Unir con mesa
+            </button>
             <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
               <i class="pi pi-credit-card"></i> Cobrar
             </button>
@@ -332,5 +335,76 @@
         Mover {{ moveSelectedCount() }} item{{ moveSelectedCount() !== 1 ? 's' : '' }}
       </button>
     }
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Merge tables dialog                                                     -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showMergeDialog()"
+  (visibleChange)="showMergeDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+  header="Unir con otra mesa"
+  (onHide)="cancelMerge()"
+>
+  <p class="merge-subtitle">
+    Todos los items de la mesa seleccionada pasarán a {{ mergeTargetTableName() }}
+  </p>
+
+  @if (occupiedTargetTables().length > 0) {
+    <div class="move-target-grid">
+      @for (table of occupiedTargetTables(); track table.tableId) {
+        <button
+          type="button"
+          class="move-target-card"
+          [class.move-target-card--selected]="mergeSourceTable()?.tableId === table.tableId"
+          (click)="mergeSourceTable.set(table)"
+        >
+          @if (mergeSourceTable()?.tableId === table.tableId) {
+            <i class="pi pi-check merge-check"></i>
+          }
+          <span class="move-target-card__name">{{ table.tableName }}</span>
+          @if (table.orderTotalCents) {
+            <span class="move-target-card__total">{{ table.orderTotalCents | price }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    @if (mergeSourceTable(); as source) {
+      <div class="merge-confirmation">
+        <strong>{{ source.tableName }}</strong> + <strong>{{ mergeTargetTableName() }}</strong> → <strong>{{ mergeTargetTableName() }}</strong>
+        <br />
+        <span>{{ source.tableName }} quedará libre después de unir</span>
+      </div>
+    }
+  } @else {
+    <div class="td-empty">
+      <i class="pi pi-inbox td-empty__icon"></i>
+      <p class="td-empty__text">No hay otras mesas con órdenes activas</p>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelMerge()">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="td-btn td-btn--green"
+      [disabled]="!mergeSourceTable() || mergeBusy()"
+      (click)="confirmMerge()"
+    >
+      @if (mergeBusy()) {
+        <i class="pi pi-spinner pi-spin"></i>
+      } @else {
+        <i class="pi pi-link"></i>
+      }
+      Unir mesas
+    </button>
   </ng-template>
 </p-dialog>
