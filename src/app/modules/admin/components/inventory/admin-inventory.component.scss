@@ -184,3 +184,42 @@
   color: #2563EB;
   font-weight: 600;
 }
+
+// -----------------------------------------------------------------------
+// Quick stock dialog (barcode scan)
+// -----------------------------------------------------------------------
+.quick-stock-content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.quick-stock-product {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: $space-3 $space-4;
+  background: var(--surface-ground);
+  border-radius: 8px;
+
+  .product-name {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .product-stock {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+.quick-stock-amount {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  label {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}

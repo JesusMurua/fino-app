@@ -298,3 +298,53 @@
     <button type="button" class="btn-ghost" (click)="showHistoryDialog.set(false)">Cerrar</button>
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Quick stock reception dialog (barcode scan)                             -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showQuickStockDialog()"
+  (visibleChange)="showQuickStockDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  header="Recepción rápida de stock"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+  (onHide)="cancelQuickStock()"
+>
+  @if (scannedProduct(); as product) {
+    <div class="quick-stock-content">
+
+      <div class="quick-stock-product">
+        <span class="product-name">{{ product.name }}</span>
+        <span class="product-stock">
+          Stock actual: {{ product.currentStock ?? 0 }} unidades
+        </span>
+      </div>
+
+      <div class="quick-stock-amount">
+        <label>Cantidad a agregar</label>
+        <p-inputNumber
+          [ngModel]="quickStockAmount()"
+          (ngModelChange)="quickStockAmount.set($event)"
+          [min]="1"
+          [max]="9999"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          decrementButtonClass="p-button-outlined"
+          incrementButtonClass="p-button-outlined"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+        />
+      </div>
+
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="cancelQuickStock()">Cancelar</button>
+    <button type="button" class="btn-primary" (click)="confirmQuickStock()">
+      <i class="pi pi-check"></i> Confirmar recepción
+    </button>
+  </ng-template>
+</p-dialog>

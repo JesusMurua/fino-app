@@ -1,16 +1,18 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Subject, Subscription, firstValueFrom, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { InventoryItem, InventoryMovement } from '../../../../core/models';
+import { InventoryItem, InventoryMovement, Product } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
+import { ProductService } from '../../../../core/services/product.service';
+import { ScannerService } from '../../../../core/services/scanner.service';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { DatePipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
@@ -48,11 +50,13 @@ interface MovementForm {
   templateUrl: './admin-inventory.component.html',
   styleUrl: './admin-inventory.component.scss',
 })
-export class AdminInventoryComponent implements OnInit {
+export class AdminInventoryComponent implements OnInit, OnDestroy {
 
   private readonly inventoryService = inject(InventoryService);
   private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
+  private readonly productService = inject(ProductService);
+  private readonly scannerService = inject(ScannerService);
   private readonly http = inject(HttpClient);
 
   constructor() {
@@ -64,8 +68,16 @@ export class AdminInventoryComponent implements OnInit {
 
   //#region Properties
 
+  private readonly destroy$ = new Subject<void>();
+  private scanSubscription?: Subscription;
+
   readonly items = this.inventoryService.items;
   readonly isLoading = this.inventoryService.isLoading;
+
+  // ---- Quick stock dialog (barcode scan) ----
+  readonly scannedProduct = signal<Product | null>(null);
+  readonly showQuickStockDialog = signal(false);
+  readonly quickStockAmount = signal(1);
 
   // ---- Item dialog ----
   readonly showItemDialog = signal(false);
@@ -99,6 +111,13 @@ export class AdminInventoryComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.inventoryService.loadFromApi();
+    this.startScannerListener();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.scannerService.stopListening();
   }
 
   //#endregion
@@ -233,6 +252,105 @@ export class AdminInventoryComponent implements OnInit {
       case 'adjustment': return 'movement-badge--adj';
       default:           return '';
     }
+  }
+
+  //#endregion
+
+  //#region Scanner Integration
+
+  /**
+   * Starts scanner listener for inventory screen.
+   * On scan: finds product and opens quick stock reception dialog.
+   */
+  private startScannerListener(): void {
+    this.scanSubscription = this.scannerService.onScan()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(code => this.handleBarcodeScan(code));
+
+    this.scannerService.startListening();
+  }
+
+  /**
+   * Handles a scanned barcode in inventory context.
+   * Opens quick stock dialog for the found product.
+   * @param code The scanned barcode string
+   */
+  private handleBarcodeScan(code: string): void {
+    this.productService.findByBarcode(code).subscribe({
+      next: (product) => {
+        if (product) {
+          this.scannedProduct.set(product);
+          this.quickStockAmount.set(1);
+          this.showQuickStockDialog.set(true);
+        } else {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'Código no registrado',
+            detail: `"${code}" — asígnalo a un producto en el catálogo`,
+            life: 5000,
+          });
+        }
+      },
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo buscar el producto',
+          life: 3000,
+        });
+      },
+    });
+  }
+
+  /**
+   * Confirms quick stock reception for the scanned product.
+   * Adds quickStockAmount units to current stock via product movements.
+   */
+  async confirmQuickStock(): Promise<void> {
+    const product = this.scannedProduct();
+    if (!product) return;
+
+    if (!product.trackStock) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Sin control de stock',
+        detail: 'Este producto no maneja stock por unidad',
+        life: 4000,
+      });
+      this.showQuickStockDialog.set(false);
+      this.scannedProduct.set(null);
+      return;
+    }
+
+    try {
+      await firstValueFrom(
+        this.http.post(
+          `${environment.apiUrl}/products/${product.id}/movements`,
+          { type: 'in', quantity: this.quickStockAmount(), reason: 'Recepción rápida por escaneo' },
+        ),
+      );
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Stock actualizado',
+        detail: `+${this.quickStockAmount()} unidades a ${product.name}`,
+        life: 3000,
+      });
+      this.showQuickStockDialog.set(false);
+      this.scannedProduct.set(null);
+      await this.inventoryService.loadFromApi();
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo actualizar el stock',
+      });
+    }
+  }
+
+  /** Cancels quick stock dialog */
+  cancelQuickStock(): void {
+    this.showQuickStockDialog.set(false);
+    this.scannedProduct.set(null);
   }
 
   //#endregion
