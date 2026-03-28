@@ -94,6 +94,18 @@ export class AdminSettingsComponent implements OnInit {
   codeBranchId = 0;
   codeMode: DeviceMode = 'counter';
 
+  /** Phone field — local only, not persisted yet */
+  businessPhone = '';
+
+  /** Business type selection — UI only, not persisted yet */
+  selectedBusinessType = 'restaurant';
+  readonly businessTypes: { value: string; icon: string; label: string; description: string }[] = [
+    { value: 'restaurant', icon: '🍽️', label: 'Restaurante', description: 'Mesas, cocina, mesero' },
+    { value: 'retail',     icon: '🛒', label: 'Retail',       description: 'Báscula, códigos de barras' },
+    { value: 'cafe',       icon: '☕',  label: 'Café',         description: 'Barra rápida, comandas' },
+    { value: 'custom',     icon: '⚙️', label: 'Personalizado', description: 'Configura tú mismo' },
+  ];
+
   //#endregion
 
   //#region Constructor
