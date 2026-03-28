@@ -82,6 +82,14 @@ export class PrintService {
       const sizeLabel = item.size ? ` (${item.size.label})` : '';
       const extras = item.extras.length > 0 ? item.extras.map(e => e.label).join(', ') : '';
       const price = `$${(item.totalPriceCents / 100).toFixed(2)}`;
+      const discountRow = (item.discountCents ?? 0) > 0
+        ? `<table style="width:100%;border-collapse:collapse;font-size:11px;color:#15803D">
+            <tr>
+              <td style="padding:1px 0;padding-left:20px">${item.promotionName ?? 'Promoción'}</td>
+              <td style="padding:1px 0;text-align:right;white-space:nowrap">-$${(item.discountCents! / 100).toFixed(2)}</td>
+            </tr>
+          </table>`
+        : '';
       return `
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <tr>
@@ -91,6 +99,7 @@ export class PrintService {
         </table>
         ${extras ? `<div style="font-size:11px;color:#6B7280;padding-left:20px">+ ${extras}</div>` : ''}
         ${item.notes ? `<div style="font-size:11px;color:#92400E;padding-left:20px">⚠ ${item.notes}</div>` : ''}
+        ${discountRow}
       `;
     }).join('');
 
@@ -119,15 +128,15 @@ export class PrintService {
         ${sep}
         ${itemRows}
         ${sep}
-        ${order.discountCents && order.subtotalCents ? `
+        ${order.totalDiscountCents && order.subtotalCents ? `
         <table style="width:100%;font-size:13px;border-collapse:collapse;color:#374151">
           <tr>
             <td style="padding:2px 0">Subtotal</td>
             <td style="padding:2px 0;text-align:right">$${(order.subtotalCents / 100).toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding:2px 0">Descuento${order.discountLabel ? ' (' + order.discountLabel + ')' : ''}</td>
-            <td style="padding:2px 0;text-align:right">-$${(order.discountCents / 100).toFixed(2)}</td>
+            <td style="padding:2px 0">Descuento${order.orderPromotionName ? ' (' + order.orderPromotionName + ')' : ''}</td>
+            <td style="padding:2px 0;text-align:right">-$${(order.totalDiscountCents / 100).toFixed(2)}</td>
           </tr>
         </table>
         ${sep}
@@ -140,6 +149,10 @@ export class PrintService {
         </table>
         <div style="font-size:12px;color:#6B7280">Pago: ${methodLabel}</div>
         ${changeHtml}
+        ${order.totalDiscountCents ? `
+        ${sep}
+        <div style="text-align:center;font-size:13px;font-weight:700;color:#15803D;padding:4px 0">Ahorraste: $${(order.totalDiscountCents / 100).toFixed(2)}</div>
+        ` : ''}
         ${sep}
         <div style="text-align:center;font-size:12px;color:#6B7280;margin-top:4px">¡Gracias por su visita!</div>
       </div>
@@ -167,11 +180,17 @@ export class PrintService {
       minute: '2-digit',
     });
 
-    const itemLines = order.items.map(item => {
+    const itemLines: string[] = [];
+    for (const item of order.items) {
       const sizeLabel = item.size ? ` (${item.size.label})` : '';
       const price = (item.totalPriceCents / 100).toFixed(2);
-      return `${item.quantity}x ${item.product.name}${sizeLabel}`.padEnd(24) + `$${price}`;
-    });
+      itemLines.push(`${item.quantity}x ${item.product.name}${sizeLabel}`.padEnd(24) + `$${price}`);
+      if ((item.discountCents ?? 0) > 0) {
+        const discLabel = (item.promotionName ?? 'Promoción').substring(0, 22);
+        const discPrice = `-$${(item.discountCents! / 100).toFixed(2)}`;
+        itemLines.push(`  ${discLabel}`.padEnd(24) + discPrice);
+      }
+    }
 
     const total = (order.totalCents / 100).toFixed(2);
     const methodLabel = order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta';
@@ -183,6 +202,14 @@ export class PrintService {
       changeSection = `\nPago:   $${tendered}\nCambio: $${change}`;
     }
 
+    const discountSection = order.totalDiscountCents && order.subtotalCents
+      ? `\nSubtotal:${''.padEnd(15)}$${(order.subtotalCents / 100).toFixed(2)}\nDescuento:${''.padEnd(14)}-$${(order.totalDiscountCents / 100).toFixed(2)}\n${line}`
+      : '';
+
+    const savingsLine = order.totalDiscountCents
+      ? `\nAhorraste: $${(order.totalDiscountCents / 100).toFixed(2)}`
+      : '';
+
     return [
       'MI NEGOCIO',
       date,
@@ -190,12 +217,14 @@ export class PrintService {
       line,
       ...itemLines,
       line,
+      discountSection,
       `TOTAL: $${total}`,
       `Pago: ${methodLabel}`,
       changeSection,
+      savingsLine,
       line,
       '¡Gracias por su visita!',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   }
 
   //#endregion

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, InventoryItem, InventoryMovement, Order, Product, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -34,6 +34,7 @@ export class DatabaseService extends Dexie {
   restaurantTables!: Table<RestaurantTable, number>;
   inventoryItems!: Table<InventoryItem & { syncStatus?: string }, number>;
   inventoryMovements!: Table<InventoryMovement, number>;
+  promotions!: Table<Promotion, number>;
   //#endregion
 
   //#region Constructor
@@ -145,6 +146,18 @@ export class DatabaseService extends Dexie {
           });
         }
       }
+    });
+
+    this.version(11).stores({
+      promotions:          'id, branchId, type, isActive',
+    }).upgrade(tx => {
+      return tx.table('orders').toCollection().modify((order: any) => {
+        delete order.discountCents;
+        delete order.discountLabel;
+        delete order.discountReason;
+        order.orderDiscountCents = 0;
+        order.totalDiscountCents = 0;
+      });
     });
   }
   //#endregion

@@ -111,7 +111,21 @@ export class CheckoutComponent implements OnInit {
   // Derived state
   // -----------------------------------------------------------------------
 
-  /** Subtotal before discount — from cart or existing order */
+  /** Promotion evaluation from cart service */
+  readonly cartEvaluation = this.cartService.cartEvaluation;
+
+  /** Promotion discount in cents (from auto promos) */
+  readonly promoDiscountCents = computed(() =>
+    this.cartEvaluation()?.totalDiscountCents ?? 0
+  );
+
+  /** Raw subtotal before any discounts (promo + manual) */
+  readonly rawSubtotalCents = computed(() => {
+    if (this.existingOrderId()) return this.existingTotalCents();
+    return this.cartService.totalCents() + this.promoDiscountCents();
+  });
+
+  /** Subtotal after promo discounts, before manual discount */
   readonly existingTotalCents = signal(0);
   readonly subtotalCents = computed(() =>
     this.existingOrderId() ? this.existingTotalCents() : this.cartService.totalCents()
@@ -355,9 +369,9 @@ export class CheckoutComponent implements OnInit {
         paymentMethod: method,
         tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
         subtotalCents: existing.totalCents,
-        discountCents: discount > 0 ? discount : undefined,
-        discountLabel: this.discountLabel() || undefined,
-        discountReason: this.discountReason().trim() || undefined,
+        orderDiscountCents: discount > 0 ? discount : undefined,
+        totalDiscountCents: discount > 0 ? discount : undefined,
+        orderPromotionName: this.discountLabel() || undefined,
         totalCents: discount > 0 ? Math.max(0, existing.totalCents - discount) : existing.totalCents,
         syncStatus: 'pending',
       };
@@ -373,9 +387,9 @@ export class CheckoutComponent implements OnInit {
         orderNumber,
         items: this.cartItems,
         subtotalCents: this.subtotalCents(),
-        discountCents: discount > 0 ? discount : undefined,
-        discountLabel: this.discountLabel() || undefined,
-        discountReason: this.discountReason().trim() || undefined,
+        orderDiscountCents: discount > 0 ? discount : undefined,
+        totalDiscountCents: discount > 0 ? discount : undefined,
+        orderPromotionName: this.discountLabel() || undefined,
         totalCents: this.totalWithDiscount(),
         paymentMethod: method,
         tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,

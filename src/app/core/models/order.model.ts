@@ -62,14 +62,16 @@ export interface Order {
   cancellationReason?: string;
   /** Timestamp when the order was cancelled */
   cancelledAt?: Date;
-  /** Discount amount in cents applied to this order */
-  discountCents?: number;
-  /** Sum of item prices before discount, in cents */
+  /** Sum of item prices before any discounts, in cents */
   subtotalCents?: number;
-  /** Display label for the applied discount (e.g. "10% Empleados") */
-  discountLabel?: string;
-  /** Free-text reason for applying the discount */
-  discountReason?: string;
+  /** Order-level promotion discount in cents */
+  orderDiscountCents?: number;
+  /** Total of all discounts (item-level + order-level) in cents */
+  totalDiscountCents?: number;
+  /** ID of the order-level promotion that was applied */
+  orderPromotionId?: number;
+  /** Display name of the order-level promotion */
+  orderPromotionName?: string;
   /** Table assigned to this order (tables mode) */
   tableId?: number;
   /** Snapshot of the table name at order creation */

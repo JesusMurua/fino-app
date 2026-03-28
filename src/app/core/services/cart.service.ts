@@ -1,8 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 
-import { CartItem, Product, ProductExtra, ProductSize, calcUnitPriceCents } from '../models';
+import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { DatabaseService } from './database.service';
+import { PromotionService } from './promotion.service';
 
 /**
  * Manages the active order cart.
@@ -34,6 +35,9 @@ export class CartService {
   /** Number of individual items in the cart (sum of quantities) */
   readonly itemCount = signal(0);
 
+  /** Latest promotion evaluation result (null when cart is empty) */
+  readonly cartEvaluation = signal<PromotionEvaluation | null>(null);
+
   /** Returns a snapshot of current cart items */
   getSnapshot(): CartItem[] {
     return [...this._cart$.getValue()];
@@ -41,7 +45,10 @@ export class CartService {
   //#endregion
 
   //#region Constructor & Initialization
-  constructor(private readonly db: DatabaseService) {
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly promotionService: PromotionService,
+  ) {
     this.loadFromDb();
   }
 
@@ -52,8 +59,7 @@ export class CartService {
   private async loadFromDb(): Promise<void> {
     try {
       const items = await this.db.cart.toArray();
-      this._cart$.next(items);
-      this.updateTotals(items);
+      this.reevaluatePromotions(items);
     } catch (error) {
       console.error('[CartService] Failed to load cart from IndexedDB:', error);
     }
@@ -93,6 +99,7 @@ export class CartService {
       unitPriceCents,
       totalPriceCents: unitPriceCents,
       notes,
+      discountCents: 0,
     };
 
     const updated = [...this._cart$.getValue(), newItem];
@@ -134,8 +141,7 @@ export class CartService {
    */
   async clearCart(): Promise<void> {
     await this.db.cart.clear();
-    this._cart$.next([]);
-    this.updateTotals([]);
+    this.reevaluatePromotions([]);
   }
   //#endregion
 
@@ -171,20 +177,46 @@ export class CartService {
           await this.db.cart.bulkAdd(items);
         }
       });
-      this._cart$.next(items);
-      this.updateTotals(items);
+      this.reevaluatePromotions(items);
     } catch (error) {
       console.error('[CartService] Failed to persist cart to IndexedDB:', error);
     }
   }
 
   /**
-   * Updates the totalCents and itemCount signals after any cart change.
-   * @param items Current cart items
+   * Evaluates promotions against current items, updates discount fields
+   * on each CartItem, emits updated items, and recalculates totals.
+   * Called after every cart mutation and on initial load from Dexie.
+   * @param items Raw cart items (without promotion discounts applied)
    */
-  private updateTotals(items: CartItem[]): void {
-    const total = items.reduce((sum, item) => sum + item.totalPriceCents, 0);
-    const count = items.reduce((sum, item) => sum + item.quantity, 0);
+  private reevaluatePromotions(items: CartItem[]): void {
+    if (items.length === 0) {
+      this.cartEvaluation.set(null);
+      this._cart$.next([]);
+      this.totalCents.set(0);
+      this.itemCount.set(0);
+      return;
+    }
+
+    const subtotalCents = items.reduce((sum, i) => sum + i.totalPriceCents, 0);
+    const evaluation = this.promotionService.evaluateCart(items, subtotalCents);
+    this.cartEvaluation.set(evaluation);
+
+    // Apply discount info to items (in-memory only — not persisted to Dexie)
+    const updatedItems = items.map(item => {
+      const itemDiscount = evaluation.itemDiscounts.get(item.id);
+      return {
+        ...item,
+        discountCents: itemDiscount?.discountCents ?? 0,
+        promotionId: itemDiscount?.promotionId,
+        promotionName: itemDiscount?.promotionName,
+      };
+    });
+
+    this._cart$.next(updatedItems);
+
+    const count = updatedItems.reduce((sum, i) => sum + i.quantity, 0);
+    const total = Math.max(0, subtotalCents - evaluation.totalDiscountCents);
     this.totalCents.set(total);
     this.itemCount.set(count);
   }
