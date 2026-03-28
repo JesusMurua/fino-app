@@ -1,0 +1,17 @@
+@if (isVisible()) {
+  <div class="trial-banner" [class]="'trial-banner--' + variant()">
+    <i class="pi pi-clock trial-banner__icon"></i>
+    <span class="trial-banner__text">{{ message() }}</span>
+    <button type="button" class="trial-banner__cta" (click)="onCtaClick()">
+      {{ ctaText() }}
+    </button>
+    <button
+      type="button"
+      class="trial-banner__dismiss"
+      aria-label="Cerrar aviso"
+      (click)="dismiss()"
+    >
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+}

@@ -1,3 +1,5 @@
+import { BusinessType, PlanType } from './plan.model';
+
 /** Roles returned by the API — PascalCase to match backend enum */
 export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk';
 
@@ -15,6 +17,12 @@ export interface AuthUser {
   token: string;
   branches: BranchInfo[];
   currentBranchId: number;
+  /** Subscription plan tier */
+  planType: PlanType;
+  /** Business vertical */
+  businessType: BusinessType;
+  /** ISO date string — null if no trial */
+  trialEndsAt?: string;
 }
 
 /** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
@@ -25,6 +33,12 @@ export interface LoginResponse {
   branchId: number;
   branches: BranchInfo[];
   currentBranchId: number;
+  /** Subscription plan tier */
+  planType?: PlanType;
+  /** Business vertical */
+  businessType?: BusinessType;
+  /** ISO date string — null if no trial */
+  trialEndsAt?: string;
 }
 
 /** localStorage keys for auth persistence */

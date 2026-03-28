@@ -9,6 +9,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
+import { TrialBannerComponent } from '../../shared/components/trial-banner/trial-banner.component';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 
@@ -18,6 +19,7 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
     FormsModule, DropdownModule, TooltipModule,
+    TrialBannerComponent,
   ],
   templateUrl: './admin-shell.component.html',
   styleUrl: './admin-shell.component.scss',
@@ -64,6 +66,7 @@ export class AdminShellComponent implements OnInit {
     { path: 'reports',    icon: 'pi-chart-line',  label: 'Reportes' },
     { path: 'tables',     icon: 'pi-table',       label: 'Mesas' },
     { path: 'inventory',  icon: 'pi-box',         label: 'Inventario', badge: true },
+    { path: 'promotions', icon: 'pi-tag',         label: 'Promociones' },
     { path: 'users',      icon: 'pi-users',       label: 'Usuarios' },
     { path: 'cash',       icon: 'pi-wallet',      label: 'Caja' },
     { path: 'settings',   icon: 'pi-cog',         label: 'Configuración' },

@@ -8,7 +8,10 @@ import {
   AUTH_USER_KEY,
   AuthUser,
   BranchInfo,
+  BusinessType,
   LoginResponse,
+  PlanInfo,
+  PlanType,
   RETURN_URL_KEY,
 } from '../models';
 import { ApiService } from './api.service';
@@ -48,6 +51,38 @@ export class AuthService {
   readonly activeBranchId = signal<number>(
     this.loadStoredBranchId(),
   );
+
+  /** Current subscription plan tier — restored from storage on init */
+  readonly planType = signal<PlanType>(
+    this.loadUserFromStorage()?.planType ?? PlanType.Free,
+  );
+
+  /** Current business vertical — restored from storage on init */
+  readonly businessType = signal<BusinessType>(
+    this.loadUserFromStorage()?.businessType ?? BusinessType.General,
+  );
+
+  /** Trial end date as ISO string — null if no trial */
+  readonly trialEndsAt = signal<string | null>(
+    this.loadUserFromStorage()?.trialEndsAt ?? null,
+  );
+
+  /** Computed plan metadata derived from plan signals */
+  readonly planInfo = computed<PlanInfo>(() => {
+    const endsAt = this.trialEndsAt();
+    const now = new Date();
+    const trialDate = endsAt ? new Date(endsAt) : null;
+    return {
+      planType: this.planType(),
+      businessType: this.businessType(),
+      trialEndsAt: endsAt ?? undefined,
+      isOnTrial: trialDate ? trialDate > now : false,
+      trialDaysLeft: trialDate
+        ? Math.max(0, Math.ceil((trialDate.getTime() - now.getTime()) / 86_400_000))
+        : 0,
+      isPaid: this.planType() !== PlanType.Free,
+    };
+  });
 
   //#endregion
 
@@ -153,6 +188,9 @@ export class AuthService {
     localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
     this.activeBranchId.set(0);
+    this.planType.set(PlanType.Free);
+    this.businessType.set(BusinessType.General);
+    this.trialEndsAt.set(null);
 
     // Clear cached catalog from IndexedDB (orders are preserved)
     this.db.products.clear().catch(() => {});
@@ -190,8 +228,9 @@ export class AuthService {
    * Persists auth state after a successful login response.
    * Preserves the previously selected branch if one was stored,
    * so re-authenticating via PIN doesn't reset the active branch.
+   * Public so register flow can call it with the registration response.
    */
-  private handleLoginSuccess(response: LoginResponse): AuthUser {
+  handleLoginSuccess(response: LoginResponse): AuthUser {
     const responseBranchId = response.currentBranchId ?? response.branchId;
     // Preserve the user's last-selected branch across re-authentication
     const storedBranchId = parseInt(localStorage.getItem(ACTIVE_BRANCH_KEY) ?? '', 10);
@@ -204,6 +243,9 @@ export class AuthService {
       branchId: response.branchId,
       branches: response.branches ?? [],
       currentBranchId: effectiveBranchId,
+      planType: response.planType ?? PlanType.Free,
+      businessType: response.businessType ?? BusinessType.General,
+      trialEndsAt: response.trialEndsAt,
     };
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
@@ -211,6 +253,9 @@ export class AuthService {
     localStorage.setItem(ACTIVE_BRANCH_KEY, effectiveBranchId.toString());
     this.currentUser.set(user);
     this.activeBranchId.set(effectiveBranchId);
+    this.planType.set(user.planType);
+    this.businessType.set(user.businessType);
+    this.trialEndsAt.set(user.trialEndsAt ?? null);
 
     return user;
   }
