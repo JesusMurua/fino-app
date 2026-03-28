@@ -1,472 +1,579 @@
 <div class="admin-settings">
 
-  <h1 class="admin-settings__title">Configuración</h1>
+  <!-- Sticky header with tabs -->
+  <div class="settings-header">
+    <h1 class="settings-header__title">Configuración</h1>
+    <nav class="settings-tabs">
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'business'"
+        (click)="setTab('business')"
+      >
+        <i class="pi pi-building"></i>
+        Negocio
+      </button>
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'device'"
+        (click)="setTab('device')"
+      >
+        <i class="pi pi-mobile"></i>
+        Dispositivo
+      </button>
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'peripherals'"
+        (click)="setTab('peripherals')"
+      >
+        <i class="pi pi-print"></i>
+        Periféricos
+      </button>
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'security'"
+        (click)="setTab('security')"
+      >
+        <i class="pi pi-lock"></i>
+        Seguridad
+      </button>
+      @if (authService.currentUser()?.role === 'Owner') {
+        <button
+          type="button"
+          class="settings-tab"
+          [class.settings-tab--active]="activeTab() === 'branches'"
+          (click)="setTab('branches')"
+        >
+          <i class="pi pi-sitemap"></i>
+          Sucursales
+        </button>
+      }
+    </nav>
+  </div>
 
-  <div class="settings-grid">
-
-    <!-- ================================================================ -->
-    <!-- LEFT COLUMN — Business + Security                                -->
-    <!-- ================================================================ -->
-    <div class="settings-col">
-
-      <!-- Business info card -->
-      <section class="settings-card">
-        <div class="settings-card__header">
-          <span class="settings-card__icon">🏪</span>
-          <h2 class="settings-card__title">Información del negocio</h2>
-        </div>
-
-        <div class="settings-form">
-          <div class="form-field">
-            <label class="form-field__label" for="s-name">Nombre del negocio</label>
-            <input
-              id="s-name"
-              type="text"
-              pInputText
-              [ngModel]="config().businessName"
-              (ngModelChange)="updateConfig('businessName', $event)"
-              placeholder="Ej. Fonda El Sabor"
-              class="form-field__input"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="s-location">Dirección / Ubicación</label>
-            <input
-              id="s-location"
-              type="text"
-              pInputText
-              [ngModel]="config().locationName"
-              (ngModelChange)="updateConfig('locationName', $event)"
-              placeholder="Ej. Centro, CDMX"
-              class="form-field__input"
-            />
-          </div>
-        </div>
-
-        <div class="settings-card__footer">
-          @if (saveSuccess()) {
-            <span class="settings-card__ok">
-              <i class="pi pi-check-circle"></i> Guardado
-            </span>
-          }
-          <button
-            type="button"
-            class="btn-primary"
-            [disabled]="isSaving()"
-            (click)="saveBusinessConfig()"
-          >
-            @if (isSaving()) { <i class="pi pi-spin pi-spinner"></i> }
-            Guardar cambios
-          </button>
-        </div>
-      </section>
-
-      <!-- Security card -->
-      <section class="settings-card">
-        <div class="settings-card__header">
-          <span class="settings-card__icon">🔐</span>
-          <h2 class="settings-card__title">Seguridad</h2>
-        </div>
-        <p class="settings-card__desc">PIN de acceso para el equipo</p>
-
-        <div class="settings-form">
-          <div class="form-field">
-            <label class="form-field__label" for="s-cur-pin">PIN actual</label>
-            <p-password
-              inputId="s-cur-pin"
-              [(ngModel)]="currentPin"
-              [feedback]="false"
-              [toggleMask]="true"
-              placeholder="••••"
-              styleClass="pin-input"
-              inputStyleClass="pin-input__field"
-              [maxlength]="4"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="s-new-pin">Nuevo PIN</label>
-            <p-password
-              inputId="s-new-pin"
-              [(ngModel)]="newPin"
-              [feedback]="false"
-              [toggleMask]="true"
-              placeholder="••••"
-              styleClass="pin-input"
-              inputStyleClass="pin-input__field"
-              [maxlength]="4"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="s-confirm-pin">Confirmar nuevo PIN</label>
-            <p-password
-              inputId="s-confirm-pin"
-              [(ngModel)]="confirmPin"
-              [feedback]="false"
-              [toggleMask]="true"
-              placeholder="••••"
-              styleClass="pin-input"
-              inputStyleClass="pin-input__field"
-              [maxlength]="4"
-            />
-          </div>
-        </div>
-
-        @if (pinError()) {
-          <p class="msg msg--error">
-            <i class="pi pi-exclamation-circle"></i>
-            {{ pinError() }}
-          </p>
-        }
-
-        @if (pinSuccess()) {
-          <p class="msg msg--success">
-            <i class="pi pi-check-circle"></i>
-            PIN actualizado correctamente.
-          </p>
-        }
-
-        <div class="settings-card__footer">
-          <button type="button" class="btn-primary" (click)="changePin()">
-            Actualizar PIN
-          </button>
-        </div>
-      </section>
-
-    </div>
+  <!-- Tab content -->
+  @switch (activeTab()) {
 
     <!-- ================================================================ -->
-    <!-- RIGHT COLUMN — Device                                            -->
+    <!-- TAB: Negocio                                                      -->
     <!-- ================================================================ -->
-    <div class="settings-col">
+    @case ('business') {
+      <div class="settings-content settings-content--single">
 
-      <section class="settings-card">
-        <div class="settings-card__header">
-          <span class="settings-card__icon">📱</span>
-          <h2 class="settings-card__title">Este dispositivo</h2>
-          <span class="device-badge">
-            <i class="pi pi-mobile"></i>
-            Solo afecta esta pantalla
-          </span>
-        </div>
-
-        <div class="settings-form">
-          <div class="form-field">
-            <label class="form-field__label" for="s-device-name">Nombre del dispositivo</label>
-            <input
-              id="s-device-name"
-              type="text"
-              pInputText
-              [ngModel]="deviceConfig().deviceName"
-              (ngModelChange)="updateDeviceConfig('deviceName', $event)"
-              placeholder="Ej. Caja 1, Kiosko Entrada"
-              class="form-field__input"
-            />
-          </div>
-        </div>
-
-        <div class="mode-section">
-          <h3 class="mode-section__title">Modo de operación</h3>
-          <p class="mode-section__desc">Elige cómo funciona esta pantalla</p>
-
-          <div class="mode-grid">
-            @for (mode of modes; track mode.value) {
-              <label
-                class="mode-card"
-                [class.mode-card--active]="deviceConfig().mode === mode.value"
-                [for]="'mode-' + mode.value"
-              >
-                <input
-                  type="radio"
-                  [id]="'mode-' + mode.value"
-                  name="deviceMode"
-                  [value]="mode.value"
-                  [checked]="deviceConfig().mode === mode.value"
-                  (change)="updateDeviceConfig('mode', mode.value)"
-                  class="mode-card__radio"
-                />
-
-                @if (deviceConfig().mode === mode.value) {
-                  <i class="pi pi-check-circle mode-card__check"></i>
-                }
-
-                <span class="mode-card__icon">{{ mode.icon }}</span>
-                <span class="mode-card__label">
-                  {{ mode.label }}
-                  @if (mode.badge) {
-                    <span class="mode-card__badge">{{ mode.badge }}</span>
-                  }
-                </span>
-                <span class="mode-card__desc">{{ mode.description }}</span>
-              </label>
-            }
-          </div>
-        </div>
-
-        <div class="settings-card__footer">
-          @if (saveDeviceSuccess()) {
-            <span class="settings-card__ok">
-              <i class="pi pi-check-circle"></i> Guardado
-            </span>
-          }
-          <button
-            type="button"
-            class="btn-primary"
-            [disabled]="isSavingDevice()"
-            (click)="saveAndRedirect()"
-          >
-            @if (isSavingDevice()) { <i class="pi pi-spin pi-spinner"></i> }
-            Aplicar configuración
-          </button>
-        </div>
-      </section>
-
-      <!-- Activation code card — Owner/Manager only -->
-      @if (authService.currentUser()?.role === 'Owner' || authService.currentUser()?.role === 'Manager') {
         <section class="settings-card">
-          <div class="settings-card__header">
-            <span class="settings-card__icon">🔑</span>
-            <h2 class="settings-card__title">Agregar otro dispositivo</h2>
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-building"></i></div>
+            <div>
+              <div class="card-title">Información del negocio</div>
+              <div class="card-subtitle">Datos generales de tu establecimiento</div>
+            </div>
           </div>
-          <p class="settings-card__desc">Genera un código de 6 dígitos para configurar otro equipo. Válido por 24 horas.</p>
 
           <div class="settings-form">
             <div class="form-field">
-              <label class="form-field__label">Sucursal</label>
-              <p-dropdown
-                [options]="branches()"
-                optionLabel="name"
-                optionValue="id"
-                [(ngModel)]="codeBranchId"
-                placeholder="Seleccionar sucursal"
-                styleClass="w-full"
+              <label class="form-field__label" for="s-name">Nombre del negocio</label>
+              <input
+                id="s-name"
+                type="text"
+                pInputText
+                [ngModel]="config().businessName"
+                (ngModelChange)="updateConfig('businessName', $event)"
+                placeholder="Ej. Fonda El Sabor"
+                class="form-field__input"
               />
             </div>
 
             <div class="form-field">
-              <label class="form-field__label">Modo del dispositivo</label>
-              <p-dropdown
-                [options]="modes"
-                optionLabel="label"
-                optionValue="value"
-                [(ngModel)]="codeMode"
-                styleClass="w-full"
+              <label class="form-field__label" for="s-location">Dirección / Ubicación</label>
+              <input
+                id="s-location"
+                type="text"
+                pInputText
+                [ngModel]="config().locationName"
+                (ngModelChange)="updateConfig('locationName', $event)"
+                placeholder="Ej. Centro, CDMX"
+                class="form-field__input"
               />
             </div>
           </div>
 
-          @if (activationCode()) {
-            <div class="activation-code">
-              <span class="activation-code__value">{{ activationCode() }}</span>
-              <span class="activation-code__summary">
-                Código para: <strong>{{ codeBranchLabel() }}</strong>
-                — Modo: <strong>{{ codeModeLabel() }}</strong>
-              </span>
-              <span class="activation-code__hint">Ingresa este código en el nuevo dispositivo</span>
-            </div>
-          }
-
           <div class="settings-card__footer">
+            @if (saveSuccess()) {
+              <span class="settings-card__ok">
+                <i class="pi pi-check-circle"></i> Guardado
+              </span>
+            }
             <button
               type="button"
               class="btn-primary"
-              [disabled]="generatingCode() || !codeBranchId"
-              (click)="generateActivationCode()"
+              [disabled]="isSaving()"
+              (click)="saveBusinessConfig()"
             >
-              @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
-              Generar código
+              @if (isSaving()) { <i class="pi pi-spin pi-spinner"></i> }
+              Guardar cambios
             </button>
           </div>
         </section>
-      }
 
-    </div>
-
-  </div>
-
-  <!-- ================================================================ -->
-  <!-- BRANCHES — Owner only                                            -->
-  <!-- ================================================================ -->
-  @if (authService.currentUser()?.role === 'Owner') {
-    <section class="settings-card branches-section">
-      <div class="settings-card__header">
-        <span class="settings-card__icon">🏢</span>
-        <h2 class="settings-card__title">Sucursales</h2>
-        <button
-          type="button"
-          class="btn-primary btn-primary--sm"
-          (click)="openNewBranch()"
-        >
-          <i class="pi pi-plus"></i>
-          Nueva sucursal
-        </button>
       </div>
+    }
 
-      <p-table
-        [value]="branches()"
-        [loading]="loadingBranches()"
-        [rowHover]="true"
-        dataKey="id"
-      >
-        <ng-template pTemplate="header">
-          <tr>
-            <th>Nombre</th>
-            <th>Ubicación</th>
-            <th style="width: 7rem">Acciones</th>
-          </tr>
-        </ng-template>
+    <!-- ================================================================ -->
+    <!-- TAB: Dispositivo                                                  -->
+    <!-- ================================================================ -->
+    @case ('device') {
+      <div class="settings-content">
 
-        <ng-template pTemplate="body" let-branch>
-          <tr>
-            <td>
-              {{ branch.name }}
-              @if (branch.isMatrix) {
-                <span class="matrix-badge">Matriz</span>
-              }
-            </td>
-            <td>{{ branch.locationName }}</td>
-            <td>
-              <div class="branch-actions">
-                @if (!branch.isMatrix) {
-                  <button
-                    type="button"
-                    class="btn-icon"
-                    aria-label="Copiar catálogo"
-                    (click)="openCopyCatalog(branch)"
-                  >
-                    <i class="pi pi-copy"></i>
-                  </button>
-                }
-                <button
-                  type="button"
-                  class="btn-icon"
-                  aria-label="Editar sucursal"
-                  (click)="openEditBranch(branch)"
+        <!-- Device config card -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-mobile"></i></div>
+            <div>
+              <div class="card-title">Este dispositivo</div>
+              <div class="card-subtitle">Solo afecta esta pantalla</div>
+            </div>
+            <span class="device-badge">
+              <i class="pi pi-mobile"></i>
+              Local
+            </span>
+          </div>
+
+          <div class="settings-form">
+            <div class="form-field">
+              <label class="form-field__label" for="s-device-name">Nombre del dispositivo</label>
+              <input
+                id="s-device-name"
+                type="text"
+                pInputText
+                [ngModel]="deviceConfig().deviceName"
+                (ngModelChange)="updateDeviceConfig('deviceName', $event)"
+                placeholder="Ej. Caja 1, Kiosko Entrada"
+                class="form-field__input"
+              />
+            </div>
+          </div>
+
+          <div class="mode-section">
+            <h3 class="mode-section__title">Modo de operación</h3>
+            <p class="mode-section__desc">Elige cómo funciona esta pantalla</p>
+
+            <div class="mode-grid">
+              @for (mode of modes; track mode.value) {
+                <label
+                  class="mode-card"
+                  [class.mode-card--active]="deviceConfig().mode === mode.value"
+                  [for]="'mode-' + mode.value"
                 >
-                  <i class="pi pi-pencil"></i>
-                </button>
+                  <input
+                    type="radio"
+                    [id]="'mode-' + mode.value"
+                    name="deviceMode"
+                    [value]="mode.value"
+                    [checked]="deviceConfig().mode === mode.value"
+                    (change)="updateDeviceConfig('mode', mode.value)"
+                    class="mode-card__radio"
+                  />
+
+                  @if (deviceConfig().mode === mode.value) {
+                    <i class="pi pi-check-circle mode-card__check"></i>
+                  }
+
+                  <span class="mode-card__icon">{{ mode.icon }}</span>
+                  <span class="mode-card__label">
+                    {{ mode.label }}
+                    @if (mode.badge) {
+                      <span class="mode-card__badge">{{ mode.badge }}</span>
+                    }
+                  </span>
+                  <span class="mode-card__desc">{{ mode.description }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="settings-card__footer">
+            @if (saveDeviceSuccess()) {
+              <span class="settings-card__ok">
+                <i class="pi pi-check-circle"></i> Guardado
+              </span>
+            }
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="isSavingDevice()"
+              (click)="saveAndRedirect()"
+            >
+              @if (isSavingDevice()) { <i class="pi pi-spin pi-spinner"></i> }
+              Aplicar configuración
+            </button>
+          </div>
+        </section>
+
+        <!-- Activation code card — Owner/Manager only -->
+        @if (authService.currentUser()?.role === 'Owner' || authService.currentUser()?.role === 'Manager') {
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-key"></i></div>
+              <div>
+                <div class="card-title">Agregar otro dispositivo</div>
+                <div class="card-subtitle">Código de 6 dígitos válido por 24 horas</div>
               </div>
-            </td>
-          </tr>
-        </ng-template>
+            </div>
 
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td colspan="3" class="branches-empty">
-              No hay sucursales registradas.
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </section>
+            <div class="settings-form">
+              <div class="form-field">
+                <label class="form-field__label">Sucursal</label>
+                <p-dropdown
+                  [options]="branches()"
+                  optionLabel="name"
+                  optionValue="id"
+                  [(ngModel)]="codeBranchId"
+                  placeholder="Seleccionar sucursal"
+                  styleClass="w-full"
+                />
+              </div>
 
-    <!-- Branch create/edit dialog -->
-    <p-dialog
-      [visible]="showBranchDialog()"
-      (visibleChange)="showBranchDialog.set($event)"
-      [header]="editingBranch() ? 'Editar sucursal' : 'Nueva sucursal'"
-      [modal]="true"
-      [closable]="true"
-      [style]="{ width: '420px' }"
-    >
-      @if (editingBranch()?.isMatrix) {
-        <p class="msg msg--info">
+              <div class="form-field">
+                <label class="form-field__label">Modo del dispositivo</label>
+                <p-dropdown
+                  [options]="modes"
+                  optionLabel="label"
+                  optionValue="value"
+                  [(ngModel)]="codeMode"
+                  styleClass="w-full"
+                />
+              </div>
+            </div>
+
+            @if (activationCode()) {
+              <div class="activation-code">
+                <span class="activation-code__value">{{ activationCode() }}</span>
+                <span class="activation-code__summary">
+                  Código para: <strong>{{ codeBranchLabel() }}</strong>
+                  — Modo: <strong>{{ codeModeLabel() }}</strong>
+                </span>
+                <span class="activation-code__hint">Ingresa este código en el nuevo dispositivo</span>
+              </div>
+            }
+
+            <div class="settings-card__footer">
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="generatingCode() || !codeBranchId"
+                (click)="generateActivationCode()"
+              >
+                @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
+                Generar código
+              </button>
+            </div>
+          </section>
+        }
+
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Periféricos                                                  -->
+    <!-- ================================================================ -->
+    @case ('peripherals') {
+      <div class="settings-content settings-content--single">
+
+        <section class="settings-card settings-card--placeholder">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-print"></i></div>
+            <div>
+              <div class="card-title">Periféricos</div>
+              <div class="card-subtitle">Impresoras, lectores de código, cajones de dinero</div>
+            </div>
+          </div>
+          <div class="placeholder-body">
+            <i class="pi pi-cog placeholder-body__icon"></i>
+            <p class="placeholder-body__text">Próximamente</p>
+            <p class="placeholder-body__hint">La configuración de periféricos estará disponible pronto.</p>
+          </div>
+        </section>
+
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Seguridad                                                    -->
+    <!-- ================================================================ -->
+    @case ('security') {
+      <div class="settings-content settings-content--single settings-content--narrow">
+
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-lock"></i></div>
+            <div>
+              <div class="card-title">PIN de acceso</div>
+              <div class="card-subtitle">PIN de 4 dígitos para el equipo</div>
+            </div>
+          </div>
+
+          <div class="settings-form">
+            <div class="form-field">
+              <label class="form-field__label" for="s-cur-pin">PIN actual</label>
+              <p-password
+                inputId="s-cur-pin"
+                [(ngModel)]="currentPin"
+                [feedback]="false"
+                [toggleMask]="true"
+                placeholder="••••"
+                styleClass="pin-input"
+                inputStyleClass="pin-input__field"
+                [maxlength]="4"
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="s-new-pin">Nuevo PIN</label>
+              <p-password
+                inputId="s-new-pin"
+                [(ngModel)]="newPin"
+                [feedback]="false"
+                [toggleMask]="true"
+                placeholder="••••"
+                styleClass="pin-input"
+                inputStyleClass="pin-input__field"
+                [maxlength]="4"
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="s-confirm-pin">Confirmar nuevo PIN</label>
+              <p-password
+                inputId="s-confirm-pin"
+                [(ngModel)]="confirmPin"
+                [feedback]="false"
+                [toggleMask]="true"
+                placeholder="••••"
+                styleClass="pin-input"
+                inputStyleClass="pin-input__field"
+                [maxlength]="4"
+              />
+            </div>
+          </div>
+
+          @if (pinError()) {
+            <p class="msg msg--error">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ pinError() }}
+            </p>
+          }
+
+          @if (pinSuccess()) {
+            <p class="msg msg--success">
+              <i class="pi pi-check-circle"></i>
+              PIN actualizado correctamente.
+            </p>
+          }
+
+          <div class="settings-card__footer">
+            <button type="button" class="btn-primary" (click)="changePin()">
+              Actualizar PIN
+            </button>
+          </div>
+        </section>
+
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Sucursales                                                   -->
+    <!-- ================================================================ -->
+    @case ('branches') {
+      <div class="settings-content settings-content--full">
+
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-sitemap"></i></div>
+            <div>
+              <div class="card-title">Sucursales</div>
+              <div class="card-subtitle">Administra las ubicaciones de tu negocio</div>
+            </div>
+            <button
+              type="button"
+              class="btn-primary btn-primary--sm"
+              style="margin-left: auto"
+              (click)="openNewBranch()"
+            >
+              <i class="pi pi-plus"></i>
+              Nueva sucursal
+            </button>
+          </div>
+
+          <p-table
+            [value]="branches()"
+            [loading]="loadingBranches()"
+            [rowHover]="true"
+            dataKey="id"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Nombre</th>
+                <th>Ubicación</th>
+                <th style="width: 7rem">Acciones</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-branch>
+              <tr>
+                <td>
+                  {{ branch.name }}
+                  @if (branch.isMatrix) {
+                    <span class="matrix-badge">Matriz</span>
+                  }
+                </td>
+                <td>{{ branch.locationName }}</td>
+                <td>
+                  <div class="branch-actions">
+                    @if (!branch.isMatrix) {
+                      <button
+                        type="button"
+                        class="btn-icon"
+                        aria-label="Copiar catálogo"
+                        (click)="openCopyCatalog(branch)"
+                      >
+                        <i class="pi pi-copy"></i>
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      aria-label="Editar sucursal"
+                      (click)="openEditBranch(branch)"
+                    >
+                      <i class="pi pi-pencil"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="3" class="branches-empty">
+                  No hay sucursales registradas.
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </section>
+
+      </div>
+
+      <!-- Branch create/edit dialog -->
+      <p-dialog
+        [visible]="showBranchDialog()"
+        (visibleChange)="showBranchDialog.set($event)"
+        [header]="editingBranch() ? 'Editar sucursal' : 'Nueva sucursal'"
+        [modal]="true"
+        [closable]="true"
+        [style]="{ width: '420px' }"
+      >
+        @if (editingBranch()?.isMatrix) {
+          <p class="msg msg--info">
+            <i class="pi pi-info-circle"></i>
+            Esta es la sucursal principal del negocio
+          </p>
+        }
+
+        <div class="settings-form">
+          <div class="form-field">
+            <label class="form-field__label" for="branch-name">Nombre</label>
+            <input
+              [(ngModel)]="branchForm.name"
+              id="branch-name"
+              type="text"
+              pInputText
+              class="form-field__input"
+              placeholder="Ej. Centro"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label" for="branch-location">Ubicación</label>
+            <input
+              [(ngModel)]="branchForm.locationName"
+              id="branch-location"
+              type="text"
+              pInputText
+              class="form-field__input"
+              placeholder="Ej. Av. Reforma 123, CDMX"
+            />
+          </div>
+        </div>
+
+        <ng-template pTemplate="footer">
+          <div class="dialog-footer">
+            <button
+              type="button"
+              class="btn-secondary"
+              [disabled]="savingBranch()"
+              (click)="showBranchDialog.set(false)"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
+              (click)="saveBranch()"
+            >
+              @if (savingBranch()) { <i class="pi pi-spin pi-spinner"></i> }
+              Guardar
+            </button>
+          </div>
+        </ng-template>
+      </p-dialog>
+
+      <!-- Copy catalog confirmation dialog -->
+      <p-dialog
+        [visible]="showCopyDialog()"
+        (visibleChange)="showCopyDialog.set($event)"
+        header="Copiar catálogo"
+        [modal]="true"
+        [closable]="true"
+        [style]="{ width: '420px' }"
+      >
+        <div class="msg msg--info">
           <i class="pi pi-info-circle"></i>
-          Esta es la sucursal principal del negocio
-        </p>
-      }
-
-      <div class="settings-form">
-        <div class="form-field">
-          <label class="form-field__label" for="branch-name">Nombre</label>
-          <input
-            [(ngModel)]="branchForm.name"
-            id="branch-name"
-            type="text"
-            pInputText
-            class="form-field__input"
-            placeholder="Ej. Centro"
-          />
+          <span>
+            ¿Copiar el catálogo de la sucursal principal a
+            <strong>{{ copyTarget()?.name }}</strong>?
+            Esto copiará todas las categorías y productos.
+          </span>
         </div>
 
-        <div class="form-field">
-          <label class="form-field__label" for="branch-location">Ubicación</label>
-          <input
-            [(ngModel)]="branchForm.locationName"
-            id="branch-location"
-            type="text"
-            pInputText
-            class="form-field__input"
-            placeholder="Ej. Av. Reforma 123, CDMX"
-          />
-        </div>
-      </div>
+        <ng-template pTemplate="footer">
+          <div class="dialog-footer">
+            <button
+              type="button"
+              class="btn-secondary"
+              [disabled]="copyingCatalog()"
+              (click)="showCopyDialog.set(false)"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="copyingCatalog()"
+              (click)="confirmCopyCatalog()"
+            >
+              @if (copyingCatalog()) { <i class="pi pi-spin pi-spinner"></i> }
+              Sí, copiar
+            </button>
+          </div>
+        </ng-template>
+      </p-dialog>
+    }
 
-      <ng-template pTemplate="footer">
-        <div class="dialog-footer">
-          <button
-            type="button"
-            class="btn-secondary"
-            [disabled]="savingBranch()"
-            (click)="showBranchDialog.set(false)"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="btn-primary"
-            [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
-            (click)="saveBranch()"
-          >
-            @if (savingBranch()) { <i class="pi pi-spin pi-spinner"></i> }
-            Guardar
-          </button>
-        </div>
-      </ng-template>
-    </p-dialog>
-
-    <!-- Copy catalog confirmation dialog -->
-    <p-dialog
-      [visible]="showCopyDialog()"
-      (visibleChange)="showCopyDialog.set($event)"
-      header="Copiar catálogo"
-      [modal]="true"
-      [closable]="true"
-      [style]="{ width: '420px' }"
-    >
-      <div class="msg msg--info">
-        <i class="pi pi-info-circle"></i>
-        <span>
-          ¿Copiar el catálogo de la sucursal principal a
-          <strong>{{ copyTarget()?.name }}</strong>?
-          Esto copiará todas las categorías y productos.
-        </span>
-      </div>
-
-      <ng-template pTemplate="footer">
-        <div class="dialog-footer">
-          <button
-            type="button"
-            class="btn-secondary"
-            [disabled]="copyingCatalog()"
-            (click)="showCopyDialog.set(false)"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="btn-primary"
-            [disabled]="copyingCatalog()"
-            (click)="confirmCopyCatalog()"
-          >
-            @if (copyingCatalog()) { <i class="pi pi-spin pi-spinner"></i> }
-            Sí, copiar
-          </button>
-        </div>
-      </ng-template>
-    </p-dialog>
   }
 
 </div>

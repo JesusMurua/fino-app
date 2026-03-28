@@ -45,6 +45,9 @@ export class AdminSettingsComponent implements OnInit {
 
   //#region Properties
 
+  /** Active settings tab */
+  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'branches'>('business');
+
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
 
@@ -114,6 +117,15 @@ export class AdminSettingsComponent implements OnInit {
       const first = this.branches()[0];
       if (first) this.codeBranchId = first.id;
     }
+  }
+
+  //#endregion
+
+  //#region Tab Navigation
+
+  /** Switches the active settings tab */
+  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'branches'): void {
+    this.activeTab.set(tab);
   }
 
   //#endregion
