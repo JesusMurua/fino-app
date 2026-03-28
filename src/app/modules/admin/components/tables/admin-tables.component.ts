@@ -13,7 +13,7 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
 
 import { environment } from '../../../../../environments/environment';
-import { BusinessType, RestaurantTable, Zone, ZoneType } from '../../../../core/models';
+import { RestaurantTable, Zone, ZoneType } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { TableService } from '../../../../core/services/table.service';
 import { ZoneService } from '../../../../core/services/zone.service';
@@ -89,8 +89,9 @@ export class AdminTablesComponent implements OnInit {
     { label: 'Otro',  value: ZoneType.Other },
   ];
 
-  /** Whether the Zones tab should be visible based on business type */
+  /** Zones tab always visible — all business types can organize tables into zones */
   readonly showZonesTab = signal(true);
+
 
   //#endregion
 
@@ -105,13 +106,6 @@ export class AdminTablesComponent implements OnInit {
       }
     }, { allowSignalWrites: true });
 
-    // Check business type for zone tab visibility
-    const giro = this.authService.businessType();
-    this.showZonesTab.set(
-      giro === BusinessType.Restaurant ||
-      giro === BusinessType.Bar ||
-      giro === BusinessType.Cafe,
-    );
   }
 
   //#endregion
