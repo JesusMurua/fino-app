@@ -98,6 +98,13 @@ export class AdminTablesComponent implements OnInit {
 
   //#region Computeds
 
+  /** Display name of the active branch */
+  readonly branchName = computed(() => {
+    const branches = this.authService.availableBranches();
+    const id = this.authService.activeBranchId();
+    return branches.find(b => b.id === id)?.name ?? 'tu sucursal';
+  });
+
   /** Whether the Zones kanban is available (plan gate) */
   readonly canUseZones = computed(() =>
     this.featureFlags.canUse(FeatureKey.Zones),

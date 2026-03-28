@@ -47,7 +47,7 @@
     <div class="branch-context-banner">
       <i class="pi pi-map-marker"></i>
       <span>Configurando mesas para:</span>
-      <strong>{{ authService.authService ? '' : '' }}{{ authService.currentUser()?.name ?? 'tu sucursal' }}</strong>
+      <strong>{{ branchName() }}</strong>
       <span class="branch-hint">(cambia la sucursal desde el menú lateral)</span>
     </div>
 

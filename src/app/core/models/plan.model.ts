@@ -112,7 +112,7 @@ export const BUSINESS_FEATURE_MAP: Record<BusinessType, FeatureKey[]> = {
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
   ],
   [BusinessType.General]: [
-    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.Zones, FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.ClientsAndCredit,
   ],
 };
