@@ -1,0 +1,131 @@
+<div class="register-page">
+
+  <div class="register-card">
+
+    <!-- Header -->
+    <div class="register-header">
+      <div class="register-header__logo" aria-hidden="true">
+        <i class="pi pi-user-plus"></i>
+      </div>
+      <h1 class="register-header__title">Crear cuenta</h1>
+      <p class="register-header__subtitle">Prueba gratuita de 3 meses, sin tarjeta</p>
+    </div>
+
+    <!-- Form -->
+    <form class="register-form" [formGroup]="form" (ngSubmit)="submit()">
+
+      <div class="register-field">
+        <label for="businessName">Nombre del negocio</label>
+        <input
+          formControlName="businessName"
+          id="businessName"
+          type="text"
+          pInputText
+          placeholder="Ej. Tacos Don Pancho"
+          autocomplete="organization"
+        />
+      </div>
+
+      <div class="register-field">
+        <label for="ownerName">Tu nombre</label>
+        <input
+          formControlName="ownerName"
+          id="ownerName"
+          type="text"
+          pInputText
+          placeholder="Ej. Juan Pérez"
+          autocomplete="name"
+        />
+      </div>
+
+      <div class="register-field">
+        <label for="reg-email">Correo electrónico</label>
+        <input
+          formControlName="email"
+          id="reg-email"
+          type="email"
+          pInputText
+          placeholder="correo@ejemplo.com"
+          autocomplete="email"
+        />
+        @if (isInvalidField('email') && form.get('email')?.hasError('email')) {
+          <span class="register-field__error">Correo no válido</span>
+        }
+      </div>
+
+      <div class="register-field">
+        <label for="reg-password">Contraseña</label>
+        <p-password
+          formControlName="password"
+          inputId="reg-password"
+          [toggleMask]="true"
+          [feedback]="false"
+          placeholder="Mínimo 8 caracteres"
+          autocomplete="new-password"
+        />
+        @if (isInvalidField('password') && form.get('password')?.hasError('minlength')) {
+          <span class="register-field__error">Mínimo 8 caracteres</span>
+        }
+      </div>
+
+      <div class="register-field">
+        <label for="reg-confirm">Confirmar contraseña</label>
+        <p-password
+          formControlName="confirmPassword"
+          inputId="reg-confirm"
+          [toggleMask]="true"
+          [feedback]="false"
+          placeholder="Repite la contraseña"
+          autocomplete="new-password"
+        />
+        @if (passwordMismatch) {
+          <span class="register-field__error">Las contraseñas no coinciden</span>
+        }
+      </div>
+
+      <div class="register-field">
+        <label for="reg-type">Tipo de negocio</label>
+        <p-dropdown
+          formControlName="businessType"
+          inputId="reg-type"
+          [options]="businessTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Seleccionar tipo"
+          styleClass="register-field__dropdown"
+          [appendTo]="'body'"
+        />
+      </div>
+
+      @if (errorMessage()) {
+        <p class="register-error">
+          {{ errorMessage() }}
+          @if (errorMessage().includes('ya tiene')) {
+            <a routerLink="/login" class="register-error__link">¿Iniciar sesión?</a>
+          }
+        </p>
+      }
+
+      <button
+        type="submit"
+        class="register-submit"
+        [disabled]="isLoading()"
+      >
+        @if (isLoading()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        } @else {
+          <i class="pi pi-user-plus"></i>
+        }
+        <span>Crear cuenta gratis</span>
+      </button>
+
+    </form>
+
+    <!-- Login link -->
+    <a routerLink="/login" class="register-link">
+      ¿Ya tienes cuenta? <strong>Iniciar sesión</strong>
+    </a>
+
+  </div>
+
+</div>

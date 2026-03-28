@@ -50,7 +50,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Properties
 
   /** Active settings tab */
-  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'branches'>('business');
+  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'branches' | 'billing'>('business');
 
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
@@ -101,6 +101,13 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Phone field — local only, not persisted yet */
   businessPhone = '';
 
+  // ---- Folio configuration ----
+  folioPrefix = '';
+  folioFormat = '';
+  readonly folioCounter = signal(0);
+  readonly isSavingFolio = signal(false);
+  readonly saveFolioSuccess = signal(false);
+
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
@@ -149,7 +156,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Tab Navigation
 
   /** Switches the active settings tab */
-  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'branches'): void {
+  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'branches' | 'billing'): void {
     // Stop scanner when leaving peripherals tab
     if (this.activeTab() === 'peripherals' && tab !== 'peripherals') {
       this.scannerService.stopListening();
@@ -242,6 +249,57 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.confirmPin = '';
     this.pinSuccess.set(true);
     setTimeout(() => this.pinSuccess.set(false), 3000);
+  }
+
+  //#endregion
+
+  //#region Folio Configuration
+
+  /**
+   * Returns a live preview of the next folio based on current form values.
+   */
+  folioPreview(): string {
+    const counter = this.folioCounter() + 1;
+    const num = counter.toString().padStart(4, '0');
+    const prefix = this.folioPrefix.trim().toUpperCase();
+
+    if (this.folioFormat.trim()) {
+      return this.folioFormat
+        .replace('{PREFIX}', prefix)
+        .replace(/\{NUM:\d+\}/, num);
+    }
+
+    return prefix ? `${prefix}-${num}` : num;
+  }
+
+  /** Saves folio configuration to the API */
+  async saveFolioConfig(): Promise<void> {
+    this.isSavingFolio.set(true);
+    this.saveFolioSuccess.set(false);
+
+    try {
+      await firstValueFrom(
+        this.api.post('/branch/folio-config', {
+          folioPrefix: this.folioPrefix.trim().toUpperCase() || null,
+          folioFormat: this.folioFormat.trim() || null,
+        }),
+      );
+      this.saveFolioSuccess.set(true);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Configuración de folios guardada',
+        life: 3000,
+      });
+      setTimeout(() => this.saveFolioSuccess.set(false), 3000);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al guardar la configuración de folios',
+        life: 3000,
+      });
+    } finally {
+      this.isSavingFolio.set(false);
+    }
   }
 
   //#endregion

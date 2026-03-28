@@ -40,6 +40,15 @@
         <i class="pi pi-lock"></i>
         Seguridad
       </button>
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'billing'"
+        (click)="setTab('billing')"
+      >
+        <i class="pi pi-receipt"></i>
+        Facturación
+      </button>
       @if (authService.currentUser()?.role === 'Owner') {
         <button
           type="button"
@@ -554,6 +563,73 @@
           <div class="settings-card__footer">
             <button type="button" class="btn-primary" (click)="changePin()">
               Actualizar PIN
+            </button>
+          </div>
+        </section>
+
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Facturación                                                  -->
+    <!-- ================================================================ -->
+    @case ('billing') {
+      <div class="settings-content">
+
+        <section class="settings-card">
+          <h2 class="settings-card__title">Configuración de folios</h2>
+          <p class="settings-card__subtitle">El folio aparece en cada ticket y nota de venta</p>
+
+          <div class="settings-card__body">
+            <div class="settings-field">
+              <label class="settings-field__label" for="folio-prefix">Prefijo del folio</label>
+              <input
+                id="folio-prefix"
+                type="text"
+                pInputText
+                [(ngModel)]="folioPrefix"
+                [maxlength]="10"
+                placeholder="Ej. HMO, SUC1"
+                class="settings-field__input"
+                style="text-transform: uppercase"
+              />
+              <span class="settings-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-field__label" for="folio-format">Formato del folio</label>
+              <input
+                id="folio-format"
+                type="text"
+                pInputText
+                [(ngModel)]="folioFormat"
+                placeholder="{PREFIX}-{NUM:4}"
+                class="settings-field__input"
+              />
+              <span class="settings-field__hint">
+                Vista previa: <strong>{{ folioPreview() }}</strong>
+              </span>
+            </div>
+
+            <div class="folio-preview-card">
+              <span class="folio-preview-card__label">El siguiente folio será:</span>
+              <span class="folio-preview-card__value">{{ folioPreview() }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="settings-card__save"
+              [disabled]="isSavingFolio()"
+              (click)="saveFolioConfig()"
+            >
+              @if (isSavingFolio()) {
+                <i class="pi pi-spinner pi-spin"></i>
+              }
+              @if (saveFolioSuccess()) {
+                <i class="pi pi-check"></i> Guardado
+              } @else {
+                Guardar configuración
+              }
             </button>
           </div>
         </section>

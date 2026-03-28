@@ -7,9 +7,8 @@
 
   &__header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: $space-4;
+    flex-direction: column;
+    gap: $space-3;
   }
 
   &__title {
@@ -17,6 +16,11 @@
     font-size: 22px;
     font-weight: 700;
     color: $color-text-title;
+  }
+
+  &__tabs {
+    display: flex;
+    gap: $space-2;
   }
 
   &__wrap {
@@ -36,7 +40,50 @@
 }
 
 // -----------------------------------------------------------------------
-// Buttons (reuse pattern from admin-products)
+// Tab buttons
+// -----------------------------------------------------------------------
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: white;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  i { font-size: 14px; }
+
+  &:hover { background: #F3F4F6; }
+
+  &--active {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+
+    &:hover { background: #15803D; }
+  }
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Buttons
 // -----------------------------------------------------------------------
 .btn-primary {
   display: inline-flex;
@@ -55,6 +102,7 @@
   transition: background 0.15s;
 
   &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .btn-ghost {
@@ -86,6 +134,7 @@
   cursor: pointer;
 
   &:hover { background: #F3F4F6; color: $color-text-title; }
+  &--red:hover { background: #FEF2F2; color: #DC2626; }
 }
 
 // -----------------------------------------------------------------------
@@ -98,19 +147,127 @@
   font-size: 12px;
   font-weight: 700;
 
-  &--green {
-    background: #DCFCE7;
-    color: #15803D;
+  &--green { background: #DCFCE7; color: #15803D; }
+  &--red   { background: #FEE2E2; color: #DC2626; }
+}
+
+// -----------------------------------------------------------------------
+// Zone cards
+// -----------------------------------------------------------------------
+.zone-intro {
+  &__sub {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+.zone-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  transition: border-color 0.15s;
+
+  &:hover { border-color: #D1D5DB; }
+
+  &--inactive {
+    opacity: 0.5;
   }
 
-  &--red {
-    background: #FEE2E2;
-    color: #DC2626;
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__order {
+    font-size: 12px;
+    color: $color-text-sub;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+  }
+}
+
+.zone-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &--salon    { background: #EFF6FF; color: #2563EB; }
+  &--barseats { background: #FEF3C7; color: #92400E; }
+  &--other    { background: #F3F4F6; color: #6B7280; }
+}
+
+.zone-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-6;
+  color: $color-text-sub;
+
+  i { font-size: 32px; }
+  p { margin: 0; font-size: $font-size-base; }
+}
+
+.btn-add-zone {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  border: 1px dashed #D1D5DB;
+  border-radius: 10px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  width: 100%;
+  justify-content: center;
+
+  &:hover { border-color: $color-primary; color: $color-primary; }
+}
+
+// -----------------------------------------------------------------------
+// Zone inline form
+// -----------------------------------------------------------------------
+.zone-inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+  background: white;
+  border-radius: 10px;
+  border: 1.5px solid $color-primary;
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $space-2;
   }
 }
 
 // -----------------------------------------------------------------------
-// Form
+// Form (shared with table dialog)
 // -----------------------------------------------------------------------
 .table-form {
   display: flex;
@@ -140,5 +297,3 @@
     width: 100%;
   }
 }
-
-// -----------------------------------------------------------------------

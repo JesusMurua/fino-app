@@ -1,10 +1,10 @@
 @use '../../../styles/variables' as *;
 
 // ============================================================================
-// Login Screen — full page, centered card (mirrors PIN screen design)
+// Register Screen — mirrors login page design
 // ============================================================================
 
-.login-page {
+.register-page {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,9 +14,9 @@
 }
 
 // -----------------------------------------------------------------------
-// Card container (same as .pin-card)
+// Card container (same as .login-card)
 // -----------------------------------------------------------------------
-.login-card {
+.register-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -26,13 +26,13 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   padding: $space-6 $space-5;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 // -----------------------------------------------------------------------
-// Header (same as .pin-header)
+// Header
 // -----------------------------------------------------------------------
-.login-header {
+.register-header {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -72,14 +72,14 @@
 // -----------------------------------------------------------------------
 // Form
 // -----------------------------------------------------------------------
-.login-form {
+.register-form {
   display: flex;
   flex-direction: column;
   gap: $space-4;
   width: 100%;
 }
 
-.login-field {
+.register-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -90,7 +90,6 @@
     color: $color-text-title;
   }
 
-  // Native PrimeNG input
   input[pInputText] {
     width: 100%;
     height: 48px;
@@ -106,20 +105,18 @@
     &:focus { border-color: $color-primary; box-shadow: 0 0 0 3px rgba($color-primary, 0.12); }
   }
 
-  // PrimeNG p-password — force full width and matching height
+  // PrimeNG p-password
   :host ::ng-deep p-password {
     display: block;
     width: 100%;
 
-    .p-password {
-      width: 100%;
-    }
+    .p-password { width: 100%; }
 
     .p-inputtext {
       width: 100%;
       height: 48px;
       padding: 0 $space-3;
-      padding-right: 44px; // room for toggle icon
+      padding-right: 44px;
       font-size: $font-size-base;
       border: 1px solid #D1D5DB;
       border-radius: 10px;
@@ -128,27 +125,60 @@
       &::placeholder { color: #9CA3AF; }
       &:focus { border-color: $color-primary; box-shadow: 0 0 0 3px rgba($color-primary, 0.12); }
     }
+  }
 
-    .p-password-toggle-icon {
-      color: $color-text-sub;
+  // PrimeNG dropdown
+  &__dropdown {
+    width: 100%;
+  }
+
+  :host ::ng-deep .register-field__dropdown {
+    width: 100%;
+    height: 48px;
+
+    .p-dropdown {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #D1D5DB;
+      border-radius: 10px;
+
+      &:focus-within { border-color: $color-primary; box-shadow: 0 0 0 3px rgba($color-primary, 0.12); }
     }
+
+    .p-dropdown-label {
+      padding: 0 $space-3;
+      line-height: 48px;
+      font-size: $font-size-base;
+    }
+  }
+
+  &__error {
+    font-size: 12px;
+    color: #DC2626;
   }
 }
 
 // -----------------------------------------------------------------------
 // Error message
 // -----------------------------------------------------------------------
-.login-error {
+.register-error {
   margin: 0;
   font-size: $font-size-label;
   color: #DC2626;
   text-align: center;
+
+  &__link {
+    color: $color-primary;
+    font-weight: 600;
+    text-decoration: underline;
+    margin-left: $space-1;
+  }
 }
 
 // -----------------------------------------------------------------------
-// Submit button — native button styled to match design system
+// Submit button
 // -----------------------------------------------------------------------
-.login-submit {
+.register-submit {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -180,24 +210,9 @@
 }
 
 // -----------------------------------------------------------------------
-// Back link
+// Login link
 // -----------------------------------------------------------------------
-.login-back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: $font-size-label;
-  color: $color-text-sub;
-  text-decoration: none;
-  transition: color 0.15s;
-
-  i { font-size: 12px; }
-
-  &:hover { color: $color-text-title; }
-  &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
-}
-
-.login-register-link {
+.register-link {
   font-size: $font-size-label;
   color: $color-text-sub;
   text-decoration: none;
