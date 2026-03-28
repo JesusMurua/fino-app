@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { onboardingGuard } from './core/guards/onboarding.guard';
 import { setupGuard } from './core/guards/setup.guard';
 
 export const appRoutes: Routes = [
@@ -18,10 +19,15 @@ export const appRoutes: Routes = [
   },
   {
     path: 'admin',
-    canActivate: [authGuard],
+    canActivate: [authGuard, onboardingGuard],
     data: { roles: ['Owner', 'Manager'] },
     loadChildren: () =>
       import('./modules/admin/admin.routes').then(m => m.adminRoutes),
+  },
+  {
+    path: 'onboarding',
+    loadComponent: () =>
+      import('./modules/onboarding/onboarding.component').then(m => m.OnboardingComponent),
   },
   {
     path: 'kitchen',
@@ -55,6 +61,11 @@ export const appRoutes: Routes = [
     canActivate: [setupGuard],
     loadComponent: () =>
       import('./modules/login/login.component').then(m => m.LoginComponent),
+  },
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./modules/register/register.component').then(m => m.RegisterComponent),
   },
   {
     path: 'setup',

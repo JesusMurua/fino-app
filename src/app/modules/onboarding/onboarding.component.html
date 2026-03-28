@@ -1,0 +1,238 @@
+<div class="onboarding-page">
+
+  <!-- Progress bar -->
+  <div class="onboarding-progress">
+    <div class="onboarding-progress__bar" [style.width.%]="progress()"></div>
+  </div>
+  <div class="onboarding-step-counter">
+    Paso {{ currentStep() }} de {{ totalSteps }}
+  </div>
+
+  <!-- Step content -->
+  <div class="onboarding-card">
+
+    <!-- ================================================================ -->
+    <!-- STEP 1 — Giro del negocio                                        -->
+    <!-- ================================================================ -->
+    @if (currentStep() === 1) {
+      <h1 class="onboarding-card__title">¿Qué tipo de negocio tienes?</h1>
+      <p class="onboarding-card__subtitle">Esto personaliza tu experiencia</p>
+
+      <div class="giro-grid">
+        @for (giro of giroOptions; track giro.value) {
+          <button
+            type="button"
+            class="giro-card"
+            [class.giro-card--active]="selectedGiro() === giro.value"
+            (click)="selectGiro(giro.value)"
+          >
+            @if (selectedGiro() === giro.value) {
+              <i class="pi pi-check-circle giro-card__check"></i>
+            }
+            <span class="giro-card__icon">{{ giro.icon }}</span>
+            <span class="giro-card__label">{{ giro.label }}</span>
+            <span class="giro-card__desc">{{ giro.description }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- STEP 2 — Zones or Folio                                           -->
+    <!-- ================================================================ -->
+    @if (currentStep() === 2) {
+      @if (isZoneStep()) {
+        <h1 class="onboarding-card__title">Configura las zonas de tu local</h1>
+        <p class="onboarding-card__subtitle">Puedes cambiarlas después en Mesas → Zonas</p>
+
+        <div class="zone-drafts">
+          @for (zone of zones; track zone.name; let i = $index) {
+            <button
+              type="button"
+              class="zone-chip"
+              [class.zone-chip--checked]="zone.checked"
+              (click)="toggleZone(i)"
+            >
+              @if (zone.checked) {
+                <i class="pi pi-check"></i>
+              } @else {
+                <i class="pi pi-plus"></i>
+              }
+              <span>{{ zone.name }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="zone-add-row">
+          <input
+            type="text"
+            pInputText
+            [(ngModel)]="newZoneName"
+            placeholder="Agregar zona personalizada"
+            class="zone-add-row__input"
+            (keydown.enter)="addCustomZone()"
+          />
+          <button
+            type="button"
+            class="zone-add-row__btn"
+            [disabled]="!newZoneName.trim()"
+            (click)="addCustomZone()"
+          >
+            <i class="pi pi-plus"></i>
+          </button>
+        </div>
+      } @else {
+        <h1 class="onboarding-card__title">Configura tus folios de venta</h1>
+        <p class="onboarding-card__subtitle">El folio aparece en cada ticket y nota de venta</p>
+
+        <div class="folio-field">
+          <label class="folio-field__label" for="ob-prefix">Prefijo del folio</label>
+          <input
+            id="ob-prefix"
+            type="text"
+            pInputText
+            [(ngModel)]="folioPrefix"
+            [maxlength]="10"
+            placeholder="Ej. HMO, SUC1"
+            class="folio-field__input"
+            style="text-transform: uppercase"
+          />
+          <span class="folio-field__hint">
+            Vista previa: <strong>{{ folioPreview() }}</strong>
+          </span>
+          <span class="folio-field__hint">Puedes cambiarlo después en Configuración</span>
+        </div>
+      }
+    }
+
+    <!-- ================================================================ -->
+    <!-- STEP 3 — First product                                            -->
+    <!-- ================================================================ -->
+    @if (currentStep() === 3) {
+      <h1 class="onboarding-card__title">Agrega tu primer producto</h1>
+      <p class="onboarding-card__subtitle">O sáltatelo y agrégalos después en Catálogo</p>
+
+      <form [formGroup]="productForm" class="product-form">
+        <div class="product-form__field">
+          <label for="ob-prod-name">Nombre del producto</label>
+          <input
+            formControlName="name"
+            id="ob-prod-name"
+            type="text"
+            pInputText
+            placeholder="Ej. Tacos de canasta"
+          />
+        </div>
+
+        <div class="product-form__field">
+          <label for="ob-prod-price">Precio (MXN)</label>
+          <p-inputNumber
+            formControlName="pricePesos"
+            inputId="ob-prod-price"
+            mode="currency"
+            currency="MXN"
+            locale="es-MX"
+            [min]="0"
+            styleClass="product-form__number"
+          />
+        </div>
+
+        <div class="product-form__field">
+          <label for="ob-prod-cat">Categoría (opcional)</label>
+          <input
+            formControlName="categoryName"
+            id="ob-prod-cat"
+            type="text"
+            pInputText
+            placeholder="Ej. Antojitos, Bebidas"
+          />
+        </div>
+      </form>
+
+      <button type="button" class="skip-link" (click)="skipStep()">
+        Saltar este paso
+      </button>
+    }
+
+    <!-- ================================================================ -->
+    <!-- STEP 4 — Device mode                                              -->
+    <!-- ================================================================ -->
+    @if (currentStep() === 4) {
+      <h1 class="onboarding-card__title">¿Cómo usarás esta pantalla?</h1>
+      <p class="onboarding-card__subtitle">Puedes configurar otros dispositivos después</p>
+
+      <div class="device-name-field">
+        <label for="ob-device-name">Nombre del dispositivo</label>
+        <input
+          id="ob-device-name"
+          type="text"
+          pInputText
+          [ngModel]="deviceName()"
+          (ngModelChange)="deviceName.set($event)"
+          placeholder="Ej. Caja Principal, Tablet Mesero"
+        />
+      </div>
+
+      <div class="mode-grid">
+        @for (mode of filteredModes(); track mode.value) {
+          <button
+            type="button"
+            class="mode-card"
+            [class.mode-card--active]="selectedMode() === mode.value"
+            (click)="selectMode(mode.value)"
+          >
+            @if (selectedMode() === mode.value) {
+              <i class="pi pi-check-circle mode-card__check"></i>
+            }
+            <span class="mode-card__icon">{{ mode.icon }}</span>
+            <span class="mode-card__label">{{ mode.label }}</span>
+            <span class="mode-card__desc">{{ mode.description }}</span>
+          </button>
+        }
+      </div>
+
+      @if (pendingPlan()) {
+        <div class="plan-banner">
+          <i class="pi pi-star"></i>
+          <span>Activa tu plan para desbloquear todas las funciones</span>
+          <button type="button" class="plan-banner__cta">Activar plan</button>
+        </div>
+      }
+    }
+
+  </div>
+
+  <!-- Bottom navigation -->
+  <div class="onboarding-nav">
+    <button type="button" class="onboarding-nav__back" (click)="prevStep()">
+      <i class="pi pi-arrow-left"></i>
+      {{ currentStep() === 1 ? 'Salir' : 'Atrás' }}
+    </button>
+
+    @if (currentStep() < totalSteps) {
+      <button
+        type="button"
+        class="onboarding-nav__next"
+        [disabled]="!canProceed()"
+        (click)="nextStep()"
+      >
+        Siguiente
+        <i class="pi pi-arrow-right"></i>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="onboarding-nav__next"
+        [disabled]="isSubmitting()"
+        (click)="completeOnboarding()"
+      >
+        @if (isSubmitting()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        }
+        Finalizar
+        <i class="pi pi-check"></i>
+      </button>
+    }
+  </div>
+
+</div>
