@@ -305,7 +305,10 @@ export class AdminProductsComponent implements OnInit {
       const image = await this.productService.uploadProductImage(
         this.editingProduct.id, input.files[0],
       );
-      this.productImages.update(imgs => [...imgs, image]);
+      const updatedImages = [...this.productImages(), image];
+      this.productImages.set(updatedImages);
+      // Persist images to Dexie so they load on next dialog open
+      await this.db.products.update(this.editingProduct.id, { images: updatedImages });
     } catch (e) {
       console.warn('Image upload failed:', e);
     } finally {
@@ -319,7 +322,10 @@ export class AdminProductsComponent implements OnInit {
     if (!this.editingProduct) return;
     try {
       await this.productService.deleteProductImage(this.editingProduct.id, imageId);
-      this.productImages.update(imgs => imgs.filter(i => i.id !== imageId));
+      const updatedImages = this.productImages().filter(i => i.id !== imageId);
+      this.productImages.set(updatedImages);
+      // Persist to Dexie so removal is reflected on next dialog open
+      await this.db.products.update(this.editingProduct.id, { images: updatedImages });
     } catch (e) {
       console.warn('Image delete failed:', e);
     }

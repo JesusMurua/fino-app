@@ -388,43 +388,35 @@
           <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
         </div>
 
-        <!-- Stock control -->
-        <div class="form-section">
-          <div class="form-section__header">
-            <span class="form-section__title">Control de stock</span>
-          </div>
-
-          <div class="form-field form-field--row">
-            <label class="form-field__label" for="pf-track-stock">Controlar stock de este producto</label>
-            <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
-          </div>
-
-          @if (form.trackStock) {
-            <div class="form-row">
-              <div class="form-field">
-                <label class="form-field__label" for="pf-stock">Stock inicial</label>
-                <p-inputNumber
-                  inputId="pf-stock"
-                  [(ngModel)]="form.currentStock"
-                  [min]="0"
-                  placeholder="0"
-                  styleClass="w-full"
-                />
-              </div>
-              <div class="form-field">
-                <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
-                <p-inputNumber
-                  inputId="pf-threshold"
-                  [(ngModel)]="form.lowStockThreshold"
-                  [min]="0"
-                  placeholder="0"
-                  styleClass="w-full"
-                />
-              </div>
-            </div>
-            <p class="form-hint">Al vender este producto se descontará el stock automáticamente.</p>
-          }
+        <div class="form-field form-field--row">
+          <label class="form-field__label" for="pf-track-stock">Controlar stock</label>
+          <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
         </div>
+
+        @if (form.trackStock) {
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-field__label" for="pf-stock">Stock inicial</label>
+              <p-inputNumber
+                inputId="pf-stock"
+                [(ngModel)]="form.currentStock"
+                [min]="0"
+                placeholder="0"
+                styleClass="w-full"
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
+              <p-inputNumber
+                inputId="pf-threshold"
+                [(ngModel)]="form.lowStockThreshold"
+                [min]="0"
+                placeholder="0"
+                styleClass="w-full"
+              />
+            </div>
+          </div>
+        }
 
       </div>
     </p-tabPanel>
