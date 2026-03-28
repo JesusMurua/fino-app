@@ -1,57 +1,75 @@
-<div class="kiosk-summary">
+<div class="ks">
 
   <!-- Header -->
-  <header class="kiosk-summary__header">
+  <header class="ks__header">
     <button
       type="button"
-      class="kiosk-summary__back"
+      class="ks__back-btn"
       aria-label="Agregar más productos"
       (click)="goBack()"
     >
       <i class="pi pi-arrow-left"></i>
     </button>
-    <h1 class="kiosk-summary__title">Tu orden</h1>
+    <h1 class="ks__title">Tu orden</h1>
+    <span class="ks__item-count">{{ items().length }} items</span>
   </header>
 
   <!-- Items list -->
-  <main class="kiosk-summary__body">
-    <ul class="kiosk-summary__list">
+  <main class="ks__body">
+    <ul class="ks__list">
       @for (item of items(); track item.id) {
-        <li class="kiosk-summary__item">
-          <div class="kiosk-summary__qty-controls">
+        <li class="ks__item">
+          <!-- Product thumbnail -->
+          <div class="ks__item-thumb">
+            @if (item.product.imageUrl || item.product.images?.[0]?.url) {
+              <img
+                [src]="item.product.imageUrl || item.product.images![0].url"
+                [alt]="item.product.name"
+              />
+            } @else {
+              <i class="pi pi-shopping-bag"></i>
+            }
+          </div>
+
+          <!-- Product info -->
+          <div class="ks__item-info">
+            <span class="ks__item-name">{{ item.product.name }}</span>
+            @if (item.size) {
+              <span class="ks__item-meta">{{ item.size.label }}</span>
+            }
+            @if (item.extras.length > 0) {
+              <span class="ks__item-meta">+ {{ extrasLabel(item) }}</span>
+            }
+          </div>
+
+          <!-- Quantity controls -->
+          <div class="ks__qty-controls">
             <button
               type="button"
-              class="kiosk-summary__qty-btn"
+              class="ks__qty-btn"
               aria-label="Disminuir cantidad"
               (click)="decreaseQuantity(item)"
             >
               <i class="pi pi-minus"></i>
             </button>
-            <span class="kiosk-summary__qty">{{ item.quantity }}</span>
+            <span class="ks__qty">{{ item.quantity }}</span>
             <button
               type="button"
-              class="kiosk-summary__qty-btn"
+              class="ks__qty-btn"
               aria-label="Aumentar cantidad"
               (click)="increaseQuantity(item)"
             >
               <i class="pi pi-plus"></i>
             </button>
           </div>
-          <div class="kiosk-summary__item-info">
-            <span class="kiosk-summary__item-name">{{ item.product.name }}</span>
-            @if (item.size) {
-              <span class="kiosk-summary__item-meta">{{ item.size.label }}</span>
-            }
-            @if (item.extras.length > 0) {
-              <span class="kiosk-summary__item-meta">
-                + {{ extrasLabel(item) }}
-              </span>
-            }
-          </div>
-          <span class="kiosk-summary__item-price">{{ item.totalPriceCents | price }}</span>
+
+          <!-- Price -->
+          <span class="ks__item-price">{{ item.totalPriceCents | price }}</span>
+
+          <!-- Remove -->
           <button
             type="button"
-            class="kiosk-summary__remove-btn"
+            class="ks__remove-btn"
             aria-label="Eliminar producto"
             (click)="removeItem(item)"
           >
@@ -62,25 +80,24 @@
     </ul>
 
     <!-- Total -->
-    <div class="kiosk-summary__total">
-      <span class="kiosk-summary__total-label">Total</span>
-      <span class="kiosk-summary__total-amount">{{ totalCents() | price }}</span>
+    <div class="ks__total-row">
+      <span class="ks__total-label">Total</span>
+      <span class="ks__total-amount">{{ totalCents() | price }}</span>
     </div>
   </main>
 
-  <!-- Footer actions -->
-  <footer class="kiosk-summary__footer">
+  <!-- Sticky footer -->
+  <footer class="ks__footer">
     <button
       type="button"
-      class="kiosk-summary__btn-cancel"
+      class="ks__btn-cancel"
       (click)="cancelOrder()"
     >
-      <i class="pi pi-times"></i>
       Cancelar
     </button>
     <button
       type="button"
-      class="kiosk-summary__btn-confirm"
+      class="ks__btn-confirm"
       (click)="confirmOrder()"
     >
       <i class="pi pi-check"></i>

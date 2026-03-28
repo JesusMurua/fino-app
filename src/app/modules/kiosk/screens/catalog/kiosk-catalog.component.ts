@@ -30,6 +30,9 @@ export class KioskCatalogComponent implements OnInit {
   /** Reactive item count from CartService */
   readonly cartItemCount = this.cartService.itemCount;
 
+  /** Reactive total from CartService */
+  readonly cartTotalCents = this.cartService.totalCents;
+
   //#endregion
 
   //#region Constructor
@@ -70,6 +73,11 @@ export class KioskCatalogComponent implements OnInit {
     } else {
       await this.cartService.addItem(product);
     }
+  }
+
+  /** Returns the first image URL for a product (images[] or legacy imageUrl) */
+  productImageUrl(product: Product): string | undefined {
+    return product.images?.[0]?.url || product.imageUrl;
   }
 
   //#endregion

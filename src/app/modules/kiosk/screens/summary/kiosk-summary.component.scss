@@ -1,9 +1,9 @@
 @use '../../../../../styles/variables' as *;
 
 // ============================================================================
-// Kiosk summary — full screen, scrollable list, sticky footer
+// Kiosk summary — food delivery style order review
 // ============================================================================
-.kiosk-summary {
+.ks {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
@@ -13,7 +13,7 @@
 // -----------------------------------------------------------------------
 // Header
 // -----------------------------------------------------------------------
-.kiosk-summary__header {
+.ks__header {
   display: flex;
   align-items: center;
   gap: $space-4;
@@ -23,46 +23,57 @@
   flex-shrink: 0;
 }
 
-.kiosk-summary__back {
-  display: inline-flex;
+.ks__back-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
-  min-height: 80px;
+  width: 44px;
+  height: 44px;
   border: 2px solid #E5E7EB;
-  border-radius: 16px;
+  border-radius: 12px;
   background: transparent;
   color: $color-text-sub;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s;
 
-  i { font-size: 22px; }
+  i { font-size: 18px; }
 
   &:hover  { background: #F3F4F6; }
   &:active { transform: scale(0.95); }
 }
 
-.kiosk-summary__title {
+.ks__title {
   margin: 0;
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: 24px;
   font-weight: 700;
   color: $color-text-title;
+  flex: 1;
+}
+
+.ks__item-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: $color-text-sub;
+  background: $color-bg-page;
+  padding: 4px $space-3;
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 // -----------------------------------------------------------------------
 // Scrollable body
 // -----------------------------------------------------------------------
-.kiosk-summary__body {
+.ks__body {
   flex: 1;
   overflow-y: auto;
   padding: $space-5;
   display: flex;
   flex-direction: column;
-  gap: $space-5;
+  gap: $space-4;
 }
 
-.kiosk-summary__list {
+.ks__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -72,108 +83,141 @@
   overflow: hidden;
 }
 
-.kiosk-summary__item {
+// -----------------------------------------------------------------------
+// Item row with thumbnail
+// -----------------------------------------------------------------------
+.ks__item {
   display: flex;
-  align-items: flex-start;
-  gap: $space-4;
-  padding: $space-4 $space-5;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-4;
   border-bottom: 1px solid $color-border-soft;
 
   &:last-child { border-bottom: none; }
 }
 
-// -----------------------------------------------------------------------
-// Quantity controls (−  qty  +)
-// -----------------------------------------------------------------------
-.kiosk-summary__qty-controls {
+.ks__item-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: $color-primary-light;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: $space-2;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  i {
+    font-size: 24px;
+    color: $color-primary;
+    opacity: 0.4;
+  }
+}
+
+.ks__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ks__item-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: $color-text-title;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks__item-meta {
+  font-size: 13px;
+  color: $color-text-sub;
+}
+
+// -----------------------------------------------------------------------
+// Quantity controls (compact)
+// -----------------------------------------------------------------------
+.ks__qty-controls {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
   flex-shrink: 0;
 }
 
-.kiosk-summary__qty-btn {
-  display: inline-flex;
+.ks__qty-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
-  min-height: 48px;
-  border: 2px solid #E5E7EB;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   font-family: inherit;
 
-  i { font-size: 16px; }
+  i { font-size: 12px; }
 
   &:hover  { background: #F3F4F6; border-color: #D1D5DB; }
-  &:active { transform: scale(0.93); }
+  &:active { transform: scale(0.9); }
 }
 
-.kiosk-summary__qty {
-  font-size: 20px;
+.ks__qty {
+  font-size: 16px;
   font-weight: 700;
-  color: $color-primary;
-  min-width: 28px;
+  color: $color-text-title;
+  min-width: 24px;
   text-align: center;
-  flex-shrink: 0;
 }
 
 // -----------------------------------------------------------------------
-// Remove button (trash icon)
+// Price & remove
 // -----------------------------------------------------------------------
-.kiosk-summary__remove-btn {
-  display: inline-flex;
+.ks__item-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: $color-text-title;
+  flex-shrink: 0;
+  min-width: 70px;
+  text-align: right;
+}
+
+.ks__remove-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
-  min-height: 48px;
-  border: 2px solid #E5E7EB;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
   background: transparent;
-  color: $color-text-sub;
+  color: #D1D5DB;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
   font-family: inherit;
 
-  i { font-size: 17px; }
+  i { font-size: 14px; }
 
-  &:hover  { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
-  &:active { transform: scale(0.93); }
-}
-
-.kiosk-summary__item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.kiosk-summary__item-name {
-  font-size: 19px;
-  font-weight: 600;
-  color: $color-text-title;
-}
-
-.kiosk-summary__item-meta {
-  font-size: 15px;
-  color: $color-text-sub;
-}
-
-.kiosk-summary__item-price {
-  font-size: 19px;
-  font-weight: 700;
-  color: $color-text-title;
-  flex-shrink: 0;
+  &:hover { background: #FEF2F2; color: #DC2626; }
+  &:active { transform: scale(0.9); }
 }
 
 // -----------------------------------------------------------------------
 // Total
 // -----------------------------------------------------------------------
-.kiosk-summary__total {
+.ks__total-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -183,72 +227,69 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-.kiosk-summary__total-label {
-  font-size: 20px;
+.ks__total-label {
+  font-size: 18px;
   font-weight: 500;
   color: $color-text-sub;
 }
 
-.kiosk-summary__total-amount {
-  font-size: 36px;
+.ks__total-amount {
+  font-size: 32px;
   font-weight: 700;
   color: $color-text-title;
 }
 
 // -----------------------------------------------------------------------
-// Footer: cancel + confirm
+// Footer
 // -----------------------------------------------------------------------
-.kiosk-summary__footer {
+.ks__footer {
   display: flex;
   align-items: center;
-  gap: $space-4;
+  gap: $space-3;
   padding: $space-4 $space-5;
   background: white;
   border-top: 1px solid $color-border-soft;
   flex-shrink: 0;
 }
 
-.kiosk-summary__btn-cancel {
-  display: inline-flex;
+.ks__btn-cancel {
+  display: flex;
   align-items: center;
-  gap: $space-2;
-  height: 56px;
+  justify-content: center;
+  height: 52px;
   padding: 0 $space-5;
   border: 2px solid #E5E7EB;
-  border-radius: 16px;
+  border-radius: 14px;
   background: transparent;
   color: $color-text-sub;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 18px; }
-
   &:hover { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
   &:active { transform: scale(0.97); }
 }
 
-.kiosk-summary__btn-confirm {
-  display: inline-flex;
+.ks__btn-confirm {
+  flex: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: $space-3;
-  height: 56px;
-  max-width: 320px;
-  flex: 1;
+  gap: $space-2;
+  height: 52px;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   background: $color-primary;
   color: white;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 20px; }
+  i { font-size: 18px; }
 
   &:hover  { background: #15803D; }
   &:active { background: #166534; transform: scale(0.97); }

@@ -1,7 +1,7 @@
 @use '../../../../../styles/variables' as *;
 
 // ============================================================================
-// Kiosk catalog layout — full screen, scrollable grid, sticky footer
+// Kiosk catalog — food delivery style grid
 // ============================================================================
 .kiosk-catalog {
   display: flex;
@@ -11,7 +11,7 @@
 }
 
 // -----------------------------------------------------------------------
-// Category pills — horizontal scroll strip
+// Category pills — horizontal scroll
 // -----------------------------------------------------------------------
 .kiosk-catalog__cats {
   display: flex;
@@ -30,39 +30,44 @@
   align-items: center;
   gap: $space-2;
   padding: $space-3 $space-4;
-  min-height: 52px;
+  min-height: 48px;
   white-space: nowrap;
   border: 2px solid #E5E7EB;
   border-radius: 100px;
   background: white;
-  color: $color-text-sub;
-  font-size: 17px;
+  color: #374151;
+  font-size: 16px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition: all 0.15s;
 
   i { font-size: 16px; }
 
-  &:hover { border-color: #D1D5DB; color: $color-text-title; }
+  &:hover { border-color: #D1D5DB; }
 
   &--active {
     border-color: $color-primary;
-    background: $color-primary-light;
-    color: $color-primary;
+    background: $color-primary;
+    color: white;
   }
 }
 
 // -----------------------------------------------------------------------
-// Product grid
+// Product grid — 3 cols desktop, 2 cols tablet
 // -----------------------------------------------------------------------
 .kiosk-catalog__grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: $space-4;
   padding: $space-5;
+  padding-bottom: 100px; // space for floating bar
   align-content: start;
+
+  @media (max-width: $breakpoint-lg) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .kiosk-catalog__loading {
@@ -73,8 +78,8 @@
   gap: $space-3;
   color: $color-text-sub;
   font-size: $font-size-base;
-  padding: $space-6;
-  i { font-size: 24px; }
+  padding: $space-8;
+  i { font-size: 28px; }
 }
 
 .kiosk-catalog__empty {
@@ -82,52 +87,38 @@
   text-align: center;
   color: $color-text-sub;
   font-size: $font-size-base;
-  padding: $space-6;
+  padding: $space-8;
 }
 
 // -----------------------------------------------------------------------
-// Product card — larger than POS, 80px minimum touch
+// Product card — tall visual card with image top, info bottom
 // -----------------------------------------------------------------------
 .kiosk-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: $space-3;
-  min-height: 180px;
-  padding: $space-4 $space-3;
+  height: 280px;
   background: white;
-  border: 2px solid transparent;
   border-radius: 16px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   cursor: pointer;
   font-family: inherit;
-  text-align: center;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition: box-shadow 0.15s, transform 0.1s;
 
   &:hover {
-    border-color: $color-primary;
-    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
   }
 
-  &__icon-box {
-    width: 80px;
-    height: 80px;
-    border-radius: 16px;
-    background: $color-primary-light;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+  // ---- Image area (65% top) ----
+  &__image-area {
+    flex: 0 0 65%;
     overflow: hidden;
-
-    i {
-      font-size: 36px;
-      color: $color-primary;
-    }
+    background: $color-primary-light;
   }
 
   &__img {
@@ -137,98 +128,132 @@
     display: block;
   }
 
+  &__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $color-primary-light;
+
+    i {
+      font-size: 48px;
+      color: $color-primary;
+      opacity: 0.35;
+    }
+  }
+
+  // ---- Info area (35% bottom) ----
+  &__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: $space-3;
+    gap: 2px;
+    min-height: 0;
+  }
+
   &__name {
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     color: $color-text-title;
     line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__desc {
+    font-size: 13px;
+    color: $color-text-sub;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   &__price {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: $color-primary;
     margin-top: auto;
   }
+
+  // ---- Quick add "+" button ----
+  &__add-btn {
+    position: absolute;
+    bottom: $space-3;
+    right: $space-3;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: $color-primary;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    z-index: 1;
+
+    i { font-size: 14px; }
+
+    &:hover { background: #15803D; }
+    &:active { transform: scale(0.9); }
+  }
 }
 
 // -----------------------------------------------------------------------
-// Footer: cancel + cart button
+// Floating bottom bar — "Ver orden"
 // -----------------------------------------------------------------------
-.kiosk-catalog__footer {
+.kiosk-catalog__bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 $space-5 $space-4;
+  z-index: 100;
+}
+
+.kiosk-catalog__order-btn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: $space-4;
-  padding: $space-4 $space-5;
-  background: white;
-  border-top: 1px solid $color-border-soft;
-  flex-shrink: 0;
-}
-
-.kiosk-btn-cancel {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  min-height: 80px;
-  padding: 0 $space-5;
-  border: 2px solid #E5E7EB;
-  border-radius: 16px;
-  background: transparent;
-  color: $color-text-sub;
-  font-size: 18px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-
-  i { font-size: 18px; }
-
-  &:hover { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
-  &:active { transform: scale(0.97); }
-}
-
-.kiosk-btn-cart {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: $space-3;
+  width: 100%;
   height: 56px;
-  max-width: 320px;
-  padding: 0 $space-6;
+  padding: 0 $space-5;
   border: none;
   border-radius: 16px;
   background: $color-primary;
   color: white;
-  font-size: 20px;
-  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  flex: 1;
-  justify-content: center;
-  margin: 0 auto;
   transition: background 0.15s;
+  box-shadow: 0 4px 20px rgba(22, 163, 74, 0.35);
 
-  i { font-size: 22px; }
+  &:hover { background: #15803D; }
+  &:active { transform: scale(0.98); }
+}
 
-  &:hover  { background: #15803D; }
-  &:active { transform: scale(0.97); }
+.kiosk-catalog__order-count {
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 4px $space-3;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
 
-  &__badge {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    min-width: 32px;
-    height: 32px;
-    border-radius: 16px;
-    background: #DC2626;
-    color: white;
-    font-size: 15px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 $space-2;
-    border: 2px solid white;
-  }
+.kiosk-catalog__order-label {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.kiosk-catalog__order-total {
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
 }

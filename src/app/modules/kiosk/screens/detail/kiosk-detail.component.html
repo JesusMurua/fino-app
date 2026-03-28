@@ -1,179 +1,163 @@
 @if (product(); as p) {
-  <div class="kiosk-detail">
+  <div class="kd">
 
-    <!-- Image carousel — full-bleed -->
-    @if (allImageUrls().length > 0) {
-      <div class="kiosk-detail__carousel">
-        <button
-          type="button"
-          class="kiosk-detail__back-btn"
-          aria-label="Regresar al catálogo"
-          (click)="goBack()"
-        >
-          <i class="pi pi-arrow-left"></i>
-        </button>
+    <!-- LEFT COLUMN — Image -->
+    <div class="kd__left">
+      <!-- Back button -->
+      <button
+        type="button"
+        class="kd__back-btn"
+        aria-label="Regresar al catálogo"
+        (click)="goBack()"
+      >
+        <i class="pi pi-arrow-left"></i>
+      </button>
 
+      @if (allImageUrls().length > 0) {
+        <!-- Main image -->
         <img
           [src]="allImageUrls()[activeImageIndex()]"
           [alt]="p.name"
-          class="kiosk-detail__carousel-img"
+          class="kd__main-img"
           (click)="openLightbox()"
         />
 
+        <!-- Thumbnails row -->
         @if (allImageUrls().length > 1) {
-          <button
-            type="button"
-            class="kiosk-detail__carousel-nav kiosk-detail__carousel-nav--prev"
-            aria-label="Imagen anterior"
-            (click)="prevImage()"
-          >
-            <i class="pi pi-chevron-left"></i>
-          </button>
-          <button
-            type="button"
-            class="kiosk-detail__carousel-nav kiosk-detail__carousel-nav--next"
-            aria-label="Imagen siguiente"
-            (click)="nextImage()"
-          >
-            <i class="pi pi-chevron-right"></i>
-          </button>
-
-          <div class="kiosk-detail__carousel-dots">
+          <div class="kd__thumbs">
             @for (url of allImageUrls(); track $index) {
               <button
                 type="button"
-                class="kiosk-detail__dot"
-                [class.kiosk-detail__dot--active]="activeImageIndex() === $index"
+                class="kd__thumb"
+                [class.kd__thumb--active]="activeImageIndex() === $index"
                 (click)="goToImage($index)"
-                [attr.aria-label]="'Imagen ' + ($index + 1)"
-              ></button>
+              >
+                <img [src]="url" [alt]="'Imagen ' + ($index + 1)" />
+              </button>
             }
           </div>
         }
+      } @else {
+        <!-- No images placeholder -->
+        <div class="kd__placeholder">
+          <i class="pi pi-shopping-bag"></i>
+        </div>
+      }
+    </div>
+
+    <!-- RIGHT COLUMN — Product info + form -->
+    <div class="kd__right">
+
+      <!-- Product info -->
+      <div class="kd__info">
+        <h1 class="kd__name">{{ p.name }}</h1>
+        @if (p.description) {
+          <p class="kd__description">{{ p.description }}</p>
+        }
+        <span class="kd__base-price">{{ p.priceCents | price }}</span>
       </div>
-    } @else {
-      <!-- No images — placeholder full-bleed -->
-      <div class="kiosk-detail__carousel kiosk-detail__carousel--placeholder">
+
+      <div class="kd__divider"></div>
+
+      <!-- Form -->
+      <form [formGroup]="form" class="kd__form">
+
+        <!-- Size selection -->
+        @if (p.sizes.length > 0) {
+          <section class="kd__section">
+            <h2 class="kd__section-title">Tamaño</h2>
+            <div class="kd__sizes">
+              @for (size of p.sizes; track size.id) {
+                <label class="kd__size-card" [for]="'ksize-' + size.id">
+                  <p-radioButton
+                    formControlName="sizeId"
+                    [value]="size.id"
+                    [inputId]="'ksize-' + size.id"
+                  />
+                  <span class="kd__size-label">{{ size.label }}</span>
+                  @if (size.priceDeltaCents > 0) {
+                    <span class="kd__size-delta">+ {{ size.priceDeltaCents | price }}</span>
+                  }
+                </label>
+              }
+            </div>
+          </section>
+          <div class="kd__divider"></div>
+        }
+
+        <!-- Extras selection -->
+        @if (p.extras.length > 0) {
+          <section class="kd__section">
+            <h2 class="kd__section-title">Extras</h2>
+            <div class="kd__extras" formArrayName="extras">
+              @for (extra of p.extras; track extra.id; let i = $index) {
+                <label class="kd__extra-pill" [for]="'kextra-' + extra.id">
+                  <p-checkbox
+                    [formControlName]="i"
+                    [binary]="true"
+                    [inputId]="'kextra-' + extra.id"
+                  />
+                  <span class="kd__extra-label">{{ extra.label }}</span>
+                  @if (extra.priceCents > 0) {
+                    <span class="kd__extra-price">+ {{ extra.priceCents | price }}</span>
+                  } @else {
+                    <span class="kd__extra-price kd__extra-price--free">Gratis</span>
+                  }
+                </label>
+              }
+            </div>
+          </section>
+          <div class="kd__divider"></div>
+        }
+
+        <!-- Notes -->
+        <section class="kd__section">
+          <h2 class="kd__section-title">
+            Notas para cocina
+            <span class="kd__optional">(opcional)</span>
+          </h2>
+          <textarea
+            formControlName="notes"
+            pInputTextarea
+            [autoResize]="true"
+            placeholder="Sin cebolla, extra picante…"
+            class="kd__notes"
+            id="kiosk-notes"
+            rows="2"
+          ></textarea>
+        </section>
+
+      </form>
+
+      <!-- Sticky footer inside right column -->
+      <footer class="kd__footer">
+        <div class="kd__total-block">
+          <span class="kd__total-label">Total</span>
+          <span class="kd__total-amount">{{ previewPriceCents() | price }}</span>
+        </div>
         <button
           type="button"
-          class="kiosk-detail__back-btn"
-          aria-label="Regresar al catálogo"
-          (click)="goBack()"
+          class="kd__add-btn"
+          (click)="onAddToCart()"
         >
-          <i class="pi pi-arrow-left"></i>
+          <i class="pi pi-plus"></i>
+          Agregar a la orden
         </button>
-        <i class="pi pi-shopping-bag kiosk-detail__placeholder-icon"></i>
-      </div>
-    }
+      </footer>
+
+    </div>
 
     <!-- Lightbox overlay -->
     @if (lightboxOpen()) {
-      <div class="kiosk-detail__lightbox" (click)="closeLightbox()">
+      <div class="kd__lightbox" (click)="closeLightbox()">
         <img
           [src]="allImageUrls()[activeImageIndex()]"
           [alt]="p.name"
-          class="kiosk-detail__lightbox-img"
+          class="kd__lightbox-img"
           (click)="$event.stopPropagation()"
         />
       </div>
     }
-
-    <!-- Product info -->
-    <div class="kiosk-detail__product-info">
-      <h1 class="kiosk-detail__name">{{ p.name }}</h1>
-      <span class="kiosk-detail__base-price">{{ p.priceCents | price }}</span>
-      @if (p.description) {
-        <p class="kiosk-detail__description">{{ p.description }}</p>
-      }
-    </div>
-
-    <div class="kiosk-detail__divider"></div>
-
-    <!-- Form — scrollable body -->
-    <form [formGroup]="form" class="kiosk-detail__form">
-
-      <!-- Size selection -->
-      @if (p.sizes.length > 0) {
-        <section class="kiosk-detail__section">
-          <h2 class="kiosk-detail__section-title">Tamaño</h2>
-          <div class="kiosk-sizes">
-            @for (size of p.sizes; track size.id) {
-              <label class="kiosk-size-option" [for]="'ksize-' + size.id">
-                <p-radioButton
-                  formControlName="sizeId"
-                  [value]="size.id"
-                  [inputId]="'ksize-' + size.id"
-                />
-                <span class="kiosk-size-option__label">{{ size.label }}</span>
-                @if (size.priceDeltaCents > 0) {
-                  <span class="kiosk-size-option__delta">+ {{ size.priceDeltaCents | price }}</span>
-                }
-              </label>
-            }
-          </div>
-        </section>
-        <div class="kiosk-detail__divider"></div>
-      }
-
-      <!-- Extras selection -->
-      @if (p.extras.length > 0) {
-        <section class="kiosk-detail__section">
-          <h2 class="kiosk-detail__section-title">Extras</h2>
-          <div class="kiosk-extras" formArrayName="extras">
-            @for (extra of p.extras; track extra.id; let i = $index) {
-              <label class="kiosk-extra-option" [for]="'kextra-' + extra.id">
-                <p-checkbox
-                  [formControlName]="i"
-                  [binary]="true"
-                  [inputId]="'kextra-' + extra.id"
-                />
-                <span class="kiosk-extra-option__label">{{ extra.label }}</span>
-                @if (extra.priceCents > 0) {
-                  <span class="kiosk-extra-option__price">+ {{ extra.priceCents | price }}</span>
-                } @else {
-                  <span class="kiosk-extra-option__price kiosk-extra-option__price--free">Gratis</span>
-                }
-              </label>
-            }
-          </div>
-        </section>
-        <div class="kiosk-detail__divider"></div>
-      }
-
-      <!-- Notes -->
-      <section class="kiosk-detail__section">
-        <h2 class="kiosk-detail__section-title">
-          Notas para cocina
-          <span class="kiosk-detail__optional">(opcional)</span>
-        </h2>
-        <textarea
-          formControlName="notes"
-          pInputTextarea
-          [autoResize]="true"
-          placeholder="Sin cebolla, extra picante…"
-          class="kiosk-detail__notes"
-          id="kiosk-notes"
-          rows="2"
-        ></textarea>
-      </section>
-
-    </form>
-
-    <!-- Sticky footer -->
-    <footer class="kiosk-detail__footer">
-      <div class="kiosk-detail__preview">
-        <span class="kiosk-detail__total-label">Total:</span>
-        <span class="kiosk-detail__total">{{ previewPriceCents() | price }}</span>
-      </div>
-      <button
-        type="button"
-        class="kiosk-detail__add-btn"
-        (click)="onAddToCart()"
-      >
-        <i class="pi pi-plus"></i>
-        Agregar a la orden
-      </button>
-    </footer>
 
   </div>
 }
