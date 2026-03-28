@@ -321,7 +321,7 @@
   [contentStyle]="{ padding: '0', overflow: 'hidden', 'max-height': 'calc(85vh - 120px)' }"
   [draggable]="false"
 >
-  <p-tabView styleClass="product-dialog-tabs">
+  <p-tabView styleClass="product-dialog-tabs" [(activeIndex)]="dialogTabIndex">
 
     <!-- ================================================================ -->
     <!-- TAB 1 — Info básica                                               -->

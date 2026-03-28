@@ -207,6 +207,13 @@
     padding: 0 $space-4;
     flex-shrink: 0;
   }
+  // Remove duplicate bottom border from tab nav
+  .p-tabview-nav {
+    border-bottom: none !important;
+  }
+  .p-tabview-nav-content {
+    border-bottom: 1px solid $color-border-soft;
+  }
 }
 
 .tab-badge {

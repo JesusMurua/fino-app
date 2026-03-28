@@ -107,6 +107,7 @@ export class AdminProductsComponent implements OnInit {
   dialogVisible = false;
   editingProduct: Product | null = null;
   form: ProductForm = this.emptyProductForm();
+  dialogTabIndex = 0;
 
   // ---- Category dialog ----
   catDialogVisible = false;
@@ -218,6 +219,7 @@ export class AdminProductsComponent implements OnInit {
     this.editingProduct = null;
     this.form = this.emptyProductForm();
     this.productImages.set([]);
+    this.dialogTabIndex = 0;
     this.dialogVisible = true;
   }
 
@@ -236,6 +238,7 @@ export class AdminProductsComponent implements OnInit {
       extras: product.extras.map(e => ({ label: e.label, priceCents: e.priceCents })),
     };
     this.productImages.set(product.images ?? []);
+    this.dialogTabIndex = 0;
     this.dialogVisible = true;
   }
 
