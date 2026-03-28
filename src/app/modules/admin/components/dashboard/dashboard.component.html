@@ -149,7 +149,7 @@
                     <td class="orders-table__num">#{{ order.orderNumber }}</td>
                     <td class="orders-table__items">{{ order.items.length }} artículo(s)</td>
                     <td>
-                      @if (order.paymentMethod === 'cash') {
+                      @if (order.payments?.[0]?.method === 'Cash') {
                         <span class="badge badge--cash">Efectivo</span>
                       } @else {
                         <span class="badge badge--card">Tarjeta</span>

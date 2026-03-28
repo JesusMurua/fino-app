@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
-import { CartItem, Order } from '../../core/models';
+import { CartItem, Order, getPaymentLabel } from '../../core/models';
 import { OrderDisplayStatus } from '../../core/services/orders.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
@@ -71,6 +71,11 @@ export class OrderRowComponent {
 
   get isOverdue(): boolean {
     return this.elapsedSeconds >= 600;
+  }
+
+  /** Display label for the order's payment methods */
+  get paymentLabel(): string {
+    return getPaymentLabel(this.order);
   }
 
   //#endregion

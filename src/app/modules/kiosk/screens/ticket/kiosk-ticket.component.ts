@@ -74,7 +74,9 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       orderNumber:   num,
       items:         snapshot,
       totalCents:    total,
-      paymentMethod: 'cash', // kiosk: customer pays at counter
+      payments: [],  // kiosk: customer pays at counter after pickup
+      paidCents: 0,
+      changeCents: 0,
       paymentProvider: null,
       syncStatus:    'pending',
       createdAt:     new Date(),

@@ -104,16 +104,27 @@ export class PrintService {
     }).join('');
 
     const total = `$${(order.totalCents / 100).toFixed(2)}`;
-    const methodLabel = order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta';
+    const payments = order.payments ?? [];
+    const methodLabel = payments.length > 0
+      ? payments.map(p => {
+          const labels: Record<string, string> = { Cash: 'Efectivo', Card: 'Tarjeta', Transfer: 'Transferencia', Other: 'Otro' };
+          return labels[p.method] ?? p.method;
+        }).join(' + ')
+      : 'Sin cobrar';
 
     let changeHtml = '';
-    if (order.paymentMethod === 'cash' && order.tenderedCents != null) {
-      const tendered = `$${(order.tenderedCents / 100).toFixed(2)}`;
-      const change = `$${((order.tenderedCents - order.totalCents) / 100).toFixed(2)}`;
+    if (payments.length > 0) {
+      const paidTotal = `$${(order.paidCents / 100).toFixed(2)}`;
+      const paymentRows = payments.map(p => {
+        const labels: Record<string, string> = { Cash: 'Efectivo', Card: 'Tarjeta', Transfer: 'Transferencia', Other: 'Otro' };
+        const label = labels[p.method] ?? p.method;
+        return `<tr><td style="padding:2px 0">${label}</td><td style="padding:2px 0;text-align:right">$${(p.amountCents / 100).toFixed(2)}</td></tr>`;
+      }).join('');
+
       changeHtml = `
         <table style="width:100%;font-size:12px;color:#374151;border-collapse:collapse">
-          <tr><td style="padding:2px 0">Pago</td><td style="padding:2px 0;text-align:right">${tendered}</td></tr>
-          <tr><td style="padding:2px 0">Cambio</td><td style="padding:2px 0;text-align:right">${change}</td></tr>
+          ${payments.length > 1 ? paymentRows : `<tr><td style="padding:2px 0">Pago</td><td style="padding:2px 0;text-align:right">${paidTotal}</td></tr>`}
+          ${order.changeCents > 0 ? `<tr><td style="padding:2px 0">Cambio</td><td style="padding:2px 0;text-align:right">$${(order.changeCents / 100).toFixed(2)}</td></tr>` : ''}
         </table>
       `;
     }
@@ -193,13 +204,22 @@ export class PrintService {
     }
 
     const total = (order.totalCents / 100).toFixed(2);
-    const methodLabel = order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta';
+    const payments = order.payments ?? [];
+    const labels: Record<string, string> = { Cash: 'Efectivo', Card: 'Tarjeta', Transfer: 'Transferencia', Other: 'Otro' };
+    const methodLabel = payments.length > 0
+      ? payments.map(p => labels[p.method] ?? p.method).join(' + ')
+      : 'Sin cobrar';
 
     let changeSection = '';
-    if (order.paymentMethod === 'cash' && order.tenderedCents != null) {
-      const tendered = (order.tenderedCents / 100).toFixed(2);
-      const change = ((order.tenderedCents - order.totalCents) / 100).toFixed(2);
-      changeSection = `\nPago:   $${tendered}\nCambio: $${change}`;
+    if (payments.length > 1) {
+      changeSection = '\n' + payments.map(p =>
+        `${(labels[p.method] ?? p.method)}:`.padEnd(10) + `$${(p.amountCents / 100).toFixed(2)}`
+      ).join('\n');
+    } else if (payments.length === 1) {
+      changeSection = `\nPago:   $${(order.paidCents / 100).toFixed(2)}`;
+    }
+    if (order.changeCents > 0) {
+      changeSection += `\nCambio: $${(order.changeCents / 100).toFixed(2)}`;
     }
 
     const discountSection = order.totalDiscountCents && order.subtotalCents

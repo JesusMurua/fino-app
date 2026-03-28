@@ -23,7 +23,7 @@ export interface PrintableOrder {
   orderNumber: string;
   items: { name: string; qty: number; priceCents: number }[];
   totalCents: number;
-  paymentMethod: string;
+  paymentLabel: string;
   businessName: string;
   branchName: string;
   date: Date;
@@ -222,7 +222,7 @@ export class PrinterService {
       { text: totalLine, align: 'left', bold: true },
       { text: '', align: 'center', divider: true },
       { text: '', align: 'center' },
-      { text: `Pago: ${order.paymentMethod}`, align: 'left' },
+      { text: `Pago: ${order.paymentLabel}`, align: 'left' },
       { text: '', align: 'center' },
       { text: '¡Gracias por su compra!', align: 'center' },
       { text: '', align: 'center' },

@@ -319,7 +319,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     const order = await this.db.orders
       .filter(o =>
         o.tableId === table.id &&
-        o.paymentMethod === null &&
+        (o.payments?.length ?? 0) === 0 &&
         (o.cancellationStatus === undefined || o.cancellationStatus === 'none')
       )
       .first();

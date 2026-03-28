@@ -1,7 +1,37 @@
 import { CartItem } from './cart-item.model';
 
-/** Supported payment methods at checkout */
-export type PaymentMethod = 'cash' | 'card';
+/** Supported payment methods */
+export enum PaymentMethod {
+  Cash = 'Cash',
+  Card = 'Card',
+  Transfer = 'Transfer',
+  Other = 'Other',
+}
+
+/** A single payment applied to an order */
+export interface OrderPayment {
+  id?: number;
+  method: PaymentMethod;
+  /** Amount paid in cents */
+  amountCents: number;
+  /** Optional reference (last 4 digits, auth number, etc.) */
+  reference?: string;
+}
+
+/** Display metadata for payment method buttons */
+export interface PaymentMethodOption {
+  method: PaymentMethod;
+  label: string;
+  icon: string;
+}
+
+/** All available payment method options */
+export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
+  { method: PaymentMethod.Cash,     label: 'Efectivo',       icon: 'pi-money-bill' },
+  { method: PaymentMethod.Card,     label: 'Tarjeta',        icon: 'pi-credit-card' },
+  { method: PaymentMethod.Transfer, label: 'Transferencia',  icon: 'pi-arrows-h' },
+  { method: PaymentMethod.Other,    label: 'Otro',           icon: 'pi-ellipsis-h' },
+];
 
 /** Lifecycle state of an order relative to backend sync */
 export type OrderSyncStatus = 'pending' | 'synced' | 'failed';
@@ -32,12 +62,14 @@ export interface Order {
   /** Sequential display number shown to staff and customer (e.g. #47) */
   orderNumber: number;
   items: CartItem[];
-  /** Order total in cents */
+  /** Order total in cents (after all discounts) */
   totalCents: number;
-  /** null when order is sent to kitchen without payment (tables/waiter mode) */
-  paymentMethod: PaymentMethod | null;
-  /** Amount tendered in cents (for cash payments) */
-  tenderedCents?: number;
+  /** Payments applied to this order — empty when unpaid (kitchen-only) */
+  payments: OrderPayment[];
+  /** Sum of all payment amounts in cents */
+  paidCents: number;
+  /** Change to return to the customer in cents */
+  changeCents: number;
   /**
    * Payment terminal provider used — null for direct cash/card without terminal.
    * Prepared for future integration with Clip, Conekta, Stripe, MercadoPago.
@@ -76,4 +108,45 @@ export interface Order {
   tableId?: number;
   /** Snapshot of the table name at order creation */
   tableName?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Pure helpers — used across components to derive payment info from Order
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a human-readable payment label for display.
+ * Joins all payment method labels with " + " for split payments.
+ * Returns "Sin cobrar" when no payments exist.
+ */
+export function getPaymentLabel(order: Order): string {
+  if (!order.payments || order.payments.length === 0) return 'Sin cobrar';
+  return order.payments
+    .map(p => PAYMENT_METHOD_OPTIONS.find(o => o.method === p.method)?.label ?? p.method)
+    .join(' + ');
+}
+
+/**
+ * Returns true if the order has been paid (at least one payment exists).
+ */
+export function isOrderPaid(order: Order): boolean {
+  return (order.payments?.length ?? 0) > 0;
+}
+
+/**
+ * Returns total cash amount from payments in cents.
+ */
+export function getCashAmountCents(order: Order): number {
+  return (order.payments ?? [])
+    .filter(p => p.method === PaymentMethod.Cash)
+    .reduce((sum, p) => sum + p.amountCents, 0);
+}
+
+/**
+ * Returns total card amount from payments in cents.
+ */
+export function getCardAmountCents(order: Order): number {
+  return (order.payments ?? [])
+    .filter(p => p.method === PaymentMethod.Card)
+    .reduce((sum, p) => sum + p.amountCents, 0);
 }

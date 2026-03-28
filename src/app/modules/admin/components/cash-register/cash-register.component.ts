@@ -175,7 +175,7 @@ export class CashRegisterComponent implements OnInit {
 
     const unpaid = await this.db.orders
       .filter(o =>
-        o.paymentMethod == null &&
+        (o.payments?.length ?? 0) === 0 &&
         (o.cancellationStatus === undefined || o.cancellationStatus === 'none') &&
         new Date(o.createdAt) >= todayStart
       )
@@ -315,7 +315,7 @@ export class CashRegisterComponent implements OnInit {
       .toArray();
 
     const cashTotal = orders
-      .filter(o => o.paymentMethod === 'cash' && o.cancellationStatus !== 'cancelled')
+      .filter(o => (o.payments ?? []).some(p => p.method === 'Cash') && o.cancellationStatus !== 'cancelled')
       .reduce((sum, o) => sum + o.totalCents, 0);
 
     this.cashSalesTotalCents.set(cashTotal);

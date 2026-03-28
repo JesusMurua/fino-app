@@ -193,78 +193,78 @@
 
       <div class="checkout-divider"></div>
 
-      <!-- Payment method cards -->
-      <section class="checkout-methods">
-        <p class="checkout-methods__label">Método de pago</p>
-        <div class="checkout-methods__grid">
+      <!-- Payment section -->
+      <div class="payment-section">
 
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--active]="selectedMethod() === 'cash'"
-            (click)="selectMethod('cash')"
-            aria-label="Pago en efectivo"
-          >
-            <i class="pi pi-wallet method-card__icon"></i>
-            <span class="method-card__name">Efectivo</span>
-          </button>
-
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--active]="selectedMethod() === 'card'"
-            (click)="selectMethod('card')"
-            aria-label="Pago con tarjeta"
-          >
-            <i class="pi pi-credit-card method-card__icon"></i>
-            <span class="method-card__name">Tarjeta</span>
-          </button>
-
-        </div>
-      </section>
-
-      <!-- Cash calculator — only shown when cash is selected -->
-      @if (selectedMethod() === 'cash') {
-        <section class="checkout-cash">
-          <label class="checkout-cash__label" for="tendered-input">
-            ¿Cuánto paga el cliente?
-          </label>
-
-          <p-inputNumber
-            inputId="tendered-input"
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            [useGrouping]="true"
-            styleClass="tendered-input"
-            inputStyleClass="tendered-input__field"
-            placeholder="$0.00"
-            (onInput)="onTenderedChange($event.value)"
-          />
-
-          @if (tenderedCents() > 0) {
-            <div class="checkout-cash__change">
-              @if (changeCents() > 0) {
-                <span class="checkout-cash__change-label">Cambio a entregar</span>
-                <span class="checkout-cash__change-amount">{{ changeCents() | price }}</span>
-              } @else if (tenderedCents() < totalWithDiscount()) {
-                <span class="checkout-cash__change-label checkout-cash__change-label--error">
-                  Faltan {{ (totalWithDiscount() - tenderedCents()) | price }}
-                </span>
-              }
-            </div>
+        <div class="payment-section__header">
+          <span class="payment-section__title">Forma de pago</span>
+          @if (remainingCents() > 0 && pendingPayments().length > 0) {
+            <span class="payment-section__remaining">
+              Falta: {{ remainingCents() | price }}
+            </span>
           }
-        </section>
-      }
-
-      <!-- Card note — no terminal yet -->
-      @if (selectedMethod() === 'card') {
-        <div class="checkout-card-note">
-          <i class="pi pi-info-circle"></i>
-          <span>Registra el pago con terminal externa. La integración automática estará disponible pronto.</span>
         </div>
-      }
+
+        <!-- Add payment buttons -->
+        <div class="payment-methods-row">
+          @for (opt of paymentMethodOptions; track opt.method) {
+            <button
+              type="button"
+              class="payment-method-btn"
+              (click)="openAddPayment(opt.method)"
+            >
+              <i [class]="'pi ' + opt.icon"></i>
+              {{ opt.label }}
+            </button>
+          }
+        </div>
+
+        <!-- Pending payments list -->
+        @if (pendingPayments().length > 0) {
+          <div class="pending-payments">
+            @for (p of pendingPayments(); track $index) {
+              <div class="pending-payment-row">
+                <span class="payment-method-label">
+                  {{ getPaymentMethodLabel(p.method) }}
+                </span>
+                @if (p.reference) {
+                  <span class="payment-reference">{{ p.reference }}</span>
+                }
+                <span class="payment-amount">{{ p.amountCents | price }}</span>
+                <button
+                  type="button"
+                  class="payment-remove"
+                  aria-label="Quitar pago"
+                  (click)="removePayment($index)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Payment summary -->
+        @if (pendingPayments().length > 0) {
+          <div class="payment-summary">
+            <div class="payment-summary__row">
+              <span>Total</span>
+              <span>{{ totalWithDiscount() | price }}</span>
+            </div>
+            <div class="payment-summary__row">
+              <span>Pagado</span>
+              <span>{{ totalPaidCents() | price }}</span>
+            </div>
+            @if (changeCents() > 0) {
+              <div class="payment-summary__row payment-summary__row--change">
+                <span>Vuelto</span>
+                <span class="change-amount">{{ changeCents() | price }}</span>
+              </div>
+            }
+          </div>
+        }
+
+      </div>
 
     </div>
 
@@ -322,13 +322,13 @@
           </div>
           <div class="confirmed-row">
             <span class="confirmed-row__label">Método</span>
-            <span class="confirmed-row__value">{{ order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta' }}</span>
+            <span class="confirmed-row__value">{{ orderPaymentLabel(order) }}</span>
           </div>
-          @if (order.paymentMethod === 'cash' && order.tenderedCents) {
+          @if (order.changeCents > 0) {
             <div class="confirmed-row confirmed-row--change">
               <span class="confirmed-row__label">Cambio</span>
               <span class="confirmed-row__value confirmed-row__value--change">
-                {{ (order.tenderedCents - order.totalCents) | price }}
+                {{ order.changeCents | price }}
               </span>
             </div>
           }
@@ -379,6 +379,61 @@
   }
 
 </div>
+
+<!-- Add payment dialog -->
+<p-dialog
+  [header]="'Agregar pago — ' + getPaymentMethodLabel(dialogMethod())"
+  [visible]="showPaymentDialog()"
+  (visibleChange)="showPaymentDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="add-payment-form">
+    <div class="add-payment-form__field">
+      <label for="pay-amount">Monto (MXN)</label>
+      <p-inputNumber
+        inputId="pay-amount"
+        [(ngModel)]="dialogAmountPesos"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        [min]="0.01"
+        styleClass="add-payment-form__number"
+        inputStyleClass="add-payment-form__input"
+      />
+    </div>
+
+    @if (showReferenceField()) {
+      <div class="add-payment-form__field">
+        <label for="pay-ref">Referencia (opcional)</label>
+        <input
+          id="pay-ref"
+          type="text"
+          pInputText
+          [(ngModel)]="dialogReference"
+          [placeholder]="dialogMethod() === PaymentMethod.Card ? 'Ej. últimos 4 dígitos' : 'Número de autorización'"
+          class="add-payment-form__ref"
+        />
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="dialog-btn dialog-btn--ghost" (click)="showPaymentDialog.set(false)">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="dialog-btn dialog-btn--primary"
+      [disabled]="dialogAmountPesos <= 0"
+      (click)="confirmAddPayment()"
+    >
+      Agregar
+    </button>
+  </ng-template>
+</p-dialog>
 
 <!-- Kitchen confirmation dialog -->
 <p-dialog

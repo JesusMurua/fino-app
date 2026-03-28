@@ -12,7 +12,7 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 
 import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, DiscountPreset, Order, PaymentMethod } from '../../../../core/models';
+import { CartItem, DiscountPreset, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
@@ -49,14 +49,14 @@ export class CheckoutComponent implements OnInit {
   /** Current checkout step */
   readonly step = signal<CheckoutStep>('payment');
 
-  /** Selected payment method — null until the user picks one */
-  readonly selectedMethod = signal<PaymentMethod | null>(null);
+  // ---- Multi-payment state ----
+  readonly pendingPayments = signal<OrderPayment[]>([]);
+  readonly showPaymentDialog = signal(false);
+  readonly dialogMethod = signal<PaymentMethod>(PaymentMethod.Cash);
+  dialogAmountPesos = 0;
+  dialogReference = '';
 
-  /**
-   * Amount tendered by the customer in cents.
-   * Bound via InputNumber (displayed in pesos, converted to cents on change).
-   */
-  readonly tenderedCents = signal<number>(0);
+  readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 
   /** The completed order, available after confirmPayment() succeeds */
   readonly completedOrder = signal<Order | null>(null);
@@ -166,28 +166,37 @@ export class CheckoutComponent implements OnInit {
     return '';
   });
 
-  /** Change to give back to the customer in cents (cash payments only) */
-  readonly changeCents = computed(() => {
-    if (this.selectedMethod() !== 'cash') return 0;
-    return Math.max(0, this.tenderedCents() - this.totalWithDiscount());
-  });
+  /** Sum of all pending payment amounts in cents */
+  readonly totalPaidCents = computed(() =>
+    this.pendingPayments().reduce((s, p) => s + p.amountCents, 0),
+  );
 
-  /**
-   * True when the operator can confirm the payment:
-   *   - Total must be greater than zero
-   *   - A method must be selected
-   *   - For cash: tendered amount must cover the total (after discount)
-   */
+  /** Amount still needed to cover the order total */
+  readonly remainingCents = computed(() =>
+    Math.max(0, this.totalWithDiscount() - this.totalPaidCents()),
+  );
+
+  /** Change to give back to the customer in cents */
+  readonly changeCents = computed(() =>
+    Math.max(0, this.totalPaidCents() - this.totalWithDiscount()),
+  );
+
+  /** True when total paid covers the order total */
   readonly canConfirm = computed(() => {
     if (this.totalWithDiscount() === 0) return false;
-    const method = this.selectedMethod();
-    if (!method) return false;
-    if (method === 'cash') return this.tenderedCents() >= this.totalWithDiscount();
-    return true;
+    return this.totalPaidCents() >= this.totalWithDiscount();
   });
 
   /** Item count from cart service */
   readonly itemCount = this.cartService.itemCount;
+
+  /** Expose for template */
+  readonly PaymentMethod = PaymentMethod;
+
+  /** Returns display label for an order's payments */
+  orderPaymentLabel(order: Order): string {
+    return getPaymentLabel(order);
+  }
 
   //#endregion
 
@@ -244,21 +253,54 @@ export class CheckoutComponent implements OnInit {
 
   //#endregion
 
-  //#region Payment Methods
+  //#region Multi-Payment Methods
 
-  /** Selects a payment method and resets tendered amount */
-  selectMethod(method: PaymentMethod): void {
-    this.selectedMethod.set(method);
-    this.tenderedCents.set(0);
+  /**
+   * Opens the add payment dialog for a given method.
+   * Pre-fills amount with remainingCents in pesos.
+   * @param method The payment method to add
+   */
+  openAddPayment(method: PaymentMethod): void {
+    this.dialogMethod.set(method);
+    this.dialogAmountPesos = this.remainingCents() / 100;
+    this.dialogReference = '';
+    this.showPaymentDialog.set(true);
   }
 
   /**
-   * Called by the InputNumber when the tendered amount changes.
-   * The InputNumber binds in pesos — this converts to cents.
-   * @param pesos Value in pesos from the input (may be null when cleared)
+   * Adds the dialog payment to pendingPayments and closes the dialog.
    */
-  onTenderedChange(pesos: number | null): void {
-    this.tenderedCents.set(Math.round((pesos ?? 0) * 100));
+  confirmAddPayment(): void {
+    const amountCents = Math.round(this.dialogAmountPesos * 100);
+    if (amountCents <= 0) return;
+
+    const payment: OrderPayment = {
+      method: this.dialogMethod(),
+      amountCents,
+      reference: this.dialogReference.trim() || undefined,
+    };
+
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showPaymentDialog.set(false);
+  }
+
+  /**
+   * Removes a payment from pendingPayments by index.
+   * @param index The index of the payment to remove
+   */
+  removePayment(index: number): void {
+    this.pendingPayments.update(arr => arr.filter((_, i) => i !== index));
+  }
+
+  /** Returns display label for a payment method */
+  getPaymentMethodLabel(method: PaymentMethod): string {
+    return PAYMENT_METHOD_OPTIONS.find(o => o.method === method)?.label ?? method;
+  }
+
+  /** Whether the reference field should show for a method */
+  showReferenceField(): boolean {
+    const m = this.dialogMethod();
+    return m === PaymentMethod.Card || m === PaymentMethod.Transfer;
   }
 
   //#endregion
@@ -355,8 +397,9 @@ export class CheckoutComponent implements OnInit {
     this.showKitchenConfirm.set(false);
     if (!this.canConfirm()) return;
 
-    const method = this.selectedMethod()!;
+    const payments = this.pendingPayments();
     const discount = this.discountCents();
+    const paidCents = payments.reduce((s, p) => s + p.amountCents, 0);
     let order: Order;
 
     if (this.existingOrderId()) {
@@ -364,15 +407,18 @@ export class CheckoutComponent implements OnInit {
       const existing = await this.db.orders.get(this.existingOrderId()!);
       if (!existing) return;
 
+      const finalTotal = discount > 0 ? Math.max(0, existing.totalCents - discount) : existing.totalCents;
+
       order = {
         ...existing,
-        paymentMethod: method,
-        tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
+        payments,
+        paidCents,
+        changeCents: Math.max(0, paidCents - finalTotal),
         subtotalCents: existing.totalCents,
         orderDiscountCents: discount > 0 ? discount : undefined,
         totalDiscountCents: discount > 0 ? discount : undefined,
         orderPromotionName: this.discountLabel() || undefined,
-        totalCents: discount > 0 ? Math.max(0, existing.totalCents - discount) : existing.totalCents,
+        totalCents: finalTotal,
         syncStatus: 'pending',
       };
 
@@ -391,8 +437,9 @@ export class CheckoutComponent implements OnInit {
         totalDiscountCents: discount > 0 ? discount : undefined,
         orderPromotionName: this.discountLabel() || undefined,
         totalCents: this.totalWithDiscount(),
-        paymentMethod: method,
-        tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
+        payments,
+        paidCents,
+        changeCents: this.changeCents(),
         paymentProvider: null,
         createdAt: new Date(),
         syncStatus: 'pending',

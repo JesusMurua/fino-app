@@ -199,11 +199,7 @@
                   <td class="time-cell">{{ formatTime(order.createdAt) }}</td>
                   <td>{{ order.itemCount }}</td>
                   <td>
-                    @if (order.paymentMethod === 'cash' || order.paymentMethod === 'Cash') {
-                      <span class="badge badge--cash">Efectivo</span>
-                    } @else {
-                      <span class="badge badge--card">Tarjeta</span>
-                    }
+                    <span class="badge badge--cash">{{ order.paymentMethod || 'Sin cobrar' }}</span>
                   </td>
                   <td>
                     @if (order.discountCents && order.discountCents > 0) {

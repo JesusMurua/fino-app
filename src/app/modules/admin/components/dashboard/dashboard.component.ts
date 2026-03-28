@@ -1,6 +1,6 @@
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 
-import { Order, PaymentMethod } from '../../../../core/models';
+import { Order, PaymentMethod, getCashAmountCents, getCardAmountCents } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
@@ -78,13 +78,11 @@ export class DashboardComponent implements OnInit {
     const orderCount = completedOrders.length;
     const averageTicketCents = orderCount > 0 ? Math.round(totalCents / orderCount) : 0;
 
-    const cashOrders = completedOrders.filter(o => o.paymentMethod === 'cash');
-    const cardOrders = completedOrders.filter(o => o.paymentMethod === 'card');
-    const cashCents = cashOrders.reduce((s, o) => s + o.totalCents, 0);
-    const cardCents = cardOrders.reduce((s, o) => s + o.totalCents, 0);
+    const cashCents = completedOrders.reduce((s, o) => s + getCashAmountCents(o), 0);
+    const cardCents = completedOrders.reduce((s, o) => s + getCardAmountCents(o), 0);
     const topMethod: PaymentMethod | null = orderCount === 0
       ? null
-      : cashOrders.length >= cardOrders.length ? 'cash' : 'card';
+      : cashCents >= cardCents ? PaymentMethod.Cash : PaymentMethod.Card;
 
     // Top 5 products — only completed orders
     const productCounts = new Map<string, number>();
