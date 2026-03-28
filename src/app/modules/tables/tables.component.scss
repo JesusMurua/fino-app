@@ -502,3 +502,133 @@
   &__icon { font-size: 48px; color: #D1D5DB; margin-bottom: $space-3; }
   &__text { font-size: 15px; color: $color-text-sub; }
 }
+
+// -----------------------------------------------------------------------
+// Move items dialog
+// -----------------------------------------------------------------------
+.move-target-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: $space-2 0;
+}
+
+.move-target-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: $color-primary;
+    background: #F0FDF4;
+  }
+
+  &__name {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__total {
+    font-size: 10px;
+    color: $color-text-sub;
+  }
+}
+
+.move-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: 13px;
+  color: $color-text-sub;
+  margin-bottom: $space-3;
+  font-weight: 500;
+
+  i { font-size: 12px; }
+
+  &__back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    background: white;
+    color: $color-text-sub;
+    cursor: pointer;
+
+    i { font-size: 12px; }
+    &:hover { background: #F3F4F6; }
+  }
+}
+
+.move-select-all {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: $color-text-title;
+  cursor: pointer;
+  border-bottom: 1px solid #E5E7EB;
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: $color-primary;
+    cursor: pointer;
+  }
+}
+
+.move-item-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.move-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: $space-2 0;
+  border-bottom: 1px solid #F3F4F6;
+  cursor: pointer;
+
+  &:last-child { border-bottom: none; }
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: $color-primary;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    flex: 1;
+    font-size: 13px;
+    color: $color-text-title;
+  }
+
+  &__qty {
+    font-size: 12px;
+    color: $color-text-sub;
+    flex-shrink: 0;
+  }
+}
+
+.move-footer-summary {
+  font-size: 12px;
+  color: $color-text-sub;
+  padding: $space-2 0 0;
+}

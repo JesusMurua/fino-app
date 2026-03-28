@@ -14,7 +14,14 @@ export interface OrderSummary {
   kitchenStatus: string | null;
   deliveryStatus: string | null;
   createdAt: string;
-  items: { productName: string; quantity: number }[];
+  items: { id: number; productName: string; quantity: number }[];
+}
+
+/** Result of moving items between orders */
+export interface MoveItemsResult {
+  sourceOrder: { id: string; totalCents: number; itemCount: number };
+  targetOrder: { id: string; totalCents: number; itemCount: number };
+  sourceTableFreed: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +40,24 @@ export class TableService {
    */
   getTableStatuses(): Observable<TableStatusDto[]> {
     return this.http.get<TableStatusDto[]>(`${this.baseUrl}/table/status`);
+  }
+
+  /**
+   * Moves selected items from one order to another.
+   * @param sourceOrderId Source order UUID
+   * @param targetOrderId Target order UUID
+   * @param itemIds OrderItem IDs to move
+   * @returns Result with updated order summaries and whether source table was freed
+   */
+  moveItems(
+    sourceOrderId: string,
+    targetOrderId: string,
+    itemIds: number[],
+  ): Observable<MoveItemsResult> {
+    return this.http.post<MoveItemsResult>(
+      `${this.baseUrl}/orders/${sourceOrderId}/move-items`,
+      { targetOrderId, itemIds },
+    );
   }
 
   /**

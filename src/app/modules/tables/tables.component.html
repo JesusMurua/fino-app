@@ -191,6 +191,9 @@
             <button type="button" class="td-btn td-btn--outline" (click)="addItemsToOrder(order)">
               <i class="pi pi-plus"></i> Agregar items
             </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openMoveFlow(order)">
+              <i class="pi pi-arrows-h"></i> Mover items
+            </button>
             <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
               <i class="pi pi-credit-card"></i> Cobrar
             </button>
@@ -215,6 +218,118 @@
     @if (tableOrders().length === 0) {
       <button type="button" class="td-btn td-btn--red-outline" (click)="releaseTable()">
         <i class="pi pi-check-circle"></i> Liberar mesa
+      </button>
+    }
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Move items dialog                                                       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showMoveDialog()"
+  (visibleChange)="showMoveDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+  (onHide)="cancelMove()"
+>
+  <ng-template pTemplate="header">
+    <span class="td-header">
+      <span class="td-header__title">
+        @if (moveStep() === 1) {
+          ¿A qué mesa mover los items?
+        } @else {
+          Selecciona los items a mover
+        }
+      </span>
+    </span>
+  </ng-template>
+
+  <!-- Step 1 — Select target table -->
+  @if (moveStep() === 1) {
+    @if (occupiedTargetTables().length > 0) {
+      <div class="move-target-grid">
+        @for (table of occupiedTargetTables(); track table.tableId) {
+          <button
+            type="button"
+            class="move-target-card"
+            (click)="selectMoveTarget(table)"
+          >
+            <span class="move-target-card__name">{{ table.tableName }}</span>
+            @if (table.orderTotalCents) {
+              <span class="move-target-card__total">{{ table.orderTotalCents | price }}</span>
+            }
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="td-empty">
+        <i class="pi pi-inbox td-empty__icon"></i>
+        <p class="td-empty__text">No hay otras mesas con órdenes activas</p>
+      </div>
+    }
+  }
+
+  <!-- Step 2 — Select items -->
+  @if (moveStep() === 2) {
+    <div class="move-breadcrumb">
+      <button type="button" class="move-breadcrumb__back" (click)="moveStep.set(1)">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <span>{{ moveSourceTableName() }}</span>
+      <i class="pi pi-arrow-right"></i>
+      <span>{{ moveTargetTable()?.tableName }}</span>
+    </div>
+
+    <!-- Select all -->
+    <label class="move-select-all">
+      <input
+        type="checkbox"
+        [checked]="moveAllSelected()"
+        (change)="toggleAllMoveItems()"
+      />
+      <span>Seleccionar todos</span>
+    </label>
+
+    <!-- Item list -->
+    <div class="move-item-list">
+      @for (item of moveOrderItems(); track item.id) {
+        <label class="move-item-row">
+          <input
+            type="checkbox"
+            [checked]="moveSelectedIds().has(item.id)"
+            (change)="toggleMoveItem(item.id)"
+          />
+          <span class="move-item-row__name">{{ item.productName }}</span>
+          <span class="move-item-row__qty">×{{ item.quantity }}</span>
+        </label>
+      }
+    </div>
+
+    <div class="move-footer-summary">
+      {{ moveSelectedCount() }} item{{ moveSelectedCount() !== 1 ? 's' : '' }} seleccionado{{ moveSelectedCount() !== 1 ? 's' : '' }}
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelMove()">
+      Cancelar
+    </button>
+    @if (moveStep() === 2) {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        [disabled]="moveSelectedCount() === 0 || moveBusy()"
+        (click)="confirmMoveItems()"
+      >
+        @if (moveBusy()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        } @else {
+          <i class="pi pi-arrows-h"></i>
+        }
+        Mover {{ moveSelectedCount() }} item{{ moveSelectedCount() !== 1 ? 's' : '' }}
       </button>
     }
   </ng-template>

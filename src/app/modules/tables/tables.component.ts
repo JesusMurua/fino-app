@@ -17,7 +17,7 @@ import {
   mapDisplayStatus,
 } from '../../core/models';
 import { DatabaseService } from '../../core/services/database.service';
-import { TableService, OrderSummary } from '../../core/services/table.service';
+import { TableService, OrderSummary, MoveItemsResult } from '../../core/services/table.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
@@ -69,6 +69,16 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /** Currently selected zone filter — null = all zones */
   readonly activeZone = signal<number | null>(null);
+
+  // ---- Move items dialog ----
+  readonly showMoveDialog = signal(false);
+  readonly moveStep = signal<1 | 2>(1);
+  readonly moveSourceOrderId = signal<string | null>(null);
+  readonly moveSourceTableName = signal('');
+  readonly moveTargetTable = signal<TableStatusDto | null>(null);
+  readonly moveOrderItems = signal<{ id: number; productName: string; quantity: number }[]>([]);
+  readonly moveSelectedIds = signal<Set<number>>(new Set());
+  readonly moveBusy = signal(false);
 
   //#endregion
 
@@ -144,6 +154,27 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /** True if zone tabs should render */
   readonly showZoneTabs = computed(() => this.availableZones().length > 1);
+
+  //#endregion
+
+  //#region Move Items Computeds
+
+  /** Occupied tables excluding the source table — targets for move */
+  readonly occupiedTargetTables = computed(() => {
+    const sourceId = this.selectedTable()?.id;
+    return this.tableStatuses().filter(t =>
+      mapDisplayStatus(t.displayStatus) !== TableStatus.Free && t.tableId !== sourceId,
+    );
+  });
+
+  /** Number of selected items to move */
+  readonly moveSelectedCount = computed(() => this.moveSelectedIds().size);
+
+  /** Whether all items are selected */
+  readonly moveAllSelected = computed(() => {
+    const items = this.moveOrderItems();
+    return items.length > 0 && this.moveSelectedIds().size === items.length;
+  });
 
   //#endregion
 
@@ -382,6 +413,131 @@ export class TablesComponent implements OnInit, OnDestroy {
 
     this.showTableDialog.set(false);
     this.router.navigate(['/pos']);
+  }
+
+  //#endregion
+
+  //#region Move Items Methods
+
+  /**
+   * Opens the move items dialog for a given order.
+   * Pre-selects all items by default.
+   * @param order The order whose items to move
+   */
+  openMoveFlow(order: OrderSummary): void {
+    const tableName = this.selectedTable()?.name ?? '';
+    this.moveSourceOrderId.set(order.id);
+    this.moveSourceTableName.set(tableName);
+    this.moveTargetTable.set(null);
+    this.moveStep.set(1);
+
+    // Populate items and select all by default
+    const items = order.items.map(i => ({
+      id: i.id,
+      productName: i.productName,
+      quantity: i.quantity,
+    }));
+    this.moveOrderItems.set(items);
+    this.moveSelectedIds.set(new Set(items.map(i => i.id)));
+
+    if (items.some(i => !i.id)) {
+      console.warn('[Tables] Some order items have no ID — move may fail');
+    }
+
+    this.showTableDialog.set(false);
+    this.showMoveDialog.set(true);
+  }
+
+  /**
+   * Selects a target table and advances to step 2.
+   * @param table Target table DTO
+   */
+  selectMoveTarget(table: TableStatusDto): void {
+    this.moveTargetTable.set(table);
+    this.moveStep.set(2);
+  }
+
+  /**
+   * Toggles an item in the move selection.
+   * @param itemId The order item ID to toggle
+   */
+  toggleMoveItem(itemId: number): void {
+    this.moveSelectedIds.update(set => {
+      const next = new Set(set);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }
+
+  /** Selects or deselects all items */
+  toggleAllMoveItems(): void {
+    if (this.moveAllSelected()) {
+      this.moveSelectedIds.set(new Set());
+    } else {
+      this.moveSelectedIds.set(new Set(this.moveOrderItems().map(i => i.id)));
+    }
+  }
+
+  /**
+   * Calls the move items API and handles the result.
+   * On success: reloads table statuses and shows toast.
+   */
+  async confirmMoveItems(): Promise<void> {
+    const sourceId = this.moveSourceOrderId();
+    const target = this.moveTargetTable();
+    if (!sourceId || !target?.orderId || this.moveSelectedIds().size === 0) return;
+
+    this.moveBusy.set(true);
+
+    try {
+      const result = await firstValueFrom(
+        this.tableService.moveItems(
+          sourceId,
+          target.orderId,
+          Array.from(this.moveSelectedIds()),
+        ),
+      );
+
+      this.cancelMove();
+      await this.loadTableStatuses();
+
+      this.messageService.add({
+        severity: 'success',
+        summary: `Items movidos a ${target.tableName}`,
+        life: 3000,
+      });
+
+      if (result.sourceTableFreed) {
+        this.messageService.add({
+          severity: 'info',
+          summary: `${this.moveSourceTableName()} quedó libre`,
+          life: 3000,
+        });
+      }
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al mover items',
+        life: 4000,
+      });
+    } finally {
+      this.moveBusy.set(false);
+    }
+  }
+
+  /** Resets all move state and closes the dialog */
+  cancelMove(): void {
+    this.showMoveDialog.set(false);
+    this.moveStep.set(1);
+    this.moveSourceOrderId.set(null);
+    this.moveSourceTableName.set('');
+    this.moveTargetTable.set(null);
+    this.moveOrderItems.set([]);
+    this.moveSelectedIds.set(new Set());
   }
 
   //#endregion
