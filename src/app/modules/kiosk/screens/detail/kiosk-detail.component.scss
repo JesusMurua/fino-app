@@ -11,12 +11,12 @@
 }
 
 // -----------------------------------------------------------------------
-// Image carousel
+// Image carousel — full-bleed, food delivery style
 // -----------------------------------------------------------------------
 .kiosk-detail__carousel {
   position: relative;
   width: 100%;
-  height: 240px;
+  height: 380px;
   background: $color-primary-light;
   flex-shrink: 0;
   overflow: hidden;
@@ -33,6 +33,8 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 0;
+  cursor: pointer;
 }
 
 .kiosk-detail__placeholder-icon {
@@ -41,37 +43,35 @@
   opacity: 0.4;
 }
 
-.kiosk-detail__back {
-  display: inline-flex;
+// -----------------------------------------------------------------------
+// Back button — floating circle over the image
+// -----------------------------------------------------------------------
+.kiosk-detail__back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 48px;
-  min-height: 48px;
+  width: 44px;
+  height: 44px;
   border: none;
-  border-radius: 12px;
-  background: transparent;
-  color: $color-text-sub;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
   cursor: pointer;
   transition: background 0.15s;
-  flex-shrink: 0;
 
   i { font-size: 20px; }
 
-  &:hover { background: rgba(0, 0, 0, 0.1); }
-  &:active { transform: scale(0.95); }
-
-  &--overlay {
-    position: absolute;
-    top: $space-3;
-    left: $space-3;
-    z-index: 2;
-    background: rgba(255, 255, 255, 0.85);
-    color: $color-text-title;
-
-    &:hover { background: white; }
-  }
+  &:hover { background: rgba(0, 0, 0, 0.6); }
+  &:active { transform: scale(0.93); }
 }
 
+// -----------------------------------------------------------------------
+// Carousel navigation arrows
+// -----------------------------------------------------------------------
 .kiosk-detail__carousel-nav {
   position: absolute;
   top: 50%;
@@ -79,27 +79,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
-  color: $color-text-title;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
   cursor: pointer;
   z-index: 2;
   transition: background 0.15s;
 
-  i { font-size: 16px; }
+  i { font-size: 18px; }
 
-  &:hover { background: white; }
+  &:hover { background: rgba(0, 0, 0, 0.6); }
+  &:active { transform: scale(0.93); }
 
-  &--prev { left: $space-3; }
-  &--next { right: $space-3; }
+  &--prev { left: 16px; }
+  &--next { right: 16px; }
 }
 
+// -----------------------------------------------------------------------
+// Carousel dot indicators
+// -----------------------------------------------------------------------
 .kiosk-detail__carousel-dots {
   position: absolute;
-  bottom: $space-3;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -110,9 +114,9 @@
 .kiosk-detail__dot {
   width: 10px;
   height: 10px;
-  border: 2px solid white;
+  border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   padding: 0;
   transition: background 0.15s;
@@ -120,6 +124,28 @@
   &--active {
     background: white;
   }
+}
+
+// -----------------------------------------------------------------------
+// Lightbox overlay
+// -----------------------------------------------------------------------
+.kiosk-detail__lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.kiosk-detail__lightbox-img {
+  max-width: 95vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
 }
 
 // -----------------------------------------------------------------------

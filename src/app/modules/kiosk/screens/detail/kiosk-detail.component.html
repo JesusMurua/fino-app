@@ -1,12 +1,12 @@
 @if (product(); as p) {
   <div class="kiosk-detail">
 
-    <!-- Image carousel -->
+    <!-- Image carousel — full-bleed -->
     @if (allImageUrls().length > 0) {
       <div class="kiosk-detail__carousel">
         <button
           type="button"
-          class="kiosk-detail__back kiosk-detail__back--overlay"
+          class="kiosk-detail__back-btn"
           aria-label="Regresar al catálogo"
           (click)="goBack()"
         >
@@ -17,6 +17,7 @@
           [src]="allImageUrls()[activeImageIndex()]"
           [alt]="p.name"
           class="kiosk-detail__carousel-img"
+          (click)="openLightbox()"
         />
 
         @if (allImageUrls().length > 1) {
@@ -51,17 +52,29 @@
         }
       </div>
     } @else {
-      <!-- No images — placeholder with back button -->
+      <!-- No images — placeholder full-bleed -->
       <div class="kiosk-detail__carousel kiosk-detail__carousel--placeholder">
         <button
           type="button"
-          class="kiosk-detail__back kiosk-detail__back--overlay"
+          class="kiosk-detail__back-btn"
           aria-label="Regresar al catálogo"
           (click)="goBack()"
         >
           <i class="pi pi-arrow-left"></i>
         </button>
         <i class="pi pi-shopping-bag kiosk-detail__placeholder-icon"></i>
+      </div>
+    }
+
+    <!-- Lightbox overlay -->
+    @if (lightboxOpen()) {
+      <div class="kiosk-detail__lightbox" (click)="closeLightbox()">
+        <img
+          [src]="allImageUrls()[activeImageIndex()]"
+          [alt]="p.name"
+          class="kiosk-detail__lightbox-img"
+          (click)="$event.stopPropagation()"
+        />
       </div>
     }
 

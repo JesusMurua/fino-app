@@ -51,6 +51,9 @@ export class KioskDetailComponent implements OnInit {
 
   /** Currently displayed image index in the carousel */
   readonly activeImageIndex = signal(0);
+
+  /** Whether the lightbox overlay is open */
+  readonly lightboxOpen = signal(false);
   //#endregion
 
   //#region Constructor
@@ -119,6 +122,18 @@ export class KioskDetailComponent implements OnInit {
   /** Jumps to a specific image by index */
   goToImage(index: number): void {
     this.activeImageIndex.set(index);
+  }
+
+  /** Opens the full-screen lightbox */
+  openLightbox(): void {
+    if (this.allImageUrls().length > 0) {
+      this.lightboxOpen.set(true);
+    }
+  }
+
+  /** Closes the full-screen lightbox */
+  closeLightbox(): void {
+    this.lightboxOpen.set(false);
   }
 
   //#endregion
