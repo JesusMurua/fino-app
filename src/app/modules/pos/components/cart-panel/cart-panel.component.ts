@@ -1,23 +1,27 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { MessageService } from 'primeng/api';
 
+import { InputTextModule } from 'primeng/inputtext';
+
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, Order } from '../../../../core/models';
+import { CartItem, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [AsyncPipe, ButtonModule, DividerModule, PricePipe],
+  imports: [AsyncPipe, FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
@@ -27,9 +31,19 @@ export class CartPanelComponent implements OnInit {
   readonly cart$ = this.cartService.cart$;
   readonly totalCents = this.cartService.totalCents;
   readonly itemCount = this.cartService.itemCount;
+  readonly cartEvaluation = this.cartService.cartEvaluation;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
   readonly activeTableName = signal<string | null>(null);
   readonly deviceMode = signal<string>('counter');
+
+  // ---- Coupon state ----
+  readonly activeCoupon = this.promotionService.activeCoupon;
+  readonly couponCode = signal('');
+  readonly couponError = signal('');
+  readonly couponLoading = signal(false);
+
+  // ---- Rejected promos toggle ----
+  readonly showRejected = signal(false);
 
   /** Context when adding items to an existing table order */
   addingToOrder: { orderId: string; orderNumber: number } | null = null;
@@ -48,6 +62,7 @@ export class CartPanelComponent implements OnInit {
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
     private readonly db: DatabaseService,
+    private readonly promotionService: PromotionService,
     private readonly messageService: MessageService,
     private readonly router: Router,
   ) {
@@ -188,6 +203,57 @@ export class CartPanelComponent implements OnInit {
   async onCancelOrder(): Promise<void> {
     await this.cartService.clearCart();
   }
+  //#endregion
+
+  //#region Coupon Methods
+
+  /** Validates and applies the entered coupon code */
+  async applyCoupon(): Promise<void> {
+    const code = this.couponCode().trim();
+    if (!code) return;
+
+    this.couponError.set('');
+    this.couponLoading.set(true);
+    const error = await this.promotionService.validateCoupon(code);
+    this.couponLoading.set(false);
+
+    if (error) {
+      this.couponError.set(error);
+    } else {
+      this.couponCode.set('');
+    }
+  }
+
+  /** Removes the active coupon */
+  removeCoupon(): void {
+    this.promotionService.clearCoupon();
+    this.couponCode.set('');
+    this.couponError.set('');
+  }
+
+  //#endregion
+
+  //#region Promotion Helpers
+
+  /** Returns human-readable reason for a rejected promotion */
+  rejectionText(rejected: RejectedPromotion): string {
+    switch (rejected.reason) {
+      case RejectionReason.WrongDay:          return 'Solo aplica ciertos días';
+      case RejectionReason.MinOrderNotMet:    return `Mínimo ${this.formatCents(rejected.promotion.minOrderCents ?? 0)} en orden`;
+      case RejectionReason.MaxUsesReached:    return 'Límite alcanzado';
+      case RejectionReason.Expired:           return 'Expirada';
+      case RejectionReason.CouponRequired:    return 'Requiere cupón';
+      case RejectionReason.ProductNotMatch:   return 'Producto no incluido';
+      case RejectionReason.OutsideDateRange:  return 'Fuera de vigencia';
+      default:                                return 'No aplica';
+    }
+  }
+
+  /** Formats cents to pesos string for inline use */
+  private formatCents(cents: number): string {
+    return '$' + (cents / 100).toFixed(2);
+  }
+
   //#endregion
 
   /** Returns a comma-separated string of extra labels for display */

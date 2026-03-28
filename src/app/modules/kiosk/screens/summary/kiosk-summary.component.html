@@ -64,7 +64,14 @@
           </div>
 
           <!-- Price -->
-          <span class="ks__item-price">{{ item.totalPriceCents | price }}</span>
+          @if (item.discountCents > 0) {
+            <div class="ks__item-price-group">
+              <span class="ks__price-original">{{ item.totalPriceCents | price }}</span>
+              <span class="ks__price-discounted">{{ item.totalPriceCents - item.discountCents | price }}</span>
+            </div>
+          } @else {
+            <span class="ks__item-price">{{ item.totalPriceCents | price }}</span>
+          }
 
           <!-- Remove -->
           <button
@@ -79,11 +86,39 @@
       }
     </ul>
 
-    <!-- Total -->
-    <div class="ks__total-row">
-      <span class="ks__total-label">Total</span>
-      <span class="ks__total-amount">{{ totalCents() | price }}</span>
-    </div>
+    <!-- Total section -->
+    @if (cartEvaluation(); as eval) {
+      @if (eval.totalDiscountCents > 0) {
+        <div class="ks__summary-card">
+          <div class="ks__summary-row">
+            <span>Subtotal</span>
+            <span>{{ (totalCents() + eval.totalDiscountCents) | price }}</span>
+          </div>
+          <div class="ks__summary-row ks__summary-row--discount">
+            <span>Descuentos</span>
+            <span>-{{ eval.totalDiscountCents | price }}</span>
+          </div>
+          <div class="ks__summary-divider"></div>
+          <div class="ks__total-row ks__total-row--inline">
+            <span class="ks__total-label">Total</span>
+            <span class="ks__total-amount">{{ totalCents() | price }}</span>
+          </div>
+          <div class="ks__savings-banner">
+            Ahorraste {{ eval.totalSavedCents | price }}
+          </div>
+        </div>
+      } @else {
+        <div class="ks__total-row">
+          <span class="ks__total-label">Total</span>
+          <span class="ks__total-amount">{{ totalCents() | price }}</span>
+        </div>
+      }
+    } @else {
+      <div class="ks__total-row">
+        <span class="ks__total-label">Total</span>
+        <span class="ks__total-amount">{{ totalCents() | price }}</span>
+      </div>
+    }
   </main>
 
   <!-- Sticky footer -->

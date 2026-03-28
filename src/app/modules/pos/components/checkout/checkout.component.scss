@@ -127,6 +127,53 @@
     color: $color-text-title;
     flex-shrink: 0;
   }
+
+  &__prices {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+// ---- Promotion styles ----
+.promo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #F0FDF4;
+  color: #15803D;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  white-space: nowrap;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: $color-text-sub;
+  font-size: 12px;
+}
+
+.price-discounted {
+  color: #15803D;
+  font-weight: 600;
+  font-size: $font-size-base;
+}
+
+.savings-banner {
+  background: #F0FDF4;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  border-radius: 8px;
+  padding: $space-2 $space-3;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #15803D;
+  margin-top: $space-2;
 }
 
 // -----------------------------------------------------------------------

@@ -193,6 +193,26 @@
   text-align: right;
 }
 
+.ks__item-price-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: 70px;
+}
+
+.ks__price-original {
+  text-decoration: line-through;
+  color: $color-text-sub;
+  font-size: 13px;
+}
+
+.ks__price-discounted {
+  color: #15803D;
+  font-weight: 700;
+  font-size: 16px;
+}
+
 .ks__remove-btn {
   display: flex;
   align-items: center;
@@ -237,6 +257,53 @@
   font-size: 32px;
   font-weight: 700;
   color: $color-text-title;
+}
+
+// ---- Summary card with discounts ----
+.ks__summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-4 $space-5;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.ks__summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  color: $color-text-sub;
+
+  &--discount {
+    color: #15803D;
+    font-weight: 500;
+  }
+}
+
+.ks__summary-divider {
+  height: 1px;
+  background: $color-border-soft;
+  margin: $space-1 0;
+}
+
+.ks__total-row--inline {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ks__savings-banner {
+  background: #F0FDF4;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  border-radius: 10px;
+  padding: $space-2 $space-3;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: #15803D;
 }
 
 // -----------------------------------------------------------------------

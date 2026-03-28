@@ -60,7 +60,15 @@
 
           <!-- Subtotal + remove -->
           <div class="cart-item__price-row">
-            <span class="cart-item__total">{{ item.totalPriceCents | price }}</span>
+            @if (item.discountCents > 0) {
+              <div class="cart-item__price-group">
+                <span class="price-original">{{ item.totalPriceCents | price }}</span>
+                <span class="price-discounted">{{ item.totalPriceCents - item.discountCents | price }}</span>
+                <span class="promo-badge">{{ item.promotionName }}</span>
+              </div>
+            } @else {
+              <span class="cart-item__total">{{ item.totalPriceCents | price }}</span>
+            }
             <p-button
               icon="pi pi-trash"
               [rounded]="true"
@@ -88,10 +96,89 @@
 
   <!-- Footer with total and checkout -->
   <div class="cart-panel__footer">
+
+    <!-- Coupon input -->
+    @if (itemCount() > 0) {
+      @if (activeCoupon(); as coupon) {
+        <div class="coupon-active-chip">
+          <span><i class="pi pi-tag"></i> {{ coupon.name }}</span>
+          <button type="button" class="coupon-active-chip__remove" (click)="removeCoupon()" aria-label="Quitar cupón">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      } @else {
+        <div class="coupon-input-row">
+          <input
+            type="text"
+            pInputText
+            [ngModel]="couponCode()"
+            (ngModelChange)="couponCode.set($event)"
+            placeholder="Código de cupón"
+            class="coupon-input-row__input"
+            (keydown.enter)="applyCoupon()"
+          />
+          <button
+            type="button"
+            class="coupon-input-row__btn"
+            [disabled]="couponLoading()"
+            (click)="applyCoupon()"
+          >
+            Aplicar
+          </button>
+        </div>
+        @if (couponError()) {
+          <span class="coupon-error">{{ couponError() }}</span>
+        }
+      }
+    }
+
+    <!-- Order summary breakdown -->
+    @if (cartEvaluation(); as eval) {
+      @if (eval.totalDiscountCents > 0) {
+        <div class="cart-panel__summary">
+          <div class="cart-panel__summary-row">
+            <span>Subtotal</span>
+            <span>{{ (totalCents() + eval.totalDiscountCents) | price }}</span>
+          </div>
+          <div class="discount-summary-row">
+            <span>Descuentos aplicados</span>
+            <span>-{{ eval.totalDiscountCents | price }}</span>
+          </div>
+        </div>
+      }
+    }
+
     <div class="cart-panel__total-row">
       <span class="cart-panel__total-label">Total</span>
       <span class="cart-panel__total-amount">{{ totalCents() | price }}</span>
     </div>
+
+    <!-- Savings banner -->
+    @if (cartEvaluation(); as eval) {
+      @if (eval.totalSavedCents > 0) {
+        <div class="savings-banner">
+          Ahorraste {{ eval.totalSavedCents | price }}
+        </div>
+      }
+
+      <!-- Rejected promotions (collapsible) -->
+      @if (eval.rejected.length > 0) {
+        <button type="button" class="rejected-toggle" (click)="showRejected.set(!showRejected())">
+          <i class="pi" [class.pi-chevron-down]="!showRejected()" [class.pi-chevron-up]="showRejected()"></i>
+          Promociones no aplicadas ({{ eval.rejected.length }})
+        </button>
+        @if (showRejected()) {
+          <div class="rejected-list">
+            @for (rej of eval.rejected; track rej.promotion.id) {
+              <div class="rejected-promo-item">
+                <span class="rejected-promo-item__name">{{ rej.promotion.name }}</span>
+                <span class="rejected-promo-item__reason">{{ rejectionText(rej) }}</span>
+              </div>
+            }
+          </div>
+        }
+      }
+    }
 
     @if (isTableMode()) {
       @if (addingToOrder) {

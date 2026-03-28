@@ -20,6 +20,7 @@ export class KioskSummaryComponent implements OnInit {
 
   readonly items = signal<CartItem[]>([]);
   readonly totalCents = this.cartService.totalCents;
+  readonly cartEvaluation = this.cartService.cartEvaluation;
 
   private cartSub?: Subscription;
 
