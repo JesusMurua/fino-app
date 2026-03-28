@@ -1,19 +1,36 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DialogModule } from 'primeng/dialog';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { MessageService } from 'primeng/api';
 
-import { RestaurantTable } from '../../core/models';
+import {
+  BusinessType,
+  RestaurantTable,
+  TableStatus,
+  TableStatusDto,
+  Zone,
+  ZoneType,
+  mapDisplayStatus,
+} from '../../core/models';
 import { DatabaseService } from '../../core/services/database.service';
 import { TableService, OrderSummary } from '../../core/services/table.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
 const POLL_INTERVAL = 15_000;
+
+/** Grouped zone entry for template iteration */
+interface ZoneGroup {
+  id: number | null;
+  name: string;
+  type: ZoneType;
+  tables: TableStatusDto[];
+}
 
 @Component({
   selector: 'app-tables',
@@ -24,33 +41,122 @@ const POLL_INTERVAL = 15_000;
 })
 export class TablesComponent implements OnInit, OnDestroy {
 
+  //#region Properties
+
   private readonly tableService = inject(TableService);
+  private readonly zoneService = inject(ZoneService);
   private readonly db = inject(DatabaseService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   readonly currentUser = this.authService.currentUser;
 
+  /** Expose enums for template */
+  readonly TableStatus = TableStatus;
+  readonly ZoneType = ZoneType;
+
+  /** Raw table statuses from the API */
+  readonly tableStatuses = signal<TableStatusDto[]>([]);
+
+  /** Legacy tables signal — kept for dialog downstream compatibility */
   readonly tables = signal<RestaurantTable[]>([]);
+
   readonly loading = signal(false);
   readonly showTableDialog = signal(false);
   readonly selectedTable = signal<RestaurantTable | null>(null);
   readonly tableOrders = signal<OrderSummary[]>([]);
   readonly loadingOrders = signal(false);
-  /** Map of tableId → active order count (for occupied badges) */
-  readonly tableOrderCounts = signal<Map<number, number>>(new Map());
 
-  readonly availableTables = computed(() =>
-    this.tables().filter(t => t.status === 'available')
+  /** Currently selected zone filter — null = all zones */
+  readonly activeZone = signal<number | null>(null);
+
+  //#endregion
+
+  //#region KPI Computeds
+
+  readonly kpiTotal = computed(() => this.tableStatuses().length);
+
+  readonly kpiOccupied = computed(() =>
+    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) !== TableStatus.Free).length,
   );
-  readonly occupiedTables = computed(() =>
-    this.tables().filter(t => t.status === 'occupied')
+
+  readonly kpiAvailable = computed(() =>
+    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.Free).length,
   );
+
+  readonly kpiInKitchen = computed(() =>
+    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.InKitchen).length,
+  );
+
+  readonly kpiReserved = computed(() =>
+    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.Reserved).length,
+  );
+
+  //#endregion
+
+  //#region Zone Computeds
+
+  /** Distinct zone names from current statuses, enriched with zone service data */
+  readonly availableZones = computed<Zone[]>(() => {
+    const zones = this.zoneService.getActiveZones();
+    if (zones.length === 0) return [];
+    const statusZoneIds = new Set(this.tableStatuses().map(t => t.zoneId).filter(Boolean));
+    return zones.filter(z => statusZoneIds.has(z.id));
+  });
+
+  /** Tables grouped by zone, filtered by activeZone */
+  readonly zoneGroups = computed<ZoneGroup[]>(() => {
+    const statuses = this.tableStatuses();
+    const zones = this.zoneService.getActiveZones();
+    const activeZoneId = this.activeZone();
+
+    // Build zone lookup
+    const zoneMap = new Map<number, Zone>();
+    zones.forEach(z => zoneMap.set(z.id, z));
+
+    // Group by zoneId
+    const groups = new Map<number | null, TableStatusDto[]>();
+    for (const dto of statuses) {
+      const key = dto.zoneId ?? null;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(dto);
+    }
+
+    // Build result
+    const result: ZoneGroup[] = [];
+
+    // Sorted zones first
+    for (const zone of zones) {
+      const tables = groups.get(zone.id);
+      if (!tables || tables.length === 0) continue;
+      if (activeZoneId !== null && activeZoneId !== zone.id) continue;
+      result.push({ id: zone.id, name: zone.name, type: zone.type, tables });
+    }
+
+    // Tables without zone ("Sin zona")
+    const noZone = groups.get(null);
+    if (noZone && noZone.length > 0 && activeZoneId === null) {
+      result.push({ id: null, name: 'Sin zona', type: ZoneType.Salon, tables: noZone });
+    }
+
+    return result;
+  });
+
+  /** True if zone tabs should render */
+  readonly showZoneTabs = computed(() => this.availableZones().length > 1);
+
+  //#endregion
+
+  //#region Polling
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   /** ID of table to reopen dialog for after navigation return */
   private pendingReopenTableId: number | null = null;
+
+  //#endregion
+
+  //#region Constructor
 
   constructor() {
     // Reopen table dialog when returning from checkout/pos
@@ -62,22 +168,24 @@ export class TablesComponent implements OnInit, OnDestroy {
       if (this.pendingReopenTableId) {
         const tableId = this.pendingReopenTableId;
         this.pendingReopenTableId = null;
-        // Wait for tables to load, then reopen dialog
         setTimeout(() => {
-          const table = this.tables().find(t => t.id === tableId);
-          if (table && table.status === 'occupied') {
-            this.onTableClick(table);
+          const dto = this.tableStatuses().find(t => t.tableId === tableId);
+          if (dto && mapDisplayStatus(dto.displayStatus) !== TableStatus.Free) {
+            this.onTableCardClick(dto);
           }
         }, 500);
       }
     });
   }
 
+  //#endregion
+
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    await this.loadTables();
-    this.pollTimer = setInterval(() => this.loadTables(), POLL_INTERVAL);
+    await this.zoneService.loadZones();
+    await this.loadTableStatuses();
+    this.pollTimer = setInterval(() => this.loadTableStatuses(), POLL_INTERVAL);
   }
 
   ngOnDestroy(): void {
@@ -86,37 +194,66 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region Public Methods
+  //#region Data Loading
 
-  /** Loads tables from API/Dexie and fetches order counts for occupied tables */
-  async loadTables(): Promise<void> {
+  /** Loads enriched table statuses from the single backend endpoint */
+  async loadTableStatuses(): Promise<void> {
     this.loading.set(true);
-    await this.tableService.loadTables(this.authService.branchId);
-    const tables = await this.tableService.getTables(this.authService.branchId);
-    this.tables.set(tables);
-    this.loading.set(false);
+    try {
+      const statuses = await firstValueFrom(this.tableService.getTableStatuses());
+      this.tableStatuses.set(statuses);
 
-    // Fetch order counts for occupied tables in parallel (best-effort)
-    const occupied = tables.filter(t => t.status === 'occupied');
-    if (occupied.length > 0) {
-      const results = await Promise.allSettled(
-        occupied.map(t => this.tableService.getActiveOrdersByTable(t.id))
-      );
-      const counts = new Map<number, number>();
-      occupied.forEach((t, i) => {
-        const r = results[i];
-        if (r.status === 'fulfilled') {
-          counts.set(t.id, r.value.length);
-        }
-      });
-      this.tableOrderCounts.set(counts);
+      // Sync legacy tables signal for dialog downstream
+      const tables: RestaurantTable[] = statuses.map(dto => ({
+        id: dto.tableId,
+        branchId: this.authService.branchId,
+        name: dto.tableName,
+        zoneId: dto.zoneId,
+        status: mapDisplayStatus(dto.displayStatus) === TableStatus.Free ? 'available' as const : 'occupied' as const,
+        isActive: true,
+        createdAt: new Date(),
+        orderId: dto.orderId,
+      }));
+      this.tables.set(tables);
+    } catch {
+      console.warn('[Tables] Failed to load table statuses');
+    } finally {
+      this.loading.set(false);
     }
   }
 
+  /** Kept for backwards compat — redirects to new method */
+  async loadTables(): Promise<void> {
+    await this.loadTableStatuses();
+  }
+
+  //#endregion
+
+  //#region Table Card Click
+
   /**
-   * Handles table selection.
+   * Handles click on a table card from the new zone grid.
+   * Builds a RestaurantTable from the DTO and delegates to onTableClick.
+   * @param dto The table status DTO from the grid
+   */
+  onTableCardClick(dto: TableStatusDto): void {
+    const table: RestaurantTable = {
+      id: dto.tableId,
+      branchId: this.authService.branchId,
+      name: dto.tableName,
+      zoneId: dto.zoneId,
+      status: mapDisplayStatus(dto.displayStatus) === TableStatus.Free ? 'available' : 'occupied',
+      isActive: true,
+      createdAt: new Date(),
+      orderId: dto.orderId,
+    };
+    this.onTableClick(table);
+  }
+
+  /**
+   * Handles table selection — preserved from original logic.
    * Available → navigate to POS with table context.
-   * Occupied → navigate to orders filtered by table.
+   * Occupied → open orders dialog.
    */
   onTableClick(table: RestaurantTable): void {
     if (table.status === 'available') {
@@ -132,6 +269,10 @@ export class TablesComponent implements OnInit, OnDestroy {
       this.loadTableOrders(table.id);
     }
   }
+
+  //#endregion
+
+  //#region Dialog Methods (preserved)
 
   /** Loads active orders for a table from the API */
   private async loadTableOrders(tableId: number): Promise<void> {
@@ -167,7 +308,7 @@ export class TablesComponent implements OnInit, OnDestroy {
 
     await this.tableService.updateTableStatus(table.id, 'available');
     this.showTableDialog.set(false);
-    await this.loadTables();
+    await this.loadTableStatuses();
   }
 
   /**
@@ -201,7 +342,6 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.router.navigate(['/pos']);
   }
 
-  /** Navigates to checkout to charge an existing order */
   /** Navigates to checkout to charge an existing order */
   chargeOrder(order: OrderSummary): void {
     this.pendingReopenTableId = this.selectedTable()?.id ?? null;
@@ -244,9 +384,49 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.router.navigate(['/pos']);
   }
 
-  /** Returns order count for a table, or 0 if unknown */
-  getOrderCount(tableId: number): number {
-    return this.tableOrderCounts().get(tableId) ?? 0;
+  //#endregion
+
+  //#region Display Helpers
+
+  /** Returns CSS class modifier for a table status */
+  getStatusClass(status: string): string {
+    switch (mapDisplayStatus(status)) {
+      case TableStatus.Free:        return 'free';
+      case TableStatus.WithOrder:   return 'with-order';
+      case TableStatus.InKitchen:   return 'in-kitchen';
+      case TableStatus.Ready:       return 'ready';
+      case TableStatus.WaitingBill: return 'waiting-bill';
+      case TableStatus.Paid:        return 'paid';
+      case TableStatus.Reserved:    return 'reserved';
+      default:                      return 'free';
+    }
+  }
+
+  /** Returns Spanish label for a table status */
+  getStatusLabel(status: string): string {
+    switch (mapDisplayStatus(status)) {
+      case TableStatus.Free:        return 'Disponible';
+      case TableStatus.WithOrder:   return 'Con orden';
+      case TableStatus.InKitchen:   return 'En cocina';
+      case TableStatus.Ready:       return 'Lista';
+      case TableStatus.WaitingBill: return 'Por cobrar';
+      case TableStatus.Paid:        return 'Pagada';
+      case TableStatus.Reserved:    return 'Reservada';
+      default:                      return 'Disponible';
+    }
+  }
+
+  /** Whether a zone group should render as bar seats (circles) */
+  isBarZone(group: ZoneGroup): boolean {
+    return group.type === ZoneType.BarSeats;
+  }
+
+  /** Whether KPI strip should be visible based on business type */
+  showKpis(): boolean {
+    const giro = this.authService.businessType();
+    return giro === BusinessType.Restaurant
+      || giro === BusinessType.Bar
+      || giro === BusinessType.Cafe;
   }
 
   /** Navigates back to POS */
@@ -255,4 +435,5 @@ export class TablesComponent implements OnInit, OnDestroy {
   }
 
   //#endregion
+
 }

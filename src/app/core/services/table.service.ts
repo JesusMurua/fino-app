@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { RestaurantTable } from '../models';
+import { RestaurantTable, TableStatusDto } from '../models';
 import { DatabaseService } from './database.service';
 
 /** Lightweight order summary returned by the by-table endpoint */
@@ -25,6 +25,15 @@ export class TableService {
   private readonly baseUrl = environment.apiUrl;
 
   //#region Public Methods
+
+  /**
+   * Returns enriched table statuses from the backend.
+   * Single endpoint replaces N+1 table + order queries.
+   * @returns Observable of pre-computed TableStatusDto array
+   */
+  getTableStatuses(): Observable<TableStatusDto[]> {
+    return this.http.get<TableStatusDto[]>(`${this.baseUrl}/table/status`);
+  }
 
   /**
    * Loads tables from API and caches in Dexie

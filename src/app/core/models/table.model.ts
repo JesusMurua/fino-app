@@ -4,9 +4,12 @@ export interface RestaurantTable {
   branchId: number;
   name: string;
   capacity?: number;
+  zoneId?: number;
   status: 'available' | 'occupied';
   isActive: boolean;
   createdAt: Date;
+  /** Populated from TableStatusDto when status !== free */
+  orderId?: string;
 }
 
 /** Payload for updating table occupancy status */
