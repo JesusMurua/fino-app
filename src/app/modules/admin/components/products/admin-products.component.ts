@@ -268,7 +268,7 @@ export class AdminProductsComponent implements OnInit {
     };
 
     if (this.editingProduct) {
-      const updated: Product = { ...this.editingProduct, ...payload };
+      const updated: Product = { ...this.editingProduct, ...payload, images: this.productImages() };
       await this.db.products.put(updated);
 
       // Sync to API (best-effort)
