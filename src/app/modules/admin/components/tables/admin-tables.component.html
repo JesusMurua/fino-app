@@ -1,43 +1,45 @@
 <div class="admin-tables">
 
-  <!-- Header with tabs -->
+  <!-- Header -->
   <div class="admin-tables__header">
     <h1 class="admin-tables__title">Mesas</h1>
-    <nav class="admin-tables__tabs">
+    @if (activeTab() === 'tables') {
+      <button type="button" class="btn-primary" (click)="openNewDialog()">
+        <i class="pi pi-plus"></i>
+        Nueva mesa
+      </button>
+    }
+  </div>
+
+  <!-- Tab navigation -->
+  <nav class="admin-tables__tabs">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.tab-btn--active]="activeTab() === 'tables'"
+      (click)="activeTab.set('tables')"
+    >
+      <i class="pi pi-list"></i>
+      Mesas
+    </button>
+    @if (showZonesTab()) {
       <button
         type="button"
         class="tab-btn"
-        [class.tab-btn--active]="activeTab() === 'tables'"
-        (click)="activeTab.set('tables')"
+        [class.tab-btn--active]="activeTab() === 'zones'"
+        (click)="activeTab.set('zones')"
       >
-        <i class="pi pi-table"></i>
-        Configurar mesas
+        <i class="pi pi-th-large"></i>
+        Zonas
       </button>
-      @if (showZonesTab()) {
-        <button
-          type="button"
-          class="tab-btn"
-          [class.tab-btn--active]="activeTab() === 'zones'"
-          (click)="activeTab.set('zones')"
-        >
-          <i class="pi pi-th-large"></i>
-          Zonas
-        </button>
-      }
-    </nav>
-  </div>
+    }
+  </nav>
 
   <!-- ================================================================ -->
   <!-- TAB: Tables                                                       -->
   <!-- ================================================================ -->
   @if (activeTab() === 'tables') {
     <div class="tab-content">
-      <div class="tab-content__actions">
-        <button type="button" class="btn-primary" (click)="openNewDialog()">
-          <i class="pi pi-plus"></i>
-          Nueva mesa
-        </button>
-      </div>
 
       <div class="admin-tables__wrap">
         <p-table

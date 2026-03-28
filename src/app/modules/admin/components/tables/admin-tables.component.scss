@@ -7,8 +7,9 @@
 
   &__header {
     display: flex;
-    flex-direction: column;
-    gap: $space-3;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-4;
   }
 
   &__title {
@@ -20,7 +21,8 @@
 
   &__tabs {
     display: flex;
-    gap: $space-2;
+    gap: 0;
+    border-bottom: 1px solid #E5E7EB;
   }
 
   &__wrap {
@@ -48,26 +50,25 @@
   gap: $space-2;
   padding: $space-2 $space-4;
   min-height: 40px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  background: white;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
   color: $color-text-sub;
   font-size: $font-size-base;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 
   i { font-size: 14px; }
 
-  &:hover { background: #F3F4F6; }
+  &:hover { color: $color-text-title; }
 
   &--active {
-    background: $color-primary;
-    color: white;
-    border-color: $color-primary;
-
-    &:hover { background: #15803D; }
+    color: $color-primary;
+    border-bottom-color: $color-primary;
+    font-weight: 600;
   }
 }
 
