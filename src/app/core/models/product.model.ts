@@ -38,6 +38,8 @@ export interface Product {
   name: string;
   /** Optional product description (ingredients, details, etc.) */
   description?: string;
+  /** Optional barcode (EAN-13, UPC-A, etc.) */
+  barcode?: string;
   /** Base price in cents (e.g. 4500 = $45.00 MXN) */
   priceCents: number;
   categoryId: number;

@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom, forkJoin } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, of, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { Category, Product, ProductImage } from '../models';
@@ -124,6 +125,27 @@ export class ProductService {
   selectCategory(categoryId: number | null): void {
     this._selectedCategoryId.set(categoryId);
   }
+  //#endregion
+
+  //#region Barcode Methods
+
+  /**
+   * Finds a product by barcode within the authenticated branch.
+   * BranchId is resolved server-side from JWT.
+   * @param barcode The barcode string to search
+   * @returns Observable with the product or null if not found
+   */
+  findByBarcode(barcode: string): Observable<Product | null> {
+    return this.api.get<Product>(
+      `/products/by-barcode/${encodeURIComponent(barcode)}`
+    ).pipe(
+      catchError(err => {
+        if (err.status === 404) return of(null);
+        return throwError(() => err);
+      })
+    );
+  }
+
   //#endregion
 
   //#region Product Image Methods

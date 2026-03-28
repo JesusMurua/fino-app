@@ -2,7 +2,7 @@ import { Component, OnInit, effect, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { DialogModule } from 'primeng/dialog';
@@ -27,6 +27,7 @@ import { InventoryService } from '../../../../core/services/inventory.service';
 import { InventoryConsumptionService } from '../../../../core/services/inventory-consumption.service';
 import { ProductImportService } from '../../../../core/services/product-import.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ScannerService } from '../../../../core/services/scanner.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Editable row for a product size inside the form */
@@ -44,6 +45,7 @@ interface ProductExtraForm {
 /** Shape of the product form used in the create/edit dialog */
 interface ProductForm {
   name: string;
+  barcode: string;
   description: string;
   priceCents: number;
   categoryId: number | null;
@@ -151,6 +153,9 @@ export class AdminProductsComponent implements OnInit {
   readonly uploadingImage = signal(false);
   static readonly MAX_IMAGES = 5;
 
+  // ---- Barcode scanner ----
+  private scanSubscription?: Subscription;
+
   /** Available PrimeIcons for category selection */
   readonly iconOptions: { label: string; value: string }[] = [
     { label: 'Caja',     value: 'pi-box' },
@@ -180,6 +185,7 @@ export class AdminProductsComponent implements OnInit {
     private readonly consumptionService: InventoryConsumptionService,
     private readonly http: HttpClient,
     private readonly authService: AuthService,
+    private readonly scannerService: ScannerService,
   ) {
     effect(() => {
       const branchId = this.authService.activeBranchId();
@@ -229,6 +235,7 @@ export class AdminProductsComponent implements OnInit {
     this.editingProduct = product;
     this.form = {
       name: product.name,
+      barcode: product.barcode ?? '',
       description: product.description ?? '',
       priceCents: product.priceCents,
       categoryId: product.categoryId,
@@ -247,6 +254,9 @@ export class AdminProductsComponent implements OnInit {
   }
 
   closeDialog(): void {
+    this.scanSubscription?.unsubscribe();
+    this.scanSubscription = undefined;
+    this.scannerService.stopListening();
     this.dialogVisible = false;
   }
 
@@ -263,6 +273,7 @@ export class AdminProductsComponent implements OnInit {
 
     const payload = {
       name: this.form.name.trim(),
+      barcode: this.form.barcode.trim() || undefined,
       description: this.form.description.trim() || undefined,
       priceCents: this.form.priceCents,
       categoryId: this.form.categoryId,
@@ -688,6 +699,27 @@ export class AdminProductsComponent implements OnInit {
 
   //#endregion
 
+  //#region Barcode Scanner
+
+  /**
+   * Activates the scanner listener and fills the barcode field
+   * with the first scanned code.
+   */
+  activateBarcodeScanner(): void {
+    // Clean up any previous subscription
+    this.scanSubscription?.unsubscribe();
+
+    this.scannerService.startListening();
+    this.scanSubscription = this.scannerService.onScan().subscribe(code => {
+      this.form.barcode = code;
+      this.scanSubscription?.unsubscribe();
+      this.scanSubscription = undefined;
+      this.scannerService.stopListening();
+    });
+  }
+
+  //#endregion
+
   //#region Helpers
 
   categoryName(id: number): string {
@@ -723,7 +755,7 @@ export class AdminProductsComponent implements OnInit {
   }
 
   private emptyProductForm(): ProductForm {
-    return { name: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [] };
+    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [] };
   }
 
   private emptyCatForm(): CategoryForm {
