@@ -323,6 +323,14 @@
     @case ('peripherals') {
       <div class="settings-content">
 
+        <!-- Web Serial not supported warning -->
+        @if (!printerService.isSupported()) {
+          <div class="msg msg--warning" style="grid-column: 1 / -1">
+            <i class="pi pi-exclamation-triangle"></i>
+            Tu navegador no soporta Web Serial. Usa Chrome o Edge en escritorio.
+          </div>
+        }
+
         <!-- Printer card -->
         <section class="settings-card">
           <div class="settings-card-header">
@@ -342,31 +350,52 @@
                 <path d="M7 17v2a1 1 0 001 1h8a1 1 0 001-1v-2"/>
               </svg>
             </div>
-            <div class="status-badge status-badge--connected">
-              <span class="status-dot status-dot--on"></span>
-              Conectada
+            @if (printerService.printerConnected()) {
+              <div class="status-badge status-badge--connected">
+                <span class="status-dot status-dot--on"></span>
+                Conectada
+              </div>
+              <div class="periph-device-name">{{ printerService.printerName() }}</div>
+            } @else {
+              <div class="status-badge status-badge--disconnected">
+                <span class="status-dot status-dot--off"></span>
+                No conectada
+              </div>
+              <div class="periph-device-name">Sin impresora</div>
+            }
+          </div>
+
+          <div class="periph-divider"></div>
+
+          @if (printerService.printerConnected()) {
+            <div class="info-row">
+              <span class="info-label">Puerto</span>
+              <span class="info-value">{{ printerService.printerPort() || 'USB Serial' }}</span>
             </div>
-            <div class="periph-device-name">EPSON TM-T20III</div>
-          </div>
+            <div class="info-row">
+              <span class="info-label">Ancho de papel</span>
+              <span class="info-value">80mm</span>
+            </div>
 
-          <div class="periph-divider"></div>
+            <div class="periph-divider"></div>
 
-          <div class="info-row">
-            <span class="info-label">Puerto</span>
-            <span class="info-value">COM3 / USB Serial</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Ancho de papel</span>
-            <span class="info-value">80mm</span>
-          </div>
-
-          <div class="periph-divider"></div>
-
-          <div class="periph-actions">
-            <button type="button" class="btn-outline-green" (click)="$event.stopPropagation()">Ticket de prueba</button>
-            <button type="button" class="btn-outline-green" (click)="$event.stopPropagation()">Corte de papel</button>
-            <button type="button" class="btn-secondary btn-secondary--sm" (click)="$event.stopPropagation()">Cambiar</button>
-          </div>
+            <div class="periph-actions">
+              <button type="button" class="btn-outline-green" (click)="printerService.printTestTicket()">Ticket de prueba</button>
+              <button type="button" class="btn-outline-green" (click)="printerService.cutPaper()">Corte de papel</button>
+              <button type="button" class="btn-secondary btn-secondary--sm" (click)="printerService.connect()">Cambiar</button>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="!printerService.isSupported()"
+              (click)="printerService.connect()"
+              style="align-self: center"
+            >
+              <i class="pi pi-link"></i>
+              Conectar impresora
+            </button>
+          }
         </section>
 
         <!-- Scanner card -->
@@ -389,10 +418,17 @@
                 <line x1="16" y1="8" x2="16" y2="16"/>
               </svg>
             </div>
-            <div class="status-badge status-badge--disconnected">
-              <span class="status-dot status-dot--off"></span>
-              Sin actividad reciente
-            </div>
+            @if (scannerService.lastScanTime()) {
+              <div class="status-badge status-badge--connected">
+                <span class="status-dot status-dot--on"></span>
+                Activo
+              </div>
+            } @else {
+              <div class="status-badge status-badge--disconnected">
+                <span class="status-dot status-dot--off"></span>
+                Sin actividad reciente
+              </div>
+            }
             <div class="periph-device-name">Listo para escanear</div>
           </div>
 
@@ -404,7 +440,7 @@
           </div>
           <div class="info-row">
             <span class="info-label">Último código</span>
-            <span class="info-value" style="color: #9CA3AF">—</span>
+            <span class="info-value">{{ scannerService.lastScannedCode() || '—' }}</span>
           </div>
 
           <div class="periph-divider"></div>
@@ -412,8 +448,15 @@
           <div class="scan-test-section">
             <span class="scan-test-label">Escanea un código para probarlo:</span>
             <div class="scan-test-row">
-              <input type="text" placeholder="Escanea aquí..." readonly class="scan-test-input" />
-              <button type="button" class="btn-outline-green" (click)="$event.stopPropagation()">Activar</button>
+              <input
+                type="text"
+                placeholder="Escanea aquí..."
+                [value]="scannerService.lastScannedCode()"
+                readonly
+                class="scan-test-input"
+                #scanInput
+              />
+              <button type="button" class="btn-outline-green" (click)="scanInput.focus()">Activar</button>
             </div>
           </div>
         </section>

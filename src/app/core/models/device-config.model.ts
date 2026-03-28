@@ -25,6 +25,12 @@ export interface DeviceConfig {
   branchName: string;
   /** ISO date string of when the device was first configured */
   configuredAt: string;
+  /** Saved printer vendor ID for auto-reconnect */
+  printerVendorId?: number;
+  /** Saved printer product ID for auto-reconnect */
+  printerProductId?: number;
+  /** Saved printer display name */
+  printerName?: string;
 }
 
 /** localStorage key used to persist DeviceConfig */

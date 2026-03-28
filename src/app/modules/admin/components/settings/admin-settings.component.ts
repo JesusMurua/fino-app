@@ -1,7 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
@@ -14,6 +14,8 @@ import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { PrinterService } from '../../../../core/services/printer.service';
+import { ScannerService } from '../../../../core/services/scanner.service';
 
 type DeviceMode = DeviceConfig['mode'];
 
@@ -32,7 +34,7 @@ type DeviceMode = DeviceConfig['mode'];
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
 })
-export class AdminSettingsComponent implements OnInit {
+export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#region Injections
 
@@ -40,6 +42,8 @@ export class AdminSettingsComponent implements OnInit {
   readonly authService = inject(AuthService);
   private readonly branchService = inject(BranchService);
   private readonly messageService = inject(MessageService);
+  readonly printerService = inject(PrinterService);
+  readonly scannerService = inject(ScannerService);
 
   //#endregion
 
@@ -97,6 +101,9 @@ export class AdminSettingsComponent implements OnInit {
   /** Phone field — local only, not persisted yet */
   businessPhone = '';
 
+  /** Cleanup subject for subscriptions */
+  private readonly destroy$ = new Subject<void>();
+
   /** Business type selection — UI only, not persisted yet */
   selectedBusinessType = 'restaurant';
   readonly businessTypes: { value: string; icon: string; label: string; description: string }[] = [
@@ -131,13 +138,29 @@ export class AdminSettingsComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.scannerService.stopListening();
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   //#endregion
 
   //#region Tab Navigation
 
   /** Switches the active settings tab */
   setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'branches'): void {
+    // Stop scanner when leaving peripherals tab
+    if (this.activeTab() === 'peripherals' && tab !== 'peripherals') {
+      this.scannerService.stopListening();
+    }
+
     this.activeTab.set(tab);
+
+    // Start scanner when entering peripherals tab
+    if (tab === 'peripherals') {
+      this.scannerService.startListening();
+    }
   }
 
   //#endregion

@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 
+import { PrinterService } from './core/services/printer.service';
 import { InstallBannerComponent } from './shared/components/install-banner/install-banner.component';
 import { UpdateBannerComponent } from './shared/components/update-banner/update-banner.component';
 
@@ -12,4 +13,12 @@ import { UpdateBannerComponent } from './shared/components/update-banner/update-
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
-export class AppComponent {}
+export class AppComponent implements OnInit {
+
+  private readonly printerService = inject(PrinterService);
+
+  ngOnInit(): void {
+    this.printerService.tryAutoConnect();
+  }
+
+}
