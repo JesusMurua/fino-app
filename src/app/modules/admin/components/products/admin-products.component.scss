@@ -190,11 +190,22 @@
 // Product dialog tabs
 // -----------------------------------------------------------------------
 :host ::ng-deep .product-dialog-tabs {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
   .p-tabview-panels {
     padding: 0 !important;
+    flex: 1;
+    overflow: hidden;
+  }
+  .p-tabview-panel {
+    height: 100%;
+    overflow: hidden;
   }
   .p-tabview-nav-container {
     padding: 0 $space-4;
+    flex-shrink: 0;
   }
 }
 
@@ -243,9 +254,9 @@
   padding: $space-2 0;
 
   &--scrollable {
-    max-height: calc(85vh - 200px);
     overflow-y: auto;
     padding: $space-4;
+    max-height: calc(85vh - 180px);
   }
 }
 
@@ -268,6 +279,11 @@
 
   &__input {
     width: 100%;
+  }
+
+  &__textarea {
+    resize: vertical;
+    min-height: 72px;
   }
 }
 
