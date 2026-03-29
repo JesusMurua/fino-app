@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DialogModule } from 'primeng/dialog';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
@@ -20,6 +21,7 @@ import { DatabaseService } from '../../core/services/database.service';
 import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../core/services/table.service';
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
+import { ConfigService } from '../../core/services/config.service';
 import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
@@ -36,7 +38,7 @@ interface ZoneGroup {
 @Component({
   selector: 'app-tables',
   standalone: true,
-  imports: [DialogModule, ProgressSpinnerModule, PricePipe],
+  imports: [DialogModule, ProgressSpinnerModule, PricePipe, NgClass],
   templateUrl: './tables.component.html',
   styleUrl: './tables.component.scss',
 })
@@ -50,6 +52,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly configService = inject(ConfigService);
   readonly currentUser = this.authService.currentUser;
 
   /** Expose enums for template */
@@ -61,6 +64,13 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /** Legacy tables signal — kept for dialog downstream compatibility */
   readonly tables = signal<RestaurantTable[]>([]);
+
+  /** Seconds elapsed since last successful poll */
+  readonly secondsSinceUpdate = signal(0);
+  private updateTimerInterval: ReturnType<typeof setInterval> | null = null;
+
+  /** Device config as signal for reactive top bar */
+  private readonly deviceConfig = toSignal(this.configService.deviceConfig$);
 
   readonly loading = signal(false);
   readonly showTableDialog = signal(false);
@@ -129,6 +139,33 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly kpiReserved = computed(() =>
     this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.Reserved).length,
   );
+
+  /** Total amount in progress from all occupied tables */
+  readonly totalInProgressCents = computed(() =>
+    this.tableStatuses()
+      .filter(t => mapDisplayStatus(t.displayStatus) !== TableStatus.Free)
+      .reduce((sum, t) => sum + (t.orderTotalCents ?? 0), 0),
+  );
+
+  //#endregion
+
+  //#region Top Bar Computeds
+
+  /** Branch display name from user's branches list */
+  private readonly branchDisplayName = computed(() => {
+    const user = this.currentUser();
+    const branchId = this.authService.activeBranchId();
+    return user?.branches.find(b => b.id === branchId)?.name ?? 'tu sucursal';
+  });
+
+  /** Top bar label combining business name and branch name */
+  readonly topBarLabel = computed(() => {
+    const dc = this.deviceConfig();
+    if (dc?.businessName && dc?.branchName) {
+      return `${dc.businessName} — ${dc.branchName}`;
+    }
+    return this.branchDisplayName();
+  });
 
   //#endregion
 
@@ -273,10 +310,12 @@ export class TablesComponent implements OnInit, OnDestroy {
     await this.zoneService.loadZones();
     await this.loadTableStatuses();
     this.pollTimer = setInterval(() => this.loadTableStatuses(), POLL_INTERVAL);
+    this.updateTimerInterval = setInterval(() => this.secondsSinceUpdate.update(s => s + 1), 1000);
   }
 
   ngOnDestroy(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.updateTimerInterval) clearInterval(this.updateTimerInterval);
   }
 
   //#endregion
@@ -289,6 +328,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     try {
       const statuses = await firstValueFrom(this.tableService.getTableStatuses());
       this.tableStatuses.set(statuses);
+      this.secondsSinceUpdate.set(0);
 
       // Sync legacy tables signal for dialog downstream
       const tables: RestaurantTable[] = statuses.map(dto => ({
@@ -865,10 +905,10 @@ export class TablesComponent implements OnInit, OnDestroy {
   getStatusClass(status: string): string {
     switch (mapDisplayStatus(status)) {
       case TableStatus.Free:        return 'free';
-      case TableStatus.WithOrder:   return 'with-order';
-      case TableStatus.InKitchen:   return 'in-kitchen';
+      case TableStatus.WithOrder:   return 'order';
+      case TableStatus.InKitchen:   return 'kitchen';
       case TableStatus.Ready:       return 'ready';
-      case TableStatus.WaitingBill: return 'waiting-bill';
+      case TableStatus.WaitingBill: return 'waiting';
       case TableStatus.Paid:        return 'paid';
       case TableStatus.Reserved:    return 'reserved';
       default:                      return 'free';
@@ -881,8 +921,8 @@ export class TablesComponent implements OnInit, OnDestroy {
       case TableStatus.Free:        return 'Disponible';
       case TableStatus.WithOrder:   return 'Con orden';
       case TableStatus.InKitchen:   return 'En cocina';
-      case TableStatus.Ready:       return 'Lista';
-      case TableStatus.WaitingBill: return 'Por cobrar';
+      case TableStatus.Ready:       return 'Listo ✓';
+      case TableStatus.WaitingBill: return 'Pidió cuenta';
       case TableStatus.Paid:        return 'Pagada';
       case TableStatus.Reserved:    return 'Reservada';
       default:                      return 'Disponible';
@@ -900,6 +940,38 @@ export class TablesComponent implements OnInit, OnDestroy {
     return giro === BusinessType.Restaurant
       || giro === BusinessType.Bar
       || giro === BusinessType.Cafe;
+  }
+
+  /**
+   * Returns zone icon config by ZoneType.
+   * @param type Zone type enum value
+   */
+  getZoneIconConfig(type: ZoneType): { bg: string; icon: string } {
+    switch (type) {
+      case ZoneType.Salon:    return { bg: '#F0FDF4', icon: 'pi-th-large' };
+      case ZoneType.BarSeats: return { bg: '#EFF6FF', icon: 'pi-circle' };
+      default:                return { bg: '#FEF9C3', icon: 'pi-hashtag' };
+    }
+  }
+
+  /**
+   * Returns count of occupied tables in a zone.
+   * @param zoneId Zone ID or null for unzoned tables
+   */
+  getZoneOccupiedCount(zoneId: number | null): number {
+    return this.tableStatuses().filter(t => {
+      const tZoneId = t.zoneId ?? null;
+      return tZoneId === zoneId && mapDisplayStatus(t.displayStatus) !== TableStatus.Free;
+    }).length;
+  }
+
+  /**
+   * Returns total table count for a zone, or all tables if null.
+   * @param zoneId Zone ID or null for total count
+   */
+  getZoneTableCount(zoneId: number | null): number {
+    if (zoneId === null) return this.tableStatuses().length;
+    return this.tableStatuses().filter(t => t.zoneId === zoneId).length;
   }
 
   /** Navigates back to POS */

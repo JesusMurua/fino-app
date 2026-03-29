@@ -275,10 +275,39 @@ export class AdminTablesComponent implements OnInit {
 
   //#region Table CRUD
 
-  /** Opens the add table dialog, pre-selecting a zone */
+  /** Opens the add table dialog with auto-generated name and default capacity */
   openAddTable(zoneId: number | null): void {
     this.editingTable.set(null);
-    this.form = { ...this.emptyForm(), zoneId };
+    const zone = zoneId !== null
+      ? this.configZones().find(z => z.id === zoneId)
+      : null;
+
+    const existingCount = zoneId !== null
+      ? this.getTablesForZone(zoneId).length
+      : this.tablesWithoutZone().length;
+    const nextNum = existingCount + 1;
+
+    let suggestedName = `Mesa ${nextNum}`;
+    let defaultCapacity: number | null = 4;
+
+    if (zone) {
+      switch (zone.type) {
+        case ZoneType.Salon:
+          suggestedName = `Mesa ${nextNum}`;
+          defaultCapacity = 4;
+          break;
+        case ZoneType.BarSeats:
+          suggestedName = `B${nextNum}`;
+          defaultCapacity = 1;
+          break;
+        case ZoneType.Other:
+          suggestedName = `${zone.name.split(' ')[0]} ${nextNum}`;
+          defaultCapacity = 4;
+          break;
+      }
+    }
+
+    this.form = { name: suggestedName, capacity: defaultCapacity, zoneId, isActive: true };
     this.clearTableErrors();
     this.showTableDialog.set(true);
   }

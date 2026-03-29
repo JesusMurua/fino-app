@@ -1,63 +1,71 @@
 <div class="tables-view">
 
-  <!-- Header -->
-  <header class="tables-header">
-    <div class="tables-header__left">
-      <h1 class="tables-header__title">Mesas</h1>
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="branch-pill">
+      <span class="branch-pill__dot"></span>
+      {{ topBarLabel() }}
     </div>
-    <button type="button" class="tables-header__back" (click)="goBack()">
-      <i class="pi pi-arrow-left"></i>
-      Volver
-    </button>
-  </header>
+    <span class="update-timer">
+      Actualizado hace {{ secondsSinceUpdate() }}s
+    </span>
+  </div>
 
   <!-- KPI strip -->
   @if (showKpis() && tableStatuses().length > 0) {
     <div class="kpi-strip">
       <div class="kpi-card">
-        <span class="kpi-card__value">{{ kpiTotal() }}</span>
-        <span class="kpi-card__label">Total mesas</span>
-      </div>
-      <div class="kpi-card kpi-card--green">
-        <span class="kpi-card__value">{{ kpiOccupied() }}</span>
-        <span class="kpi-card__label">Ocupadas</span>
+        <div class="kpi-card__accent kpi-card__accent--gray"></div>
+        <div class="kpi-card__label">Total mesas</div>
+        <div class="kpi-card__num">{{ kpiTotal() }}</div>
       </div>
       <div class="kpi-card">
-        <span class="kpi-card__value">{{ kpiAvailable() }}</span>
-        <span class="kpi-card__label">Disponibles</span>
+        <div class="kpi-card__accent kpi-card__accent--green"></div>
+        <div class="kpi-card__label">Ocupadas</div>
+        <div class="kpi-card__num kpi-card__num--green">{{ kpiOccupied() }}</div>
+        @if (totalInProgressCents() > 0) {
+          <div class="kpi-card__sub kpi-card__sub--green">
+            {{ totalInProgressCents() | price }} en curso
+          </div>
+        }
       </div>
-      <div class="kpi-card kpi-card--amber">
-        <span class="kpi-card__value">{{ kpiInKitchen() }}</span>
-        <span class="kpi-card__label">En cocina</span>
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--amber"></div>
+        <div class="kpi-card__label">En cocina</div>
+        <div class="kpi-card__num kpi-card__num--amber">{{ kpiInKitchen() }}</div>
+        @if (kpiInKitchen() > 0) {
+          <div class="kpi-card__sub kpi-card__sub--amber">preparando</div>
+        }
       </div>
-      @if (kpiReserved() > 0) {
-        <div class="kpi-card kpi-card--purple">
-          <span class="kpi-card__value">{{ kpiReserved() }}</span>
-          <span class="kpi-card__label">Reservadas</span>
-        </div>
-      }
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--gray"></div>
+        <div class="kpi-card__label">Disponibles</div>
+        <div class="kpi-card__num kpi-card__num--muted">{{ kpiAvailable() }}</div>
+      </div>
     </div>
   }
 
-  <!-- Zone tabs -->
-  @if (showZoneTabs()) {
-    <div class="zone-tabs">
+  <!-- Zone nav -->
+  @if (tableStatuses().length > 0) {
+    <div class="zone-nav">
       <button
         type="button"
-        class="zone-tab"
-        [class.zone-tab--active]="activeZone() === null"
+        class="zone-nav__tab"
+        [class.zone-nav__tab--active]="activeZone() === null"
         (click)="activeZone.set(null)"
       >
         Todo el local
+        <span class="zone-nav__count">{{ tableStatuses().length }}</span>
       </button>
       @for (zone of availableZones(); track zone.id) {
         <button
           type="button"
-          class="zone-tab"
-          [class.zone-tab--active]="activeZone() === zone.id"
+          class="zone-nav__tab"
+          [class.zone-nav__tab--active]="activeZone() === zone.id"
           (click)="activeZone.set(zone.id)"
         >
           {{ zone.name }}
+          <span class="zone-nav__count">{{ getZoneTableCount(zone.id) }}</span>
         </button>
       }
     </div>
@@ -85,50 +93,94 @@
   @if (tableStatuses().length > 0) {
     @for (group of zoneGroups(); track group.name) {
       <div class="zone-section">
-        @if (zoneGroups().length > 1 || group.name !== 'Sin zona') {
-          <div class="zone-label">{{ group.name }}</div>
+
+        <!-- Zone header -->
+        <div class="zone-header">
+          <div class="zone-header__icon" [style.background]="getZoneIconConfig(group.type).bg">
+            <i class="pi" [ngClass]="getZoneIconConfig(group.type).icon" style="font-size:14px"></i>
+          </div>
+          <div>
+            <div class="zone-header__title">{{ group.name }}</div>
+            <div class="zone-header__meta">
+              {{ group.tables.length }} mesas · {{ getZoneOccupiedCount(group.id) }} ocupadas
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar seats → circles -->
+        @if (isBarZone(group)) {
+          <div class="bar-grid">
+            @for (dto of group.tables; track dto.tableId) {
+              <button
+                type="button"
+                class="tcard-bar tcard-bar--{{ getStatusClass(dto.displayStatus) }}"
+                (click)="onTableCardClick(dto)"
+              >
+                @if (getStatusClass(dto.displayStatus) !== 'free') {
+                  <span class="tcard-bar__dot"></span>
+                }
+                <span class="tcard-bar__name">{{ dto.tableName }}</span>
+                @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free') {
+                  <span class="tcard-bar__amount">{{ dto.orderTotalCents | price }}</span>
+                }
+              </button>
+            }
+          </div>
+        } @else {
+          <!-- Regular tables → squares -->
+          <div class="tables-grid">
+            @for (dto of group.tables; track dto.tableId) {
+              <button
+                type="button"
+                class="tcard tcard--{{ getStatusClass(dto.displayStatus) }}"
+                (click)="onTableCardClick(dto)"
+              >
+                <div class="tcard__top">
+                  @if (getStatusClass(dto.displayStatus) === 'free') {
+                    <span class="tcard__shape"></span>
+                  }
+                  <span class="tcard__name">{{ dto.tableName }}</span>
+                  @if (dto.guestName) {
+                    <span class="tcard__guest">{{ dto.guestName }}</span>
+                  }
+                </div>
+                <div class="tcard__bottom">
+                  <span class="tcard__pill">{{ getStatusLabel(dto.displayStatus) }}</span>
+                  @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free') {
+                    <span class="tcard__amount">{{ dto.orderTotalCents | price }}</span>
+                  } @else if (dto.reservationTime && getStatusClass(dto.displayStatus) === 'reserved') {
+                    <span class="tcard__time">{{ dto.reservationTime }}</span>
+                  }
+                </div>
+              </button>
+            }
+          </div>
         }
 
-        <div class="tables-grid" [class.tables-grid--bar]="isBarZone(group)">
-          @for (dto of group.tables; track dto.tableId) {
-            <button
-              type="button"
-              class="table-card table-card--{{ getStatusClass(dto.displayStatus) }}"
-              [class.table-card--bar]="isBarZone(group)"
-              (click)="onTableCardClick(dto)"
-            >
-              <span class="table-card__name">{{ dto.tableName }}</span>
-
-              @if (dto.guestName) {
-                <span class="table-card__guest">{{ dto.guestName }}</span>
-              }
-
-              @if (dto.orderTotalCents && getStatusClass(dto.displayStatus) !== 'free') {
-                <span class="table-card__total">{{ dto.orderTotalCents | price }}</span>
-              }
-
-              @if (dto.reservationTime) {
-                <span class="table-card__time">{{ dto.reservationTime }}</span>
-              }
-
-              <span class="table-card__badge table-card__badge--{{ getStatusClass(dto.displayStatus) }}">
-                {{ getStatusLabel(dto.displayStatus) }}
-              </span>
-            </button>
-          }
-        </div>
       </div>
     }
 
-    <!-- Status legend -->
-    <div class="status-legend">
-      <span class="legend-item"><span class="legend-dot legend-dot--free"></span> Disponible</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--with-order"></span> Con orden</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--in-kitchen"></span> En cocina</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--ready"></span> Lista</span>
-      <span class="legend-item"><span class="legend-dot legend-dot--waiting-bill"></span> Por cobrar</span>
+    <!-- Legend -->
+    <div class="floor-legend">
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--free"></span> Disponible
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--order"></span> Con orden
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--kitchen"></span> En cocina
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--ready"></span> Listo
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--waiting"></span> Pidió cuenta
+      </div>
       @if (kpiReserved() > 0) {
-        <span class="legend-item"><span class="legend-dot legend-dot--reserved"></span> Reservada</span>
+        <div class="floor-legend__item">
+          <span class="floor-legend__swatch floor-legend__swatch--reserved"></span> Reservada
+        </div>
       }
     </div>
   }
