@@ -56,13 +56,13 @@ export class KitchenService implements OnDestroy {
   }
 
   /**
-   * Marks an order as done locally and notifies the backend.
+   * Marks an order as Ready locally and notifies the backend.
+   * The order disappears from the KDS view.
    * Offline-first: Dexie is always updated; the API call is best-effort.
-   * The backend triggers push notifications to cashier/waiter on success.
-   * @param orderId The order UUID to mark as completed
+   * @param orderId The order UUID to mark as ready
    */
-  async markAsDone(orderId: string): Promise<void> {
-    await this.db.orders.update(orderId, { kitchenStatus: 'done' });
+  async markAsReady(orderId: string): Promise<void> {
+    await this.db.orders.update(orderId, { kitchenStatus: 'Ready' });
     this.activeOrders.update(orders => orders.filter(o => o.id !== orderId));
 
     try {
@@ -87,14 +87,15 @@ export class KitchenService implements OnDestroy {
   //#region Private Helpers
 
   /**
-   * Loads today's orders for the active branch that are not marked as done.
+   * Loads today's orders for the active branch that are pending or preparing.
    * Filters by branchId so only the current branch's orders are shown.
-   * Treats undefined kitchenStatus as 'new' (legacy orders).
+   * Orders with status Ready or Delivered are not shown in the KDS.
    */
   private async loadTodayOrders(): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const branchId = this.authService.branchId;
+    const kdsStatuses = new Set(['Pending', 'Preparing']);
 
     const allToday = await this.db.orders
       .where('createdAt')
@@ -103,7 +104,7 @@ export class KitchenService implements OnDestroy {
       .toArray();
 
     const active = allToday
-      .filter(o => (o.kitchenStatus ?? 'new') !== 'done')
+      .filter(o => kdsStatuses.has(o.kitchenStatus ?? 'Pending'))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     this.activeOrders.set(active);

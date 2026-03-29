@@ -147,8 +147,8 @@ export class CartPanelComponent implements OnInit {
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus: 'pending',
-      kitchenStatus: 'new',
+      syncStatus: 'Pending',
+      kitchenStatus: 'Pending',
       tableId: tableId ?? undefined,
       tableName: tableName ?? undefined,
       createdAt: new Date(),
@@ -175,7 +175,7 @@ export class CartPanelComponent implements OnInit {
     const totalCents = existing.items.reduce((sum, item) => sum + item.totalPriceCents, 0);
     existing.subtotalCents = totalCents;
     existing.totalCents = totalCents;
-    existing.syncStatus = 'pending';
+    existing.syncStatus = 'Pending';
 
     await this.syncService.saveOrder(existing);
     await this.cartService.clearCart();

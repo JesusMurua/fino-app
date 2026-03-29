@@ -380,7 +380,7 @@ export class CheckoutComponent implements OnInit {
     if (this.existingOrderId()) {
       const existing = await this.db.orders.get(this.existingOrderId()!);
       const ks = existing?.kitchenStatus;
-      if (ks === 'new') {
+      if (ks === 'Pending' || ks === 'Preparing') {
         this.showKitchenConfirm.set(true);
         return;
       }
@@ -419,7 +419,7 @@ export class CheckoutComponent implements OnInit {
         totalDiscountCents: discount > 0 ? discount : undefined,
         orderPromotionName: this.discountLabel() || undefined,
         totalCents: finalTotal,
-        syncStatus: 'pending',
+        syncStatus: 'Pending',
       };
 
       await this.db.orders.put(order);
@@ -442,7 +442,7 @@ export class CheckoutComponent implements OnInit {
         changeCents: this.changeCents(),
         paymentProvider: null,
         createdAt: new Date(),
-        syncStatus: 'pending',
+        syncStatus: 'Pending',
         branchId: this.authService.branchId,
         tableId: this.tableId() ?? undefined,
         tableName: this.tableName() ?? undefined,

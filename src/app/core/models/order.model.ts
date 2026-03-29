@@ -33,23 +33,17 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { method: PaymentMethod.Other,    label: 'Otro',           icon: 'pi-ellipsis-h' },
 ];
 
-/** Lifecycle state of an order relative to backend sync */
-export type OrderSyncStatus = 'pending' | 'synced' | 'failed';
+/** Lifecycle state of an order relative to backend sync — PascalCase to match backend */
+export type OrderSyncStatus = 'Pending' | 'Synced' | 'Failed';
 
-/** Kitchen display status — undefined on legacy orders treated as 'new' */
-export type KitchenStatus = 'new' | 'done';
+/** Kitchen display status — PascalCase to match backend enum */
+export type KitchenStatus = 'Pending' | 'Preparing' | 'Ready' | 'Delivered';
 
 /** Delivery status — undefined means not yet delivered */
 export type DeliveryStatus = 'delivered';
 
 /** Cancellation status */
 export type CancellationStatus = 'none' | 'cancelled';
-
-/**
- * Payment terminal providers — prepared for future integration.
- * null means the order was processed without an external terminal.
- */
-export type PaymentProvider = 'clip' | 'conekta' | 'stripe' | 'mercadopago';
 
 /**
  * A completed order submitted from the POS.
@@ -70,11 +64,8 @@ export interface Order {
   paidCents: number;
   /** Change to return to the customer in cents */
   changeCents: number;
-  /**
-   * Payment terminal provider used — null for direct cash/card without terminal.
-   * Prepared for future integration with Clip, Conekta, Stripe, MercadoPago.
-   */
-  paymentProvider: PaymentProvider | null;
+  /** Payment terminal provider used — null for direct cash/card without terminal */
+  paymentProvider: string | null;
   /** Reference ID returned by the external payment provider, if any */
   externalReference?: string;
   /** Plain-text ticket stored in IndexedDB when no thermal printer is available */

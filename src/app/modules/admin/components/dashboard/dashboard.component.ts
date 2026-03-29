@@ -138,9 +138,11 @@ export class DashboardComponent implements OnInit {
   /** Returns the display status label for an order */
   getStatusLabel(order: Order): string {
     if (order.cancellationStatus === 'cancelled') return 'Cancelada';
+    if (order.kitchenStatus === 'Delivered') return 'Entregada';
     if (order.deliveryStatus === 'delivered') return 'Entregada';
-    if (order.kitchenStatus === 'done') return 'Lista';
-    if (order.kitchenStatus === 'new') return 'En cocina';
+    if (order.kitchenStatus === 'Ready') return 'Listo';
+    if (order.kitchenStatus === 'Preparing') return 'Preparando';
+    if (order.kitchenStatus === 'Pending') return 'En cocina';
     return 'Nueva';
   }
 

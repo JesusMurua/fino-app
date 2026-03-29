@@ -22,7 +22,12 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
   /** Set of order IDs currently fading out after being marked done */
   readonly fadingOut = signal<Set<string>>(new Set());
 
+  /** Whether the device is online — controls offline banner */
+  readonly isOnline = signal(navigator.onLine);
+
   private clockTimerId: ReturnType<typeof setInterval> | null = null;
+  private readonly onOnline = () => this.isOnline.set(true);
+  private readonly onOffline = () => this.isOnline.set(false);
   //#endregion
 
   //#region Constructor
@@ -31,11 +36,15 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 
   //#region Lifecycle
   async ngOnInit(): Promise<void> {
+    window.addEventListener('online', this.onOnline);
+    window.addEventListener('offline', this.onOffline);
     await this.kitchenService.start();
     this.clockTimerId = setInterval(() => this.now.set(new Date()), 1000);
   }
 
   ngOnDestroy(): void {
+    window.removeEventListener('online', this.onOnline);
+    window.removeEventListener('offline', this.onOffline);
     this.kitchenService.stop();
     if (this.clockTimerId !== null) {
       clearInterval(this.clockTimerId);
@@ -46,13 +55,13 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
   //#region Actions
 
   /**
-   * Marks an order as done with a 3-second fade-out before removal.
+   * Marks an order as ready with a 3-second fade-out before removal.
    */
   async onMarkDone(orderId: string): Promise<void> {
     this.fadingOut.update(s => { s.add(orderId); return new Set(s); });
 
     setTimeout(async () => {
-      await this.kitchenService.markAsDone(orderId);
+      await this.kitchenService.markAsReady(orderId);
       this.fadingOut.update(s => { s.delete(orderId); return new Set(s); });
     }, 3000);
   }

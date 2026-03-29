@@ -1,5 +1,13 @@
 <div class="kds">
 
+  <!-- Offline banner -->
+  @if (!isOnline()) {
+    <div class="kds-offline-banner">
+      <i class="pi pi-wifi"></i>
+      Sin conexión — mostrando solo órdenes de este dispositivo
+    </div>
+  }
+
   <!-- Header -->
   <header class="kds-header">
     <div class="kds-header__brand">

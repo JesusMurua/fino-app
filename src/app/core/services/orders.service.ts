@@ -29,13 +29,19 @@ export function getDisplayStatus(order: Order): OrderDisplayStatus {
   if (order.cancellationStatus === 'cancelled') {
     return { label: 'Cancelada', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
   }
+  if (order.kitchenStatus === 'Delivered') {
+    return { label: 'Entregada', color: '#2563EB', bgColor: 'rgba(37, 99, 235, 0.1)' };
+  }
   if (order.deliveryStatus === 'delivered') {
     return { label: 'Entregada', color: '#2563EB', bgColor: 'rgba(37, 99, 235, 0.1)' };
   }
-  if (order.kitchenStatus === 'done') {
-    return { label: 'Lista', color: '#16A34A', bgColor: 'rgba(22, 163, 74, 0.1)' };
+  if (order.kitchenStatus === 'Ready') {
+    return { label: 'Listo', color: '#16A34A', bgColor: 'rgba(22, 163, 74, 0.1)' };
   }
-  if (order.kitchenStatus === 'new') {
+  if (order.kitchenStatus === 'Preparing') {
+    return { label: 'Preparando', color: '#D97706', bgColor: 'rgba(217, 119, 6, 0.1)' };
+  }
+  if (order.kitchenStatus === 'Pending') {
     return { label: 'En cocina', color: '#EA580C', bgColor: 'rgba(234, 88, 12, 0.1)' };
   }
   return { label: 'Nueva', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
@@ -107,12 +113,12 @@ export class OrdersService implements OnDestroy {
       cancellationStatus: 'cancelled',
       cancellationReason: reason,
       cancelledAt: now,
-      syncStatus: 'pending',
+      syncStatus: 'Pending',
     });
 
     this.todayOrders.update(orders =>
       orders.map(o => o.id === orderId
-        ? { ...o, cancellationStatus: 'cancelled' as const, cancellationReason: reason, cancelledAt: now, syncStatus: 'pending' as const }
+        ? { ...o, cancellationStatus: 'cancelled' as const, cancellationReason: reason, cancelledAt: now, syncStatus: 'Pending' as const }
         : o,
       ),
     );

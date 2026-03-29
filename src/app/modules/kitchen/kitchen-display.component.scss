@@ -4,6 +4,21 @@
 // KDS — Kitchen Display System (dark theme)
 // ============================================================================
 
+.kds-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  background: #FEF3C7;
+  color: #92400E;
+  padding: $space-2 $space-4;
+  font-size: 12px;
+  text-align: center;
+  border-bottom: 1px solid #FDE68A;
+
+  i { font-size: 14px; }
+}
+
 .kds {
   display: flex;
   flex-direction: column;

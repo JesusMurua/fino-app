@@ -9,16 +9,19 @@ import { DatabaseService } from './database.service';
 /** Polling interval for pending order sync (milliseconds) */
 const SYNC_POLL_INTERVAL_MS = 30_000;
 
+/** Polling interval for pulling orders from other devices (milliseconds) */
+const PULL_POLL_INTERVAL_MS = 5_000;
+
 /**
  * Handles background synchronization of offline orders to the backend API.
  *
  * Flow (CLAUDE.md offline-first architecture):
- *   1. Orders are saved to IndexedDB with syncStatus = 'pending'
+ *   1. Orders are saved to IndexedDB with syncStatus = 'Pending'
  *   2. If online, attempt immediate POST /orders/sync
  *   3. If offline, queue stays in Dexie
  *   4. On 'online' event or every 30s (when pending + online) → retry
- *   5. On success: syncStatus = 'synced', syncedAt = now
- *   6. On failure: syncStatus = 'failed' (retried next cycle)
+ *   5. On success: syncStatus = 'Synced', syncedAt = now
+ *   6. On failure: syncStatus = 'Failed' (retried next cycle)
  */
 @Injectable({ providedIn: 'root' })
 export class SyncService implements OnDestroy {
@@ -35,6 +38,10 @@ export class SyncService implements OnDestroy {
 
   private readonly onlineHandler = () => this.syncPendingOrders();
   private pollTimerId: ReturnType<typeof setInterval> | null = null;
+  private pullTimerId: ReturnType<typeof setInterval> | null = null;
+
+  /** ISO timestamp of last successful pull — null means first pull */
+  private lastPullAt: string | null = null;
   //#endregion
 
   //#region Constructor & Lifecycle
@@ -47,11 +54,13 @@ export class SyncService implements OnDestroy {
     this.refreshPendingCount();
     this.initNextOrderNumber();
     this.startPolling();
+    this.startPullPolling();
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('online', this.onlineHandler);
     this.stopPolling();
+    this.stopPullPolling();
   }
   //#endregion
 
@@ -72,7 +81,7 @@ export class SyncService implements OnDestroy {
    * @param order The completed order to persist
    */
   async saveOrder(order: Order): Promise<void> {
-    await this.db.orders.put({ ...order, syncStatus: 'pending' });
+    await this.db.orders.put({ ...order, syncStatus: 'Pending' });
     this.pendingCount.update(n => n + 1);
 
     if (navigator.onLine) {
@@ -89,7 +98,7 @@ export class SyncService implements OnDestroy {
 
     const pending = await this.db.orders
       .where('syncStatus')
-      .equals('pending')
+      .equals('Pending')
       .toArray();
 
     if (pending.length === 0) return;
@@ -102,7 +111,48 @@ export class SyncService implements OnDestroy {
 
     this.isSyncing.set(false);
     await this.refreshPendingCount();
+
+    // After pushing, pull latest from server to get updates from other devices
+    await this.pullOrders();
   }
+  //#endregion
+
+  //#region Pull Sync
+
+  /**
+   * Pulls orders from the backend that were created or updated
+   * by other devices since the last pull.
+   * Merges into local Dexie without overwriting orders that
+   * have pending local changes (syncStatus === 'pending').
+   */
+  async pullOrders(): Promise<void> {
+    if (!navigator.onLine) return;
+
+    try {
+      const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';
+      const remoteOrders = await firstValueFrom(
+        this.api.get<Order[]>(`/orders/pull${params}`),
+      );
+
+      for (const remote of remoteOrders) {
+        const local = await this.db.orders.get(remote.id);
+
+        if (!local) {
+          // New order from another device — add to Dexie
+          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
+        } else if (local.syncStatus === 'Synced') {
+          // Existing order with no pending local changes — update
+          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
+        }
+        // If local.syncStatus === 'pending', keep local version
+      }
+
+      this.lastPullAt = new Date().toISOString();
+    } catch {
+      // Silent fail — pull is best-effort, will retry on next interval
+    }
+  }
+
   //#endregion
 
   //#region Private Helpers
@@ -120,12 +170,12 @@ export class SyncService implements OnDestroy {
         this.api.post<void>('/orders/sync', [dto]),
       );
       await this.db.orders.update(order.id, {
-        syncStatus: 'synced',
+        syncStatus: 'Synced',
         syncedAt: new Date(),
       });
     } catch (error) {
       console.error(`[SyncService] Failed to sync order ${order.id}:`, error);
-      await this.db.orders.update(order.id, { syncStatus: 'failed' });
+      await this.db.orders.update(order.id, { syncStatus: 'Failed' });
     }
   }
 
@@ -155,6 +205,7 @@ export class SyncService implements OnDestroy {
       totalDiscountCents: order.totalDiscountCents ?? 0,
       orderPromotionId: order.orderPromotionId ?? null,
       orderPromotionName: order.orderPromotionName ?? null,
+      kitchenStatus: order.kitchenStatus ?? 'Pending',
       cancellationReason: order.cancellationReason ?? null,
       cancelledAt: order.cancelledAt ?? null,
       items: order.items.map(item => ({
@@ -200,7 +251,7 @@ export class SyncService implements OnDestroy {
   private async refreshPendingCount(): Promise<void> {
     const count = await this.db.orders
       .where('syncStatus')
-      .equals('pending')
+      .equals('Pending')
       .count();
     this.pendingCount.set(count);
   }
@@ -217,11 +268,28 @@ export class SyncService implements OnDestroy {
     }, SYNC_POLL_INTERVAL_MS);
   }
 
-  /** Stops the polling interval */
+  /** Stops the push polling interval */
   private stopPolling(): void {
     if (this.pollTimerId !== null) {
       clearInterval(this.pollTimerId);
       this.pollTimerId = null;
+    }
+  }
+
+  /** Starts pull polling every 5 seconds when online */
+  private startPullPolling(): void {
+    this.pullTimerId = setInterval(() => {
+      if (navigator.onLine) {
+        this.pullOrders();
+      }
+    }, PULL_POLL_INTERVAL_MS);
+  }
+
+  /** Stops the pull polling interval */
+  private stopPullPolling(): void {
+    if (this.pullTimerId !== null) {
+      clearInterval(this.pullTimerId);
+      this.pullTimerId = null;
     }
   }
   //#endregion

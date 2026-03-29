@@ -159,6 +159,24 @@ export class DatabaseService extends Dexie {
         order.totalDiscountCents = 0;
       });
     });
+
+    // Migrate syncStatus and kitchenStatus from lowercase to PascalCase
+    this.version(12).stores({}).upgrade(tx => {
+      const statusMap: Record<string, string> = {
+        'pending': 'Pending', 'synced': 'Synced', 'failed': 'Failed',
+      };
+      const kitchenMap: Record<string, string> = {
+        'new': 'Pending', 'done': 'Delivered',
+      };
+      return tx.table('orders').toCollection().modify((order: any) => {
+        if (statusMap[order.syncStatus]) {
+          order.syncStatus = statusMap[order.syncStatus];
+        }
+        if (order.kitchenStatus && kitchenMap[order.kitchenStatus]) {
+          order.kitchenStatus = kitchenMap[order.kitchenStatus];
+        }
+      });
+    });
   }
   //#endregion
 

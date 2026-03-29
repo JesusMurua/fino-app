@@ -78,7 +78,7 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus:    'pending',
+      syncStatus:    'Pending',
       createdAt:     new Date(),
       branchId:      deviceConfig.branchId,
     };
