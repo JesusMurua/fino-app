@@ -1,0 +1,514 @@
+// ---------------------------------------------------------------------------
+// Quick POS — Single-column, free-form product entry
+// ---------------------------------------------------------------------------
+
+:host {
+  display: block;
+  height: 100dvh;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.quick-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+
+// ---------------------------------------------------------------------------
+// Quick Product Form
+// ---------------------------------------------------------------------------
+
+.quick-form {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+
+  &__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i {
+      color: #16a34a;
+      font-size: 20px;
+    }
+  }
+
+  &__fields {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  &__description {
+    flex: 1;
+    height: 56px;
+    padding: 0 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 18px;
+    outline: none;
+    background: white;
+    color: #111827;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #16a34a;
+    }
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+
+  &__price-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  &__currency {
+    position: absolute;
+    left: 14px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #6b7280;
+    pointer-events: none;
+  }
+
+  &__price {
+    width: 100%;
+    height: 56px;
+    padding: 0 16px 0 32px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: right;
+    outline: none;
+    background: white;
+    color: #111827;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #16a34a;
+    }
+
+    &::placeholder {
+      color: #d1d5db;
+      font-weight: 400;
+    }
+  }
+
+  &__add-btn {
+    width: 100%;
+    height: 56px;
+    border: none;
+    border-radius: 12px;
+    background: #16a34a;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.15s;
+
+    &:active {
+      background: #15803d;
+    }
+
+    &:disabled {
+      background: #d1d5db;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Catalog Search (secondary)
+// ---------------------------------------------------------------------------
+
+.quick-catalog {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+
+  &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    font-size: 14px;
+    color: #9ca3af;
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px 0 36px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    background: white;
+    color: #374151;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #16a34a;
+    }
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+
+  &__results {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-top: 10px;
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  &__chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 22px;
+    background: white;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+
+    &:active {
+      transform: scale(0.96);
+      border-color: #16a34a;
+      background: #f0fdf4;
+    }
+  }
+
+  &__chip-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+  }
+
+  &__chip-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: #16a34a;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cart
+// ---------------------------------------------------------------------------
+
+.quick-cart {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid #e5e7eb;
+  padding-top: 8px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 4px;
+    flex-shrink: 0;
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+  }
+
+  &__clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:active {
+      background: #fef2f2;
+    }
+  }
+
+  &__items {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+.quick-cart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+
+  &__info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  &__name {
+    font-size: 15px;
+    font-weight: 500;
+    color: #111827;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  &__subtotal {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__qty {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    min-width: 24px;
+    text-align: center;
+  }
+}
+
+.quick-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:active {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+}
+
+.quick-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:active {
+    background: #fef2f2;
+  }
+}
+
+.quick-cart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: #9ca3af;
+
+  p {
+    font-size: 15px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Footer — Total, Bills, Cobrar
+// ---------------------------------------------------------------------------
+
+.quick-footer {
+  flex-shrink: 0;
+  padding: 12px 0 16px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.quick-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+
+  span:first-child {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  &__amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+  }
+}
+
+.quick-bills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.quick-bill-btn {
+  height: 56px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.1s;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &--active {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+}
+
+.quick-change {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-radius: 8px;
+
+  span:first-child {
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  &__amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #16a34a;
+  }
+}
+
+.quick-cobrar-btn {
+  width: 100%;
+  height: 72px;
+  border: none;
+  border-radius: 12px;
+  background: #16a34a;
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+
+  &:active {
+    background: #15803d;
+  }
+
+  &:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Payment Dialog
+// ---------------------------------------------------------------------------
+
+.quick-pay-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 18px;
+
+    strong {
+      font-weight: 700;
+    }
+
+    &--change {
+      padding-top: 12px;
+      border-top: 2px solid #e5e7eb;
+
+      strong {
+        color: #16a34a;
+        font-size: 22px;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}
