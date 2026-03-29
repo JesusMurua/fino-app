@@ -539,6 +539,7 @@
 
   &__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: $space-2;
   }
 }
