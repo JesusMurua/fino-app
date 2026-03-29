@@ -1,0 +1,225 @@
+<p-toast />
+
+<div class="counter-layout">
+
+  <!-- Search (small, secondary) -->
+  <div class="counter-search">
+    <i class="pi pi-search counter-search__icon"></i>
+    <input
+      type="text"
+      placeholder="Buscar..."
+      class="counter-search__input"
+      [value]="searchTerm()"
+      (input)="onSearchInput($event)"
+    />
+    @if (searchTerm()) {
+      <button
+        type="button"
+        class="counter-search__clear"
+        (click)="clearSearch()"
+        aria-label="Limpiar búsqueda"
+      >
+        <i class="pi pi-times"></i>
+      </button>
+    }
+  </div>
+
+  <!-- Category Chips -->
+  <nav class="counter-categories" aria-label="Categorías">
+    <button
+      type="button"
+      class="counter-chip"
+      [class.counter-chip--active]="selectedCategory() === null"
+      (click)="selectCategory(null)"
+    >
+      Todos
+    </button>
+    @for (cat of categories(); track cat.id) {
+      <button
+        type="button"
+        class="counter-chip"
+        [class.counter-chip--active]="selectedCategory() === cat.id"
+        (click)="selectCategory(cat.id)"
+      >
+        {{ cat.name }}
+      </button>
+    }
+  </nav>
+
+  <!-- Product Grid -->
+  <div class="counter-products">
+    @for (product of filteredProducts(); track product.id) {
+      <button
+        type="button"
+        class="counter-product-card"
+        (click)="addToCart(product)"
+      >
+        <span class="counter-product-card__name">{{ product.name }}</span>
+        <span class="counter-product-card__price">{{ product.priceCents | price }}</span>
+      </button>
+    } @empty {
+      @if (!isLoading()) {
+        <div class="counter-empty">
+          <i class="pi pi-inbox"></i>
+          <p>No hay productos</p>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Order List -->
+  <div class="counter-order">
+    <div class="counter-order__header">
+      <h2>Orden</h2>
+      @if (cartItems().length > 0) {
+        <button
+          type="button"
+          class="counter-order__clear"
+          (click)="clearCart()"
+          aria-label="Vaciar orden"
+        >
+          <i class="pi pi-trash"></i>
+        </button>
+      }
+    </div>
+
+    <div class="counter-order__items">
+      @for (item of cartItems(); track item.id) {
+        <div class="counter-order-item">
+          <div class="counter-order-item__info">
+            <span class="counter-order-item__name">{{ item.product.name }}</span>
+            <span class="counter-order-item__subtotal">{{ item.totalPriceCents | price }}</span>
+          </div>
+          <div class="counter-order-item__controls">
+            <button
+              type="button"
+              class="counter-qty-btn"
+              (click)="updateQuantity(item.id, -1)"
+              aria-label="Disminuir cantidad"
+            >
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="counter-order-item__qty">{{ item.quantity }}</span>
+            <button
+              type="button"
+              class="counter-qty-btn"
+              (click)="updateQuantity(item.id, 1)"
+              aria-label="Aumentar cantidad"
+            >
+              <i class="pi pi-plus"></i>
+            </button>
+            <button
+              type="button"
+              class="counter-remove-btn"
+              (click)="removeItem(item.id)"
+              aria-label="Eliminar producto"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <div class="counter-order-empty">
+          <p>Agrega productos a la orden</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Footer: Total + Bills + Actions -->
+  <div class="counter-footer">
+    <div class="counter-total">
+      <span>Total</span>
+      <span class="counter-total__amount">{{ cartTotal() | price }}</span>
+    </div>
+
+    <!-- Bill Denomination Buttons -->
+    @if (cartItems().length > 0) {
+      <div class="counter-bills">
+        @for (bill of bills; track bill.cents) {
+          <button
+            type="button"
+            class="counter-bill-btn"
+            [class.counter-bill-btn--active]="amountTendered() === bill.cents"
+            (click)="selectBill(bill.cents)"
+          >
+            {{ bill.label }}
+          </button>
+        }
+      </div>
+
+      @if (amountTendered() > 0) {
+        <div class="counter-change">
+          <span>Cambio:</span>
+          <span class="counter-change__amount">{{ change() | price }}</span>
+        </div>
+      }
+    }
+
+    <!-- Action Buttons -->
+    <div class="counter-actions">
+      @if (hasKitchen()) {
+        <button
+          type="button"
+          class="counter-action-btn counter-action-btn--kitchen"
+          [disabled]="cartItems().length === 0"
+          (click)="sendToKitchen()"
+        >
+          <i class="pi pi-send"></i>
+          ENVIAR A COCINA
+        </button>
+      }
+      <button
+        type="button"
+        class="counter-action-btn counter-action-btn--cobrar"
+        [disabled]="cartItems().length === 0"
+        (click)="openPayDialog()"
+      >
+        COBRAR {{ cartTotal() | price }}
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Payment Confirmation Dialog -->
+<p-dialog
+  header="Confirmar cobro"
+  [(visible)]="showPayDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', maxWidth: '400px' }"
+  [contentStyle]="{ padding: '1.5rem' }"
+>
+  <div class="counter-pay-dialog">
+    <div class="counter-pay-dialog__row">
+      <span>Total:</span>
+      <strong>{{ cartTotal() | price }}</strong>
+    </div>
+    <div class="counter-pay-dialog__row">
+      <span>Recibido:</span>
+      <strong>{{ amountTendered() | price }}</strong>
+    </div>
+    <div class="counter-pay-dialog__row counter-pay-dialog__row--change">
+      <span>Cambio:</span>
+      <strong>{{ change() | price }}</strong>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="counter-pay-dialog__actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        (onClick)="showPayDialog.set(false)"
+        styleClass="p-button-outlined"
+      />
+      <p-button
+        label="Confirmar"
+        severity="success"
+        (onClick)="confirmPayment()"
+        [disabled]="amountTendered() < cartTotal()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
