@@ -126,6 +126,7 @@ export class SyncService implements OnDestroy {
    * have pending local changes (syncStatus === 'pending').
    */
   async pullOrders(): Promise<void> {
+    console.log('[SyncService] pullOrders() called — online:', navigator.onLine, '— lastPullAt:', this.lastPullAt);
     if (!navigator.onLine) return;
 
     try {
@@ -278,6 +279,7 @@ export class SyncService implements OnDestroy {
 
   /** Starts pull polling every 5 seconds when online */
   private startPullPolling(): void {
+    console.log('[SyncService] startPullPolling() called — interval:', PULL_POLL_INTERVAL_MS, 'ms');
     this.pullTimerId = setInterval(() => {
       if (navigator.onLine) {
         this.pullOrders();
