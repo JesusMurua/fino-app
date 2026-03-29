@@ -9,10 +9,16 @@
 export interface BusinessConfig {
   businessName: string;
   locationName: string;
+  /** Whether this business has a kitchen (KDS, kitchen orders) */
+  hasKitchen: boolean;
+  /** Whether this business uses table management */
+  hasTables: boolean;
 }
 
 /** Default business config used before the owner sets up the back office */
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   businessName: 'Mi Negocio',
   locationName: 'Sucursal Principal',
+  hasKitchen: true,
+  hasTables: true,
 };

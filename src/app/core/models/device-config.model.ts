@@ -12,7 +12,7 @@
  *   kitchen — Kitchen display mode
  */
 export interface DeviceConfig {
-  mode: 'counter' | 'cashier' | 'kiosk' | 'tables' | 'waiter' | 'kitchen';
+  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen';
   /** Human-readable name for this device, e.g. "Caja 1" or "Kiosko Entrada" */
   deviceName: string;
   /** Business this device belongs to (set during /setup) */
@@ -44,7 +44,7 @@ export const DEVICE_CONFIG_KEY = 'pos-device-config';
 
 /** Default device config applied on first launch */
 export const DEFAULT_DEVICE_CONFIG: DeviceConfig = {
-  mode:           'counter',
+  mode:           'cashier',
   deviceName:     'Dispositivo principal',
   businessId:     0,
   branchId:       0,

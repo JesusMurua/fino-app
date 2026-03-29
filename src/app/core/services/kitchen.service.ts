@@ -95,7 +95,7 @@ export class KitchenService implements OnDestroy {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const branchId = this.authService.branchId;
-    const kdsStatuses = new Set(['Pending', 'Preparing']);
+    const kdsStatuses = new Set(['Pending']);
 
     const allToday = await this.db.orders
       .where('createdAt')

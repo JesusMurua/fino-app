@@ -119,7 +119,7 @@ export class PinComponent {
       }
 
       const raw = localStorage.getItem('pos-device-config');
-      const mode = raw ? JSON.parse(raw).mode : 'counter';
+      const mode = raw ? JSON.parse(raw).mode : 'cashier';
 
       switch (user.role) {
         case 'Owner':
@@ -130,11 +130,11 @@ export class PinComponent {
           this.router.navigate(['/kitchen']);
           break;
         case 'Waiter':
-          this.router.navigate([mode === 'waiter' || mode === 'tables' ? '/tables' : '/pos']);
+          this.router.navigate([mode === 'tables' ? '/tables' : '/pos']);
           break;
         case 'Cashier':
         default: {
-          const dest = (mode === 'tables' || mode === 'waiter') ? '/tables'
+          const dest = mode === 'tables' ? '/tables'
             : mode === 'kitchen' ? '/kitchen'
             : '/pos';
           this.router.navigate([dest]);

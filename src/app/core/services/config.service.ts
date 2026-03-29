@@ -1,6 +1,5 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
-import { firstValueFrom } from 'rxjs';
+import { Injectable, computed } from '@angular/core';
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
 import {
   AppConfig,
@@ -20,6 +19,8 @@ import { DatabaseService } from './database.service';
 interface BranchConfigResponse {
   businessName: string;
   locationName: string;
+  hasKitchen?: boolean;
+  hasTables?: boolean;
 }
 
 /**
@@ -41,6 +42,12 @@ export class ConfigService {
 
   /** Reactive business config stream — emits on every load() and save() */
   readonly config$ = new BehaviorSubject<AppConfig>({ ...DEFAULT_APP_CONFIG });
+
+  /** Whether the current business has a kitchen */
+  readonly hasKitchen = computed(() => this.config$.getValue().hasKitchen ?? true);
+
+  /** Whether the current business uses table management */
+  readonly hasTables = computed(() => this.config$.getValue().hasTables ?? true);
 
   /** Reactive device config stream — emits on every loadDeviceConfig() and saveDeviceConfig() */
   readonly deviceConfig$ = new BehaviorSubject<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
@@ -84,6 +91,8 @@ export class ConfigService {
         ...config,
         businessName: remote.businessName,
         locationName: remote.locationName,
+        hasKitchen: remote.hasKitchen ?? config.hasKitchen,
+        hasTables: remote.hasTables ?? config.hasTables,
       };
 
       await this.db.config.put(config);
@@ -145,6 +154,13 @@ export class ConfigService {
     try {
       const raw = localStorage.getItem(DEVICE_CONFIG_KEY);
       const config: DeviceConfig = raw ? JSON.parse(raw) : { ...DEFAULT_DEVICE_CONFIG };
+
+      // Migrate deprecated modes
+      const mode = config.mode as string;
+      if (mode === 'counter') config.mode = 'cashier';
+      if (mode === 'waiter') config.mode = 'tables';
+      if (mode !== config.mode) this.saveDeviceConfig(config);
+
       this.deviceConfig$.next(config);
       return config;
     } catch {

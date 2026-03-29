@@ -70,8 +70,8 @@ export class DashboardComponent implements OnInit {
       .toArray();
 
     // Separate completed from cancelled
-    const completedOrders = allOrders.filter(o => o.cancellationStatus !== 'cancelled');
-    const cancelledOrders = allOrders.filter(o => o.cancellationStatus === 'cancelled');
+    const completedOrders = allOrders.filter(o => !o.cancelledAt);
+    const cancelledOrders = allOrders.filter(o => !!o.cancelledAt);
 
     // KPI metrics — only completed orders
     const totalCents = completedOrders.reduce((s, o) => s + o.totalCents, 0);
@@ -137,11 +137,9 @@ export class DashboardComponent implements OnInit {
 
   /** Returns the display status label for an order */
   getStatusLabel(order: Order): string {
-    if (order.cancellationStatus === 'cancelled') return 'Cancelada';
-    if (order.kitchenStatus === 'Delivered') return 'Entregada';
-    if (order.deliveryStatus === 'delivered') return 'Entregada';
+    if (order.cancelledAt) return 'Cancelada';
+    if (order.kitchenStatus === 'Delivered') return 'Entregado';
     if (order.kitchenStatus === 'Ready') return 'Listo';
-    if (order.kitchenStatus === 'Preparing') return 'Preparando';
     if (order.kitchenStatus === 'Pending') return 'En cocina';
     return 'Nueva';
   }

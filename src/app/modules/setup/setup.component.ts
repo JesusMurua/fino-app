@@ -82,19 +82,17 @@ export class SetupComponent {
   selectedBranchName = '';
 
   /** Mode + device name selection */
-  selectedMode: DeviceConfig['mode'] = 'counter';
+  selectedMode: DeviceConfig['mode'] = 'cashier';
   deviceName = 'POS Principal';
 
   /** Activate response data (code flow) */
   private activateData: ActivateResponse | null = null;
 
   readonly modes: ModeOption[] = [
-    { value: 'counter', icon: '🏪', label: 'Mostrador', description: 'Cobra inmediato' },
-    { value: 'cashier', icon: '💳', label: 'Cajero',    description: 'Caja rápida' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',     description: 'Gestión de mesas' },
-    { value: 'waiter',  icon: '🍽️', label: 'Mesero',    description: 'Tablet de mesero' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',    description: 'Pantalla KDS' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',    description: 'Autoservicio' },
+    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
+    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
+    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
+    { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes' },
   ];
 
   //#endregion

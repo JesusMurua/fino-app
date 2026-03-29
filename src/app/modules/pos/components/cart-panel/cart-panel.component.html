@@ -180,7 +180,7 @@
       }
     }
 
-    @if (isTableMode()) {
+    @if (showSendToKitchen()) {
       @if (addingToOrder) {
         <p-button
           [label]="'Agregar a Orden #' + addingToOrder.orderNumber"

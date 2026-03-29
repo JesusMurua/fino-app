@@ -12,7 +12,6 @@ export interface OrderSummary {
   orderNumber: number;
   totalCents: number;
   kitchenStatus: string | null;
-  deliveryStatus: string | null;
   createdAt: string;
   items: { id: number; productName: string; quantity: number }[];
 }

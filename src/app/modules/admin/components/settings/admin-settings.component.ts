@@ -71,12 +71,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly pinSuccess       = signal(false);
 
   readonly modes: { value: DeviceMode; label: string; icon: string; description: string; badge?: string }[] = [
-    { value: 'counter', icon: '🏪', label: 'Mostrador', description: 'Cobra inmediato. Ideal para fondas' },
-    { value: 'cashier', icon: '💳', label: 'Cajero',    description: 'Caja rápida sin selector de mesa' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',     description: 'Pantalla fija de mesas compartida' },
-    { value: 'waiter',  icon: '🍽️', label: 'Mesero',    description: 'Tablet personal del mesero' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',    description: 'Pantalla KDS para la cocina' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',    description: 'Autoservicio para el cliente', badge: 'Beta' },
+    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
+    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
+    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
+    { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes', badge: 'Beta' },
   ];
 
   /** All branches for the current business */
@@ -96,7 +94,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly activationCode = signal('');
   readonly generatingCode = signal(false);
   codeBranchId = 0;
-  codeMode: DeviceMode = 'counter';
+  codeMode: DeviceMode = 'cashier';
 
   /** Phone field — local only, not persisted yet */
   businessPhone = '';
@@ -200,7 +198,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
     switch (mode) {
       case 'tables':
-      case 'waiter':
         this.router.navigate(['/tables']);
         break;
       case 'kitchen':

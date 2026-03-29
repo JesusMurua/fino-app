@@ -177,6 +177,14 @@ export class DatabaseService extends Dexie {
         }
       });
     });
+
+    // Add hasKitchen/hasTables to business config; derive from existing businessType
+    this.version(13).stores({}).upgrade(tx => {
+      return tx.table('config').toCollection().modify((cfg: any) => {
+        if (cfg.hasKitchen === undefined) cfg.hasKitchen = true;
+        if (cfg.hasTables === undefined) cfg.hasTables = true;
+      });
+    });
   }
   //#endregion
 

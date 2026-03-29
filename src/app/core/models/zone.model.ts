@@ -15,21 +15,9 @@ export interface Zone {
   isActive: boolean;
 }
 
-/** Enriched table status — derived from backend displayStatus */
-export enum TableStatus {
-  Free = 'Free',
-  WithOrder = 'WithOrder',
-  InKitchen = 'InKitchen',
-  Ready = 'Ready',
-  WaitingBill = 'WaitingBill',
-  Paid = 'Paid',
-  Reserved = 'Reserved',
-}
-
 /** Snake_case display status values returned by the backend API */
 export type DisplayStatus =
   | 'free'
-  | 'with_order'
   | 'in_kitchen'
   | 'ready'
   | 'waiting_bill'
@@ -50,18 +38,19 @@ export interface TableStatusDto {
 }
 
 /**
- * Maps the backend displayStatus string to the frontend TableStatus enum.
- * Falls back to Free for unknown values.
+ * Normalizes backend displayStatus string to a valid DisplayStatus.
+ * Falls back to 'free' for unknown values.
  */
-export function mapDisplayStatus(s: string): TableStatus {
+export function normalizeDisplayStatus(s: string): DisplayStatus {
   switch (s) {
-    case 'free':         return TableStatus.Free;
-    case 'with_order':   return TableStatus.WithOrder;
-    case 'in_kitchen':   return TableStatus.InKitchen;
-    case 'ready':        return TableStatus.Ready;
-    case 'waiting_bill': return TableStatus.WaitingBill;
-    case 'paid':         return TableStatus.Paid;
-    case 'reserved':     return TableStatus.Reserved;
-    default:             return TableStatus.Free;
+    case 'free':
+    case 'in_kitchen':
+    case 'ready':
+    case 'waiting_bill':
+    case 'paid':
+    case 'reserved':
+      return s;
+    default:
+      return 'free';
   }
 }

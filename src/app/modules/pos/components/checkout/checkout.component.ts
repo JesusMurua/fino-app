@@ -380,7 +380,7 @@ export class CheckoutComponent implements OnInit {
     if (this.existingOrderId()) {
       const existing = await this.db.orders.get(this.existingOrderId()!);
       const ks = existing?.kitchenStatus;
-      if (ks === 'Pending' || ks === 'Preparing') {
+      if (ks === 'Pending') {
         this.showKitchenConfirm.set(true);
         return;
       }

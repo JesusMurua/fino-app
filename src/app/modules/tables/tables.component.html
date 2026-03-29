@@ -224,9 +224,7 @@
 
           <div class="td-order-card__badges">
             @if (order.kitchenStatus === 'Pending' || !order.kitchenStatus) {
-              <span class="td-badge td-badge--pending">En espera</span>
-            } @else if (order.kitchenStatus === 'Preparing') {
-              <span class="td-badge td-badge--kitchen">Preparando</span>
+              <span class="td-badge td-badge--pending">En cocina</span>
             } @else if (order.kitchenStatus === 'Ready') {
               <span class="td-badge td-badge--ready">Listo</span>
             } @else if (order.kitchenStatus === 'Delivered') {

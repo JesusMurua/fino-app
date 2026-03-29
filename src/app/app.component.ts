@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { NgHttpLoaderComponent } from 'ng-http-loader';
 
+import { CatalogService } from './core/services/catalog.service';
 import { PrinterService } from './core/services/printer.service';
 import { SyncService } from './core/services/sync.service';
 import { InstallBannerComponent } from './shared/components/install-banner/install-banner.component';
@@ -19,6 +20,7 @@ export class AppComponent implements OnInit {
 
   private readonly printerService = inject(PrinterService);
   private readonly syncService = inject(SyncService);
+  private readonly catalogService = inject(CatalogService);
 
   /** URLs excluded from the global loading spinner (polling endpoints) */
   readonly filteredUrls = [
@@ -30,6 +32,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.printerService.tryAutoConnect();
+    this.catalogService.loadAll();
   }
 
 }

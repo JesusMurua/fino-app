@@ -2,7 +2,6 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { MessageService } from 'primeng/api';
@@ -34,7 +33,6 @@ export class CartPanelComponent implements OnInit {
   readonly cartEvaluation = this.cartService.cartEvaluation;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
   readonly activeTableName = signal<string | null>(null);
-  readonly deviceMode = signal<string>('counter');
 
   // ---- Coupon state ----
   readonly activeCoupon = this.promotionService.activeCoupon;
@@ -48,11 +46,8 @@ export class CartPanelComponent implements OnInit {
   /** Context when adding items to an existing table order */
   addingToOrder: { orderId: string; orderNumber: number } | null = null;
 
-  /** True when device is in waiter or tables mode */
-  readonly isTableMode = computed(() => {
-    const mode = this.deviceMode();
-    return mode === 'waiter' || mode === 'tables';
-  });
+  /** True when the business has a kitchen — determines button label */
+  readonly showSendToKitchen = computed(() => this.configService.hasKitchen());
   //#endregion
 
   //#region Constructor
@@ -65,11 +60,7 @@ export class CartPanelComponent implements OnInit {
     private readonly promotionService: PromotionService,
     private readonly messageService: MessageService,
     private readonly router: Router,
-  ) {
-    this.configService.deviceConfig$
-      .pipe(takeUntilDestroyed())
-      .subscribe(cfg => this.deviceMode.set(cfg.mode));
-  }
+  ) {}
   //#endregion
 
   //#region Lifecycle

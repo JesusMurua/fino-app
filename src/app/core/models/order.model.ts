@@ -37,13 +37,7 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
 export type OrderSyncStatus = 'Pending' | 'Synced' | 'Failed';
 
 /** Kitchen display status — PascalCase to match backend enum */
-export type KitchenStatus = 'Pending' | 'Preparing' | 'Ready' | 'Delivered';
-
-/** Delivery status — undefined means not yet delivered */
-export type DeliveryStatus = 'delivered';
-
-/** Cancellation status */
-export type CancellationStatus = 'none' | 'cancelled';
+export type KitchenStatus = 'Pending' | 'Ready' | 'Delivered';
 
 /**
  * A completed order submitted from the POS.
@@ -75,12 +69,8 @@ export interface Order {
   syncedAt?: Date;
   syncStatus: OrderSyncStatus;
   branchId: number;
-  /** Kitchen display status — undefined on legacy orders treated as 'new' */
+  /** Kitchen display status — undefined on legacy orders */
   kitchenStatus?: KitchenStatus;
-  /** Delivery status — undefined means not yet delivered */
-  deliveryStatus?: DeliveryStatus;
-  /** Cancellation status — defaults to 'none' */
-  cancellationStatus?: CancellationStatus;
   /** Reason selected when cancelling */
   cancellationReason?: string;
   /** Timestamp when the order was cancelled */

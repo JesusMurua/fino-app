@@ -10,12 +10,12 @@ import { MessageService } from 'primeng/api';
 import {
   BusinessType,
   RestaurantTable,
-  TableStatus,
   TableStatusDto,
   Zone,
   ZoneType,
-  mapDisplayStatus,
+  normalizeDisplayStatus,
 } from '../../core/models';
+import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
 import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../core/services/table.service';
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
@@ -55,8 +55,8 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly currentUser = this.authService.currentUser;
 
   /** Expose enums for template */
-  readonly TableStatus = TableStatus;
   readonly ZoneType = ZoneType;
+  readonly catalogService = inject(CatalogService);
 
   /** Raw table statuses from the API */
   readonly tableStatuses = signal<TableStatusDto[]>([]);
@@ -124,25 +124,25 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly kpiTotal = computed(() => this.tableStatuses().length);
 
   readonly kpiOccupied = computed(() =>
-    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) !== TableStatus.Free).length,
+    this.tableStatuses().filter(t => t.displayStatus !== 'free').length,
   );
 
   readonly kpiAvailable = computed(() =>
-    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.Free).length,
+    this.tableStatuses().filter(t => t.displayStatus === 'free').length,
   );
 
   readonly kpiInKitchen = computed(() =>
-    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.InKitchen).length,
+    this.tableStatuses().filter(t => t.displayStatus === 'in_kitchen').length,
   );
 
   readonly kpiReserved = computed(() =>
-    this.tableStatuses().filter(t => mapDisplayStatus(t.displayStatus) === TableStatus.Reserved).length,
+    this.tableStatuses().filter(t => t.displayStatus === 'reserved').length,
   );
 
   /** Total amount in progress from all occupied tables */
   readonly totalInProgressCents = computed(() =>
     this.tableStatuses()
-      .filter(t => mapDisplayStatus(t.displayStatus) !== TableStatus.Free)
+      .filter(t => t.displayStatus !== 'free')
       .reduce((sum, t) => sum + (t.orderTotalCents ?? 0), 0),
   );
 
@@ -227,7 +227,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly occupiedTargetTables = computed(() => {
     const sourceId = this.selectedTable()?.id;
     return this.tableStatuses().filter(t =>
-      mapDisplayStatus(t.displayStatus) !== TableStatus.Free && t.tableId !== sourceId,
+      t.displayStatus !== 'free' && t.tableId !== sourceId,
     );
   });
 
@@ -293,7 +293,7 @@ export class TablesComponent implements OnInit, OnDestroy {
         this.pendingReopenTableId = null;
         setTimeout(() => {
           const dto = this.tableStatuses().find(t => t.tableId === tableId);
-          if (dto && mapDisplayStatus(dto.displayStatus) !== TableStatus.Free) {
+          if (dto && dto.displayStatus !== 'free') {
             this.onTableCardClick(dto);
           }
         }, 500);
@@ -335,7 +335,7 @@ export class TablesComponent implements OnInit, OnDestroy {
         branchId: this.authService.branchId,
         name: dto.tableName,
         zoneId: dto.zoneId,
-        status: mapDisplayStatus(dto.displayStatus) === TableStatus.Free ? 'available' as const : 'occupied' as const,
+        status: dto.displayStatus === 'free' ? 'available' as const : 'occupied' as const,
         isActive: true,
         createdAt: new Date(),
         orderId: dto.orderId,
@@ -368,7 +368,7 @@ export class TablesComponent implements OnInit, OnDestroy {
       branchId: this.authService.branchId,
       name: dto.tableName,
       zoneId: dto.zoneId,
-      status: mapDisplayStatus(dto.displayStatus) === TableStatus.Free ? 'available' : 'occupied',
+      status: dto.displayStatus === 'free' ? 'available' : 'occupied',
       isActive: true,
       createdAt: new Date(),
       orderId: dto.orderId,
@@ -446,7 +446,7 @@ export class TablesComponent implements OnInit, OnDestroy {
       .filter(o =>
         o.tableId === table.id &&
         (o.payments?.length ?? 0) === 0 &&
-        (o.cancellationStatus === undefined || o.cancellationStatus === 'none')
+        !o.cancelledAt
       )
       .first();
 
@@ -900,32 +900,19 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   //#region Display Helpers
 
-  /** Returns CSS class modifier for a table status */
+  /** Returns CSS class modifier for a display status code */
   getStatusClass(status: string): string {
-    switch (mapDisplayStatus(status)) {
-      case TableStatus.Free:        return 'free';
-      case TableStatus.WithOrder:   return 'order';
-      case TableStatus.InKitchen:   return 'kitchen';
-      case TableStatus.Ready:       return 'ready';
-      case TableStatus.WaitingBill: return 'waiting';
-      case TableStatus.Paid:        return 'paid';
-      case TableStatus.Reserved:    return 'reserved';
-      default:                      return 'free';
-    }
+    const s = normalizeDisplayStatus(status);
+    const map: Record<string, string> = {
+      'free': 'free', 'in_kitchen': 'kitchen', 'ready': 'ready',
+      'waiting_bill': 'waiting', 'paid': 'paid', 'reserved': 'reserved',
+    };
+    return map[s] ?? 'free';
   }
 
-  /** Returns Spanish label for a table status */
+  /** Returns Spanish label for a display status code */
   getStatusLabel(status: string): string {
-    switch (mapDisplayStatus(status)) {
-      case TableStatus.Free:        return 'Disponible';
-      case TableStatus.WithOrder:   return 'Con orden';
-      case TableStatus.InKitchen:   return 'En cocina';
-      case TableStatus.Ready:       return 'Listo ✓';
-      case TableStatus.WaitingBill: return 'Pidió cuenta';
-      case TableStatus.Paid:        return 'Pagada';
-      case TableStatus.Reserved:    return 'Reservada';
-      default:                      return 'Disponible';
-    }
+    return this.catalogService.getDisplayStatusName(normalizeDisplayStatus(status));
   }
 
   /** Whether a zone group should render as bar seats (circles) */
@@ -960,7 +947,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   getZoneOccupiedCount(zoneId: number | null): number {
     return this.tableStatuses().filter(t => {
       const tZoneId = t.zoneId ?? null;
-      return tZoneId === zoneId && mapDisplayStatus(t.displayStatus) !== TableStatus.Free;
+      return tZoneId === zoneId && t.displayStatus !== 'free';
     }).length;
   }
 

@@ -204,8 +204,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
 
   /** Returns true if the order can be cancelled */
   canCancel(order: Order): boolean {
-    return order.deliveryStatus !== 'delivered'
-        && order.cancellationStatus !== 'cancelled';
+    return !order.cancelledAt && order.kitchenStatus !== 'Delivered';
   }
 
   getStatus(order: Order) {
@@ -213,7 +212,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   }
 
   isDelivered(order: Order): boolean {
-    return order.deliveryStatus === 'delivered';
+    return order.kitchenStatus === 'Delivered';
   }
 
   private matchesFilter(order: Order, filter: StatusFilter): boolean {
@@ -221,8 +220,8 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     switch (filter) {
       case 'new':       return status.label === 'Nueva';
       case 'cooking':   return status.label === 'En cocina';
-      case 'ready':     return status.label === 'Lista';
-      case 'delivered':  return status.label === 'Entregada';
+      case 'ready':     return status.label === 'Listo';
+      case 'delivered':  return status.label === 'Entregado';
       case 'cancelled':  return status.label === 'Cancelada';
       default:           return true;
     }

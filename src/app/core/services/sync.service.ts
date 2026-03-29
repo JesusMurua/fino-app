@@ -173,8 +173,6 @@ export class SyncService implements OnDestroy {
       syncStatus: 'Synced',
       syncedAt: new Date(),
       kitchenStatus: dto.kitchenStatus,
-      deliveryStatus: dto.deliveryStatus,
-      cancellationStatus: dto.cancellationStatus,
       cancellationReason: dto.cancellationReason,
       cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
       tableId: dto.tableId,

@@ -39,12 +39,10 @@ const GIRO_OPTIONS: { value: BusinessType; icon: string; label: string; descript
 
 /** Device mode options */
 const MODE_OPTIONS: { value: string; icon: string; label: string; description: string }[] = [
-  { value: 'counter', icon: '🏪', label: 'Mostrador', description: 'Cobra inmediato' },
-  { value: 'cashier', icon: '💳', label: 'Cajero',    description: 'Caja rápida' },
-  { value: 'tables',  icon: '🪑', label: 'Mesas',     description: 'Pantalla de mesas' },
-  { value: 'waiter',  icon: '🍽️', label: 'Mesero',    description: 'Tablet personal' },
-  { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',    description: 'Pantalla KDS' },
-  { value: 'kiosk',   icon: '📱', label: 'Kiosko',    description: 'Autoservicio' },
+  { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
+  { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
+  { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
+  { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes' },
 ];
 
 /** Zone suggestions per giro */
@@ -66,12 +64,12 @@ const ZONE_SUGGESTIONS: Record<string, ZoneDraft[]> = {
 
 /** Which device modes are relevant per giro */
 const MODES_BY_GIRO: Record<string, string[]> = {
-  [BusinessType.Restaurant]: ['counter', 'cashier', 'tables', 'waiter', 'kitchen', 'kiosk'],
-  [BusinessType.Bar]:        ['counter', 'cashier', 'tables', 'waiter', 'kitchen', 'kiosk'],
-  [BusinessType.Cafe]:       ['counter', 'cashier', 'kitchen', 'kiosk'],
-  [BusinessType.Retail]:     ['counter', 'cashier'],
-  [BusinessType.FoodTruck]:  ['counter', 'cashier', 'kiosk'],
-  [BusinessType.General]:    ['counter', 'cashier'],
+  [BusinessType.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
+  [BusinessType.Bar]:        ['cashier', 'tables', 'kitchen', 'kiosk'],
+  [BusinessType.Cafe]:       ['cashier', 'kitchen', 'kiosk'],
+  [BusinessType.Retail]:     ['cashier'],
+  [BusinessType.FoodTruck]:  ['cashier', 'kiosk'],
+  [BusinessType.General]:    ['cashier'],
 };
 
 @Component({
@@ -119,12 +117,12 @@ export class OnboardingComponent implements OnInit {
 
   // Step 4 — Device
   readonly deviceName = signal('');
-  readonly selectedMode = signal('counter');
+  readonly selectedMode = signal('cashier');
   readonly pendingPlan = signal<string | null>(null);
 
   /** Device modes filtered by selected giro */
   readonly filteredModes = computed(() => {
-    const allowed = MODES_BY_GIRO[this.selectedGiro()] ?? ['counter', 'cashier'];
+    const allowed = MODES_BY_GIRO[this.selectedGiro()] ?? ['cashier'];
     return MODE_OPTIONS.filter(m => allowed.includes(m.value));
   });
 

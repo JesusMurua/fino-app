@@ -45,7 +45,7 @@
         [canDeliver]="canDeliver"
         [canCancel]="canDeliver && canCancel(order)"
         [isDelivered]="isDelivered(order)"
-        [isCancelled]="order.cancellationStatus === 'cancelled'"
+        [isCancelled]="!!order.cancelledAt"
         (markDelivered)="onMarkDelivered($event)"
         (cancelOrder)="openCancelDialog(order)"
         (viewTicket)="onViewTicket($event)"

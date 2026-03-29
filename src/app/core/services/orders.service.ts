@@ -20,29 +20,24 @@ export interface OrderDisplayStatus {
  * Pure function — computes the visual display status of an order.
  *
  * Priority (highest first):
- *   delivered → Lista entregada (blue)
- *   kitchenStatus 'done' → Lista (green)
- *   kitchenStatus 'new'  → En cocina (orange)
- *   kitchenStatus undefined → Nueva (grey)
+ *   cancelledAt → Cancelada (gray)
+ *   Delivered   → Entregado (blue)
+ *   Ready       → Listo (green)
+ *   Pending     → En cocina (amber)
+ *   undefined   → Nueva (gray)
  */
 export function getDisplayStatus(order: Order): OrderDisplayStatus {
-  if (order.cancellationStatus === 'cancelled') {
+  if (order.cancelledAt) {
     return { label: 'Cancelada', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
   }
   if (order.kitchenStatus === 'Delivered') {
-    return { label: 'Entregada', color: '#2563EB', bgColor: 'rgba(37, 99, 235, 0.1)' };
-  }
-  if (order.deliveryStatus === 'delivered') {
-    return { label: 'Entregada', color: '#2563EB', bgColor: 'rgba(37, 99, 235, 0.1)' };
+    return { label: 'Entregado', color: '#3B82F6', bgColor: 'rgba(59, 130, 246, 0.1)' };
   }
   if (order.kitchenStatus === 'Ready') {
-    return { label: 'Listo', color: '#16A34A', bgColor: 'rgba(22, 163, 74, 0.1)' };
-  }
-  if (order.kitchenStatus === 'Preparing') {
-    return { label: 'Preparando', color: '#D97706', bgColor: 'rgba(217, 119, 6, 0.1)' };
+    return { label: 'Listo', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
   }
   if (order.kitchenStatus === 'Pending') {
-    return { label: 'En cocina', color: '#EA580C', bgColor: 'rgba(234, 88, 12, 0.1)' };
+    return { label: 'En cocina', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
   }
   return { label: 'Nueva', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
 }
@@ -90,13 +85,13 @@ export class OrdersService implements OnDestroy {
   }
 
   /**
-   * Marks an order as delivered in Dexie and updates the local list.
+   * Marks an order as delivered by updating kitchenStatus to Delivered.
    * @param orderId The order UUID to mark as delivered
    */
   async markAsDelivered(orderId: string): Promise<void> {
-    await this.db.orders.update(orderId, { deliveryStatus: 'delivered' });
+    await this.db.orders.update(orderId, { kitchenStatus: 'Delivered' });
     this.todayOrders.update(orders =>
-      orders.map(o => o.id === orderId ? { ...o, deliveryStatus: 'delivered' as const } : o),
+      orders.map(o => o.id === orderId ? { ...o, kitchenStatus: 'Delivered' as const } : o),
     );
   }
 
@@ -110,7 +105,6 @@ export class OrdersService implements OnDestroy {
     const now = new Date();
 
     await this.db.orders.update(orderId, {
-      cancellationStatus: 'cancelled',
       cancellationReason: reason,
       cancelledAt: now,
       syncStatus: 'Pending',
@@ -118,7 +112,7 @@ export class OrdersService implements OnDestroy {
 
     this.todayOrders.update(orders =>
       orders.map(o => o.id === orderId
-        ? { ...o, cancellationStatus: 'cancelled' as const, cancellationReason: reason, cancelledAt: now, syncStatus: 'Pending' as const }
+        ? { ...o, cancellationReason: reason, cancelledAt: now, syncStatus: 'Pending' as const }
         : o,
       ),
     );

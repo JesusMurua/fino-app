@@ -145,7 +145,7 @@
               </thead>
               <tbody>
                 @for (order of d.orders; track order.id) {
-                  <tr [class.orders-table__row--cancelled]="order.cancellationStatus === 'cancelled'">
+                  <tr [class.orders-table__row--cancelled]="order.cancelledAt">
                     <td class="orders-table__num">#{{ order.orderNumber }}</td>
                     <td class="orders-table__items">{{ order.items.length }} artículo(s)</td>
                     <td>
@@ -156,7 +156,7 @@
                       }
                     </td>
                     <td>
-                      @if (order.cancellationStatus === 'cancelled') {
+                      @if (order.cancelledAt) {
                         <span class="badge badge--cancelled">Cancelada</span>
                         @if (order.cancellationReason) {
                           <span class="orders-table__cancel-reason">{{ order.cancellationReason }}</span>
