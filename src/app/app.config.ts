@@ -3,8 +3,9 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 
+import { pendingRequestsInterceptor$ } from 'ng-http-loader';
+
 import { authInterceptor } from './core/interceptors/auth.interceptor';
-import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 
@@ -13,7 +14,7 @@ import { appRoutes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(appRoutes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor, loadingInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor, pendingRequestsInterceptor$])),
     provideAnimations(),
     MessageService,
     provideServiceWorker('ngsw-worker.js', {
