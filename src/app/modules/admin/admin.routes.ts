@@ -65,6 +65,12 @@ export const adminRoutes: Routes = [
           import('./components/cash-register/cash-register.component')
             .then(m => m.CashRegisterComponent),
       },
+      {
+        path: 'reservations',
+        loadComponent: () =>
+          import('./components/reservations/reservations.component')
+            .then(m => m.ReservationsComponent),
+      },
     ],
   },
 ];

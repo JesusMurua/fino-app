@@ -68,8 +68,9 @@ export class AdminShellComponent implements OnInit {
     { path: 'inventory',  icon: 'pi-box',         label: 'Inventario', badge: true },
     { path: 'promotions', icon: 'pi-tag',         label: 'Promociones' },
     { path: 'users',      icon: 'pi-users',       label: 'Usuarios' },
-    { path: 'cash',       icon: 'pi-wallet',      label: 'Caja' },
-    { path: 'settings',   icon: 'pi-cog',         label: 'Configuración' },
+    { path: 'cash',          icon: 'pi-wallet',      label: 'Caja' },
+    { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones' },
+    { path: 'settings',     icon: 'pi-cog',         label: 'Configuración' },
   ];
 
   async ngOnInit(): Promise<void> {

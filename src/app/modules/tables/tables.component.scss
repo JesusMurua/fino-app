@@ -474,6 +474,36 @@
 }
 
 // -----------------------------------------------------------------------
+// Reserved table dialog
+// -----------------------------------------------------------------------
+.reserved-info {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-2 0;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    font-size: 14px;
+    color: $color-text-title;
+
+    i { font-size: 14px; color: $color-text-sub; width: 16px; text-align: center; }
+  }
+
+  &__label {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  &__notes {
+    font-style: italic;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
 // Occupied table dialog (preserved intact)
 // -----------------------------------------------------------------------
 .td-header {

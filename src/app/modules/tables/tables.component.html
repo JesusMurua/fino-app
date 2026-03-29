@@ -180,6 +180,66 @@
 
 </div>
 
+<!-- Reserved table dialog -->
+<p-dialog
+  [visible]="showReservedDialog()"
+  (visibleChange)="showReservedDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+  header="Reservación"
+>
+  @if (selectedReservation(); as r) {
+    <div class="reserved-info">
+      <div class="reserved-info__row">
+        <i class="pi pi-user"></i>
+        <span class="reserved-info__label">{{ r.guestName }}</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-users"></i>
+        <span>{{ r.partySize }} personas</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-clock"></i>
+        <span>{{ r.reservationTime.substring(0, 5) }} · {{ r.durationMinutes }} min</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-table"></i>
+        <span>{{ r.tableName ?? 'Sin mesa asignada' }}</span>
+      </div>
+      @if (r.guestPhone) {
+        <div class="reserved-info__row">
+          <i class="pi pi-phone"></i>
+          <span>{{ r.guestPhone }}</span>
+        </div>
+      }
+      @if (r.notes) {
+        <div class="reserved-info__row">
+          <i class="pi pi-comment"></i>
+          <span class="reserved-info__notes">{{ r.notes }}</span>
+        </div>
+      }
+    </div>
+  }
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="showReservedDialog.set(false)">Cerrar</button>
+    <button
+      type="button"
+      class="td-btn td-btn--green"
+      [disabled]="seatingBusy()"
+      (click)="seatReservation()"
+    >
+      @if (seatingBusy()) {
+        <i class="pi pi-spin pi-spinner"></i>
+      } @else {
+        <i class="pi pi-check"></i>
+      }
+      Sentar
+    </button>
+  </ng-template>
+</p-dialog>
+
 <!-- Occupied table dialog (preserved intact) -->
 <p-dialog
   [visible]="showTableDialog()"

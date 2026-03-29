@@ -42,7 +42,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   /** Role enum to Spanish display label */
   private readonly roleLabels: Record<UserRole, string> = {
     Owner: 'Dueño', Manager: 'Gerente', Cashier: 'Cajero',
-    Waiter: 'Mesero', Kitchen: 'Cocina', Kiosk: 'Kiosko',
+    Waiter: 'Mesero', Kitchen: 'Cocina', Kiosk: 'Kiosko', Host: 'Hostess',
   };
 
   /** Active branch display name — falls back to locationName from config */

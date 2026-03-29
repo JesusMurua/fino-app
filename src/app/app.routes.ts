@@ -20,7 +20,7 @@ export const appRoutes: Routes = [
   {
     path: 'admin',
     canActivate: [authGuard, onboardingGuard],
-    data: { roles: ['Owner', 'Manager'] },
+    data: { roles: ['Owner', 'Manager', 'Host'] },
     loadChildren: () =>
       import('./modules/admin/admin.routes').then(m => m.adminRoutes),
   },
@@ -46,7 +46,7 @@ export const appRoutes: Routes = [
   {
     path: 'tables',
     canActivate: [authGuard],
-    data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter'] },
+    data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter', 'Host'] },
     loadComponent: () =>
       import('./modules/tables/tables.component').then(m => m.TablesComponent),
   },

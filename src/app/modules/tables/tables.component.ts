@@ -15,8 +15,10 @@ import {
   ZoneType,
   normalizeDisplayStatus,
 } from '../../core/models';
+import { Reservation } from '../../core/models/reservation.model';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
+import { ReservationService } from '../../core/services/reservation.service';
 import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../core/services/table.service';
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -57,9 +59,18 @@ export class TablesComponent implements OnInit, OnDestroy {
   /** Expose enums for template */
   readonly ZoneType = ZoneType;
   readonly catalogService = inject(CatalogService);
+  private readonly reservationService = inject(ReservationService);
 
   /** Raw table statuses from the API */
   readonly tableStatuses = signal<TableStatusDto[]>([]);
+
+  /** Today's reservations for floor map integration */
+  readonly todayReservations = signal<Reservation[]>([]);
+
+  /** Reserved table dialog state */
+  readonly showReservedDialog = signal(false);
+  readonly selectedReservation = signal<Reservation | null>(null);
+  readonly seatingBusy = signal(false);
 
   /** Legacy tables signal — kept for dialog downstream compatibility */
   readonly tables = signal<RestaurantTable[]>([]);
@@ -308,6 +319,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     await this.zoneService.loadZones();
     await this.loadTableStatuses();
+    this.loadTodayReservations();
     this.pollTimer = setInterval(() => this.loadTableStatuses(), POLL_INTERVAL);
     this.updateTimerInterval = setInterval(() => this.secondsSinceUpdate.update(s => s + 1), 1000);
   }
@@ -363,6 +375,18 @@ export class TablesComponent implements OnInit, OnDestroy {
    * @param dto The table status DTO from the grid
    */
   onTableCardClick(dto: TableStatusDto): void {
+    // Reserved tables → show reservation info + Sentar button
+    if (dto.displayStatus === 'reserved') {
+      const reservation = this.todayReservations().find(
+        r => r.tableId === dto.tableId && r.status === 'Confirmed',
+      );
+      if (reservation) {
+        this.selectedReservation.set(reservation);
+        this.showReservedDialog.set(true);
+        return;
+      }
+    }
+
     const table: RestaurantTable = {
       id: dto.tableId,
       branchId: this.authService.branchId,
@@ -893,6 +917,36 @@ export class TablesComponent implements OnInit, OnDestroy {
       });
     } finally {
       this.splitBusy.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Reservation Methods
+
+  /** Loads today's reservations for floor map integration */
+  private loadTodayReservations(): void {
+    this.reservationService.getByDay(new Date()).subscribe({
+      next: (data) => this.todayReservations.set(data),
+      error: () => this.todayReservations.set([]),
+    });
+  }
+
+  /** Seats a confirmed reservation from the floor map */
+  async seatReservation(): Promise<void> {
+    const reservation = this.selectedReservation();
+    if (!reservation) return;
+
+    this.seatingBusy.set(true);
+    try {
+      await firstValueFrom(this.reservationService.seat(reservation.id));
+      this.messageService.add({ severity: 'success', summary: 'Reservación sentada', life: 3000 });
+      this.showReservedDialog.set(false);
+      this.loadTodayReservations();
+    } catch {
+      this.messageService.add({ severity: 'error', summary: 'Error al sentar reservación', life: 3000 });
+    } finally {
+      this.seatingBusy.set(false);
     }
   }
 

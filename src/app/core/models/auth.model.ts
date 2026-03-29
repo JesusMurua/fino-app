@@ -1,7 +1,7 @@
 import { BusinessType, PlanType } from './plan.model';
 
 /** Roles returned by the API — PascalCase to match backend enum */
-export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk';
+export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk' | 'Host';
 
 /** Branch summary returned in the login response */
 export interface BranchInfo {
