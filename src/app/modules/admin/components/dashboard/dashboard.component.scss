@@ -22,6 +22,21 @@
     i { font-size: 20px; }
   }
 
+  &__offline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    background: #FEF3C7;
+    color: #92400E;
+    border-radius: 8px;
+    border: 1px solid #FDE68A;
+    font-size: 13px;
+
+    i { font-size: 16px; }
+  }
+
   &__columns {
     display: grid;
     grid-template-columns: 280px 1fr;

@@ -9,6 +9,13 @@
     </div>
   }
 
+  @if (isOffline()) {
+    <div class="dashboard__offline">
+      <i class="pi pi-wifi"></i>
+      <span>Sin conexión — datos no disponibles</span>
+    </div>
+  }
+
   @if (!isLoading() && data(); as d) {
 
     <!-- KPI Cards -->
@@ -16,26 +23,24 @@
 
       <div class="kpi-card">
         <span class="kpi-card__label">Total del día</span>
-        <span class="kpi-card__value kpi-card__value--primary">{{ d.totalCents | price }}</span>
+        <span class="kpi-card__value kpi-card__value--primary">{{ d.sales.totalCents | price }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Órdenes</span>
-        <span class="kpi-card__value">{{ d.orderCount }}</span>
+        <span class="kpi-card__value">{{ d.sales.completedOrders }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Ticket promedio</span>
-        <span class="kpi-card__value">{{ d.averageTicketCents | price }}</span>
+        <span class="kpi-card__value">{{ d.sales.averageTicketCents | price }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Método más usado</span>
         <span class="kpi-card__value">
-          @if (d.topMethod === 'cash') {
-            <span class="badge badge--cash">Efectivo</span>
-          } @else if (d.topMethod === 'card') {
-            <span class="badge badge--card">Tarjeta</span>
+          @if (d.sales.topPaymentMethod) {
+            <span class="badge badge--cash">{{ catalogService.getPaymentMethodName(d.sales.topPaymentMethod) }}</span>
           } @else {
             <span class="kpi-card__empty">—</span>
           }
@@ -51,25 +56,36 @@
       <div class="cutoff-grid">
         <div class="cutoff-row">
           <span class="badge badge--cash">Efectivo</span>
-          <span class="cutoff-row__amount">{{ d.cashCents | price }}</span>
+          <span class="cutoff-row__amount">{{ d.sales.cashCents | price }}</span>
         </div>
         <div class="cutoff-row">
           <span class="badge badge--card">Tarjeta</span>
-          <span class="cutoff-row__amount">{{ d.cardCents | price }}</span>
+          <span class="cutoff-row__amount">{{ d.sales.cardCents | price }}</span>
         </div>
+        @if (d.sales.transferCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--transfer">Transferencia</span>
+            <span class="cutoff-row__amount">{{ d.sales.transferCents | price }}</span>
+          </div>
+        }
+        @if (d.sales.otherCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--other">Otro</span>
+            <span class="cutoff-row__amount">{{ d.sales.otherCents | price }}</span>
+          </div>
+        }
         <div class="cutoff-row cutoff-row--total">
           <span class="cutoff-row__label">Total</span>
-          <span class="cutoff-row__amount cutoff-row__amount--total">{{ d.totalCents | price }}</span>
+          <span class="cutoff-row__amount cutoff-row__amount--total">{{ d.sales.totalCents | price }}</span>
         </div>
       </div>
     </section>
 
     <!-- Cancelaciones del día -->
-    @if (d.cancelledCount > 0) {
+    @if (d.orders.cancelledCount > 0) {
       <section class="section-card">
         <h2 class="section-card__title section-card__title--danger">Cancelaciones del día</h2>
 
-        <!-- Detail table of cancelled orders -->
         <div class="orders-table-wrap">
           <table class="orders-table">
             <thead>
@@ -82,10 +98,10 @@
               </tr>
             </thead>
             <tbody>
-              @for (order of d.cancelledOrders; track order.id) {
+              @for (order of cancelledOrders(); track order.orderNumber) {
                 <tr>
                   <td class="orders-table__num">#{{ order.orderNumber }}</td>
-                  <td class="orders-table__items">{{ order.items.length }} artículo(s)</td>
+                  <td class="orders-table__items">{{ order.itemCount }} artículo(s)</td>
                   <td class="orders-table__cancel-reason-cell">{{ order.cancellationReason ?? 'Sin motivo' }}</td>
                   <td class="orders-table__time">{{ formatTime(order.createdAt) }}</td>
                   <td class="orders-table__total">{{ order.totalCents | price }}</td>
@@ -94,8 +110,8 @@
             </tbody>
             <tfoot>
               <tr class="orders-table__total-row">
-                <td colspan="4"><strong>Total cancelado</strong> · {{ d.cancelledCount }} {{ d.cancelledCount === 1 ? 'orden' : 'órdenes' }}</td>
-                <td class="orders-table__total orders-table__total--danger">{{ d.cancelledTotalCents | price }}</td>
+                <td colspan="4"><strong>Total cancelado</strong> · {{ d.orders.cancelledCount }} {{ d.orders.cancelledCount === 1 ? 'orden' : 'órdenes' }}</td>
+                <td class="orders-table__total orders-table__total--danger">{{ d.orders.cancelledTotalCents | price }}</td>
               </tr>
             </tfoot>
           </table>
@@ -118,7 +134,7 @@
               <li class="top-item" [class.top-item--first]="rank === 0">
                 <span class="top-item__rank">{{ rank + 1 }}</span>
                 <span class="top-item__name">{{ item.name }}</span>
-                <span class="top-item__count">{{ item.count }} pza</span>
+                <span class="top-item__count">{{ item.quantity }} pza</span>
               </li>
             }
           </ol>
@@ -128,7 +144,7 @@
       <!-- Órdenes del día -->
       <section class="section-card section-card--wide">
         <h2 class="section-card__title">Órdenes del día</h2>
-        @if (d.orders.length === 0) {
+        @if (d.recentOrders.length === 0) {
           <p class="section-card__empty">No hay órdenes hoy.</p>
         } @else {
           <div class="orders-table-wrap">
@@ -144,16 +160,12 @@
                 </tr>
               </thead>
               <tbody>
-                @for (order of d.orders; track order.id) {
+                @for (order of d.recentOrders; track order.orderNumber) {
                   <tr [class.orders-table__row--cancelled]="order.cancelledAt">
                     <td class="orders-table__num">#{{ order.orderNumber }}</td>
-                    <td class="orders-table__items">{{ order.items.length }} artículo(s)</td>
+                    <td class="orders-table__items">{{ order.itemCount }} artículo(s)</td>
                     <td>
-                      @if (order.payments?.[0]?.method === 'Cash') {
-                        <span class="badge badge--cash">Efectivo</span>
-                      } @else {
-                        <span class="badge badge--card">Tarjeta</span>
-                      }
+                      <span class="badge badge--cash">{{ getPaymentLabel(order) }}</span>
                     </td>
                     <td>
                       @if (order.cancelledAt) {
@@ -165,10 +177,10 @@
                         <span class="badge badge--new">Nueva</span>
                       } @else if (getStatusLabel(order) === 'En cocina') {
                         <span class="badge badge--cooking">En cocina</span>
-                      } @else if (getStatusLabel(order) === 'Lista') {
-                        <span class="badge badge--ready">Lista</span>
-                      } @else if (getStatusLabel(order) === 'Entregada') {
-                        <span class="badge badge--delivered">Entregada</span>
+                      } @else if (getStatusLabel(order) === 'Listo') {
+                        <span class="badge badge--ready">Listo</span>
+                      } @else if (getStatusLabel(order) === 'Entregado') {
+                        <span class="badge badge--delivered">Entregado</span>
                       }
                     </td>
                     <td class="orders-table__time">{{ formatTime(order.createdAt) }}</td>

@@ -1,35 +1,11 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
-import { Order, PaymentMethod, getCashAmountCents, getCardAmountCents } from '../../../../core/models';
+import { DashboardSummary, DashboardOrderRow } from '../../../../core/models';
+import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { DatabaseService } from '../../../../core/services/database.service';
+import { CatalogService } from '../../../../core/services/catalog.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-
-interface TopProduct {
-  name: string;
-  count: number;
-}
-
-interface CancellationGroup {
-  reason: string;
-  count: number;
-  totalCents: number;
-}
-
-interface DashboardData {
-  totalCents: number;
-  orderCount: number;
-  averageTicketCents: number;
-  topMethod: PaymentMethod | null;
-  cashCents: number;
-  cardCents: number;
-  topProducts: TopProduct[];
-  orders: Order[];
-  cancelledCount: number;
-  cancelledTotalCents: number;
-  cancellationGroups: CancellationGroup[];
-  cancelledOrders: Order[];
-}
 
 @Component({
   selector: 'app-dashboard',
@@ -40,103 +16,77 @@ interface DashboardData {
 })
 export class DashboardComponent implements OnInit {
 
+  //#region Properties
+
+  private readonly api = inject(ApiService);
   private readonly authService = inject(AuthService);
+  readonly catalogService = inject(CatalogService);
 
-  readonly data = signal<DashboardData | null>(null);
-  readonly isLoading = signal(true);
+  readonly isLoading = signal(false);
+  readonly isOffline = signal(false);
+  readonly data = signal<DashboardSummary | null>(null);
 
-  constructor(private readonly db: DatabaseService) {
+  //#endregion
+
+  //#region Computeds
+
+  /** Recent orders filtered to only cancelled */
+  readonly cancelledOrders = computed(() =>
+    this.data()?.recentOrders.filter(o => o.cancelledAt) ?? [],
+  );
+
+  //#endregion
+
+  //#region Constructor
+
+  constructor() {
     effect(() => {
       const branchId = this.authService.activeBranchId();
       if (branchId) this.loadData();
     }, { allowSignalWrites: true });
   }
 
+  //#endregion
+
+  //#region Lifecycle
+
   async ngOnInit(): Promise<void> {
     await this.loadData();
   }
 
-  /** Loads today's orders for the active branch and computes dashboard KPIs */
+  //#endregion
+
+  //#region Data Loading
+
+  /** Loads dashboard summary from the API */
   async loadData(): Promise<void> {
     this.isLoading.set(true);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const branchId = this.authService.activeBranchId();
+    this.isOffline.set(false);
 
-    const allOrders = await this.db.orders
-      .where('createdAt')
-      .aboveOrEqual(todayStart)
-      .filter(o => o.branchId === branchId)
-      .toArray();
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    // Separate completed from cancelled
-    const completedOrders = allOrders.filter(o => !o.cancelledAt);
-    const cancelledOrders = allOrders.filter(o => !!o.cancelledAt);
-
-    // KPI metrics — only completed orders
-    const totalCents = completedOrders.reduce((s, o) => s + o.totalCents, 0);
-    const orderCount = completedOrders.length;
-    const averageTicketCents = orderCount > 0 ? Math.round(totalCents / orderCount) : 0;
-
-    const cashCents = completedOrders.reduce((s, o) => s + getCashAmountCents(o), 0);
-    const cardCents = completedOrders.reduce((s, o) => s + getCardAmountCents(o), 0);
-    const topMethod: PaymentMethod | null = orderCount === 0
-      ? null
-      : cashCents >= cardCents ? PaymentMethod.Cash : PaymentMethod.Card;
-
-    // Top 5 products — only completed orders
-    const productCounts = new Map<string, number>();
-    for (const order of completedOrders) {
-      for (const item of order.items) {
-        const key = item.product.name;
-        productCounts.set(key, (productCounts.get(key) ?? 0) + item.quantity);
-      }
+      const result = await firstValueFrom(
+        this.api.get<DashboardSummary>(
+          `/dashboard/summary?date=${today.toISOString()}`,
+        ),
+      );
+      this.data.set(result);
+    } catch {
+      this.isOffline.set(true);
+      this.data.set(null);
+    } finally {
+      this.isLoading.set(false);
     }
-
-    const topProducts: TopProduct[] = [...productCounts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // Cancellation groups
-    const cancelledTotalCents = cancelledOrders.reduce((s, o) => s + o.totalCents, 0);
-    const reasonMap = new Map<string, { count: number; totalCents: number }>();
-    for (const order of cancelledOrders) {
-      const reason = order.cancellationReason ?? 'Sin motivo';
-      const existing = reasonMap.get(reason) ?? { count: 0, totalCents: 0 };
-      existing.count += 1;
-      existing.totalCents += order.totalCents;
-      reasonMap.set(reason, existing);
-    }
-
-    const cancellationGroups: CancellationGroup[] = [...reasonMap.entries()]
-      .map(([reason, { count, totalCents: cents }]) => ({ reason, count, totalCents: cents }))
-      .sort((a, b) => b.totalCents - a.totalCents);
-
-    this.data.set({
-      totalCents,
-      orderCount,
-      averageTicketCents,
-      topMethod,
-      cashCents,
-      cardCents,
-      topProducts,
-      orders: [...allOrders].sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-      cancelledCount: cancelledOrders.length,
-      cancelledTotalCents,
-      cancellationGroups,
-      cancelledOrders: [...cancelledOrders].sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    });
-
-    this.isLoading.set(false);
   }
 
-  /** Returns the display status label for an order */
-  getStatusLabel(order: Order): string {
+  //#endregion
+
+  //#region Display Helpers
+
+  /** Returns status badge label for a dashboard order row */
+  getStatusLabel(order: DashboardOrderRow): string {
     if (order.cancelledAt) return 'Cancelada';
     if (order.kitchenStatus === 'Delivered') return 'Entregado';
     if (order.kitchenStatus === 'Ready') return 'Listo';
@@ -144,12 +94,22 @@ export class DashboardComponent implements OnInit {
     return 'Nueva';
   }
 
-  /** Formats a Date to HH:MM */
-  formatTime(date: Date | string): string {
-    return new Date(date).toLocaleTimeString('es-MX', {
+  /** Returns payment method label for a dashboard order row */
+  getPaymentLabel(order: DashboardOrderRow): string {
+    if (!order.payments || order.payments.length === 0) return 'Sin cobrar';
+    return order.payments
+      .map(p => this.catalogService.getPaymentMethodName(p.method))
+      .join(' + ');
+  }
+
+  /** Formats an ISO date string to HH:MM */
+  formatTime(dateStr: string): string {
+    return new Date(dateStr).toLocaleTimeString('es-MX', {
       hour: '2-digit',
       minute: '2-digit',
     });
   }
+
+  //#endregion
 
 }
