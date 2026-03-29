@@ -58,9 +58,142 @@
 }
 
 // -----------------------------------------------------------------------
-// Map placeholder
+// Static floor map
 // -----------------------------------------------------------------------
-.map-placeholder {
+.floor-map {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__zone-label {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: 11px;
+    font-weight: 500;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 0.5px solid #E5E7EB;
+    margin-bottom: $space-3;
+    padding-bottom: 6px;
+  }
+
+  &__zone-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--salon    { background: $color-primary; }
+    &--barseats { background: #2563EB; }
+    &--other    { background: #D97706; }
+  }
+
+  &__zone-count {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: #F3F4F6;
+    border-radius: 99px;
+    color: $color-text-sub;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  &__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    &--bar {
+      .floor-map__card {
+        width: 72px;
+        height: 72px;
+        min-width: 72px;
+        min-height: 72px;
+        border-radius: 50%;
+        padding: $space-1;
+      }
+    }
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 80px;
+    height: 80px;
+    min-width: 80px;
+    min-height: 80px;
+    padding: $space-2;
+    border-radius: 8px;
+    border: 0.5px solid #D1D5DB;
+    background: white;
+    cursor: default;
+
+    &--inactive {
+      opacity: 0.4;
+    }
+  }
+
+  &__card-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: $color-text-title;
+    line-height: 1;
+    text-align: center;
+  }
+
+  &__card-capacity {
+    font-size: 10px;
+    color: $color-text-sub;
+    line-height: 1;
+  }
+
+  &__card-badge {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 99px;
+    background: #F3F4F6;
+    color: $color-text-sub;
+    margin-top: 1px;
+    line-height: 1.3;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: $space-2;
+  }
+
+  &__config-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+
+    i { font-size: 12px; }
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.floor-map-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -72,7 +205,7 @@
 
   i { font-size: 48px; opacity: 0.2; }
   p { margin: 0; font-size: $font-size-base; }
-  small { font-size: 12px; opacity: 0.7; }
+  small { font-size: 12px; opacity: 0.7; margin-bottom: $space-2; }
 }
 
 // -----------------------------------------------------------------------
@@ -504,4 +637,23 @@
   &__input {
     width: 100%;
   }
+
+  &__error {
+    font-size: 12px;
+    color: #DC2626;
+  }
+}
+
+.dialog-error {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #DC2626;
+
+  i { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
 }

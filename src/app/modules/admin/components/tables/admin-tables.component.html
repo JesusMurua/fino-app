@@ -28,14 +28,92 @@
   </nav>
 
   <!-- ================================================================ -->
-  <!-- TAB: Map (placeholder — floor map lives in /tables route)        -->
+  <!-- TAB: Map (static floor plan preview)                             -->
   <!-- ================================================================ -->
   @if (activeTab() === 'map') {
-    <div class="map-placeholder">
-      <i class="pi pi-map"></i>
-      <p>El mapa en tiempo real está disponible en la vista de mesas del POS.</p>
-      <small>Navega a "Ir al POS" → Mesas para ver el mapa interactivo.</small>
-    </div>
+
+    <!-- Has tables → show floor plan -->
+    @if (configTables().length > 0) {
+      <div class="floor-map">
+
+        <!-- Zone sections -->
+        @for (group of staticMapZones(); track group.zone.id) {
+          @if (group.tables.length > 0) {
+            <div class="floor-map__section">
+              <div class="floor-map__zone-label">
+                <span class="floor-map__zone-dot floor-map__zone-dot--{{ group.zone.type.toLowerCase() }}"></span>
+                <span>{{ group.zone.name }}</span>
+                <span class="floor-map__zone-count">{{ group.tables.length }}</span>
+              </div>
+              <div class="floor-map__grid" [class.floor-map__grid--bar]="group.zone.type === ZoneType.BarSeats">
+                @for (table of group.tables; track table.id) {
+                  <div
+                    class="floor-map__card"
+                    [class.floor-map__card--bar]="group.zone.type === ZoneType.BarSeats"
+                    [class.floor-map__card--inactive]="!table.isActive"
+                  >
+                    <span class="floor-map__card-name">{{ table.name }}</span>
+                    @if (table.capacity) {
+                      <span class="floor-map__card-capacity">{{ table.capacity }}p</span>
+                    }
+                    @if (!table.isActive) {
+                      <span class="floor-map__card-badge">Inactiva</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+
+        <!-- Tables without zone -->
+        @if (tablesWithoutZone().length > 0) {
+          <div class="floor-map__section">
+            <div class="floor-map__zone-label">
+              <span>Sin zona</span>
+              <span class="floor-map__zone-count">{{ tablesWithoutZone().length }}</span>
+            </div>
+            <div class="floor-map__grid">
+              @for (table of tablesWithoutZone(); track table.id) {
+                <div
+                  class="floor-map__card"
+                  [class.floor-map__card--inactive]="!table.isActive"
+                >
+                  <span class="floor-map__card-name">{{ table.name }}</span>
+                  @if (table.capacity) {
+                    <span class="floor-map__card-capacity">{{ table.capacity }}p</span>
+                  }
+                  @if (!table.isActive) {
+                    <span class="floor-map__card-badge">Inactiva</span>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Link to config tab -->
+        <div class="floor-map__footer">
+          <button type="button" class="floor-map__config-link" (click)="activeTab.set('config')">
+            Editar configuración <i class="pi pi-arrow-right"></i>
+          </button>
+        </div>
+
+      </div>
+    }
+
+    <!-- No tables → empty state -->
+    @if (configTables().length === 0 && !isLoadingConfig()) {
+      <div class="floor-map-empty">
+        <i class="pi pi-th-large"></i>
+        <p>No hay mesas configuradas</p>
+        <small>Configura tus mesas y zonas para ver el mapa de tu local</small>
+        <button type="button" class="floor-map__config-link" (click)="activeTab.set('config')">
+          Ir a Configuración <i class="pi pi-arrow-right"></i>
+        </button>
+      </div>
+    }
+
   }
 
   <!-- ================================================================ -->
@@ -167,7 +245,7 @@
 
           <!-- Add new zone column -->
           @if (!showAddZoneForm()) {
-            <div class="zone-column zone-column--add" (click)="showAddZoneForm.set(true)">
+            <div class="zone-column zone-column--add" (click)="openAddZoneForm()">
               <i class="pi pi-plus"></i>
               <span>Nueva zona</span>
             </div>
@@ -195,6 +273,12 @@
                   </button>
                 }
               </div>
+              @if (zoneAddError()) {
+                <div class="dialog-error">
+                  <i class="pi pi-exclamation-circle"></i>
+                  <span>{{ zoneAddError() }}</span>
+                </div>
+              }
               <div class="zone-add-form__actions">
                 <button type="button" class="btn-ghost-sm" (click)="showAddZoneForm.set(false)">
                   Cancelar
@@ -220,7 +304,7 @@
           <i class="pi pi-th-large"></i>
           <p>No hay zonas configuradas</p>
           <small>Crea tu primera zona para organizar las mesas</small>
-          <button type="button" class="btn-primary" (click)="showAddZoneForm.set(true)">
+          <button type="button" class="btn-primary" (click)="openAddZoneForm()">
             <i class="pi pi-plus"></i>
             Crear primera zona
           </button>
@@ -292,8 +376,12 @@
         pInputText
         [(ngModel)]="form.name"
         placeholder="Ej. Mesa 1"
+        maxlength="50"
         class="form-field__input"
       />
+      @if (tableNameError()) {
+        <small class="form-field__error">{{ tableNameError() }}</small>
+      }
     </div>
 
     <div class="form-field">
@@ -306,6 +394,9 @@
         placeholder="Ej. 4"
         styleClass="form-field__input"
       />
+      @if (tableCapacityError()) {
+        <small class="form-field__error">{{ tableCapacityError() }}</small>
+      }
     </div>
 
     @if (configZones().length > 0) {
@@ -329,6 +420,13 @@
       <label class="form-field__label" for="tf-active">Activa</label>
       <p-inputSwitch inputId="tf-active" [(ngModel)]="form.isActive" />
     </div>
+
+    @if (tableDialogError()) {
+      <div class="dialog-error">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ tableDialogError() }}</span>
+      </div>
+    }
   </div>
 
   <ng-template pTemplate="footer">
@@ -380,6 +478,12 @@
         }
       </div>
     </div>
+    @if (zoneDialogError()) {
+      <div class="dialog-error">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ zoneDialogError() }}</span>
+      </div>
+    }
   </div>
   <ng-template pTemplate="footer">
     <button type="button" class="btn-ghost" (click)="showZoneEditDialog.set(false)">Cancelar</button>

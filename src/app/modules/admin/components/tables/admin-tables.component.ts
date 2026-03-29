@@ -94,6 +94,13 @@ export class AdminTablesComponent implements OnInit {
   editZoneName = '';
   editZoneType: ZoneType = ZoneType.Salon;
 
+  // ---- Error messages ----
+  readonly tableDialogError = signal('');
+  readonly tableNameError = signal('');
+  readonly tableCapacityError = signal('');
+  readonly zoneDialogError = signal('');
+  readonly zoneAddError = signal('');
+
   //#endregion
 
   //#region Computeds
@@ -113,6 +120,16 @@ export class AdminTablesComponent implements OnInit {
   /** Tables not assigned to any zone */
   readonly tablesWithoutZone = computed(() =>
     this.configTables().filter(t => !t.zoneId),
+  );
+
+  /** Zones with their pre-grouped tables for the static map */
+  readonly staticMapZones = computed(() =>
+    this.configZones().map(zone => ({
+      zone,
+      tables: this.configTables()
+        .filter(t => t.zoneId === zone.id)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    })),
   );
 
   //#endregion
@@ -166,10 +183,17 @@ export class AdminTablesComponent implements OnInit {
 
   //#region Zone CRUD
 
+  /** Opens the add zone inline form */
+  openAddZoneForm(): void {
+    this.zoneAddError.set('');
+    this.showAddZoneForm.set(true);
+  }
+
   /** Creates a new zone from the inline form */
   async saveNewZone(): Promise<void> {
     const name = this.newZoneName().trim();
     if (!name) return;
+    this.zoneAddError.set('');
 
     try {
       await firstValueFrom(
@@ -186,8 +210,8 @@ export class AdminTablesComponent implements OnInit {
       this.newZoneName.set('');
       this.newZoneType.set(ZoneType.Salon);
       await this.loadConfigData();
-    } catch {
-      this.messageService.add({ severity: 'error', summary: 'Error al crear la zona', life: 3000 });
+    } catch (err: any) {
+      this.zoneAddError.set(this.extractApiError(err));
     }
   }
 
@@ -196,6 +220,7 @@ export class AdminTablesComponent implements OnInit {
     this.editingZone.set(zone);
     this.editZoneName = zone.name;
     this.editZoneType = zone.type;
+    this.zoneDialogError.set('');
     this.showZoneEditDialog.set(true);
   }
 
@@ -203,6 +228,7 @@ export class AdminTablesComponent implements OnInit {
   async saveEditZone(): Promise<void> {
     const zone = this.editingZone();
     if (!zone || !this.editZoneName.trim()) return;
+    this.zoneDialogError.set('');
 
     try {
       await firstValueFrom(
@@ -215,8 +241,8 @@ export class AdminTablesComponent implements OnInit {
       this.messageService.add({ severity: 'success', summary: 'Zona actualizada', life: 3000 });
       this.showZoneEditDialog.set(false);
       await this.loadConfigData();
-    } catch {
-      this.messageService.add({ severity: 'error', summary: 'Error al actualizar', life: 3000 });
+    } catch (err: any) {
+      this.zoneDialogError.set(this.extractApiError(err));
     }
   }
 
@@ -253,6 +279,7 @@ export class AdminTablesComponent implements OnInit {
   openAddTable(zoneId: number | null): void {
     this.editingTable.set(null);
     this.form = { ...this.emptyForm(), zoneId };
+    this.clearTableErrors();
     this.showTableDialog.set(true);
   }
 
@@ -265,12 +292,14 @@ export class AdminTablesComponent implements OnInit {
       zoneId: table.zoneId ?? null,
       isActive: table.isActive,
     };
+    this.clearTableErrors();
     this.showTableDialog.set(true);
   }
 
   /** Saves table (create or update) */
   async saveTable(): Promise<void> {
-    if (!this.form.name.trim()) return;
+    this.tableDialogError.set('');
+    if (!this.validateTableForm()) return;
 
     try {
       if (this.editingTable()) {
@@ -293,8 +322,8 @@ export class AdminTablesComponent implements OnInit {
 
       this.showTableDialog.set(false);
       await this.loadConfigData();
-    } catch {
-      this.messageService.add({ severity: 'error', summary: 'Error al guardar la mesa', life: 3000 });
+    } catch (err: any) {
+      this.tableDialogError.set(this.extractApiError(err));
     }
   }
 
@@ -337,6 +366,53 @@ export class AdminTablesComponent implements OnInit {
 
   private emptyForm(): TableForm {
     return { name: '', capacity: null, zoneId: null, isActive: true };
+  }
+
+  /** Clears all table dialog error signals */
+  private clearTableErrors(): void {
+    this.tableDialogError.set('');
+    this.tableNameError.set('');
+    this.tableCapacityError.set('');
+  }
+
+  /** Validates the table form before API call */
+  private validateTableForm(): boolean {
+    let valid = true;
+    this.tableNameError.set('');
+    this.tableCapacityError.set('');
+
+    const name = this.form.name.trim();
+    if (!name) {
+      this.tableNameError.set('El nombre es obligatorio');
+      valid = false;
+    } else if (name.length > 50) {
+      this.tableNameError.set('Máximo 50 caracteres');
+      valid = false;
+    }
+
+    if (this.form.capacity !== null) {
+      if (this.form.capacity < 1) {
+        this.tableCapacityError.set('La capacidad mínima es 1');
+        valid = false;
+      } else if (this.form.capacity > 50) {
+        this.tableCapacityError.set('La capacidad máxima es 50');
+        valid = false;
+      }
+    }
+
+    return valid;
+  }
+
+  /** Extracts a user-friendly error message from an API error response */
+  private extractApiError(err: any): string {
+    const data = err?.error;
+    if (typeof data === 'string') return data;
+    if (data?.message) return data.message;
+    if (data?.errors) {
+      const messages = Object.values<string[]>(data.errors).flat();
+      return messages.join('. ');
+    }
+    return 'Ocurrió un error inesperado';
   }
 
   //#endregion
