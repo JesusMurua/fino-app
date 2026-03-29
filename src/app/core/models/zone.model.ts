@@ -41,17 +41,25 @@ export interface TableStatusDto {
 
 /**
  * Maps the backend displayStatus string to the frontend TableStatus enum.
+ * Handles both PascalCase and snake_case formats from the API.
  * Falls back to Free for unknown values.
  */
 export function mapDisplayStatus(s: string): TableStatus {
   switch (s) {
-    case 'Free':        return TableStatus.Free;
-    case 'WithOrder':   return TableStatus.WithOrder;
-    case 'InKitchen':   return TableStatus.InKitchen;
-    case 'Ready':       return TableStatus.Ready;
-    case 'WaitingBill': return TableStatus.WaitingBill;
-    case 'Paid':        return TableStatus.Paid;
-    case 'Reserved':    return TableStatus.Reserved;
-    default:            return TableStatus.Free;
+    case 'Free':
+    case 'free':         return TableStatus.Free;
+    case 'WithOrder':
+    case 'with_order':   return TableStatus.WithOrder;
+    case 'InKitchen':
+    case 'in_kitchen':   return TableStatus.InKitchen;
+    case 'Ready':
+    case 'ready':        return TableStatus.Ready;
+    case 'WaitingBill':
+    case 'waiting_bill': return TableStatus.WaitingBill;
+    case 'Paid':
+    case 'paid':         return TableStatus.Paid;
+    case 'Reserved':
+    case 'reserved':     return TableStatus.Reserved;
+    default:             return TableStatus.Free;
   }
 }
