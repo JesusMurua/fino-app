@@ -4,6 +4,7 @@ import { ToastModule } from 'primeng/toast';
 import { NgHttpLoaderComponent } from 'ng-http-loader';
 
 import { PrinterService } from './core/services/printer.service';
+import { SyncService } from './core/services/sync.service';
 import { InstallBannerComponent } from './shared/components/install-banner/install-banner.component';
 import { UpdateBannerComponent } from './shared/components/update-banner/update-banner.component';
 
@@ -17,6 +18,7 @@ import { UpdateBannerComponent } from './shared/components/update-banner/update-
 export class AppComponent implements OnInit {
 
   private readonly printerService = inject(PrinterService);
+  private readonly syncService = inject(SyncService);
 
   /** URLs excluded from the global loading spinner (polling endpoints) */
   readonly filteredUrls = [
