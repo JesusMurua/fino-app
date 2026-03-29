@@ -42,12 +42,12 @@ export const DEVICE_MODES: DeviceModeCatalog[] = [
 
 /** Offline fallback — business type catalog with feature flags */
 export const BUSINESS_TYPES: BusinessTypeCatalog[] = [
-  { id: 1, code: 'Restaurant', name: 'Restaurante', hasKitchen: true,  hasTables: true,  sortOrder: 1 },
-  { id: 2, code: 'Retail',     name: 'Abarrotes',   hasKitchen: false, hasTables: false, sortOrder: 2 },
-  { id: 3, code: 'Cafe',       name: 'Café',         hasKitchen: true,  hasTables: true,  sortOrder: 3 },
-  { id: 4, code: 'Bar',        name: 'Bar',           hasKitchen: true,  hasTables: true,  sortOrder: 4 },
-  { id: 5, code: 'FoodTruck',  name: 'Food Truck',   hasKitchen: true,  hasTables: false, sortOrder: 5 },
-  { id: 6, code: 'General',    name: 'General',       hasKitchen: false, hasTables: false, sortOrder: 6 },
+  { id: 1, code: 'Restaurant', name: 'Restaurante', hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
+  { id: 2, code: 'Retail',     name: 'Abarrotes',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 2 },
+  { id: 3, code: 'Cafe',       name: 'Café',         hasKitchen: true,  hasTables: true,  posExperience: 'Counter',    sortOrder: 3 },
+  { id: 4, code: 'Bar',        name: 'Bar',           hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 4 },
+  { id: 5, code: 'FoodTruck',  name: 'Food Truck',   hasKitchen: true,  hasTables: false, posExperience: 'Quick',      sortOrder: 5 },
+  { id: 6, code: 'General',    name: 'General',       hasKitchen: false, hasTables: false, posExperience: 'Counter',    sortOrder: 6 },
 ];
 
 /** Offline fallback — zone type catalog */

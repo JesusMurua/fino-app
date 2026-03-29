@@ -32,6 +32,9 @@ export interface DeviceModeCatalog {
   description: string;
 }
 
+/** POS experience variant — determines which POS UI is loaded */
+export type PosExperience = 'Restaurant' | 'Counter' | 'Retail' | 'Quick';
+
 /** Business type catalog entry with feature flags */
 export interface BusinessTypeCatalog {
   id: number;
@@ -39,6 +42,7 @@ export interface BusinessTypeCatalog {
   name: string;
   hasKitchen: boolean;
   hasTables: boolean;
+  posExperience: PosExperience;
   sortOrder: number;
 }
 

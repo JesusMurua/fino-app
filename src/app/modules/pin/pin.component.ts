@@ -84,6 +84,24 @@ export class PinComponent {
 
   //#endregion
 
+  //#region Routing Helpers
+
+  /**
+   * Returns the POS route based on the current business type's posExperience.
+   * Restaurant → /pos, Retail → /pos/retail, Counter → /pos/counter, Quick → /pos/quick.
+   */
+  private getPosDest(): string {
+    const experience = this.configService.posExperience();
+    switch (experience) {
+      case 'Retail':  return '/pos/retail';
+      case 'Counter': return '/pos/counter';
+      case 'Quick':   return '/pos/quick';
+      default:        return '/pos';
+    }
+  }
+
+  //#endregion
+
   //#region Auth
 
   /**
@@ -136,7 +154,7 @@ export class PinComponent {
         default: {
           const dest = mode === 'tables' ? '/tables'
             : mode === 'kitchen' ? '/kitchen'
-            : '/pos';
+            : this.getPosDest();
           this.router.navigate([dest]);
           break;
         }

@@ -6,6 +6,8 @@
  * it lives in DeviceConfig (localStorage) because each device can operate
  * in a different mode simultaneously (e.g. one tablet as kiosk, one as cashier).
  */
+import { BusinessTypeCatalog } from './catalog.model';
+
 export interface BusinessConfig {
   businessName: string;
   locationName: string;
@@ -13,6 +15,8 @@ export interface BusinessConfig {
   hasKitchen: boolean;
   /** Whether this business uses table management */
   hasTables: boolean;
+  /** Cached business type catalog entry — provides posExperience at startup */
+  businessTypeCatalog?: BusinessTypeCatalog;
 }
 
 /** Default business config used before the owner sets up the back office */

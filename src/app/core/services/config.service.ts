@@ -7,9 +7,11 @@ import {
   DEFAULT_DEVICE_CONFIG,
   DEVICE_CONFIG_KEY,
   DeviceConfig,
+  PosExperience,
 } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
+import { CatalogService } from './catalog.service';
 import { DatabaseService } from './database.service';
 
 /**
@@ -49,6 +51,12 @@ export class ConfigService {
   /** Whether the current business uses table management */
   readonly hasTables = computed(() => this.config$.getValue().hasTables ?? true);
 
+  /** POS experience variant for the current business type */
+  readonly posExperience = computed<PosExperience>(() => {
+    const catalog = this.config$.getValue().businessTypeCatalog;
+    return catalog?.posExperience ?? 'Restaurant';
+  });
+
   /** Reactive device config stream — emits on every loadDeviceConfig() and saveDeviceConfig() */
   readonly deviceConfig$ = new BehaviorSubject<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
 
@@ -56,6 +64,7 @@ export class ConfigService {
     private readonly db: DatabaseService,
     private readonly api: ApiService,
     private readonly authService: AuthService,
+    private readonly catalogService: CatalogService,
   ) {
     // Eagerly load device config so subscribers get the real value immediately
     this.loadDeviceConfig();
@@ -87,12 +96,17 @@ export class ConfigService {
         this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
       );
 
+      // Resolve business type catalog from CatalogService using JWT business type
+      const btCode = this.authService.businessType();
+      const btCatalog = this.catalogService.getBusinessType(btCode) ?? config.businessTypeCatalog;
+
       config = {
         ...config,
         businessName: remote.businessName,
         locationName: remote.locationName,
         hasKitchen: remote.hasKitchen ?? config.hasKitchen,
         hasTables: remote.hasTables ?? config.hasTables,
+        businessTypeCatalog: btCatalog,
       };
 
       await this.db.config.put(config);

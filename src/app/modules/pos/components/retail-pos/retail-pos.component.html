@@ -1,0 +1,221 @@
+<p-toast />
+
+<div class="retail-layout">
+
+  <!-- LEFT COLUMN: Search + Categories + Products -->
+  <div class="retail-left">
+
+    <!-- Search Bar -->
+    <div class="retail-search">
+      <i class="pi pi-search retail-search__icon"></i>
+      <input
+        type="text"
+        placeholder="Buscar producto o escanear código..."
+        class="retail-search__input"
+        [value]="searchTerm()"
+        (input)="onSearchInput($event)"
+      />
+      @if (searchTerm()) {
+        <button
+          type="button"
+          class="retail-search__clear"
+          (click)="clearSearch()"
+          aria-label="Limpiar búsqueda"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Category Chips -->
+    <nav class="retail-categories" aria-label="Categorías">
+      <button
+        type="button"
+        class="retail-chip"
+        [class.retail-chip--active]="selectedCategory() === null"
+        (click)="selectCategory(null)"
+      >
+        Todos
+      </button>
+      @for (cat of categories(); track cat.id) {
+        <button
+          type="button"
+          class="retail-chip"
+          [class.retail-chip--active]="selectedCategory() === cat.id"
+          (click)="selectCategory(cat.id)"
+        >
+          {{ cat.name }}
+        </button>
+      }
+    </nav>
+
+    <!-- Product Grid -->
+    <div class="retail-products">
+      @for (product of filteredProducts(); track product.id) {
+        <button
+          type="button"
+          class="retail-product-card"
+          (click)="addToCart(product)"
+        >
+          <span class="retail-product-card__name">{{ product.name }}</span>
+          <span class="retail-product-card__price">{{ product.priceCents | price }}</span>
+        </button>
+      } @empty {
+        @if (!isLoading()) {
+          <div class="retail-empty">
+            <i class="pi pi-inbox"></i>
+            <p>No hay productos</p>
+          </div>
+        }
+      }
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: Cart + Bills + Cobrar -->
+  <div class="retail-right">
+
+    <!-- Cart Header -->
+    <div class="retail-cart-header">
+      <h2>Carrito</h2>
+      @if (cartItems().length > 0) {
+        <button
+          type="button"
+          class="retail-cart-header__clear"
+          (click)="clearCart()"
+          aria-label="Vaciar carrito"
+        >
+          <i class="pi pi-trash"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Cart Items -->
+    <div class="retail-cart-items">
+      @for (item of cartItems(); track item.id) {
+        <div class="retail-cart-item">
+          <div class="retail-cart-item__info">
+            <span class="retail-cart-item__name">{{ item.product.name }}</span>
+            <span class="retail-cart-item__subtotal">{{ item.totalPriceCents | price }}</span>
+          </div>
+          <div class="retail-cart-item__controls">
+            <button
+              type="button"
+              class="retail-qty-btn"
+              (click)="updateQuantity(item.id, -1)"
+              aria-label="Disminuir cantidad"
+            >
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="retail-cart-item__qty">{{ item.quantity }}</span>
+            <button
+              type="button"
+              class="retail-qty-btn"
+              (click)="updateQuantity(item.id, 1)"
+              aria-label="Aumentar cantidad"
+            >
+              <i class="pi pi-plus"></i>
+            </button>
+            <button
+              type="button"
+              class="retail-remove-btn"
+              (click)="removeItem(item.id)"
+              aria-label="Eliminar producto"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <div class="retail-cart-empty">
+          <p>Agrega productos al carrito</p>
+        </div>
+      }
+    </div>
+
+    <!-- Divider + Total -->
+    <div class="retail-cart-footer">
+      <div class="retail-total">
+        <span>Total</span>
+        <span class="retail-total__amount">{{ cartTotal() | price }}</span>
+      </div>
+
+      <!-- Bill Denomination Buttons -->
+      @if (cartItems().length > 0) {
+        <div class="retail-bills">
+          @for (bill of bills; track bill.cents) {
+            <button
+              type="button"
+              class="retail-bill-btn"
+              [class.retail-bill-btn--active]="amountTendered() === bill.cents"
+              (click)="selectBill(bill.cents)"
+            >
+              {{ bill.label }}
+            </button>
+          }
+        </div>
+
+        @if (amountTendered() > 0) {
+          <div class="retail-change">
+            <span>Cambio:</span>
+            <span class="retail-change__amount">{{ change() | price }}</span>
+          </div>
+        }
+      }
+
+      <!-- COBRAR Button -->
+      <button
+        type="button"
+        class="retail-cobrar-btn"
+        [disabled]="cartItems().length === 0"
+        (click)="openPayDialog()"
+      >
+        COBRAR {{ cartTotal() | price }}
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Payment Confirmation Dialog -->
+<p-dialog
+  header="Confirmar cobro"
+  [(visible)]="showPayDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', maxWidth: '400px' }"
+  [contentStyle]="{ padding: '1.5rem' }"
+>
+  <div class="retail-pay-dialog">
+    <div class="retail-pay-dialog__row">
+      <span>Total:</span>
+      <strong>{{ cartTotal() | price }}</strong>
+    </div>
+    <div class="retail-pay-dialog__row">
+      <span>Recibido:</span>
+      <strong>{{ amountTendered() | price }}</strong>
+    </div>
+    <div class="retail-pay-dialog__row retail-pay-dialog__row--change">
+      <span>Cambio:</span>
+      <strong>{{ change() | price }}</strong>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="retail-pay-dialog__actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        (onClick)="showPayDialog.set(false)"
+        styleClass="p-button-outlined"
+      />
+      <p-button
+        label="Confirmar"
+        severity="success"
+        (onClick)="confirmPayment()"
+        [disabled]="amountTendered() < cartTotal()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
