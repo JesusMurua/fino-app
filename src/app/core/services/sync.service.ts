@@ -130,27 +130,74 @@ export class SyncService implements OnDestroy {
 
     try {
       const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';
-      const remoteOrders = await firstValueFrom(
-        this.api.get<Order[]>(`/orders/pull${params}`),
+      const remoteDtos = await firstValueFrom(
+        this.api.get<any[]>(`/orders/pull${params}`),
       );
 
-      for (const remote of remoteOrders) {
-        const local = await this.db.orders.get(remote.id);
+      for (const dto of remoteDtos) {
+        const local = await this.db.orders.get(dto.id);
+        if (local?.syncStatus === 'Pending') continue;
 
-        if (!local) {
-          // New order from another device — add to Dexie
-          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
-        } else if (local.syncStatus === 'Synced') {
-          // Existing order with no pending local changes — update
-          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
-        }
-        // If local.syncStatus === 'pending', keep local version
+        const order = this.mapPullDto(dto);
+        await this.db.orders.put(order);
       }
 
       this.lastPullAt = new Date().toISOString();
     } catch {
       // Silent fail — pull is best-effort, will retry on next interval
     }
+  }
+
+  /**
+   * Maps a flat order DTO from GET /api/orders/pull into the
+   * local Order/CartItem shape that Dexie and templates expect.
+   *
+   * API response shape (confirmed from network):
+   *   { id, branchId, tableId, tableName, kitchenStatus, isPaid,
+   *     totalCents, subtotalCents, paidCents, changeCents,
+   *     createdAt (ISO string), orderNumber,
+   *     items: [{ id, productName, quantity, unitPriceCents }],
+   *     payments: [] }
+   */
+  private mapPullDto(dto: any): Order {
+    return {
+      id: dto.id,
+      orderNumber: dto.orderNumber,
+      branchId: dto.branchId,
+      totalCents: dto.totalCents,
+      subtotalCents: dto.subtotalCents,
+      paidCents: dto.paidCents,
+      changeCents: dto.changeCents,
+      paymentProvider: null,
+      createdAt: new Date(dto.createdAt),
+      syncStatus: 'Synced',
+      syncedAt: new Date(),
+      kitchenStatus: dto.kitchenStatus,
+      deliveryStatus: dto.deliveryStatus,
+      cancellationStatus: dto.cancellationStatus,
+      cancellationReason: dto.cancellationReason,
+      cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
+      tableId: dto.tableId,
+      tableName: dto.tableName,
+      orderDiscountCents: dto.orderDiscountCents ?? 0,
+      totalDiscountCents: dto.totalDiscountCents ?? 0,
+      orderPromotionId: dto.orderPromotionId,
+      orderPromotionName: dto.orderPromotionName,
+      payments: dto.payments ?? [],
+      items: (dto.items ?? []).map((item: any) => ({
+        id: String(item.id),
+        product: { id: item.productId ?? 0, name: item.productName, price: 0, categoryId: 0, isAvailable: true, priceCents: item.unitPriceCents },
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+        totalPriceCents: item.unitPriceCents * item.quantity,
+        discountCents: item.discountCents ?? 0,
+        promotionId: item.promotionId,
+        promotionName: item.promotionName,
+        size: item.sizeName ? { label: item.sizeName, priceDeltaCents: 0 } : undefined,
+        extras: [],
+        notes: item.notes,
+      })),
+    };
   }
 
   //#endregion
