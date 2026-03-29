@@ -194,8 +194,8 @@ export class SyncService implements OnDestroy {
         promotionId: item.promotionId,
         promotionName: item.promotionName,
         size: item.sizeName ? { label: item.sizeName, priceDeltaCents: 0 } : undefined,
-        extras: [],
-        notes: item.notes,
+        extras: (item.extras ?? []).map((name: string) => ({ id: 0, name, priceCents: 0 })),
+        notes: item.notes ?? undefined,
       })),
     };
   }
