@@ -15,7 +15,7 @@ export class PricePipe implements PipeTransform {
     minimumFractionDigits: 2,
   });
 
-  transform(cents: number): string {
-    return this.formatter.format(cents / 100);
+  transform(cents: number | null | undefined): string {
+    return this.formatter.format((cents ?? 0) / 100);
   }
 }
