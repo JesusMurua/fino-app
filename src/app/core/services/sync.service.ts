@@ -131,77 +131,26 @@ export class SyncService implements OnDestroy {
     try {
       const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';
       const remoteOrders = await firstValueFrom(
-        this.api.get<any[]>(`/orders/pull${params}`),
+        this.api.get<Order[]>(`/orders/pull${params}`),
       );
 
       for (const remote of remoteOrders) {
         const local = await this.db.orders.get(remote.id);
 
-        if (local?.syncStatus === 'Pending') continue; // Keep local pending version
-
-        const order = this.mapPullDtoToOrder(remote);
-        await this.db.orders.put(order);
+        if (!local) {
+          // New order from another device — add to Dexie
+          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
+        } else if (local.syncStatus === 'Synced') {
+          // Existing order with no pending local changes — update
+          await this.db.orders.put({ ...remote, syncStatus: 'Synced' });
+        }
+        // If local.syncStatus === 'pending', keep local version
       }
 
       this.lastPullAt = new Date().toISOString();
     } catch {
       // Silent fail — pull is best-effort, will retry on next interval
     }
-  }
-
-  /**
-   * Maps a flat order DTO from the pull API into a local Order shape.
-   * Converts ISO date strings to Date objects and flat items to CartItem shape.
-   */
-  private mapPullDtoToOrder(dto: any): Order {
-    return {
-      id: dto.id,
-      orderNumber: dto.orderNumber,
-      totalCents: dto.totalCents ?? 0,
-      subtotalCents: dto.subtotalCents ?? dto.totalCents ?? 0,
-      paidCents: dto.paidCents ?? 0,
-      changeCents: dto.changeCents ?? 0,
-      paymentProvider: dto.paymentProvider ?? null,
-      syncStatus: 'Synced',
-      syncedAt: new Date(),
-      createdAt: new Date(dto.createdAt),
-      branchId: dto.branchId ?? this.authService.branchId,
-      kitchenStatus: dto.kitchenStatus,
-      deliveryStatus: dto.deliveryStatus,
-      cancellationStatus: dto.cancellationStatus,
-      cancellationReason: dto.cancellationReason,
-      cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
-      tableId: dto.tableId,
-      tableName: dto.tableName,
-      orderDiscountCents: dto.orderDiscountCents ?? 0,
-      totalDiscountCents: dto.totalDiscountCents ?? 0,
-      orderPromotionId: dto.orderPromotionId,
-      orderPromotionName: dto.orderPromotionName,
-      payments: (dto.payments ?? []).map((p: any) => ({
-        method: p.method,
-        amountCents: p.amountCents,
-        reference: p.reference,
-      })),
-      items: (dto.items ?? []).map((item: any) => ({
-        id: item.id ?? crypto.randomUUID(),
-        product: {
-          id: item.productId ?? 0,
-          name: item.productName,
-          price: (item.unitPriceCents ?? 0) / 100,
-          categoryId: 0,
-          isAvailable: true,
-        },
-        quantity: item.quantity,
-        unitPriceCents: item.unitPriceCents ?? 0,
-        totalPriceCents: (item.unitPriceCents ?? 0) * (item.quantity ?? 1),
-        discountCents: item.discountCents ?? 0,
-        promotionId: item.promotionId,
-        promotionName: item.promotionName,
-        size: null,
-        extras: [],
-        notes: item.notes,
-      })),
-    };
   }
 
   //#endregion
