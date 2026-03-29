@@ -3,3 +3,20 @@
   display: block;
   height: 100%;
 }
+
+.global-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: #16A34A;
+  z-index: 9999;
+  animation: loader-progress 1.5s ease-in-out infinite;
+}
+
+@keyframes loader-progress {
+  0%   { width: 0; left: 0; }
+  50%  { width: 60%; left: 20%; }
+  100% { width: 0; left: 100%; }
+}

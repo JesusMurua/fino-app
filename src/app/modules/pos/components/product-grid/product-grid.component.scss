@@ -103,14 +103,41 @@
 }
 
 // -----------------------------------------------------------------------
-// Responsive — hide cart panel on small screens (≤ md)
+// Responsive — stack cart below products on small screens (≤ md)
 // -----------------------------------------------------------------------
 @media (max-width: #{$breakpoint-md}) {
-  app-cart-panel {
-    display: none;
+  .pos-content {
+    flex-direction: column;
+    overflow-y: auto;
   }
 
   .pos-products {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    overflow-y: visible;
+    flex-shrink: 0;
+  }
+
+  app-cart-panel {
+    display: block;
+
+    .cart-panel {
+      width: 100%;
+      height: auto;
+      border-left: none;
+      border-top: 1px solid $color-border-soft;
+    }
+
+    .cart-panel__items {
+      overflow-y: visible;
+      max-height: none;
+    }
+
+    .cart-panel__footer {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      z-index: 10;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+    }
   }
 }
