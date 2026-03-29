@@ -66,16 +66,6 @@
     }
   </div>
 
-  <!-- Loading state -->
-  @if (loading()) {
-    <div class="reports-loading">
-      <p-progressSpinner
-        [style]="{ width: '48px', height: '48px' }"
-        strokeWidth="4"
-      />
-    </div>
-  }
-
   <!-- Empty state -->
   @if (!loading() && !hasData()) {
     <div class="reports-empty">

@@ -4,7 +4,6 @@ import { DatePipe } from '@angular/common';
 
 import { CalendarModule } from 'primeng/calendar';
 import { ChartModule } from 'primeng/chart';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
 import { MessageService } from 'primeng/api';
@@ -22,7 +21,6 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
     DatePipe,
     CalendarModule,
     ChartModule,
-    ProgressSpinnerModule,
     TableModule,
     TabViewModule,
     PricePipe,

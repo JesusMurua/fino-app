@@ -39,12 +39,6 @@
     <!-- Product Grid -->
     <main class="pos-products" aria-label="Productos">
 
-      @if (isLoading()) {
-        <div class="pos-loading">
-          <p-progressSpinner strokeWidth="4" aria-label="Cargando productos" />
-        </div>
-      }
-
       @for (product of filteredProducts(); track product.id) {
         <app-product-card
           [product]="product"

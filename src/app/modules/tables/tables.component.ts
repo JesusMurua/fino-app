@@ -4,7 +4,6 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DialogModule } from 'primeng/dialog';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 import { MessageService } from 'primeng/api';
 
@@ -38,7 +37,7 @@ interface ZoneGroup {
 @Component({
   selector: 'app-tables',
   standalone: true,
-  imports: [DialogModule, ProgressSpinnerModule, PricePipe, NgClass],
+  imports: [DialogModule, PricePipe, NgClass],
   templateUrl: './tables.component.html',
   styleUrl: './tables.component.scss',
 })

@@ -71,13 +71,6 @@
     </div>
   }
 
-  <!-- Loading -->
-  @if (loading() && tableStatuses().length === 0) {
-    <div class="tables-loading">
-      <p-progressSpinner strokeWidth="3" />
-    </div>
-  }
-
   <!-- Empty state -->
   @if (!loading() && tableStatuses().length === 0) {
     <div class="tables-empty">
@@ -209,7 +202,7 @@
   <!-- Loading state -->
   @if (loadingOrders()) {
     <div class="td-loading">
-      <p-progressSpinner [style]="{ width: '40px', height: '40px' }" />
+      <i class="pi pi-spin pi-spinner" style="font-size: 24px; color: #16A34A"></i>
     </div>
   }
 

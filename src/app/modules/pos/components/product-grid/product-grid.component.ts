@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ToastModule } from 'primeng/toast';
 
 import { Product } from '../../../../core/models';
@@ -21,7 +20,6 @@ import { ProductCardComponent } from '../product-card/product-card.component';
   standalone: true,
   imports: [
     ButtonModule,
-    ProgressSpinnerModule,
     ToastModule,
     ProductCardComponent,
     CartPanelComponent,
