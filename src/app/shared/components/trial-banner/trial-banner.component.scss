@@ -55,6 +55,27 @@
     }
   }
 
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: underline;
+    transition: background 0.15s;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+  }
+
   &__dismiss {
     display: flex;
     align-items: center;

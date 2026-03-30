@@ -1,0 +1,26 @@
+@if (isVisible()) {
+  <div class="expired-overlay">
+    <div class="expired-overlay__card">
+      <div class="expired-overlay__brand">Kaja</div>
+      <div class="expired-overlay__business">{{ businessName() }}</div>
+
+      <h1 class="expired-overlay__title">Tu período de prueba terminó</h1>
+      <p class="expired-overlay__subtitle">Activa tu plan para seguir vendiendo</p>
+
+      <button
+        type="button"
+        class="expired-overlay__cta"
+        (click)="openPricing()"
+      >
+        Ver planes →
+      </button>
+
+      <p class="expired-overlay__refresh">
+        ¿Ya pagaste?
+        <button type="button" class="expired-overlay__link" (click)="refreshStatus()">
+          Actualizar estado
+        </button>
+      </p>
+    </div>
+  </div>
+}

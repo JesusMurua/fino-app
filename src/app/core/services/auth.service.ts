@@ -13,6 +13,7 @@ import {
   PlanInfo,
   PlanType,
   RETURN_URL_KEY,
+  SubscriptionStatus,
 } from '../models';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
@@ -82,6 +83,17 @@ export class AuthService {
         : 0,
       isPaid: this.planType() !== PlanType.Free,
     };
+  });
+
+  /** Cached subscription status from the API */
+  readonly subscriptionStatus = signal<SubscriptionStatus | null>(null);
+
+  /** True when the plan is expired — Free plan with trial ended or no trial */
+  readonly isExpired = computed(() => {
+    if (this.planType() !== PlanType.Free) return false;
+    const trial = this.trialEndsAt();
+    if (!trial) return true;
+    return new Date(trial) < new Date();
   });
 
   //#endregion
@@ -215,6 +227,48 @@ export class AuthService {
     const url = localStorage.getItem(RETURN_URL_KEY);
     if (url) localStorage.removeItem(RETURN_URL_KEY);
     return url;
+  }
+
+  //#endregion
+
+  //#region Subscription
+
+  /**
+   * Fetches the current subscription status from the API and updates
+   * planType/trialEndsAt signals if they have changed.
+   * Silently fails on error — never throws.
+   */
+  async refreshSubscriptionStatus(): Promise<void> {
+    try {
+      const status = await firstValueFrom(
+        this.api.get<SubscriptionStatus>('/subscription/status'),
+      );
+
+      this.subscriptionStatus.set(status);
+
+      // Canceled or past_due → downgrade to Free
+      const effectivePlan = (status.status === 'canceled' || status.status === 'past_due')
+        ? PlanType.Free
+        : (status.planType ?? PlanType.Free);
+
+      const changed = effectivePlan !== this.planType()
+        || (status.trialEndsAt ?? null) !== this.trialEndsAt();
+
+      if (changed) {
+        this.planType.set(effectivePlan);
+        this.trialEndsAt.set(status.trialEndsAt ?? null);
+
+        // Persist to localStorage
+        const user = this.currentUser();
+        if (user) {
+          const updated = { ...user, planType: effectivePlan, trialEndsAt: status.trialEndsAt ?? undefined };
+          this.currentUser.set(updated);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+        }
+      }
+    } catch (error) {
+      console.warn('[AuthService] Failed to refresh subscription status:', error);
+    }
   }
 
   //#endregion

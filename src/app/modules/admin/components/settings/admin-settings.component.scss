@@ -665,7 +665,126 @@
 }
 
 // -----------------------------------------------------------------------
-// Folio configuration (billing tab)
+// Billing tab
+// -----------------------------------------------------------------------
+.billing-plan {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+
+  &__name {
+    font-size: 24px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+}
+
+.billing-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--green { background: #F0FDF4; color: #15803D; }
+  &--amber { background: #FFFBEB; color: #D97706; }
+  &--red   { background: #FEF2F2; color: #DC2626; }
+  &--gray  { background: #F3F4F6; color: #6B7280; }
+}
+
+.billing-detail {
+  margin: 0;
+  font-size: $font-size-label;
+  color: $color-text-sub;
+}
+
+.billing-upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: $space-3;
+}
+
+.billing-upgrade-card {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-5;
+  border: 2px solid #E5E7EB;
+  border-radius: 12px;
+  background: white;
+
+  &__name {
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__price {
+    font-size: 15px;
+    font-weight: 600;
+    color: $color-primary;
+  }
+
+  &__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: $space-2;
+      font-size: $font-size-label;
+      color: $color-text-sub;
+
+      i {
+        font-size: 12px;
+        color: $color-primary;
+      }
+    }
+  }
+
+  &__btn {
+    margin-top: auto;
+  }
+}
+
+.btn-danger-link {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  background: transparent;
+  border: none;
+  color: #DC2626;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: $space-2 0;
+  transition: color 0.15s;
+
+  &:hover { color: #991B1B; }
+}
+
+.billing-cancel-msg {
+  margin: 0;
+  font-size: 15px;
+  color: $color-text-sub;
+  line-height: 1.5;
+}
+
+.billing-cancel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-3;
+}
+
+// -----------------------------------------------------------------------
+// Folio configuration
 // -----------------------------------------------------------------------
 .settings-card__title {
   margin: 0;

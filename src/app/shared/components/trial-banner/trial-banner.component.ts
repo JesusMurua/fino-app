@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 /** localStorage key prefix for banner dismissal */
 const DISMISS_KEY_PREFIX = 'trial-banner-dismissed-';
@@ -73,6 +74,11 @@ export class TrialBannerComponent {
   /** Navigates to plans/billing page */
   onCtaClick(): void {
     this.router.navigate(['/admin/settings']);
+  }
+
+  /** Opens the landing page pricing section in a new tab */
+  openPricing(): void {
+    window.open(`${environment.landingUrl}/#precios`, '_blank');
   }
 
   /** Dismisses the banner and persists to localStorage */

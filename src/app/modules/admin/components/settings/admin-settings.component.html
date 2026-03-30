@@ -168,6 +168,71 @@
           </div>
         </section>
 
+        <!-- Folio configuration -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-receipt"></i></div>
+            <div>
+              <div class="card-title">Configuración de folios</div>
+              <div class="card-subtitle">El folio aparece en cada ticket y nota de venta</div>
+            </div>
+          </div>
+
+          <div class="settings-form">
+            <div class="form-field">
+              <label class="form-field__label" for="folio-prefix">Prefijo del folio</label>
+              <input
+                id="folio-prefix"
+                type="text"
+                pInputText
+                [(ngModel)]="folioPrefix"
+                [maxlength]="10"
+                placeholder="Ej. HMO, SUC1"
+                class="form-field__input"
+                style="text-transform: uppercase"
+              />
+              <span class="form-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="folio-format">Formato del folio</label>
+              <input
+                id="folio-format"
+                type="text"
+                pInputText
+                [(ngModel)]="folioFormat"
+                placeholder="{PREFIX}-{NUM:4}"
+                class="form-field__input"
+              />
+              <span class="form-field__hint">
+                Vista previa: <strong>{{ folioPreview() }}</strong>
+              </span>
+            </div>
+
+            <div class="folio-preview-card">
+              <span class="folio-preview-card__label">El siguiente folio será:</span>
+              <span class="folio-preview-card__value">{{ folioPreview() }}</span>
+            </div>
+          </div>
+
+          <div class="settings-card__footer">
+            @if (saveFolioSuccess()) {
+              <span class="settings-card__ok">
+                <i class="pi pi-check-circle"></i> Guardado
+              </span>
+            }
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="isSavingFolio()"
+              (click)="saveFolioConfig()"
+            >
+              @if (isSavingFolio()) { <i class="pi pi-spin pi-spinner"></i> }
+              Guardar configuración
+            </button>
+          </div>
+        </section>
+
       </div>
     }
 
@@ -603,63 +668,84 @@
     @case ('billing') {
       <div class="settings-content">
 
-        <section class="settings-card">
-          <h2 class="settings-card__title">Configuración de folios</h2>
-          <p class="settings-card__subtitle">El folio aparece en cada ticket y nota de venta</p>
+        <!-- Section 1: Current plan card -->
+        <section class="settings-card billing-plan-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-credit-card"></i></div>
+            <div>
+              <div class="card-title">Tu plan actual</div>
+              <div class="card-subtitle">Estado de tu suscripción</div>
+            </div>
+          </div>
 
-          <div class="settings-card__body">
-            <div class="settings-field">
-              <label class="settings-field__label" for="folio-prefix">Prefijo del folio</label>
-              <input
-                id="folio-prefix"
-                type="text"
-                pInputText
-                [(ngModel)]="folioPrefix"
-                [maxlength]="10"
-                placeholder="Ej. HMO, SUC1"
-                class="settings-field__input"
-                style="text-transform: uppercase"
-              />
-              <span class="settings-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+          <div class="billing-plan">
+            <div class="billing-plan__name">{{ currentPlanName() }}</div>
+            <span class="billing-badge" [class]="'billing-badge--' + subscriptionBadgeVariant()">
+              {{ subscriptionBadgeLabel() }}
+            </span>
+          </div>
+
+          @if (subscriptionDetail()) {
+            <p class="billing-detail">{{ subscriptionDetail() }}</p>
+          }
+        </section>
+
+        <!-- Section 2: Upgrade options -->
+        @if (upgradeOptions().length > 0) {
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-arrow-up"></i></div>
+              <div>
+                <div class="card-title">Mejorar plan</div>
+                <div class="card-subtitle">Desbloquea más funciones</div>
+              </div>
             </div>
 
-            <div class="settings-field">
-              <label class="settings-field__label" for="folio-format">Formato del folio</label>
-              <input
-                id="folio-format"
-                type="text"
-                pInputText
-                [(ngModel)]="folioFormat"
-                placeholder="{PREFIX}-{NUM:4}"
-                class="settings-field__input"
-              />
-              <span class="settings-field__hint">
-                Vista previa: <strong>{{ folioPreview() }}</strong>
-              </span>
+            <div class="billing-upgrade-grid">
+              @for (option of upgradeOptions(); track option.name) {
+                <div class="billing-upgrade-card">
+                  <div class="billing-upgrade-card__name">{{ option.name }}</div>
+                  <div class="billing-upgrade-card__price">{{ option.price }}</div>
+                  <ul class="billing-upgrade-card__features">
+                    @for (feat of option.features; track feat) {
+                      <li><i class="pi pi-check"></i> {{ feat }}</li>
+                    }
+                  </ul>
+                  <button
+                    type="button"
+                    class="btn-primary billing-upgrade-card__btn"
+                    (click)="openUpgrade()"
+                  >
+                    Actualizar a {{ option.name }}
+                  </button>
+                </div>
+              }
             </div>
+          </section>
+        }
 
-            <div class="folio-preview-card">
-              <span class="folio-preview-card__label">El siguiente folio será:</span>
-              <span class="folio-preview-card__value">{{ folioPreview() }}</span>
+        <!-- Section 3: Cancel subscription -->
+        @if (canCancel()) {
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon" style="background: #FEF2F2">
+                <i class="pi pi-exclamation-triangle" style="color: #DC2626"></i>
+              </div>
+              <div>
+                <div class="card-title">Cancelar suscripción</div>
+                <div class="card-subtitle">Tu plan seguirá activo hasta el final del período</div>
+              </div>
             </div>
 
             <button
               type="button"
-              class="settings-card__save"
-              [disabled]="isSavingFolio()"
-              (click)="saveFolioConfig()"
+              class="btn-danger-link"
+              (click)="showCancelDialog.set(true)"
             >
-              @if (isSavingFolio()) {
-                <i class="pi pi-spinner pi-spin"></i>
-              }
-              @if (saveFolioSuccess()) {
-                <i class="pi pi-check"></i> Guardado
-              } @else {
-                Guardar configuración
-              }
+              Cancelar suscripción
             </button>
-          </div>
-        </section>
+          </section>
+        }
 
       </div>
     }
@@ -856,5 +942,35 @@
     }
 
   }
+
+  <!-- Cancel subscription confirmation dialog -->
+  <p-dialog
+    header="¿Cancelar suscripción?"
+    [(visible)]="showCancelDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{ width: '90vw', maxWidth: '420px' }"
+  >
+    <p class="billing-cancel-msg">
+      Tu plan seguirá activo hasta el {{ cancelPeriodEnd() }}.
+      Después de esa fecha, tu cuenta pasará al plan Gratuito.
+    </p>
+    <ng-template pTemplate="footer">
+      <div class="billing-cancel-actions">
+        <p-button
+          label="No, mantener plan"
+          severity="secondary"
+          (onClick)="showCancelDialog.set(false)"
+          styleClass="p-button-outlined"
+        />
+        <p-button
+          label="Sí, cancelar"
+          severity="danger"
+          [loading]="isCanceling()"
+          (onClick)="confirmCancel()"
+        />
+      </div>
+    </ng-template>
+  </p-dialog>
 
 </div>

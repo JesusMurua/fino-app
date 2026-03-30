@@ -41,6 +41,17 @@ export interface LoginResponse {
   trialEndsAt?: string;
 }
 
+/** Shape of GET /api/subscription/status response */
+export interface SubscriptionStatus {
+  planType: PlanType;
+  /** active | trialing | past_due | canceled */
+  status: string;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  /** Monthly | Annual */
+  billingCycle: string | null;
+}
+
 /** localStorage keys for auth persistence */
 export const AUTH_TOKEN_KEY = 'pos_auth_token';
 export const AUTH_USER_KEY = 'pos_auth_user';

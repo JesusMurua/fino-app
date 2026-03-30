@@ -1,7 +1,8 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
@@ -9,13 +10,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
-import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig } from '../../../../core/models';
+import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType } from '../../../../core/models';
+import { PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
+import { environment } from '../../../../../environments/environment';
 
 type DeviceMode = DeviceConfig['mode'];
 
@@ -24,6 +27,7 @@ type DeviceMode = DeviceConfig['mode'];
   standalone: true,
   imports: [
     FormsModule,
+    ButtonModule,
     DialogModule,
     DropdownModule,
     InputTextModule,
@@ -106,6 +110,113 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly isSavingFolio = signal(false);
   readonly saveFolioSuccess = signal(false);
 
+  // ---- Billing ----
+  readonly showCancelDialog = signal(false);
+  readonly isCanceling = signal(false);
+
+  /** Display name for the current plan */
+  readonly currentPlanName = computed(() =>
+    PLAN_DISPLAY_NAME[this.authService.planType()] ?? 'Gratuito'
+  );
+
+  /** Badge variant for subscription status */
+  readonly subscriptionBadgeVariant = computed<'green' | 'amber' | 'red' | 'gray'>(() => {
+    const status = this.authService.subscriptionStatus();
+    if (!status) {
+      return this.authService.planInfo().isOnTrial ? 'amber' : 'gray';
+    }
+    switch (status.status) {
+      case 'active':   return 'green';
+      case 'trialing': return 'amber';
+      case 'past_due': return 'red';
+      case 'canceled': return 'gray';
+      default:         return 'gray';
+    }
+  });
+
+  /** Badge label for subscription status */
+  readonly subscriptionBadgeLabel = computed(() => {
+    const status = this.authService.subscriptionStatus();
+    if (!status) {
+      const info = this.authService.planInfo();
+      if (info.isOnTrial) return 'Trial activo';
+      if (info.isPaid) return 'Activo';
+      return 'Gratuito';
+    }
+    switch (status.status) {
+      case 'active':   return 'Activo';
+      case 'trialing': return 'Trial activo';
+      case 'past_due': return 'Pago pendiente';
+      case 'canceled': return 'Cancelado';
+      default:         return status.status;
+    }
+  });
+
+  /** Detail text below plan name (trial end, next billing, cycle) */
+  readonly subscriptionDetail = computed(() => {
+    const status = this.authService.subscriptionStatus();
+    const info = this.authService.planInfo();
+
+    if (status?.status === 'trialing' && status.trialEndsAt) {
+      return `Trial termina el ${this.formatDate(status.trialEndsAt)}`;
+    }
+    if (info.isOnTrial && info.trialEndsAt) {
+      return `Trial termina el ${this.formatDate(info.trialEndsAt)}`;
+    }
+    if (status?.currentPeriodEnd && (status.status === 'active' || status.status === 'canceled')) {
+      const cycle = status.billingCycle === 'Annual' ? 'Anual' : 'Mensual';
+      const prefix = status.status === 'canceled' ? 'Activo hasta el' : 'Próximo cobro:';
+      return `${prefix} ${this.formatDate(status.currentPeriodEnd)} · ${cycle}`;
+    }
+    return '';
+  });
+
+  /** Upgrade plan options above current tier */
+  readonly upgradeOptions = computed(() => {
+    const current = this.authService.planType();
+    const currentLevel = PLAN_HIERARCHY[current] ?? 0;
+    const options: { name: string; price: string; features: string[] }[] = [];
+
+    if (currentLevel < PLAN_HIERARCHY[PlanType.Basic]) {
+      options.push({
+        name: 'Básico',
+        price: '$199/mes',
+        features: ['Impresora térmica', 'Escáner de códigos', 'Promociones'],
+      });
+    }
+    if (currentLevel < PLAN_HIERARCHY[PlanType.Pro]) {
+      options.push({
+        name: 'Pro',
+        price: '$399/mes',
+        features: ['Reportes avanzados', 'Facturación CFDI', 'Multi-sucursal'],
+      });
+    }
+    if (currentLevel < PLAN_HIERARCHY[PlanType.Enterprise]) {
+      options.push({
+        name: 'Enterprise',
+        price: 'Contacto',
+        features: ['Báscula industrial', 'API de acceso', 'Soporte prioritario'],
+      });
+    }
+    return options;
+  });
+
+  /** Whether the cancel button should be shown */
+  readonly canCancel = computed(() => {
+    const status = this.authService.subscriptionStatus();
+    if (!status) return false;
+    return (status.status === 'active' || status.status === 'trialing')
+      && this.authService.planType() !== PlanType.Free;
+  });
+
+  /** Formatted period end for cancel dialog */
+  readonly cancelPeriodEnd = computed(() => {
+    const status = this.authService.subscriptionStatus();
+    if (status?.currentPeriodEnd) return this.formatDate(status.currentPeriodEnd);
+    if (status?.trialEndsAt) return this.formatDate(status.trialEndsAt);
+    return '—';
+  });
+
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
@@ -135,6 +246,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     ]);
     this.config.set(appConfig);
     this.deviceConfig.set(this.configService.loadDeviceConfig());
+
+    // Refresh subscription status for billing tab
+    this.authService.refreshSubscriptionStatus();
 
     if (this.authService.currentUser()?.role === 'Owner') {
       await this.loadBranches();
@@ -462,6 +576,48 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     } finally {
       this.generatingCode.set(false);
     }
+  }
+
+  //#endregion
+
+  //#region Billing Methods
+
+  /** Opens the landing page pricing section in a new tab */
+  openUpgrade(): void {
+    window.open(`${environment.landingUrl}/#precios`, '_blank');
+  }
+
+  /** Cancels the subscription after user confirmation */
+  async confirmCancel(): Promise<void> {
+    this.isCanceling.set(true);
+    try {
+      await firstValueFrom(this.api.post('/subscription/cancel', {}));
+      await this.authService.refreshSubscriptionStatus();
+      this.showCancelDialog.set(false);
+
+      const end = this.cancelPeriodEnd();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Suscripción cancelada',
+        detail: `Activa hasta ${end}`,
+        life: 5000,
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo cancelar la suscripción',
+        life: 3000,
+      });
+    } finally {
+      this.isCanceling.set(false);
+    }
+  }
+
+  /** Formats an ISO date string to DD/MM/YYYY */
+  private formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   //#endregion
