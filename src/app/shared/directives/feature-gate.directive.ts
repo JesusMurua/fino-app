@@ -82,7 +82,7 @@ export class FeatureGateDirective implements OnInit, OnDestroy {
 
   /** Creates and inserts the locked placeholder element */
   private renderLocked(): void {
-    const message = this.featureFlagService.upgradeMessage(this.feature);
+    const message = this.featureFlagService.lockedMessage(this.feature);
 
     const el = document.createElement('div');
     el.className = 'feature-locked';

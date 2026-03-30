@@ -294,6 +294,7 @@ export class AuthService {
       token: response.token,
       role: response.role,
       name: response.name,
+      businessId: response.businessId,
       branchId: response.branchId,
       branches: response.branches ?? [],
       currentBranchId: effectiveBranchId,

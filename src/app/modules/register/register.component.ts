@@ -139,8 +139,8 @@ export class RegisterComponent implements OnInit {
       const user = this.authService.handleLoginSuccess(response);
 
       // Store pending plan for onboarding step 4
-      if (this.pendingPlan && user.branchId) {
-        localStorage.setItem(`pending-plan-${user.branchId}`, this.pendingPlan);
+      if (this.pendingPlan && user.currentBranchId) {
+        localStorage.setItem(`pending-plan-${user.currentBranchId}`, this.pendingPlan);
       }
 
       this.router.navigate(['/onboarding']);

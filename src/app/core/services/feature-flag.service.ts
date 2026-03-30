@@ -81,6 +81,28 @@ export class FeatureFlagService {
     return BUSINESS_FEATURE_MAP[giro].includes(feature);
   }
 
+  /**
+   * Returns true if the feature is blocked because the current
+   * business type does not support it — regardless of plan tier.
+   * @param feature The feature to check
+   */
+  isBlockedByBusinessType(feature: FeatureKey): boolean {
+    const giro = this.authService.planInfo().businessType;
+    return !BUSINESS_FEATURE_MAP[giro].includes(feature);
+  }
+
+  /**
+   * Returns the appropriate locked message for a feature.
+   * Distinguishes between business-type blocks and plan-tier blocks.
+   * @param feature The locked feature
+   */
+  lockedMessage(feature: FeatureKey): string {
+    if (this.isBlockedByBusinessType(feature)) {
+      return 'No disponible para tu tipo de negocio';
+    }
+    return this.upgradeMessage(feature);
+  }
+
   //#endregion
 
 }

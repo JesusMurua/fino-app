@@ -13,6 +13,7 @@ export interface BranchInfo {
 export interface AuthUser {
   role: UserRole;
   name: string;
+  businessId: number;
   branchId: number;
   token: string;
   branches: BranchInfo[];
@@ -30,6 +31,7 @@ export interface LoginResponse {
   token: string;
   role: UserRole;
   name: string;
+  businessId: number;
   branchId: number;
   branches: BranchInfo[];
   currentBranchId: number;

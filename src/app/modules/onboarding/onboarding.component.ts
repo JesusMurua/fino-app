@@ -7,7 +7,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { BusinessType, LoginResponse, ZoneType } from '../../core/models';
+import { BusinessType, DeviceConfig, LoginResponse, ZoneType } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 
@@ -469,12 +469,21 @@ export class OnboardingComponent implements OnInit {
       } catch { /* best-effort */ }
     }
 
-    // 4. Save device config
-    const deviceConfig = this.configService.loadDeviceConfig();
-    deviceConfig.mode = this.selectedMode() as any;
-    if (this.deviceName().trim()) {
-      (deviceConfig as any).deviceName = this.deviceName().trim();
-    }
+    // 4. Save complete device config (so isDeviceConfigured() passes)
+    const user = this.authService.currentUser();
+    const activeBranchId = this.authService.activeBranchId();
+    const branchEntry = user?.branches?.find(b => b.id === activeBranchId);
+    const branchDisplayName = branchEntry?.name ?? '';
+
+    const deviceConfig: DeviceConfig = {
+      businessId:   user?.businessId ?? 0,
+      branchId:     activeBranchId,
+      businessName: branchDisplayName,
+      branchName:   branchDisplayName,
+      mode:         this.selectedMode() as DeviceConfig['mode'],
+      deviceName:   this.deviceName().trim() || 'POS Principal',
+      configuredAt: new Date().toISOString(),
+    };
     this.configService.saveDeviceConfig(deviceConfig);
 
     // 5. Mark onboarding complete via API → get new JWT
@@ -496,8 +505,8 @@ export class OnboardingComponent implements OnInit {
 
     this.isSubmitting.set(false);
 
-    // 7. Navigate to setup (writes businessId/branchId to pos-device-config)
-    this.router.navigate(['/setup']);
+    // 7. Navigate to pin (device config is now complete)
+    this.router.navigate(['/pin']);
   }
 
   //#endregion
