@@ -62,6 +62,68 @@ const ZONE_SUGGESTIONS: Record<string, ZoneDraft[]> = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Pricing — real Stripe price IDs
+// ---------------------------------------------------------------------------
+
+type PricingGroup = 'restaurant' | 'standard' | 'general';
+type BillingCycle = 'monthly' | 'annual';
+
+/** Maps businessType → pricing group */
+const PRICING_GROUP_MAP: Record<string, PricingGroup> = {
+  [BusinessType.Restaurant]: 'restaurant',
+  [BusinessType.Bar]:        'restaurant',
+  [BusinessType.Cafe]:       'standard',
+  [BusinessType.FoodTruck]:  'standard',
+  [BusinessType.Retail]:     'general',
+  [BusinessType.General]:    'general',
+};
+
+/** Stripe price IDs keyed by [plan][group][cycle] */
+const STRIPE_PRICE_IDS: Record<string, Record<PricingGroup, Record<BillingCycle, string>>> = {
+  basic: {
+    restaurant: { monthly: 'price_1TGjZTGd6oMtnYKNKH4mV0WR', annual: 'price_1TGjaKGd6oMtnYKNMlQbqt1f' },
+    standard:   { monthly: 'price_1TGjYIGd6oMtnYKNaWsO5wW9', annual: 'price_1TGjYvGd6oMtnYKNNLJSrXWk' },
+    general:    { monthly: 'price_1TGVDNGd6oMtnYKN3mOfuloV', annual: 'price_1TGVGBGd6oMtnYKNOtYdklZ7' },
+  },
+  pro: {
+    restaurant: { monthly: 'price_1TGVDsGd6oMtnYKNGYySti0z', annual: 'price_1TGVFhGd6oMtnYKNJGIXZ3d3' },
+    standard:   { monthly: 'price_1TGjjMGd6oMtnYKNnUYsOsmr', annual: 'price_1TGjk0Gd6oMtnYKNbIyJOpr8' },
+    general:    { monthly: 'price_1TGjiaGd6oMtnYKNFY6ZbnMS', annual: 'price_1TGjj3Gd6oMtnYKNYX06rZPx' },
+  },
+  enterprise: {
+    restaurant: { monthly: 'price_1TGVEDGd6oMtnYKNC7v50zld', annual: 'price_1TGVErGd6oMtnYKNfEBSfiPS' },
+    standard:   { monthly: 'price_1TGjsMGd6oMtnYKNV4ixW9ms', annual: 'price_1TGjtEGd6oMtnYKNMDlACMO2' },
+    general:    { monthly: 'price_1TGjrfGd6oMtnYKNaEVHitCF', annual: 'price_1TGjs2Gd6oMtnYKN4BvXPwXw' },
+  },
+};
+
+/** Display prices in MXN (centavos) keyed by [plan][group][cycle] */
+const DISPLAY_PRICES: Record<string, Record<PricingGroup, Record<BillingCycle, number>>> = {
+  basic: {
+    general:    { monthly: 9900,   annual: 99000 },
+    standard:   { monthly: 14900,  annual: 149000 },
+    restaurant: { monthly: 19900,  annual: 199000 },
+  },
+  pro: {
+    general:    { monthly: 24900,  annual: 249000 },
+    standard:   { monthly: 34900,  annual: 349000 },
+    restaurant: { monthly: 49900,  annual: 499000 },
+  },
+  enterprise: {
+    general:    { monthly: 59900,  annual: 599000 },
+    standard:   { monthly: 79900,  annual: 799000 },
+    restaurant: { monthly: 99900,  annual: 999000 },
+  },
+};
+
+/** Plan display names in Spanish */
+const PLAN_NAMES: Record<string, string> = {
+  basic: 'Básico',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+};
+
 /** Which device modes are relevant per giro */
 const MODES_BY_GIRO: Record<string, string[]> = {
   [BusinessType.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
@@ -125,6 +187,40 @@ export class OnboardingComponent implements OnInit {
     const allowed = MODES_BY_GIRO[this.selectedGiro()] ?? ['cashier'];
     return MODE_OPTIONS.filter(m => allowed.includes(m.value));
   });
+
+  // Step 4 — Plan activation
+  readonly billingCycle = signal<BillingCycle>('monthly');
+  readonly checkoutLoading = signal(false);
+  readonly checkoutError = signal('');
+
+  /** Pricing group derived from selected business type */
+  readonly pricingGroup = computed<PricingGroup>(() =>
+    PRICING_GROUP_MAP[this.selectedGiro()] ?? 'general'
+  );
+
+  /** Display name for the pending plan */
+  readonly pendingPlanName = computed(() =>
+    PLAN_NAMES[this.pendingPlan() ?? ''] ?? ''
+  );
+
+  /** Current display price in centavos based on plan, group, and cycle */
+  readonly displayPriceCents = computed(() => {
+    const plan = this.pendingPlan();
+    if (!plan || !DISPLAY_PRICES[plan]) return 0;
+    return DISPLAY_PRICES[plan][this.pricingGroup()][this.billingCycle()];
+  });
+
+  /** Formatted price string for display */
+  readonly displayPrice = computed(() => {
+    const cents = this.displayPriceCents();
+    if (!cents) return '';
+    return '$' + (cents / 100).toLocaleString('es-MX', { minimumFractionDigits: 0 });
+  });
+
+  /** Billing cycle label for display */
+  readonly cycleLabel = computed(() =>
+    this.billingCycle() === 'monthly' ? '/mes' : '/año'
+  );
 
   /** Progress percentage */
   readonly progress = computed(() =>
@@ -244,6 +340,51 @@ export class OnboardingComponent implements OnInit {
   /** Selects a device mode */
   selectMode(mode: string): void {
     this.selectedMode.set(mode);
+  }
+
+  /** Toggles billing cycle between monthly and annual */
+  toggleBillingCycle(cycle: BillingCycle): void {
+    this.billingCycle.set(cycle);
+  }
+
+  /**
+   * Starts Stripe checkout for the pending plan.
+   * Calls POST /api/subscription/checkout and redirects to Stripe.
+   */
+  async startCheckout(): Promise<void> {
+    const plan = this.pendingPlan();
+    if (!plan || !STRIPE_PRICE_IDS[plan]) return;
+
+    this.checkoutLoading.set(true);
+    this.checkoutError.set('');
+
+    const priceId = STRIPE_PRICE_IDS[plan][this.pricingGroup()][this.billingCycle()];
+    const origin = window.location.origin;
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ url: string }>(`${environment.apiUrl}/subscription/checkout`, {
+          priceId,
+          successUrl: `${origin}/admin?checkout=success`,
+          cancelUrl: `${origin}/onboarding`,
+        }),
+      );
+      window.location.href = response.url;
+    } catch {
+      this.checkoutError.set('No se pudo iniciar el pago. Intenta de nuevo.');
+      this.checkoutLoading.set(false);
+    }
+  }
+
+  /**
+   * Skips plan activation and continues with free trial.
+   * Clears pendingPlan and completes onboarding normally.
+   */
+  async continueWithTrial(): Promise<void> {
+    const branchId = this.authService.branchId;
+    localStorage.removeItem(`pending-plan-${branchId}`);
+    this.pendingPlan.set(null);
+    await this.completeOnboarding();
   }
 
   //#endregion

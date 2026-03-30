@@ -362,38 +362,123 @@
 }
 
 // -----------------------------------------------------------------------
-// Plan activation banner
+// Plan activation card (step 4)
 // -----------------------------------------------------------------------
-.plan-banner {
+.plan-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: $space-3;
-  padding: $space-3 $space-4;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  border-radius: 10px;
-  font-size: 13px;
-  color: #92400E;
+  gap: $space-4;
   width: 100%;
+  padding: $space-5;
+  background: white;
+  border: 2px solid $color-primary;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba($color-primary, 0.12);
 
-  i { font-size: 16px; flex-shrink: 0; }
-  span { flex: 1; }
-
-  &__cta {
-    display: inline-flex;
+  &__header {
+    display: flex;
     align-items: center;
-    padding: $space-1 $space-3;
-    border: 1px solid #D97706;
-    border-radius: 6px;
-    background: transparent;
+    gap: $space-2;
+  }
+
+  &__star {
+    font-size: 20px;
     color: #D97706;
-    font-size: 12px;
-    font-weight: 600;
+  }
+
+  &__name {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__price {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  &__amount {
+    font-size: 32px;
+    font-weight: 800;
+    color: $color-text-title;
+  }
+
+  &__cycle {
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+
+  &__toggle {
+    display: flex;
+    border: 1.5px solid #E5E7EB;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  &__toggle-btn {
+    padding: $space-2 $space-4;
+    border: none;
+    background: white;
+    color: $color-text-sub;
+    font-size: 13px;
+    font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
 
-    &:hover { background: rgba(#D97706, 0.08); }
+    &:hover:not(.plan-card__toggle-btn--active) { background: #F3F4F6; }
+
+    &--active {
+      background: $color-primary;
+      color: white;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    font-size: 13px;
+    color: #DC2626;
+    text-align: center;
+  }
+
+  &__activate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    width: 100%;
+    min-height: 52px;
+    border: none;
+    border-radius: 12px;
+    background: $color-primary;
+    color: white;
+    font-size: $font-size-base;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: #15803D; }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+
+  &__skip {
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    color: $color-text-sub;
+    font-size: $font-size-label;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.15s;
+
+    &:hover { color: $color-text-title; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 }
 

@@ -192,10 +192,62 @@
       </div>
 
       @if (pendingPlan()) {
-        <div class="plan-banner">
-          <i class="pi pi-star"></i>
-          <span>Activa tu plan para desbloquear todas las funciones</span>
-          <button type="button" class="plan-banner__cta">Activar plan</button>
+        <div class="plan-card">
+          <div class="plan-card__header">
+            <i class="pi pi-star-fill plan-card__star"></i>
+            <span class="plan-card__name">Plan {{ pendingPlanName() }}</span>
+          </div>
+
+          <div class="plan-card__price">
+            <span class="plan-card__amount">{{ displayPrice() }}</span>
+            <span class="plan-card__cycle">{{ cycleLabel() }}</span>
+          </div>
+
+          <!-- Billing cycle toggle -->
+          <div class="plan-card__toggle">
+            <button
+              type="button"
+              class="plan-card__toggle-btn"
+              [class.plan-card__toggle-btn--active]="billingCycle() === 'monthly'"
+              (click)="toggleBillingCycle('monthly')"
+            >
+              Mensual
+            </button>
+            <button
+              type="button"
+              class="plan-card__toggle-btn"
+              [class.plan-card__toggle-btn--active]="billingCycle() === 'annual'"
+              (click)="toggleBillingCycle('annual')"
+            >
+              Anual — 2 meses gratis
+            </button>
+          </div>
+
+          @if (checkoutError()) {
+            <p class="plan-card__error">{{ checkoutError() }}</p>
+          }
+
+          <!-- Actions -->
+          <button
+            type="button"
+            class="plan-card__activate"
+            [disabled]="checkoutLoading()"
+            (click)="startCheckout()"
+          >
+            @if (checkoutLoading()) {
+              <i class="pi pi-spinner pi-spin"></i>
+            }
+            Activar ahora →
+          </button>
+
+          <button
+            type="button"
+            class="plan-card__skip"
+            [disabled]="checkoutLoading()"
+            (click)="continueWithTrial()"
+          >
+            Continuar con trial gratis
+          </button>
         </div>
       }
     }
