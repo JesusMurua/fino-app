@@ -143,7 +143,7 @@ export class RegisterComponent implements OnInit {
         localStorage.setItem(`pending-plan-${user.branchId}`, this.pendingPlan);
       }
 
-      this.router.navigate(['/admin']);
+      this.router.navigate(['/onboarding']);
     } catch (err: any) {
       if (err?.status === 409) {
         this.errorMessage.set('Este correo ya tiene una cuenta.');

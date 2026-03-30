@@ -496,8 +496,8 @@ export class OnboardingComponent implements OnInit {
 
     this.isSubmitting.set(false);
 
-    // 7. Navigate to admin
-    this.router.navigate(['/admin']);
+    // 7. Navigate to setup (writes businessId/branchId to pos-device-config)
+    this.router.navigate(['/setup']);
   }
 
   //#endregion
