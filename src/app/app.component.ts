@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, effect, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { NgHttpLoaderComponent } from 'ng-http-loader';
@@ -34,6 +34,16 @@ export class AppComponent implements OnInit {
     'branch/.*/config',
     'subscription/status',
   ];
+
+  constructor() {
+    // Reactively initialize sync when auth state becomes true.
+    // SyncService.initialize() is idempotent — safe on repeated calls.
+    effect(() => {
+      if (this.authService.isAuthenticated()) {
+        this.syncService.initialize();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.printerService.tryAutoConnect();

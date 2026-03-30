@@ -42,6 +42,9 @@ export class SyncService implements OnDestroy {
 
   /** ISO timestamp of last successful pull — null means first pull */
   private lastPullAt: string | null = null;
+
+  /** Prevents double initialization */
+  private isInitialized = false;
   //#endregion
 
   //#region Constructor & Lifecycle
@@ -49,7 +52,17 @@ export class SyncService implements OnDestroy {
     private readonly db: DatabaseService,
     private readonly api: ApiService,
     private readonly authService: AuthService,
-  ) {
+  ) {}
+
+  /**
+   * Starts all background sync operations.
+   * Must be called explicitly when the user is authenticated.
+   * Safe to call multiple times — subsequent calls are no-ops.
+   */
+  initialize(): void {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
     window.addEventListener('online', this.onlineHandler);
     this.refreshPendingCount();
     this.initNextOrderNumber();
