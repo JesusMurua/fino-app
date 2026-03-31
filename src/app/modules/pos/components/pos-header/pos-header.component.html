@@ -49,18 +49,16 @@
       </button>
     }
 
-    @if (showStockButton) {
-      <button
-        type="button"
-        class="pos-header__settings"
-        aria-label="Recibir mercancía"
-        pTooltip="Recibir mercancía"
-        tooltipPosition="bottom"
-        (click)="openStockDialog()"
-      >
-        <i class="pi pi-box"></i>
-      </button>
-    }
+    <button
+      type="button"
+      class="pos-header__settings"
+      aria-label="Recibir mercancía"
+      pTooltip="Recibir mercancía"
+      tooltipPosition="bottom"
+      (click)="openPinDialog()"
+    >
+      <i class="pi pi-box"></i>
+    </button>
 
     @if (showTablesButton()) {
       <button
@@ -108,63 +106,308 @@
   </div>
 }
 
-<!-- Stock receive dialog -->
+<!-- ====================================================================== -->
+<!-- PIN verification dialog                                                -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Autorización requerida"
+  [visible]="showPinDialog()"
+  (visibleChange)="showPinDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+  [showHeader]="true"
+>
+  <div class="pin-overlay">
+
+    <p class="pin-overlay__subtitle">Ingresa PIN de dueño o gerente</p>
+
+    <!-- Dots -->
+    <div
+      class="pin-overlay__dots"
+      [class.pin-overlay__dots--error]="pinError()"
+      aria-label="PIN ingresado"
+      aria-live="polite"
+    >
+      @for (i of [0, 1, 2, 3]; track i) {
+        <span
+          class="pin-overlay__dot"
+          [class.pin-overlay__dot--filled]="pinDigits().length > i"
+        ></span>
+      }
+    </div>
+
+    @if (pinError()) {
+      <p class="pin-overlay__error">PIN incorrecto o sin permisos</p>
+    }
+
+    <!-- Numpad -->
+    <div class="pin-overlay__numpad" role="group" aria-label="Teclado numérico">
+      @for (key of pinKeys; track $index) {
+        @if (key === null) {
+          <span class="pin-overlay__key pin-overlay__key--empty"></span>
+        } @else if (key === 'del') {
+          <button
+            type="button"
+            class="pin-overlay__key pin-overlay__key--del"
+            aria-label="Borrar último dígito"
+            [disabled]="pinLoading()"
+            (click)="removePinDigit()"
+          >
+            <i class="pi pi-delete-left"></i>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="pin-overlay__key"
+            [attr.aria-label]="'Dígito ' + key"
+            [disabled]="pinLoading()"
+            (click)="addPinDigit(key)"
+          >
+            {{ key }}
+          </button>
+        }
+      }
+    </div>
+
+    @if (pinLoading()) {
+      <div class="pin-overlay__loading">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Verificando...</span>
+      </div>
+    }
+
+  </div>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Stock receipt modal                                                     -->
+<!-- ====================================================================== -->
 <p-dialog
   header="Recibir mercancía"
-  [visible]="showStockDialog()"
-  (visibleChange)="showStockDialog.set($event)"
+  [visible]="showReceiptModal()"
+  (visibleChange)="showReceiptModal.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', 'max-width': '800px' }"
+  [draggable]="false"
+>
+  <div class="receipt-modal">
+
+    <!-- Header fields -->
+    <div class="receipt-modal__header">
+      <div class="receipt-modal__field">
+        <label class="receipt-modal__label">Proveedor (opcional)</label>
+        <p-dropdown
+          [options]="supplierOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="receiptSupplier()"
+          (ngModelChange)="receiptSupplier.set($event)"
+          placeholder="Seleccionar proveedor..."
+          [showClear]="true"
+          styleClass="receipt-modal__input"
+          [filter]="true"
+          filterPlaceholder="Buscar..."
+          [appendTo]="'body'"
+        />
+      </div>
+      <div class="receipt-modal__field">
+        <label class="receipt-modal__label">Notas (opcional)</label>
+        <textarea
+          pInputTextarea
+          [ngModel]="receiptNotes()"
+          (ngModelChange)="receiptNotes.set($event)"
+          placeholder="Notas sobre esta entrada..."
+          class="receipt-modal__input"
+          rows="2"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Scanner -->
+    <div class="receipt-modal__scanner">
+      <label class="receipt-modal__label">Escanear código de barras</label>
+      <div class="receipt-modal__scanner-row">
+        <input
+          type="text"
+          pInputText
+          [ngModel]="scanInput()"
+          (ngModelChange)="onScanInputChange($event)"
+          placeholder="Escanea o escribe un código..."
+          class="receipt-modal__scanner-input"
+          inputmode="none"
+        />
+        <button
+          type="button"
+          class="receipt-modal__btn-ghost"
+          pTooltip="Agregar manualmente"
+          tooltipPosition="top"
+          (click)="openPicker()"
+        >
+          <i class="pi pi-search-plus"></i>
+          Agregar
+        </button>
+      </div>
+    </div>
+
+    <!-- Items list -->
+    <div class="receipt-modal__items">
+      @if (receiptItems().length === 0) {
+        <div class="receipt-modal__empty">
+          <i class="pi pi-box"></i>
+          <p>Escanea un producto o agrégalo manualmente</p>
+        </div>
+      } @else {
+        <p-table
+          [value]="receiptItems()"
+          [rowHover]="true"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 14rem">Nombre</th>
+              <th style="min-width: 7rem">Cantidad</th>
+              <th style="min-width: 8rem">Costo unit.</th>
+              <th style="min-width: 7rem">Total</th>
+              <th style="min-width: 4rem"></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-line let-i="rowIndex">
+            <tr>
+              <td class="receipt-modal__item-name">{{ line.name }}</td>
+              <td>
+                <p-inputNumber
+                  [(ngModel)]="line.quantity"
+                  [min]="0.01"
+                  [maxFractionDigits]="2"
+                  styleClass="receipt-modal__inline-input"
+                  inputStyleClass="receipt-modal__inline-field"
+                  (ngModelChange)="updateReceiptLine()"
+                />
+              </td>
+              <td>
+                <p-inputNumber
+                  [(ngModel)]="line.costPesos"
+                  [min]="0"
+                  mode="currency"
+                  currency="MXN"
+                  locale="es-MX"
+                  styleClass="receipt-modal__inline-input"
+                  inputStyleClass="receipt-modal__inline-field"
+                  (ngModelChange)="updateReceiptLine()"
+                />
+              </td>
+              <td class="receipt-modal__item-total">${{ (lineTotalCents(line) / 100).toFixed(2) }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="receipt-modal__btn-icon receipt-modal__btn-icon--red"
+                  aria-label="Eliminar línea"
+                  (click)="removeReceiptLine(i)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+
+    <!-- Summary -->
+    @if (receiptItems().length > 0) {
+      <div class="receipt-modal__summary">
+        <span class="receipt-modal__summary-count">
+          {{ receiptItems().length }} {{ receiptItems().length === 1 ? 'item' : 'items' }}
+        </span>
+        <div class="receipt-modal__summary-total">
+          <span>Total:</span>
+          <span class="receipt-modal__summary-amount">${{ (receiptTotal() / 100).toFixed(2) }}</span>
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="receipt-modal__btn-ghost" (click)="showReceiptModal.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="receipt-modal__btn-primary"
+      [disabled]="receiptItems().length === 0 || receiptSaving()"
+      (click)="confirmReceipt()"
+    >
+      @if (receiptSaving()) {
+        <i class="pi pi-spin pi-spinner"></i> Guardando...
+      } @else {
+        <i class="pi pi-check"></i> Confirmar entrada
+      }
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Item picker dialog                                                      -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Agregar producto / insumo"
+  [visible]="showPickerDialog()"
+  (visibleChange)="showPickerDialog.set($event)"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '420px' }"
   [draggable]="false"
 >
-  <div class="stock-form">
-    <div class="stock-form__field">
-      <label class="stock-form__label">Insumo o producto</label>
+  <div class="receipt-modal__picker-form">
+    <div class="receipt-modal__field">
+      <label class="receipt-modal__label">Producto o insumo</label>
       <p-dropdown
-        [options]="stockItems()"
+        [options]="stockItemOptions()"
         optionLabel="label"
         optionValue="value"
-        [(ngModel)]="selectedStockItem"
+        [(ngModel)]="pickerSelectedItem"
         placeholder="Seleccionar..."
-        styleClass="w-full"
         [filter]="true"
         filterPlaceholder="Buscar..."
+        styleClass="receipt-modal__input"
         [appendTo]="'body'"
       />
     </div>
 
-    <div class="stock-form__field">
-      <label class="stock-form__label">Cantidad</label>
+    <div class="receipt-modal__field">
+      <label class="receipt-modal__label">Cantidad</label>
       <p-inputNumber
-        [(ngModel)]="stockQuantity"
-        [min]="1"
-        styleClass="w-full"
+        [(ngModel)]="pickerQuantity"
+        [min]="0.01"
+        [maxFractionDigits]="2"
+        styleClass="receipt-modal__input"
       />
     </div>
 
-    <div class="stock-form__field">
-      <label class="stock-form__label">Motivo (opcional)</label>
-      <input
-        type="text"
-        pInputText
-        [(ngModel)]="stockReason"
-        placeholder="Ej. Compra proveedor"
-        class="w-full"
+    <div class="receipt-modal__field">
+      <label class="receipt-modal__label">Costo unitario (MXN)</label>
+      <p-inputNumber
+        [(ngModel)]="pickerCostPesos"
+        [min]="0"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        styleClass="receipt-modal__input"
       />
     </div>
   </div>
 
   <ng-template pTemplate="footer">
-    <button type="button" class="pos-header__btn-ghost" (click)="showStockDialog.set(false)">Cancelar</button>
+    <button type="button" class="receipt-modal__btn-ghost" (click)="showPickerDialog.set(false)">Cancelar</button>
     <button
       type="button"
-      class="pos-header__btn-primary"
-      [disabled]="!selectedStockItem || stockQuantity <= 0"
-      (click)="confirmStockReceive()"
+      class="receipt-modal__btn-primary"
+      [disabled]="!pickerSelectedItem || pickerQuantity <= 0"
+      (click)="addFromPicker()"
     >
-      <i class="pi pi-plus"></i>
-      Registrar entrada
+      <i class="pi pi-plus"></i> Agregar
     </button>
   </ng-template>
 </p-dialog>

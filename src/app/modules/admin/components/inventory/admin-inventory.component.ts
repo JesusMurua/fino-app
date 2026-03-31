@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, Subscription, debounceTime, firstValueFrom, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
@@ -90,6 +91,7 @@ interface NewReceiptLine {
 })
 export class AdminInventoryComponent implements OnInit, OnDestroy {
 
+  private readonly route = inject(ActivatedRoute);
   private readonly inventoryService = inject(InventoryService);
   private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
@@ -105,6 +107,12 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
       if (branchId) this.inventoryService.loadFromApi();
     }, { allowSignalWrites: true });
   }
+
+  //#region Properties — Tabs
+
+  readonly activeTab = signal(0);
+
+  //#endregion
 
   //#region Properties — Inventory (Tab 1)
 
@@ -217,6 +225,17 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
     await this.inventoryService.loadFromApi();
     this.startScannerListener();
     this.setupReceiptScanDebounce();
+    this.handleQueryParams();
+  }
+
+  /** Reads query params to navigate to a specific tab */
+  private handleQueryParams(): void {
+    const params = this.route.snapshot.queryParams;
+    const tab = Number(params['tab']);
+    if (!isNaN(tab) && tab >= 0 && tab <= 2) {
+      this.activeTab.set(tab);
+      this.onTabChange(tab);
+    }
   }
 
   ngOnDestroy(): void {

@@ -70,7 +70,7 @@
   }
 
   // -----------------------------------------------------------------------
-  // Settings button (⚙️ → /pin)
+  // Settings button
   // -----------------------------------------------------------------------
   &__settings {
     display: inline-flex;
@@ -140,7 +140,7 @@
   }
 
   // -----------------------------------------------------------------------
-  // Notification permission button (visible only when permission is 'default')
+  // Notification permission button
   // -----------------------------------------------------------------------
   &__notify-btn {
     display: inline-flex;
@@ -166,7 +166,7 @@
   }
 
   // -----------------------------------------------------------------------
-  // Kiosk mode warning banner (shown below header when device is in kiosk mode)
+  // Kiosk mode warning banner
   // -----------------------------------------------------------------------
   &__kiosk-banner {
     display: flex;
@@ -226,40 +226,293 @@
   }
 }
 
-// Stock receive dialog
-.stock-form {
+// =========================================================================
+// PIN overlay dialog
+// =========================================================================
+.pin-overlay {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
-
-  &__field { display: flex; flex-direction: column; gap: $space-1; }
-  &__label { font-size: 14px; font-weight: 500; color: #374151; }
-}
-
-.pos-header__btn-ghost {
-  padding: $space-2 $space-4;
-  border: none;
-  background: transparent;
-  color: #6B7280;
-  font-size: 14px;
-  cursor: pointer;
-
-  &:hover { color: #374151; }
-}
-
-.pos-header__btn-primary {
-  padding: $space-2 $space-4;
-  border: none;
-  border-radius: 8px;
-  background: #16A34A;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
   align-items: center;
-  gap: $space-1;
+  gap: $space-4;
+  padding: $space-2 0;
 
-  &:hover { background: #15803D; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &__subtitle {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    text-align: center;
+  }
+
+  // ---- Dots ----
+  &__dots {
+    display: flex;
+    gap: $space-3;
+
+    &--error {
+      animation: pin-shake 0.5s ease;
+    }
+  }
+
+  &__dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #D1D5DB;
+    background: transparent;
+    transition: background 0.15s, border-color 0.15s;
+
+    &--filled {
+      background: $color-primary;
+      border-color: $color-primary;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    font-size: $font-size-label;
+    color: #DC2626;
+    text-align: center;
+  }
+
+  // ---- Numpad ----
+  &__numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $space-2;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  &__key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 64px;
+    border: none;
+    border-radius: 12px;
+    background: #F3F4F6;
+    color: $color-text-title;
+    font-size: 22px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+    user-select: none;
+
+    &:hover { background: #E5E7EB; }
+    &:active { background: #D1D5DB; transform: scale(0.95); }
+    &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
+
+    &--del {
+      background: #FEF2F2;
+      color: #DC2626;
+      font-size: 18px;
+
+      &:hover { background: #FEE2E2; }
+      &:active { background: #FECACA; }
+    }
+
+    &--empty {
+      background: transparent;
+      pointer-events: none;
+    }
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+
+    i { font-size: 16px; }
+  }
+}
+
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-8px); }
+  30%       { transform: translateX(8px); }
+  45%       { transform: translateX(-6px); }
+  60%       { transform: translateX(6px); }
+  75%       { transform: translateX(-4px); }
+  90%       { transform: translateX(4px); }
+}
+
+// =========================================================================
+// Receipt modal
+// =========================================================================
+.receipt-modal {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+
+  &__label {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  // ---- Scanner ----
+  &__scanner {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+
+  &__scanner-row {
+    display: flex;
+    gap: $space-3;
+  }
+
+  &__scanner-input {
+    flex: 1;
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  // ---- Items ----
+  &__items {
+    min-height: 120px;
+  }
+
+  &__item-name {
+    font-weight: 600;
+  }
+
+  &__item-total {
+    font-weight: 600;
+    color: $color-primary;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-6 0;
+    color: $color-text-sub;
+
+    i { font-size: 32px; opacity: 0.4; }
+    p { margin: 0; font-size: $font-size-base; }
+  }
+
+  // ---- Summary ----
+  &__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $space-3 $space-4;
+    background: var(--surface-ground);
+    border-radius: 8px;
+  }
+
+  &__summary-count {
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+
+  &__summary-total {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  &__summary-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-primary;
+  }
+
+  // ---- Inline inputs ----
+  &__inline-input {
+    max-width: 120px;
+  }
+
+  &__inline-field {
+    width: 100%;
+    text-align: right;
+  }
+
+  // ---- Picker form ----
+  &__picker-form {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+    padding: $space-2 0;
+  }
+
+  // ---- Buttons ----
+  &__btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    min-height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: $color-primary;
+    color: white;
+    font-size: $font-size-base;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &__btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    min-height: 40px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: transparent;
+    color: $color-text-sub;
+    font-size: $font-size-base;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover { background: #F3F4F6; }
+  }
+
+  &__btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: $color-text-sub;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #F3F4F6; color: $color-text-title; }
+
+    &--red:hover { background: #FEF2F2; color: #DC2626; }
+  }
 }

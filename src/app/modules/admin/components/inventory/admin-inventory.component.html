@@ -8,7 +8,7 @@
   <!-- ====================================================================== -->
   <!-- Tabs: Insumos / Proveedores / Entradas                                 -->
   <!-- ====================================================================== -->
-  <p-tabView styleClass="inventory-tabs" (onChange)="onTabChange($event.index)">
+  <p-tabView styleClass="inventory-tabs" [activeIndex]="activeTab()" (activeIndexChange)="activeTab.set($event)" (onChange)="onTabChange($event.index)">
 
     <!-- ------------------------------------------------------------------ -->
     <!-- TAB 1 — Insumos (existing)                                          -->

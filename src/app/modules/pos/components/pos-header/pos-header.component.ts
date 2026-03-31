@@ -3,38 +3,91 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
-import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, InventoryItem, Product, UserRole } from '../../../../core/models';
+import {
+  AppConfig,
+  CreateStockReceiptItemRequest,
+  DEFAULT_APP_CONFIG,
+  DEFAULT_DEVICE_CONFIG,
+  DeviceConfig,
+  Supplier,
+  UserRole,
+} from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { PwaService } from '../../../../core/services/pwa.service';
+import { StockReceiptService } from '../../../../core/services/stock-receipt.service';
+import { SupplierService } from '../../../../core/services/supplier.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { environment } from '../../../../../environments/environment';
+
+/** PIN numpad key */
+type NumpadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'del';
+
+/** A line item in the receipt form */
+interface ReceiptLine {
+  inventoryItemId?: number;
+  productId?: number;
+  name: string;
+  quantity: number;
+  costPesos: number;
+}
+
+/** Response shape from verify-pin endpoint */
+interface VerifyPinResponse {
+  valid: boolean;
+  role?: string;
+}
 
 @Component({
   selector: 'app-pos-header',
   standalone: true,
-  imports: [RouterModule, FormsModule, DialogModule, DropdownModule, InputNumberModule, InputTextModule, TooltipModule],
+  imports: [
+    RouterModule,
+    FormsModule,
+    DialogModule,
+    DropdownModule,
+    InputNumberModule,
+    InputTextModule,
+    InputTextareaModule,
+    TableModule,
+    TooltipModule,
+  ],
   templateUrl: './pos-header.component.html',
   styleUrl: './pos-header.component.scss',
 })
 export class PosHeaderComponent implements OnInit, OnDestroy {
 
+  private readonly http = inject(HttpClient);
+  private readonly inventoryService = inject(InventoryService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly productService = inject(ProductService);
+  private readonly messageService = inject(MessageService);
+  private readonly supplierService = inject(SupplierService);
+  private readonly stockReceiptService = inject(StockReceiptService);
+  readonly pwaService = inject(PwaService);
+  readonly syncService = inject(SyncService);
+
+  private readonly destroy$ = new Subject<void>();
+
   readonly isOnline     = signal(true);
   readonly config       = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
   readonly deviceConfig = signal<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
 
-  /** Show orders button based on posExperience and role */
+  //#region Header Computed
+
   readonly showOrdersButton = computed(() => {
     const experience = this.configService.posExperience();
     const role = this.authService.currentUser()?.role;
@@ -42,23 +95,19 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     return isRestaurantOrCounter &&
       (role === 'Cashier' || role === 'Owner' || role === 'Manager');
   });
-  /** Show tables button only if business has tables and role allows */
+
   readonly showTablesButton = computed(() =>
     this.configService.hasTables() &&
     (this.authService.currentUser()?.role === 'Cashier' ||
      this.authService.currentUser()?.role === 'Owner' ||
      this.authService.currentUser()?.role === 'Manager')
   );
-  /** Show stock receive button only for Owner and Manager */
-  readonly showStockButton: boolean;
 
-  /** Role enum to Spanish display label */
   private readonly roleLabels: Record<UserRole, string> = {
     Owner: 'Dueño', Manager: 'Gerente', Cashier: 'Cajero',
     Waiter: 'Mesero', Kitchen: 'Cocina', Kiosk: 'Kiosko', Host: 'Hostess',
   };
 
-  /** Active branch display name — falls back to locationName from config */
   readonly branchName = computed(() => {
     const user = this.authService.currentUser();
     const id = this.authService.activeBranchId();
@@ -66,31 +115,71 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       ?? this.config().locationName;
   });
 
-  /** Current user display name */
   readonly userName = computed(() =>
     this.authService.currentUser()?.name ?? '',
   );
 
-  /** Current user role in Spanish */
   readonly userRoleLabel = computed(() => {
     const role = this.authService.currentUser()?.role;
     return role ? (this.roleLabels[role] ?? role) : '';
   });
 
-  // ---- Stock receive dialog ----
-  readonly showStockDialog = signal(false);
-  readonly stockItems = signal<{ label: string; value: string }[]>([]);
-  selectedStockItem: string | null = null;
-  stockQuantity = 1;
-  stockReason = '';
+  //#endregion
 
-  private readonly inventoryService = inject(InventoryService);
-  private readonly notificationService = inject(NotificationService);
-  private readonly productService = inject(ProductService);
-  private readonly messageService = inject(MessageService);
-  private readonly http = inject(HttpClient);
-  readonly pwaService = inject(PwaService);
-  readonly syncService = inject(SyncService);
+  //#region PIN Dialog
+
+  readonly showPinDialog = signal(false);
+  readonly pinDigits = signal<string[]>([]);
+  readonly pinError = signal(false);
+  readonly pinLoading = signal(false);
+
+  readonly pinKeys: (NumpadKey | null)[] = [
+    '1', '2', '3',
+    '4', '5', '6',
+    '7', '8', '9',
+    null, '0', 'del',
+  ];
+
+  //#endregion
+
+  //#region Receipt Modal
+
+  readonly showReceiptModal = signal(false);
+  readonly receiptSupplier = signal<number | null>(null);
+  readonly receiptNotes = signal('');
+  readonly receiptItems = signal<ReceiptLine[]>([]);
+  readonly receiptTotal = computed(() =>
+    this.receiptItems().reduce((sum, line) =>
+      sum + Math.round(line.costPesos * 100) * line.quantity, 0),
+  );
+  readonly receiptSaving = signal(false);
+
+  readonly scanInput = signal('');
+  private readonly scanInput$ = new Subject<string>();
+
+  readonly showPickerDialog = signal(false);
+  pickerSelectedItem: string | null = null;
+  pickerQuantity = 1;
+  pickerCostPesos = 0;
+
+  /** Supplier dropdown options */
+  readonly suppliers = signal<Supplier[]>([]);
+  readonly supplierOptions = computed(() =>
+    this.suppliers().filter(s => s.isActive).map(s => ({ label: s.name, value: s.id })),
+  );
+
+  /** Combined inventory items + trackStock products for picker */
+  readonly stockItemOptions = computed(() => {
+    const invItems = this.inventoryService.items()
+      .filter(i => i.isActive)
+      .map(i => ({ label: `${i.name} (insumo)`, value: `inv:${i.id}`, name: i.name }));
+    const prodItems = this.productService.products()
+      .filter(p => p.trackStock)
+      .map(p => ({ label: `${p.name} (producto)`, value: `prod:${p.id}`, name: p.name }));
+    return [...invItems, ...prodItems];
+  });
+
+  //#endregion
 
   private readonly onOnline  = (): void => this.isOnline.set(true);
   private readonly onOffline = (): void => this.isOnline.set(false);
@@ -100,91 +189,317 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     private readonly authService: AuthService,
     private readonly router: Router,
   ) {
-    const role = this.authService.currentUser()?.role;
-    this.showStockButton = role === 'Owner' || role === 'Manager';
-    // Business config — reactive
     this.configService.config$
       .pipe(takeUntilDestroyed())
       .subscribe(cfg => this.config.set(cfg));
 
-    // Device config — reactive (mode, deviceName)
     this.configService.deviceConfig$
       .pipe(takeUntilDestroyed())
       .subscribe(cfg => this.deviceConfig.set(cfg));
   }
+
+  //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
     this.isOnline.set(navigator.onLine);
     window.addEventListener('online',  this.onOnline);
     window.addEventListener('offline', this.onOffline);
 
-    await this.configService.load(); // triggers config$ emission
+    await this.configService.load();
+    this.setupScanDebounce();
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('online',  this.onOnline);
     window.removeEventListener('offline', this.onOffline);
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  /** Navigates to the tables view */
+  //#endregion
+
+  //#region Navigation
+
   openTables(): void {
     this.router.navigate(['/tables']);
   }
 
-  /** Navigates to the orders list */
   openOrders(): void {
     this.router.navigate(['/orders']);
   }
 
-  /** Navigates to the PIN screen to access the back office */
   openAdmin(): void {
     this.router.navigate(['/pin']);
   }
 
-  /** Opens the stock receive dialog with combined inventory + product options */
-  async openStockDialog(): Promise<void> {
-    await this.inventoryService.loadFromApi();
-    const invItems = this.inventoryService.items()
-      .map(i => ({ label: `${i.name} (insumo)`, value: `inv:${i.id}` }));
-    const prodItems = this.productService.products()
-      .filter(p => p.trackStock)
-      .map(p => ({ label: `${p.name} (producto)`, value: `prod:${p.id}` }));
-    this.stockItems.set([...invItems, ...prodItems]);
-    this.selectedStockItem = null;
-    this.stockQuantity = 1;
-    this.stockReason = '';
-    this.showStockDialog.set(true);
-  }
+  //#endregion
 
-  /** Requests notification permission and updates the PwaService signal */
+  //#region Notifications
+
   async enableNotifications(): Promise<void> {
     await this.notificationService.requestPermission();
     this.pwaService.notificationStatus.set(Notification.permission);
   }
 
-  /** Registers stock entry for selected item */
-  async confirmStockReceive(): Promise<void> {
-    if (!this.selectedStockItem || this.stockQuantity <= 0) return;
+  //#endregion
 
-    const [type, idStr] = this.selectedStockItem.split(':');
-    const id = Number(idStr);
-    const reason = this.stockReason.trim() || undefined;
+  //#region PIN Flow
 
-    try {
-      if (type === 'inv') {
-        await this.inventoryService.addMovement(id, 'in', this.stockQuantity, reason);
-      } else {
-        await firstValueFrom(
-          this.http.post(`${environment.apiUrl}/products/${id}/stock`, {
-            type: 'in', quantity: this.stockQuantity, reason,
-          })
-        );
-      }
-      this.messageService.add({ severity: 'success', summary: 'Entrada registrada', life: 3000 });
-      this.showStockDialog.set(false);
-    } catch {
-      this.messageService.add({ severity: 'error', summary: 'Error al registrar entrada', life: 3000 });
+  /** Opens the PIN dialog — first step of "Recibir mercancía" */
+  openPinDialog(): void {
+    this.pinDigits.set([]);
+    this.pinError.set(false);
+    this.pinLoading.set(false);
+    this.showPinDialog.set(true);
+  }
+
+  addPinDigit(digit: string): void {
+    if (this.pinDigits().length >= 4 || this.pinLoading()) return;
+    this.pinDigits.update(d => [...d, digit]);
+
+    if (this.pinDigits().length === 4) {
+      this.submitPin();
     }
   }
 
+  removePinDigit(): void {
+    this.pinDigits.update(d => d.slice(0, -1));
+    this.pinError.set(false);
+  }
+
+  onPinKey(key: NumpadKey | null): void {
+    if (!key) return;
+    if (key === 'del') {
+      this.removePinDigit();
+    } else {
+      this.addPinDigit(key);
+    }
+  }
+
+  /** Verifies PIN via API — on success opens the receipt modal */
+  private submitPin(): void {
+    const pin = this.pinDigits().join('');
+    const branchId = this.authService.activeBranchId();
+    this.pinLoading.set(true);
+
+    this.http.post<VerifyPinResponse>(
+      `${environment.apiUrl}/branch/${branchId}/verify-pin`,
+      { pin },
+    ).subscribe({
+      next: (res) => {
+        this.pinLoading.set(false);
+        if (res.valid && (res.role === 'Owner' || res.role === 'Manager')) {
+          this.showPinDialog.set(false);
+          this.openReceiptModal();
+        } else {
+          this.showPinError();
+        }
+      },
+      error: () => {
+        this.pinLoading.set(false);
+        this.showPinError();
+      },
+    });
+  }
+
+  private showPinError(): void {
+    this.pinError.set(true);
+    setTimeout(() => {
+      this.pinDigits.set([]);
+      this.pinError.set(false);
+    }, 600);
+  }
+
+  //#endregion
+
+  //#region Receipt Modal
+
+  /** Opens receipt modal and preloads suppliers + inventory */
+  private async openReceiptModal(): Promise<void> {
+    this.receiptSupplier.set(null);
+    this.receiptNotes.set('');
+    this.receiptItems.set([]);
+    this.scanInput.set('');
+    this.receiptSaving.set(false);
+
+    this.showReceiptModal.set(true);
+
+    // Load suppliers in background
+    this.supplierService.getAll().subscribe({
+      next: (data) => this.suppliers.set(data),
+      error: () => {},
+    });
+
+    // Ensure inventory is fresh
+    await this.inventoryService.loadFromApi();
+  }
+
+  private setupScanDebounce(): void {
+    this.scanInput$
+      .pipe(debounceTime(150), takeUntil(this.destroy$))
+      .subscribe(code => this.handleScan(code));
+  }
+
+  onScanInputChange(value: string): void {
+    this.scanInput.set(value);
+    if (value.trim()) {
+      this.scanInput$.next(value.trim());
+    }
+  }
+
+  private handleScan(code: string): void {
+    const options = this.stockItemOptions();
+
+    // Try exact name match first
+    const match = options.find(o =>
+      o.name.toLowerCase() === code.toLowerCase()
+    );
+
+    if (match) {
+      this.addOrIncrementLine(match.value, match.name);
+      this.scanInput.set('');
+      return;
+    }
+
+    // Try barcode lookup
+    this.productService.findByBarcode(code).subscribe({
+      next: (product) => {
+        if (product && product.trackStock) {
+          this.addOrIncrementLine(`prod:${product.id}`, product.name);
+        } else if (product) {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'Sin control de stock',
+            detail: `"${product.name}" no maneja stock`,
+            life: 4000,
+          });
+        } else {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'No encontrado',
+            detail: `"${code}" no se encontró en el catálogo`,
+            life: 4000,
+          });
+        }
+        this.scanInput.set('');
+      },
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Error al buscar producto',
+          life: 3000,
+        });
+        this.scanInput.set('');
+      },
+    });
+  }
+
+  private addOrIncrementLine(itemKey: string, name: string): void {
+    const items = [...this.receiptItems()];
+    const [type, idStr] = itemKey.split(':');
+    const id = Number(idStr);
+
+    const existing = items.find(line =>
+      (type === 'inv' && line.inventoryItemId === id) ||
+      (type === 'prod' && line.productId === id),
+    );
+
+    if (existing) {
+      existing.quantity += 1;
+      this.receiptItems.set([...items]);
+    } else {
+      const invItem = type === 'inv'
+        ? this.inventoryService.items().find(i => i.id === id)
+        : null;
+      const defaultCost = invItem ? invItem.costCents / 100 : 0;
+
+      items.push({
+        inventoryItemId: type === 'inv' ? id : undefined,
+        productId: type === 'prod' ? id : undefined,
+        name,
+        quantity: 1,
+        costPesos: defaultCost,
+      });
+      this.receiptItems.set(items);
+    }
+  }
+
+  openPicker(): void {
+    this.pickerSelectedItem = null;
+    this.pickerQuantity = 1;
+    this.pickerCostPesos = 0;
+    this.showPickerDialog.set(true);
+  }
+
+  addFromPicker(): void {
+    if (!this.pickerSelectedItem || this.pickerQuantity <= 0) return;
+
+    const option = this.stockItemOptions().find(o => o.value === this.pickerSelectedItem);
+    if (!option) return;
+
+    const [type, idStr] = this.pickerSelectedItem.split(':');
+    const id = Number(idStr);
+    const items = [...this.receiptItems()];
+
+    items.push({
+      inventoryItemId: type === 'inv' ? id : undefined,
+      productId: type === 'prod' ? id : undefined,
+      name: option.name,
+      quantity: this.pickerQuantity,
+      costPesos: this.pickerCostPesos,
+    });
+    this.receiptItems.set(items);
+    this.showPickerDialog.set(false);
+  }
+
+  removeReceiptLine(index: number): void {
+    const items = [...this.receiptItems()];
+    items.splice(index, 1);
+    this.receiptItems.set(items);
+  }
+
+  updateReceiptLine(): void {
+    this.receiptItems.set([...this.receiptItems()]);
+  }
+
+  lineTotalCents(line: ReceiptLine): number {
+    return Math.round(line.costPesos * 100) * line.quantity;
+  }
+
+  confirmReceipt(): void {
+    const items = this.receiptItems();
+    if (items.length === 0) return;
+
+    this.receiptSaving.set(true);
+
+    const requestItems: CreateStockReceiptItemRequest[] = items.map(line => ({
+      inventoryItemId: line.inventoryItemId,
+      productId: line.productId,
+      quantity: line.quantity,
+      costCents: Math.round(line.costPesos * 100),
+    }));
+
+    const payload = {
+      supplierId: this.receiptSupplier() ?? undefined,
+      notes: this.receiptNotes().trim() || undefined,
+      items: requestItems,
+    };
+
+    this.stockReceiptService.create(payload).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Entrada registrada', life: 3000 });
+        this.showReceiptModal.set(false);
+        this.inventoryService.loadFromApi();
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Error al registrar entrada', life: 3000 });
+      },
+      complete: () => {
+        this.receiptSaving.set(false);
+      },
+    });
+  }
+
+  //#endregion
 }
