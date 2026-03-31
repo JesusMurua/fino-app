@@ -3,9 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { DropdownModule } from 'primeng/dropdown';
+import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
+import { FeatureKey } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { ConfigService } from '../../core/services/config.service';
+import { FeatureFlagService } from '../../core/services/feature-flag.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
@@ -18,7 +22,7 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
   standalone: true,
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
-    FormsModule, DropdownModule, TooltipModule,
+    FormsModule, DropdownModule, ToastModule, TooltipModule,
     TrialBannerComponent,
   ],
   templateUrl: './admin-shell.component.html',
@@ -26,6 +30,8 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 })
 export class AdminShellComponent implements OnInit {
 
+  private readonly configService = inject(ConfigService);
+  private readonly featureFlags = inject(FeatureFlagService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
   private readonly productService = inject(ProductService);
@@ -59,19 +65,25 @@ export class AdminShellComponent implements OnInit {
   /** Number of inventory items below low-stock threshold */
   readonly lowStockCount = computed(() => this.inventoryService.lowStockItems().length);
 
-  /** Navigation items for the sidebar */
-  readonly navItems = [
-    { path: 'dashboard',  icon: 'pi-chart-bar',  label: 'Dashboard' },
-    { path: 'products',   icon: 'pi-list',        label: 'Catálogo' },
-    { path: 'reports',    icon: 'pi-chart-line',  label: 'Reportes' },
-    { path: 'tables',     icon: 'pi-table',       label: 'Mesas' },
-    { path: 'inventory',  icon: 'pi-box',         label: 'Inventario', badge: true },
-    { path: 'promotions', icon: 'pi-tag',         label: 'Promociones' },
-    { path: 'users',      icon: 'pi-users',       label: 'Usuarios' },
-    { path: 'cash',          icon: 'pi-wallet',      label: 'Caja' },
-    { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones' },
-    { path: 'settings',     icon: 'pi-cog',         label: 'Configuración' },
-  ];
+  /** Navigation items filtered by businessType and plan */
+  readonly navItems = computed(() => {
+    const hasTables = this.configService.hasTables();
+
+    const allItems = [
+      { path: 'dashboard',    icon: 'pi-chart-bar',  label: 'Dashboard',       show: true, locked: false, badge: false },
+      { path: 'products',     icon: 'pi-list',        label: 'Catálogo',        show: true, locked: false, badge: false },
+      { path: 'reports',      icon: 'pi-chart-line',  label: 'Reportes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.AdvancedReports), badge: false },
+      { path: 'tables',       icon: 'pi-table',       label: 'Mesas',           show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Tables), badge: false },
+      { path: 'inventory',    icon: 'pi-box',         label: 'Inventario',      show: this.featureFlags.isRelevantForGiro(FeatureKey.Inventory), locked: !this.featureFlags.canUse(FeatureKey.Inventory), badge: true },
+      { path: 'promotions',   icon: 'pi-tag',         label: 'Promociones',     show: this.featureFlags.isRelevantForGiro(FeatureKey.Promotions), locked: !this.featureFlags.canUse(FeatureKey.Promotions), badge: false },
+      { path: 'users',        icon: 'pi-users',       label: 'Usuarios',        show: true, locked: false, badge: false },
+      { path: 'cash',         icon: 'pi-wallet',      label: 'Caja',            show: true, locked: !this.featureFlags.canUse(FeatureKey.CashRegister), badge: false },
+      { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones',   show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Reservations), badge: false },
+      { path: 'settings',     icon: 'pi-cog',         label: 'Configuración',   show: true, locked: false, badge: false },
+    ];
+
+    return allItems.filter(item => item.show);
+  });
 
   async ngOnInit(): Promise<void> {
     const saved = localStorage.getItem(SIDEBAR_KEY);
@@ -123,6 +135,16 @@ export class AdminShellComponent implements OnInit {
     } finally {
       this.isSwitchingBranch.set(false);
     }
+  }
+
+  /** Shows upgrade toast for locked nav items */
+  onLockedClick(label: string): void {
+    this.messageService.add({
+      severity: 'info',
+      summary: label,
+      detail: 'Requiere un plan superior para acceder',
+      life: 3000,
+    });
   }
 
   /** Navigates to the POS without logging out */

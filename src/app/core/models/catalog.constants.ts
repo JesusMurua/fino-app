@@ -44,10 +44,10 @@ export const DEVICE_MODES: DeviceModeCatalog[] = [
 export const BUSINESS_TYPES: BusinessTypeCatalog[] = [
   { id: 1, code: 'Restaurant', name: 'Restaurante', hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
   { id: 2, code: 'Retail',     name: 'Abarrotes',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 2 },
-  { id: 3, code: 'Cafe',       name: 'Café',         hasKitchen: true,  hasTables: true,  posExperience: 'Counter',    sortOrder: 3 },
+  { id: 3, code: 'Cafe',       name: 'Café',         hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 3 },
   { id: 4, code: 'Bar',        name: 'Bar',           hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 4 },
-  { id: 5, code: 'FoodTruck',  name: 'Food Truck',   hasKitchen: true,  hasTables: false, posExperience: 'Quick',      sortOrder: 5 },
-  { id: 6, code: 'General',    name: 'General',       hasKitchen: false, hasTables: false, posExperience: 'Counter',    sortOrder: 6 },
+  { id: 5, code: 'FoodTruck',  name: 'Food Truck',   hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 5 },
+  { id: 6, code: 'General',    name: 'General',       hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 6 },
   { id: 7,  code: 'Taqueria',   name: 'Taquería',     hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 5 },
   { id: 8,  code: 'Abarrotes',  name: 'Abarrotes',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 7 },
   { id: 9,  code: 'Ferreteria', name: 'Ferretería',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 8 },

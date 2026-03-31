@@ -167,29 +167,35 @@
           </a>
         </section>
 
-        <!-- Branch operational config (read-only) -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-cog"></i></div>
-            <div>
-              <div class="card-title">Configuración de tu sucursal</div>
-              <div class="card-subtitle">Se determina por tu tipo de negocio</div>
+        <!-- Branch operational config (read-only) — only for giros with kitchen/tables -->
+        @if (showOperationalConfig()) {
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-cog"></i></div>
+              <div>
+                <div class="card-title">Configuración de tu sucursal</div>
+                <div class="card-subtitle">Se determina por tu tipo de negocio</div>
+              </div>
             </div>
-          </div>
 
-          <div class="settings-branch-flags">
-            <span class="settings-branch-flag">
-              {{ config().hasKitchen ? '✅ Con cocina' : '❌ Sin cocina' }}
-            </span>
-            <span class="settings-branch-flag">
-              {{ config().hasTables ? '✅ Con mesas' : '❌ Sin mesas' }}
-            </span>
-          </div>
+            <div class="settings-branch-flags">
+              @if (showKitchenToggle()) {
+                <span class="settings-branch-flag">
+                  {{ config().hasKitchen ? '✅ Con cocina' : '❌ Sin cocina' }}
+                </span>
+              }
+              @if (showTablesToggle()) {
+                <span class="settings-branch-flag">
+                  {{ config().hasTables ? '✅ Con mesas' : '❌ Sin mesas' }}
+                </span>
+              }
+            </div>
 
-          <p class="settings-branch-hint">
-            Estas configuraciones dependen de tu tipo de negocio. Para modificarlas, contacta a soporte.
-          </p>
-        </section>
+            <p class="settings-branch-hint">
+              Estas configuraciones dependen de tu tipo de negocio. Para modificarlas, contacta a soporte.
+            </p>
+          </section>
+        }
 
         <!-- Folio configuration -->
         <section class="settings-card">
@@ -299,7 +305,7 @@
             <p class="mode-section__desc">Elige cómo funciona esta pantalla</p>
 
             <div class="mode-grid">
-              @for (mode of modes; track mode.value) {
+              @for (mode of availableModes(); track mode.value) {
                 <label
                   class="mode-card"
                   [class.mode-card--active]="deviceConfig().mode === mode.value"
@@ -807,6 +813,12 @@
               <tr>
                 <th>Nombre</th>
                 <th>Ubicación</th>
+                @if (showKitchenToggle()) {
+                  <th style="width: 5rem; text-align: center">Cocina</th>
+                }
+                @if (showTablesToggle()) {
+                  <th style="width: 5rem; text-align: center">Mesas</th>
+                }
                 <th style="width: 7rem">Acciones</th>
               </tr>
             </ng-template>
@@ -820,6 +832,12 @@
                   }
                 </td>
                 <td>{{ branch.locationName }}</td>
+                @if (showKitchenToggle()) {
+                  <td style="text-align: center">{{ branch.hasKitchen ? '✅' : '❌' }}</td>
+                }
+                @if (showTablesToggle()) {
+                  <td style="text-align: center">{{ branch.hasTables ? '✅' : '❌' }}</td>
+                }
                 <td>
                   <div class="branch-actions">
                     @if (!branch.isMatrix) {
@@ -847,7 +865,7 @@
 
             <ng-template pTemplate="emptymessage">
               <tr>
-                <td colspan="3" class="branches-empty">
+                <td colspan="99" class="branches-empty">
                   No hay sucursales registradas.
                 </td>
               </tr>
@@ -898,22 +916,28 @@
             />
           </div>
 
-          <div class="branch-toggles">
-            <label class="branch-toggle">
-              <input
-                type="checkbox"
-                [(ngModel)]="branchForm.hasKitchen"
-              />
-              <span>¿Tiene cocina?</span>
-            </label>
-            <label class="branch-toggle">
-              <input
-                type="checkbox"
-                [(ngModel)]="branchForm.hasTables"
-              />
-              <span>¿Tiene mesas?</span>
-            </label>
-          </div>
+          @if (showKitchenToggle() || showTablesToggle()) {
+            <div class="branch-toggles">
+              @if (showKitchenToggle()) {
+                <label class="branch-toggle">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="branchForm.hasKitchen"
+                  />
+                  <span>¿Tiene cocina?</span>
+                </label>
+              }
+              @if (showTablesToggle()) {
+                <label class="branch-toggle">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="branchForm.hasTables"
+                  />
+                  <span>¿Tiene mesas?</span>
+                </label>
+              }
+            </div>
+          }
         </div>
 
         <ng-template pTemplate="footer">

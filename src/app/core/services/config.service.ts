@@ -52,10 +52,10 @@ export class ConfigService {
   readonly config$ = new BehaviorSubject<AppConfig>({ ...DEFAULT_APP_CONFIG });
 
   /** Whether the current business has a kitchen */
-  readonly hasKitchen = computed(() => this.config$.getValue().hasKitchen ?? true);
+  readonly hasKitchen = computed(() => this.config$.getValue().hasKitchen ?? false);
 
   /** Whether the current business uses table management */
-  readonly hasTables = computed(() => this.config$.getValue().hasTables ?? true);
+  readonly hasTables = computed(() => this.config$.getValue().hasTables ?? false);
 
   /** POS experience variant for the current business type */
   readonly posExperience = computed<PosExperience>(() => {
@@ -110,9 +110,12 @@ export class ConfigService {
         ...config,
         businessName: remote.businessName,
         locationName: remote.locationName || remote.branchName || config.locationName,
-        hasKitchen: remote.hasKitchen ?? config.hasKitchen,
-        hasTables: remote.hasTables ?? config.hasTables,
+        hasKitchen: remote.hasKitchen ?? false,
+        hasTables: remote.hasTables ?? false,
         businessTypeCatalog: btCatalog,
+        folioPrefix: remote.folioPrefix ?? config.folioPrefix,
+        folioFormat: remote.folioFormat ?? config.folioFormat,
+        folioCounter: remote.folioCounter ?? config.folioCounter,
       };
 
       await this.db.config.put(config);

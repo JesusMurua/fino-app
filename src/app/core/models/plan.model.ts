@@ -37,6 +37,10 @@ export enum FeatureKey {
   ClientsAndCredit = 'ClientsAndCredit',
   MultiBranch = 'MultiBranch',
   ApiAccess = 'ApiAccess',
+  Tables = 'Tables',
+  Reservations = 'Reservations',
+  Inventory = 'Inventory',
+  CashRegister = 'CashRegister',
 }
 
 /** Computed plan metadata derived from auth state */
@@ -71,6 +75,9 @@ const BASIC_FEATURES: FeatureKey[] = [
   FeatureKey.HardwarePrinter,
   FeatureKey.HardwareScanner,
   FeatureKey.Promotions,
+  FeatureKey.Tables,
+  FeatureKey.Inventory,
+  FeatureKey.CashRegister,
 ];
 
 const PRO_FEATURES: FeatureKey[] = [
@@ -80,6 +87,7 @@ const PRO_FEATURES: FeatureKey[] = [
   FeatureKey.LoyaltyProgram,
   FeatureKey.ClientsAndCredit,
   FeatureKey.MultiBranch,
+  FeatureKey.Reservations,
 ];
 
 const ENTERPRISE_FEATURES: FeatureKey[] = [
@@ -101,48 +109,58 @@ export const BUSINESS_FEATURE_MAP: Record<BusinessType, FeatureKey[]> = {
   [BusinessType.Restaurant]: [
     FeatureKey.Zones, FeatureKey.BarSeats, FeatureKey.KioskMode,
     FeatureKey.HardwarePrinter, FeatureKey.Promotions, FeatureKey.LoyaltyProgram,
-  ],
-  [BusinessType.Retail]: [
-    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
-    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Cafe]: [
     FeatureKey.KioskMode, FeatureKey.HardwarePrinter,
     FeatureKey.Promotions, FeatureKey.LoyaltyProgram,
+    FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Bar]: [
     FeatureKey.Zones, FeatureKey.BarSeats,
     FeatureKey.HardwarePrinter, FeatureKey.Promotions,
+    FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.FoodTruck]: [
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
-  ],
-  [BusinessType.General]: [
-    FeatureKey.Zones, FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
-    FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Taqueria]: [
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
+  ],
+  [BusinessType.Retail]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Abarrotes]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Ferreteria]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Papeleria]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
-    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Farmacia]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
-    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+    FeatureKey.Inventory, FeatureKey.CashRegister,
+  ],
+  [BusinessType.General]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.ClientsAndCredit, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
   [BusinessType.Servicios]: [
-    FeatureKey.Zones, FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
-    FeatureKey.ClientsAndCredit,
+    FeatureKey.HardwarePrinter, FeatureKey.ClientsAndCredit,
+    FeatureKey.CashRegister,
   ],
 };
 
@@ -161,6 +179,10 @@ export const FEATURE_MIN_PLAN: Record<FeatureKey, PlanType> = {
   [FeatureKey.MultiBranch]: PlanType.Pro,
   [FeatureKey.HardwareScale]: PlanType.Enterprise,
   [FeatureKey.ApiAccess]: PlanType.Enterprise,
+  [FeatureKey.Tables]: PlanType.Basic,
+  [FeatureKey.Reservations]: PlanType.Pro,
+  [FeatureKey.Inventory]: PlanType.Basic,
+  [FeatureKey.CashRegister]: PlanType.Basic,
 };
 
 /** Human-readable plan names in Spanish */

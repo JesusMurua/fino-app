@@ -36,6 +36,13 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   /** Show orders button only for Cashier and Owner */
   readonly showOrdersButton: boolean;
+  /** Show tables button only if business has tables and role allows */
+  readonly showTablesButton = computed(() =>
+    this.configService.hasTables() &&
+    (this.authService.currentUser()?.role === 'Cashier' ||
+     this.authService.currentUser()?.role === 'Owner' ||
+     this.authService.currentUser()?.role === 'Manager')
+  );
   /** Show stock receive button only for Owner and Manager */
   readonly showStockButton: boolean;
 

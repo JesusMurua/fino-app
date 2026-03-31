@@ -62,7 +62,7 @@
       </button>
     }
 
-    @if (showOrdersButton) {
+    @if (showTablesButton()) {
       <button
         type="button"
         class="pos-header__settings"
@@ -71,6 +71,8 @@
       >
         <i class="pi pi-table"></i>
       </button>
+    }
+    @if (showOrdersButton) {
       <button
         type="button"
         class="pos-header__settings"

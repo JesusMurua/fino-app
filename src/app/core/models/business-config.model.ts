@@ -17,12 +17,18 @@ export interface BusinessConfig {
   hasTables: boolean;
   /** Cached business type catalog entry — provides posExperience at startup */
   businessTypeCatalog?: BusinessTypeCatalog;
+  /** Folio prefix for ticket numbering (e.g. "HMO") */
+  folioPrefix?: string;
+  /** Folio format template (e.g. "{PREFIX}-{NUM:4}") */
+  folioFormat?: string;
+  /** Current folio counter value */
+  folioCounter?: number;
 }
 
 /** Default business config used before the owner sets up the back office */
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   businessName: 'Mi Negocio',
   locationName: 'Sucursal Principal',
-  hasKitchen: true,
-  hasTables: true,
+  hasKitchen: false,
+  hasTables: false,
 };

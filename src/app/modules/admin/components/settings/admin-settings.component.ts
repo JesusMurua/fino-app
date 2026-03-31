@@ -74,12 +74,18 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly pinError         = signal('');
   readonly pinSuccess       = signal(false);
 
-  readonly modes: { value: DeviceMode; label: string; icon: string; description: string; badge?: string }[] = [
-    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes', badge: 'Beta' },
-  ];
+  /** Device modes filtered by hasKitchen/hasTables */
+  readonly availableModes = computed(() => {
+    const hasKitchen = this.configService.hasKitchen();
+    const hasTables = this.configService.hasTables();
+
+    return [
+      { value: 'cashier' as DeviceMode, icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro',          show: true, badge: '' },
+      { value: 'tables'  as DeviceMode, icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros',    show: hasTables, badge: '' },
+      { value: 'kitchen' as DeviceMode, icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS',         show: hasKitchen, badge: '' },
+      { value: 'kiosk'   as DeviceMode, icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes',     show: true, badge: 'Beta' },
+    ].filter(m => m.show);
+  });
 
   /** All branches for the current business */
   readonly branches = signal<Branch[]>([]);
@@ -220,6 +226,24 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
+  /** Whether to show operational config section in Negocio tab */
+  readonly showOperationalConfig = computed(() =>
+    this.showKitchenToggle() || this.showTablesToggle()
+  );
+
+  /** Whether to show kitchen toggle in branch dialog */
+  readonly showKitchenToggle = computed(() => {
+    const type = this.authService.businessType();
+    return [BusinessType.Restaurant, BusinessType.Cafe, BusinessType.Bar,
+            BusinessType.FoodTruck, BusinessType.Taqueria].includes(type);
+  });
+
+  /** Whether to show tables toggle in branch dialog */
+  readonly showTablesToggle = computed(() => {
+    const type = this.authService.businessType();
+    return [BusinessType.Restaurant, BusinessType.Cafe, BusinessType.Bar].includes(type);
+  });
+
   /** Current business type info — read-only display from authService */
   readonly currentGiroInfo = computed(() => {
     const giro = this.authService.businessType();
@@ -257,6 +281,11 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     ]);
     this.config.set(appConfig);
     this.deviceConfig.set(this.configService.loadDeviceConfig());
+
+    // Pre-fill folio form from loaded config
+    this.folioPrefix = appConfig.folioPrefix ?? '';
+    this.folioFormat = appConfig.folioFormat ?? '';
+    this.folioCounter.set(appConfig.folioCounter ?? 0);
 
     // Refresh subscription status for billing tab
     this.authService.refreshSubscriptionStatus();
@@ -451,7 +480,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Opens the dialog to create a new branch */
   openNewBranch(): void {
     this.editingBranch.set(null);
-    this.branchForm = { name: '', locationName: '', hasKitchen: true, hasTables: true };
+    this.branchForm = { name: '', locationName: '', hasKitchen: false, hasTables: false };
     this.showBranchDialog.set(true);
   }
 
@@ -464,8 +493,8 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.branchForm = {
       name: branch.name,
       locationName: branch.locationName,
-      hasKitchen: branch.hasKitchen ?? true,
-      hasTables: branch.hasTables ?? true,
+      hasKitchen: branch.hasKitchen ?? false,
+      hasTables: branch.hasTables ?? false,
     };
     this.showBranchDialog.set(true);
   }
@@ -560,7 +589,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Display label for the selected mode in the code generator */
   codeModeLabel(): string {
-    return this.modes.find(m => m.value === this.codeMode)?.label ?? this.codeMode;
+    return this.availableModes().find(m => m.value === this.codeMode)?.label ?? this.codeMode;
   }
 
   //#endregion
