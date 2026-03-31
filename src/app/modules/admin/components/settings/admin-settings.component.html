@@ -102,9 +102,9 @@
                 id="s-location"
                 type="text"
                 pInputText
-                [ngModel]="config().locationName"
+                [ngModel]="displayLocationName()"
                 (ngModelChange)="updateConfig('locationName', $event)"
-                placeholder="Ej. Centro, CDMX"
+                placeholder="Ej. Av. Reforma 123, Centro, CDMX"
                 class="form-field__input"
               />
             </div>

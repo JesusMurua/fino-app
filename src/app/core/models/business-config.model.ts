@@ -27,8 +27,8 @@ export interface BusinessConfig {
 
 /** Default business config used before the owner sets up the back office */
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
-  businessName: 'Mi Negocio',
-  locationName: 'Sucursal Principal',
+  businessName: '',
+  locationName: '',
   hasKitchen: false,
   hasTables: false,
 };

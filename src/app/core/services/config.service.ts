@@ -57,11 +57,10 @@ export class ConfigService {
   /** Whether the current business uses table management */
   readonly hasTables = computed(() => this.config$.getValue().hasTables ?? false);
 
-  /** POS experience variant for the current business type */
-  readonly posExperience = computed<PosExperience>(() => {
-    const catalog = this.config$.getValue().businessTypeCatalog;
-    return catalog?.posExperience ?? 'Restaurant';
-  });
+  /** POS experience variant — undefined until config is loaded */
+  readonly posExperience = computed<PosExperience | undefined>(() =>
+    this.config$.getValue().businessTypeCatalog?.posExperience
+  );
 
   /** Reactive device config stream — emits on every loadDeviceConfig() and saveDeviceConfig() */
   readonly deviceConfig$ = new BehaviorSubject<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });

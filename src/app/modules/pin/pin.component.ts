@@ -89,14 +89,16 @@ export class PinComponent {
   /**
    * Returns the POS route based on the current business type's posExperience.
    * Restaurant → /pos, Retail → /pos/retail, Counter → /pos/counter, Quick → /pos/quick.
+   * If posExperience is undefined (config not loaded), navigates to error page.
    */
   private getPosDest(): string {
     const experience = this.configService.posExperience();
     switch (experience) {
-      case 'Retail':  return '/pos/retail';
-      case 'Counter': return '/pos/counter';
-      case 'Quick':   return '/pos/quick';
-      default:        return '/pos';
+      case 'Restaurant': return '/pos';
+      case 'Retail':     return '/pos/retail';
+      case 'Counter':    return '/pos/counter';
+      case 'Quick':      return '/pos/quick';
+      default:           return '/pos/error-config';
     }
   }
 
@@ -119,9 +121,10 @@ export class PinComponent {
     this.isLoading.set(false);
 
     if (user) {
-      // Preload essential data into Dexie (best-effort, non-blocking)
+      // Preload essential data into Dexie — config must load before navigation
       try {
         await Promise.all([
+          this.configService.load(),
           this.productService.loadCatalog(),
           this.inventoryService.loadFromApi(),
           this.tableService.loadTables(this.authService.activeBranchId()),

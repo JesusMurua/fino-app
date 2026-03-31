@@ -7,6 +7,7 @@ import { NgHttpLoaderComponent } from 'ng-http-loader';
 
 import { AuthService } from './core/services/auth.service';
 import { CatalogService } from './core/services/catalog.service';
+import { ConfigService } from './core/services/config.service';
 import { PrinterService } from './core/services/printer.service';
 import { SyncService } from './core/services/sync.service';
 import { ExpiredOverlayComponent } from './shared/components/expired-overlay/expired-overlay.component';
@@ -23,6 +24,7 @@ import { UpdateBannerComponent } from './shared/components/update-banner/update-
 export class AppComponent implements OnInit {
 
   private readonly authService = inject(AuthService);
+  private readonly configService = inject(ConfigService);
   private readonly printerService = inject(PrinterService);
   private readonly syncService = inject(SyncService);
   private readonly catalogService = inject(CatalogService);
@@ -67,8 +69,9 @@ export class AppComponent implements OnInit {
     this.printerService.tryAutoConnect();
     this.catalogService.loadAll();
 
-    // Refresh subscription status once per session if authenticated
+    // Load config + refresh subscription on page refresh when already authenticated
     if (this.authService.isAuthenticated()) {
+      this.configService.load();
       this.authService.refreshSubscriptionStatus();
     }
 

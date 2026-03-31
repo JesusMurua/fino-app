@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
@@ -226,6 +226,16 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
+  /** Cleaned location name — strips auto-generated branch name patterns */
+  readonly displayLocationName = computed(() => {
+    const loc = this.config().locationName ?? '';
+    const biz = this.config().businessName ?? '';
+    if (loc === `${biz} Principal` || loc.endsWith(' Principal')) {
+      return '';
+    }
+    return loc;
+  });
+
   /** Whether to show operational config section in Negocio tab */
   readonly showOperationalConfig = computed(() =>
     this.showKitchenToggle() || this.showTablesToggle()
@@ -270,7 +280,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly router: Router,
-  ) {}
+  ) {
+    // Reactively update folio form when config loads from API
+    effect(() => {
+      const cfg = this.config();
+      this.folioPrefix = cfg.folioPrefix ?? '';
+      this.folioFormat = cfg.folioFormat ?? '{PREFIX}-{NUM:4}';
+      this.folioCounter.set(cfg.folioCounter ?? 0);
+    });
+  }
   //#endregion
 
   //#region Lifecycle
@@ -281,11 +299,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     ]);
     this.config.set(appConfig);
     this.deviceConfig.set(this.configService.loadDeviceConfig());
-
-    // Pre-fill folio form from loaded config
-    this.folioPrefix = appConfig.folioPrefix ?? '';
-    this.folioFormat = appConfig.folioFormat ?? '';
-    this.folioCounter.set(appConfig.folioCounter ?? 0);
 
     // Refresh subscription status for billing tab
     this.authService.refreshSubscriptionStatus();

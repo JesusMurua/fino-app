@@ -37,4 +37,10 @@ export const posRoutes: Routes = [
       import('./components/quick-pos/quick-pos.component')
         .then(m => m.QuickPosComponent),
   },
+  {
+    path: 'error-config',
+    loadComponent: () =>
+      import('./components/error-config/error-config.component')
+        .then(m => m.ErrorConfigComponent),
+  },
 ];

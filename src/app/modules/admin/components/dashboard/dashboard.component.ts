@@ -5,6 +5,7 @@ import { DashboardSummary, DashboardOrderRow } from '../../../../core/models';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
+import { ConfigService } from '../../../../core/services/config.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 @Component({
@@ -21,6 +22,10 @@ export class DashboardComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly authService = inject(AuthService);
   readonly catalogService = inject(CatalogService);
+  private readonly configService = inject(ConfigService);
+
+  /** Current POS experience — determines which dashboard sections are shown */
+  readonly posExperience = this.configService.posExperience;
 
   readonly isLoading = signal(false);
   readonly isOffline = signal(false);

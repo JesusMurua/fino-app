@@ -34,8 +34,14 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   readonly config       = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
   readonly deviceConfig = signal<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
 
-  /** Show orders button only for Cashier and Owner */
-  readonly showOrdersButton: boolean;
+  /** Show orders button based on posExperience and role */
+  readonly showOrdersButton = computed(() => {
+    const experience = this.configService.posExperience();
+    const role = this.authService.currentUser()?.role;
+    const isRestaurantOrCounter = experience === 'Restaurant' || experience === 'Counter';
+    return isRestaurantOrCounter &&
+      (role === 'Cashier' || role === 'Owner' || role === 'Manager');
+  });
   /** Show tables button only if business has tables and role allows */
   readonly showTablesButton = computed(() =>
     this.configService.hasTables() &&
@@ -95,7 +101,6 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     private readonly router: Router,
   ) {
     const role = this.authService.currentUser()?.role;
-    this.showOrdersButton = role === 'Cashier' || role === 'Owner';
     this.showStockButton = role === 'Owner' || role === 'Manager';
     // Business config — reactive
     this.configService.config$

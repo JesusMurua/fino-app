@@ -121,6 +121,56 @@
       </section>
     }
 
+    <!-- Restaurant: Table occupancy + kitchen orders -->
+    @if (posExperience() === 'Restaurant') {
+      <section class="section-card">
+        <h2 class="section-card__title">Ocupación de mesas</h2>
+        <p class="section-card__subtitle">Porcentaje de mesas ocupadas hoy</p>
+        <div class="kpi-grid kpi-grid--inline">
+          <div class="kpi-card">
+            <span class="kpi-card__label">Ocupación actual</span>
+            <span class="kpi-card__value">{{ d.tables?.occupancyPercent ?? 0 }}%</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card__label">Órdenes activas</span>
+            <span class="kpi-card__value">{{ d.tables?.activeOrders ?? 0 }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Counter: Active kitchen orders -->
+    @if (posExperience() === 'Counter') {
+      <section class="section-card">
+        <h2 class="section-card__title">Órdenes en cocina</h2>
+        <div class="kpi-grid kpi-grid--inline">
+          <div class="kpi-card">
+            <span class="kpi-card__label">En preparación</span>
+            <span class="kpi-card__value">{{ d.tables?.activeOrders ?? 0 }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Retail: Low stock alerts -->
+    @if (posExperience() === 'Retail') {
+      <section class="section-card">
+        <h2 class="section-card__title">Alertas de inventario</h2>
+        @if ((d.lowStockItems ?? []).length === 0) {
+          <p class="section-card__empty">Sin alertas de stock bajo</p>
+        } @else {
+          <ol class="top-list">
+            @for (item of d.lowStockItems ?? []; track item.name) {
+              <li class="top-item">
+                <span class="top-item__name">{{ item.name }}</span>
+                <span class="top-item__count top-item__count--danger">{{ item.currentStock }} en stock</span>
+              </li>
+            }
+          </ol>
+        }
+      </section>
+    }
+
     <div class="dashboard__columns">
 
       <!-- Top 5 productos -->
