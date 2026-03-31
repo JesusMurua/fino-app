@@ -19,3 +19,5 @@ export * from './reservation.model';
 export * from './table.model';
 export * from './user.model';
 export * from './zone.model';
+export * from './supplier.model';
+export * from './stock-receipt.model';
