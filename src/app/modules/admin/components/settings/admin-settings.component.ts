@@ -11,7 +11,7 @@ import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType } from '../../../../core/models';
-import { PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
+import { BusinessType, PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
@@ -87,7 +87,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly showBranchDialog = signal(false);
   readonly savingBranch = signal(false);
   readonly editingBranch = signal<Branch | null>(null);
-  branchForm: { name: string; locationName: string } = { name: '', locationName: '' };
+  branchForm: { name: string; locationName: string; hasKitchen: boolean; hasTables: boolean } = { name: '', locationName: '', hasKitchen: true, hasTables: true };
 
   /** Branch targeted for catalog copy */
   readonly copyTarget = signal<Branch | null>(null);
@@ -220,14 +220,25 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
-  /** Business type selection — UI only, not persisted yet */
-  selectedBusinessType = 'restaurant';
-  readonly businessTypes: { value: string; icon: string; label: string; description: string }[] = [
-    { value: 'restaurant', icon: '🍽️', label: 'Restaurante', description: 'Mesas, cocina, mesero' },
-    { value: 'retail',     icon: '🛒', label: 'Retail',       description: 'Báscula, códigos de barras' },
-    { value: 'cafe',       icon: '☕',  label: 'Café',         description: 'Barra rápida, comandas' },
-    { value: 'custom',     icon: '⚙️', label: 'Personalizado', description: 'Configura tú mismo' },
-  ];
+  /** Current business type info — read-only display from authService */
+  readonly currentGiroInfo = computed(() => {
+    const giro = this.authService.businessType();
+    const map: Record<string, { icon: string; name: string; description: string }> = {
+      [BusinessType.Restaurant]: { icon: '🍽️', name: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
+      [BusinessType.Cafe]:       { icon: '☕',  name: 'Café / Barra',  description: 'Comandas rápidas, barra' },
+      [BusinessType.Bar]:        { icon: '🍺',  name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+      [BusinessType.Retail]:     { icon: '🛒',  name: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
+      [BusinessType.FoodTruck]:  { icon: '🚚',  name: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
+      [BusinessType.General]:    { icon: '⚙️',  name: 'General',       description: 'Cualquier negocio' },
+      [BusinessType.Taqueria]:   { icon: '🌮',  name: 'Taquería',      description: 'Cobro rápido, con cocina' },
+      [BusinessType.Abarrotes]:  { icon: '🛒',  name: 'Abarrotes',     description: 'Tiendita de barrio' },
+      [BusinessType.Ferreteria]: { icon: '🔧',  name: 'Ferretería',    description: 'Materiales y herramientas' },
+      [BusinessType.Papeleria]:  { icon: '📝',  name: 'Papelería',     description: 'Útiles y copias' },
+      [BusinessType.Farmacia]:   { icon: '💊',  name: 'Farmacia',      description: 'Medicinas y salud' },
+      [BusinessType.Servicios]:  { icon: '🏪',  name: 'Servicios',     description: 'Salones, talleres, oficios' },
+    };
+    return map[giro] ?? { icon: '⚙️', name: giro, description: '' };
+  });
 
   //#endregion
 
@@ -440,7 +451,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Opens the dialog to create a new branch */
   openNewBranch(): void {
     this.editingBranch.set(null);
-    this.branchForm = { name: '', locationName: '' };
+    this.branchForm = { name: '', locationName: '', hasKitchen: true, hasTables: true };
     this.showBranchDialog.set(true);
   }
 
@@ -450,7 +461,12 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
    */
   openEditBranch(branch: Branch): void {
     this.editingBranch.set(branch);
-    this.branchForm = { name: branch.name, locationName: branch.locationName };
+    this.branchForm = {
+      name: branch.name,
+      locationName: branch.locationName,
+      hasKitchen: branch.hasKitchen ?? true,
+      hasTables: branch.hasTables ?? true,
+    };
     this.showBranchDialog.set(true);
   }
 
@@ -458,14 +474,14 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
    * Saves the branch form — creates or updates depending on editingBranch state.
    */
   async saveBranch(): Promise<void> {
-    const { name, locationName } = this.branchForm;
+    const { name, locationName, hasKitchen, hasTables } = this.branchForm;
     if (!name.trim() || !locationName.trim()) return;
 
     this.savingBranch.set(true);
     try {
       const editing = this.editingBranch();
       if (editing) {
-        await this.branchService.update(editing.id, name.trim(), locationName.trim());
+        await this.branchService.update(editing.id, name.trim(), locationName.trim(), hasKitchen, hasTables);
         this.messageService.add({
           severity: 'success',
           summary: 'Sucursal',

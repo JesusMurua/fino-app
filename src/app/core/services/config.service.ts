@@ -14,15 +14,21 @@ import { AuthService } from './auth.service';
 import { CatalogService } from './catalog.service';
 import { DatabaseService } from './database.service';
 
-/**
- * API response shape for branch config endpoint.
- * Only the fields we need — the API may return more.
- */
+/** API response shape for GET /api/branch/{id}/config */
 interface BranchConfigResponse {
+  id: number;
+  businessId: number;
   businessName: string;
-  locationName: string;
+  branchName: string;
+  locationName?: string;
   hasKitchen?: boolean;
   hasTables?: boolean;
+  folioPrefix?: string;
+  folioFormat?: string;
+  folioCounter?: number;
+  planType?: string;
+  businessType?: string;
+  posExperience?: string;
 }
 
 /**
@@ -103,7 +109,7 @@ export class ConfigService {
       config = {
         ...config,
         businessName: remote.businessName,
-        locationName: remote.locationName,
+        locationName: remote.locationName || remote.branchName || config.locationName,
         hasKitchen: remote.hasKitchen ?? config.hasKitchen,
         hasTables: remote.hasTables ?? config.hasTables,
         businessTypeCatalog: btCatalog,

@@ -9,6 +9,8 @@ export interface Branch {
   name: string;
   locationName: string;
   isMatrix: boolean;
+  hasKitchen?: boolean;
+  hasTables?: boolean;
 }
 
 /**
@@ -49,11 +51,13 @@ export class BranchService {
    * @param id Branch ID to update
    * @param name Updated display name
    * @param locationName Updated physical location
+   * @param hasKitchen Whether this branch has a kitchen
+   * @param hasTables Whether this branch uses table management
    * @returns The updated branch
    */
-  async update(id: number, name: string, locationName: string): Promise<Branch> {
+  async update(id: number, name: string, locationName: string, hasKitchen?: boolean, hasTables?: boolean): Promise<Branch> {
     return firstValueFrom(
-      this.api.put<Branch>(`/branch/${id}`, { name, locationName }),
+      this.api.put<Branch>(`/branch/${id}`, { name, locationName, hasKitchen, hasTables }),
     );
   }
 

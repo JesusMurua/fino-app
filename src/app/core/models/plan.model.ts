@@ -14,6 +14,12 @@ export enum BusinessType {
   Bar = 'Bar',
   FoodTruck = 'FoodTruck',
   General = 'General',
+  Taqueria = 'Taqueria',
+  Abarrotes = 'Abarrotes',
+  Ferreteria = 'Ferreteria',
+  Papeleria = 'Papeleria',
+  Farmacia = 'Farmacia',
+  Servicios = 'Servicios',
 }
 
 /** Gated features that require a specific plan */
@@ -112,6 +118,29 @@ export const BUSINESS_FEATURE_MAP: Record<BusinessType, FeatureKey[]> = {
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
   ],
   [BusinessType.General]: [
+    FeatureKey.Zones, FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.ClientsAndCredit,
+  ],
+  [BusinessType.Taqueria]: [
+    FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
+  ],
+  [BusinessType.Abarrotes]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+  ],
+  [BusinessType.Ferreteria]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+  ],
+  [BusinessType.Papeleria]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+  ],
+  [BusinessType.Farmacia]: [
+    FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
+    FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
+  ],
+  [BusinessType.Servicios]: [
     FeatureKey.Zones, FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.ClientsAndCredit,
   ],

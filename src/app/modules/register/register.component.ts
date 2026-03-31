@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -10,6 +10,17 @@ import { PasswordModule } from 'primeng/password';
 import { environment } from '../../../environments/environment';
 import { BusinessType, LoginResponse } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+
+/** Giro display info for the read-only badge */
+const GIRO_BADGE_MAP: Record<string, { icon: string; label: string }> = {
+  restaurant:  { icon: '🍽️', label: 'Restaurante' },
+  cafe:        { icon: '☕',  label: 'Café' },
+  bar:         { icon: '🍺',  label: 'Bar' },
+  retail:      { icon: '🛒',  label: 'Abarrotes / Tienda' },
+  foodtruck:   { icon: '🚚',  label: 'Food Truck' },
+  'food-truck': { icon: '🚚',  label: 'Food Truck' },
+  general:     { icon: '⚙️',  label: 'General' },
+};
 
 /** Custom validator: password fields must match */
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -65,6 +76,18 @@ export class RegisterComponent implements OnInit {
     businessType:    [BusinessType.Restaurant, Validators.required],
   }, { validators: passwordMatchValidator });
 
+  /** Giro param from URL — when set, shows badge instead of dropdown */
+  readonly giroParam = signal<string | null>(null);
+
+  /** Badge display info for the pre-selected giro */
+  readonly giroBadgeInfo = computed(() => {
+    const giro = this.giroParam();
+    return giro ? (GIRO_BADGE_MAP[giro] ?? null) : null;
+  });
+
+  /** Landing URL for "go back" link */
+  readonly landingUrl = environment.landingUrl;
+
   /** Pending plan from query param — stored for onboarding step 4 */
   private pendingPlan: string | null = null;
 
@@ -77,12 +100,14 @@ export class RegisterComponent implements OnInit {
 
     // Pre-select business type from ?giro=
     if (params['giro']) {
+      this.giroParam.set(params['giro'].toLowerCase());
       const giroMap: Record<string, BusinessType> = {
         restaurant: BusinessType.Restaurant,
         cafe: BusinessType.Cafe,
         bar: BusinessType.Bar,
         retail: BusinessType.Retail,
         foodtruck: BusinessType.FoodTruck,
+        'food-truck': BusinessType.FoodTruck,
         general: BusinessType.General,
       };
       const mapped = giroMap[params['giro'].toLowerCase()];

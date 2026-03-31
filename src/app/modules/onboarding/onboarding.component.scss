@@ -66,6 +66,34 @@
 }
 
 // -----------------------------------------------------------------------
+// Step 1 — Giro badge (pre-selected from JWT)
+// -----------------------------------------------------------------------
+.giro-badge {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-5;
+  background: #F0FDF4;
+  border: 2px solid $color-primary;
+  border-radius: 12px;
+  width: 100%;
+
+  &__icon { font-size: 28px; }
+
+  &__label {
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__desc {
+    font-size: 13px;
+    color: $color-text-sub;
+    margin-left: auto;
+  }
+}
+
+// -----------------------------------------------------------------------
 // Step 1 — Giro grid (2×3)
 // -----------------------------------------------------------------------
 .giro-grid {

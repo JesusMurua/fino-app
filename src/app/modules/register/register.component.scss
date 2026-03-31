@@ -159,6 +159,36 @@
 }
 
 // -----------------------------------------------------------------------
+// Giro badge (read-only when ?giro= param exists)
+// -----------------------------------------------------------------------
+.register-giro-badge {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  background: #F0FDF4;
+  border: 2px solid $color-primary;
+  border-radius: 10px;
+
+  &__icon { font-size: 22px; }
+
+  &__label {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__link {
+    font-size: 12px;
+    color: $color-text-sub;
+    text-decoration: underline;
+    transition: color 0.15s;
+
+    &:hover { color: $color-primary; }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Error message
 // -----------------------------------------------------------------------
 .register-error {

@@ -140,32 +140,55 @@
           </div>
         </section>
 
-        <!-- Business type card (UI only) -->
+        <!-- Business type (read-only) -->
         <section class="settings-card">
           <div class="settings-card-header">
             <div class="card-icon"><i class="pi pi-globe"></i></div>
             <div>
               <div class="card-title">Giro del negocio</div>
-              <div class="card-subtitle">Activa funciones según tu tipo de negocio</div>
+              <div class="card-subtitle">Tu tipo de negocio determina las funciones disponibles</div>
             </div>
           </div>
 
-          <div class="mode-grid">
-            @for (bt of businessTypes; track bt.value) {
-              <div
-                class="mode-card"
-                [class.mode-card--active]="selectedBusinessType === bt.value"
-                (click)="selectedBusinessType = bt.value"
-              >
-                @if (selectedBusinessType === bt.value) {
-                  <i class="pi pi-check-circle mode-card__check"></i>
-                }
-                <span class="mode-card__icon">{{ bt.icon }}</span>
-                <span class="mode-card__label">{{ bt.label }}</span>
-                <span class="mode-card__desc">{{ bt.description }}</span>
-              </div>
-            }
+          <div class="settings-giro-display">
+            <span class="settings-giro-display__icon">{{ currentGiroInfo().icon }}</span>
+            <div>
+              <div class="settings-giro-display__name">{{ currentGiroInfo().name }}</div>
+              <div class="settings-giro-display__desc">{{ currentGiroInfo().description }}</div>
+            </div>
           </div>
+
+          <a
+            class="settings-giro-contact"
+            href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
+            target="_blank"
+          >
+            ¿Necesitas cambiar tu giro? Contáctanos por WhatsApp →
+          </a>
+        </section>
+
+        <!-- Branch operational config (read-only) -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-cog"></i></div>
+            <div>
+              <div class="card-title">Configuración de tu sucursal</div>
+              <div class="card-subtitle">Se determina por tu tipo de negocio</div>
+            </div>
+          </div>
+
+          <div class="settings-branch-flags">
+            <span class="settings-branch-flag">
+              {{ config().hasKitchen ? '✅ Con cocina' : '❌ Sin cocina' }}
+            </span>
+            <span class="settings-branch-flag">
+              {{ config().hasTables ? '✅ Con mesas' : '❌ Sin mesas' }}
+            </span>
+          </div>
+
+          <p class="settings-branch-hint">
+            Estas configuraciones dependen de tu tipo de negocio. Para modificarlas, contacta a soporte.
+          </p>
         </section>
 
         <!-- Folio configuration -->
@@ -873,6 +896,23 @@
               class="form-field__input"
               placeholder="Ej. Av. Reforma 123, CDMX"
             />
+          </div>
+
+          <div class="branch-toggles">
+            <label class="branch-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="branchForm.hasKitchen"
+              />
+              <span>¿Tiene cocina?</span>
+            </label>
+            <label class="branch-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="branchForm.hasTables"
+              />
+              <span>¿Tiene mesas?</span>
+            </label>
           </div>
         </div>
 

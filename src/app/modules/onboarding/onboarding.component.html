@@ -18,23 +18,60 @@
       <h1 class="onboarding-card__title">¿Qué tipo de negocio tienes?</h1>
       <p class="onboarding-card__subtitle">Esto personaliza tu experiencia</p>
 
-      <div class="giro-grid">
-        @for (giro of giroOptions; track giro.value) {
-          <button
-            type="button"
-            class="giro-card"
-            [class.giro-card--active]="selectedGiro() === giro.value"
-            (click)="selectGiro(giro.value)"
-          >
-            @if (selectedGiro() === giro.value) {
-              <i class="pi pi-check-circle giro-card__check"></i>
-            }
-            <span class="giro-card__icon">{{ giro.icon }}</span>
-            <span class="giro-card__label">{{ giro.label }}</span>
-            <span class="giro-card__desc">{{ giro.description }}</span>
-          </button>
-        }
-      </div>
+      <!-- Case A: Retail group from JWT — badge + sub-options -->
+      @if (isRetailGroup()) {
+        <div class="giro-badge">
+          <span class="giro-badge__icon">{{ giroBadge()?.icon }}</span>
+          <span class="giro-badge__label">{{ giroBadge()?.label }}</span>
+        </div>
+
+        <p class="onboarding-card__subtitle">¿Qué tipo de tienda?</p>
+
+        <div class="giro-grid">
+          @for (sub of retailSubOptions; track sub.value) {
+            <button
+              type="button"
+              class="giro-card"
+              [class.giro-card--active]="selectedGiro() === sub.value"
+              (click)="selectRetailSub(sub.value)"
+            >
+              @if (selectedGiro() === sub.value) {
+                <i class="pi pi-check-circle giro-card__check"></i>
+              }
+              <span class="giro-card__icon">{{ sub.icon }}</span>
+              <span class="giro-card__label">{{ sub.label }}</span>
+            </button>
+          }
+        </div>
+
+      <!-- Case B: Non-retail JWT giro — badge only, no selection needed -->
+      } @else if (giroBadge()) {
+        <div class="giro-badge">
+          <span class="giro-badge__icon">{{ giroBadge()?.icon }}</span>
+          <span class="giro-badge__label">{{ giroBadge()?.label }}</span>
+          <span class="giro-badge__desc">{{ giroBadge()?.description }}</span>
+        </div>
+
+      <!-- Case C: No JWT giro — full grid -->
+      } @else {
+        <div class="giro-grid">
+          @for (giro of giroOptions; track giro.value) {
+            <button
+              type="button"
+              class="giro-card"
+              [class.giro-card--active]="selectedGiro() === giro.value"
+              (click)="selectGiro(giro.value)"
+            >
+              @if (selectedGiro() === giro.value) {
+                <i class="pi pi-check-circle giro-card__check"></i>
+              }
+              <span class="giro-card__icon">{{ giro.icon }}</span>
+              <span class="giro-card__label">{{ giro.label }}</span>
+              <span class="giro-card__desc">{{ giro.description }}</span>
+            </button>
+          }
+        </div>
+      }
     }
 
     <!-- ================================================================ -->

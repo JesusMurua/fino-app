@@ -85,16 +85,26 @@
 
       <div class="register-field">
         <label for="reg-type">Tipo de negocio</label>
-        <p-dropdown
-          formControlName="businessType"
-          inputId="reg-type"
-          [options]="businessTypeOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Seleccionar tipo"
-          styleClass="register-field__dropdown"
-          [appendTo]="'body'"
-        />
+        @if (giroBadgeInfo()) {
+          <div class="register-giro-badge">
+            <span class="register-giro-badge__icon">{{ giroBadgeInfo()?.icon }}</span>
+            <span class="register-giro-badge__label">{{ giroBadgeInfo()?.label }}</span>
+          </div>
+          <a class="register-giro-badge__link" [href]="landingUrl + '/#precios'" target="_blank">
+            ¿No es tu giro? Volver a planes →
+          </a>
+        } @else {
+          <p-dropdown
+            formControlName="businessType"
+            inputId="reg-type"
+            [options]="businessTypeOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar tipo"
+            styleClass="register-field__dropdown"
+            [appendTo]="'body'"
+          />
+        }
       </div>
 
       @if (errorMessage()) {
