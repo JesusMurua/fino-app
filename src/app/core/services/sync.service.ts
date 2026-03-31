@@ -45,6 +45,9 @@ export class SyncService implements OnDestroy {
 
   /** Prevents double initialization */
   private isInitialized = false;
+
+  /** Controls whether pull sync is active — disabled on non-POS routes */
+  private readonly isPullEnabled = signal(false);
   //#endregion
 
   //#region Constructor & Lifecycle
@@ -68,6 +71,16 @@ export class SyncService implements OnDestroy {
     this.initNextOrderNumber();
     this.startPolling();
     this.startPullPolling();
+  }
+
+  /** Enables pull sync — call when navigating to POS routes */
+  enablePull(): void {
+    this.isPullEnabled.set(true);
+  }
+
+  /** Disables pull sync — call when navigating away from POS routes */
+  disablePull(): void {
+    this.isPullEnabled.set(false);
   }
 
   ngOnDestroy(): void {
@@ -139,7 +152,7 @@ export class SyncService implements OnDestroy {
    * have pending local changes (syncStatus === 'pending').
    */
   async pullOrders(): Promise<void> {
-    if (!navigator.onLine) return;
+    if (!this.isPullEnabled() || !navigator.onLine) return;
 
     try {
       const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';

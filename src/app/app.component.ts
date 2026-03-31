@@ -1,5 +1,7 @@
 import { Component, OnInit, effect, inject } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { ToastModule } from 'primeng/toast';
 import { NgHttpLoaderComponent } from 'ng-http-loader';
 
@@ -35,12 +37,28 @@ export class AppComponent implements OnInit {
     'subscription/status',
   ];
 
+  /** Routes where pull sync should be active */
+  private readonly POS_ROUTES = ['/pos', '/kitchen', '/tables', '/kiosk', '/orders'];
+
   constructor() {
     // Reactively initialize sync when auth state becomes true.
     // SyncService.initialize() is idempotent — safe on repeated calls.
     effect(() => {
       if (this.authService.isAuthenticated()) {
         this.syncService.initialize();
+      }
+    });
+
+    // Enable/disable pull sync based on current route
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      takeUntilDestroyed(),
+    ).subscribe(e => {
+      const isPosRoute = this.POS_ROUTES.some(r => e.urlAfterRedirects.startsWith(r));
+      if (isPosRoute) {
+        this.syncService.enablePull();
+      } else {
+        this.syncService.disablePull();
       }
     });
   }
