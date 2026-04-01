@@ -871,6 +871,38 @@
 }
 
 // -----------------------------------------------------------------------
+// Delivery config section (inside branch dialog)
+// -----------------------------------------------------------------------
+.settings-delivery-section {
+  margin-top: $space-4;
+  padding-top: $space-4;
+  border-top: 1px solid $color-border-soft;
+
+  &__header {
+    margin-bottom: $space-4;
+
+    h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: $color-text-title;
+      margin: 0 0 4px;
+    }
+
+    p {
+      font-size: 13px;
+      color: $color-text-sub;
+      margin: 0;
+    }
+  }
+}
+
+.delivery-configs {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+// -----------------------------------------------------------------------
 // Folio configuration
 // -----------------------------------------------------------------------
 .settings-card__title {

@@ -12,12 +12,16 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType } from '../../../../core/models';
 import { BusinessType, PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
+import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
+import { OrderSource } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
+import { BranchDeliveryConfigService } from '../../../../core/services/branch-delivery-config.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
+import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-config-card.component';
 import { environment } from '../../../../../environments/environment';
 
 type DeviceMode = DeviceConfig['mode'];
@@ -34,6 +38,7 @@ type DeviceMode = DeviceConfig['mode'];
     PasswordModule,
     RadioButtonModule,
     TableModule,
+    DeliveryConfigCardComponent,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
@@ -45,6 +50,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   readonly authService = inject(AuthService);
   private readonly branchService = inject(BranchService);
+  readonly deliveryConfigService = inject(BranchDeliveryConfigService);
   private readonly messageService = inject(MessageService);
   readonly printerService = inject(PrinterService);
   readonly scannerService = inject(ScannerService);
@@ -254,6 +260,12 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     return [BusinessType.Restaurant, BusinessType.Cafe, BusinessType.Bar].includes(type);
   });
 
+  /** Delivery platforms available for configuration */
+  readonly deliveryPlatforms = [OrderSource.UberEats, OrderSource.Rappi, OrderSource.DidiFood];
+
+  /** Show delivery section when editing a branch */
+  readonly showDeliverySection = computed(() => this.editingBranch() !== null);
+
   /** Current business type info — read-only display from authService */
   readonly currentGiroInfo = computed(() => {
     const giro = this.authService.businessType();
@@ -287,6 +299,14 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       this.folioPrefix = cfg.folioPrefix ?? '';
       this.folioFormat = cfg.folioFormat ?? '{PREFIX}-{NUM:4}';
       this.folioCounter.set(cfg.folioCounter ?? 0);
+    });
+
+    // Load delivery configs when a branch is selected for editing
+    effect(() => {
+      const branch = this.editingBranch();
+      if (branch) {
+        this.deliveryConfigService.loadConfigs(branch.id);
+      }
     });
   }
   //#endregion
@@ -589,6 +609,41 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     } finally {
       this.copyingCatalog.set(false);
     }
+  }
+
+  //#endregion
+
+  //#region Delivery Config
+
+  /** Returns the delivery config for a platform, or null */
+  getDeliveryConfig(platform: OrderSource): BranchDeliveryConfig | null {
+    return this.deliveryConfigService.configs().find(c => c.platform === platform) ?? null;
+  }
+
+  handleDeliveryConfigSave(request: UpsertDeliveryConfigRequest): void {
+    const branchId = this.editingBranch()?.id;
+    if (!branchId) return;
+    this.deliveryConfigService.upsert(branchId, request).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Configuración guardada', life: 3000 });
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Error al guardar configuración', life: 3000 });
+      },
+    });
+  }
+
+  handleDeliveryConfigDelete(platform: OrderSource): void {
+    const branchId = this.editingBranch()?.id;
+    if (!branchId) return;
+    this.deliveryConfigService.delete(branchId, platform).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'info', summary: 'Configuración eliminada', life: 3000 });
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Error al eliminar', life: 3000 });
+      },
+    });
   }
 
   //#endregion

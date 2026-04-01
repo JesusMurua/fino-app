@@ -4,6 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 
 /** Full branch record returned by the API */
+import { BranchDeliveryConfig } from '../models/branch-delivery-config.model';
+
 export interface Branch {
   id: number;
   name: string;
@@ -11,6 +13,8 @@ export interface Branch {
   isMatrix: boolean;
   hasKitchen?: boolean;
   hasTables?: boolean;
+  hasDelivery?: boolean;
+  deliveryConfigs?: BranchDeliveryConfig[];
 }
 
 /**

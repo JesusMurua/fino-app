@@ -21,3 +21,4 @@ export * from './user.model';
 export * from './zone.model';
 export * from './supplier.model';
 export * from './stock-receipt.model';
+export * from './branch-delivery-config.model';
