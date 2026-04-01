@@ -59,7 +59,7 @@ export class DeliveryService {
       } else {
         this.stopPolling();
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   private startPolling(): void {
@@ -98,8 +98,9 @@ export class DeliveryService {
         this._orders.set(data);
         this._loading.set(false);
       },
-      error: () => {
+      error: (err) => {
         this._loading.set(false);
+        console.warn('[DeliveryService] Failed to load active orders', err);
       },
     });
   }

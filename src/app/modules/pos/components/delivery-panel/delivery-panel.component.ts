@@ -31,7 +31,7 @@ export class DeliveryPanelComponent {
       if (this.deliveryService.isOpen()) {
         this.deliveryService.loadActiveOrders();
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   handleAccept(orderId: string): void {

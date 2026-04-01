@@ -266,8 +266,11 @@ export class AuthService {
           localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
         }
       }
-    } catch (error) {
-      console.warn('[AuthService] Failed to refresh subscription status:', error);
+    } catch (error: any) {
+      // 404 = endpoint not implemented yet — silently ignore
+      if (error?.status !== 404) {
+        console.warn('[AuthService] Failed to refresh subscription status:', error);
+      }
     }
   }
 

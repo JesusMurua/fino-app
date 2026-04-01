@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
 import { Order } from '../../../../core/models';
@@ -14,11 +14,16 @@ import { PlatformChipComponent } from '../../../../shared/components/platform-ch
 })
 export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
 
-  @Input({ required: true }) order!: Order;
-  @Output() onAccept = new EventEmitter<string>();
-  @Output() onReject = new EventEmitter<string>();
-  @Output() onMarkReady = new EventEmitter<string>();
-  @Output() onMarkPickedUp = new EventEmitter<string>();
+  //#region Inputs & Outputs
+
+  readonly order = input.required<Order>();
+
+  readonly accept = output<string>();
+  readonly reject = output<string>();
+  readonly markReady = output<string>();
+  readonly markPickedUp = output<string>();
+
+  //#endregion
 
   /** Expose enums for template */
   readonly DeliveryStatus = DeliveryStatus;
@@ -27,8 +32,10 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
   readonly now = signal(new Date());
   private timerId: ReturnType<typeof setInterval> | null = null;
 
+  //#region Computed
+
   readonly elapsedSeconds = computed(() => {
-    const created = new Date(this.order?.createdAt ?? Date.now());
+    const created = new Date(this.order().createdAt);
     return Math.floor((this.now().getTime() - created.getTime()) / 1000);
   });
 
@@ -42,21 +49,22 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
   readonly isUrgent = computed(() => this.elapsedSeconds() >= 300);
   readonly isCritical = computed(() => this.elapsedSeconds() >= 600);
 
+  readonly borderColor = computed(() => {
+    switch (this.order().orderSource) {
+      case OrderSource.UberEats: return '#06C167';
+      case OrderSource.Rappi:    return '#FF441B';
+      case OrderSource.DidiFood: return '#FF6B00';
+      default:                   return '#16A34A';
+    }
+  });
+
+  //#endregion
+
   ngOnInit(): void {
     this.timerId = setInterval(() => this.now.set(new Date()), 1000);
   }
 
   ngOnDestroy(): void {
     if (this.timerId !== null) clearInterval(this.timerId);
-  }
-
-  /** Returns the platform border color for the left accent */
-  get borderColor(): string {
-    switch (this.order.orderSource) {
-      case OrderSource.UberEats: return '#06C167';
-      case OrderSource.Rappi:    return '#FF441B';
-      case OrderSource.DidiFood: return '#FF6B00';
-      default:                   return '#16A34A';
-    }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -198,6 +198,13 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     this.configService.deviceConfig$
       .pipe(takeUntilDestroyed())
       .subscribe(cfg => this.deviceConfig.set(cfg));
+
+    // Reactively load delivery orders when hasDelivery becomes true
+    effect(() => {
+      if (this.configService.hasDelivery()) {
+        this.deliveryService.loadActiveOrders();
+      }
+    }, { allowSignalWrites: true });
   }
 
   //#region Lifecycle
@@ -209,10 +216,6 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
     await this.configService.load();
     this.setupScanDebounce();
-
-    if (this.configService.hasDelivery()) {
-      this.deliveryService.loadActiveOrders();
-    }
   }
 
   ngOnDestroy(): void {

@@ -77,10 +77,10 @@
       @for (order of activeOrders(); track order.id) {
         <app-delivery-order-card
           [order]="order"
-          (onAccept)="handleAccept($event)"
-          (onReject)="handleReject($event)"
-          (onMarkReady)="handleMarkReady($event)"
-          (onMarkPickedUp)="handleMarkPickedUp($event)"
+          (accept)="handleAccept($event)"
+          (reject)="handleReject($event)"
+          (markReady)="handleMarkReady($event)"
+          (markPickedUp)="handleMarkPickedUp($event)"
         />
       } @empty {
         <div class="dlv-panel__empty">

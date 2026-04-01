@@ -36,7 +36,8 @@ export class BranchDeliveryConfigService {
         this._configs.set(data);
         this._loading.set(false);
       },
-      error: () => {
+      error: (err) => {
+        console.warn('[BranchDeliveryConfigService] Failed to load configs', err);
         this._configs.set([]);
         this._loading.set(false);
       },

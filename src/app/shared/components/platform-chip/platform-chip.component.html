@@ -1,12 +1,12 @@
 <span
   class="chip"
-  [class.chip--sm]="size === 'sm'"
-  [ngClass]="cfg.bgClass"
+  [class.chip--sm]="size() === 'sm'"
+  [ngClass]="cfg().bgClass"
 >
-  @if (cfg.icon) {
-    <i class="pi {{ cfg.icon }}"></i>
+  @if (cfg().icon) {
+    <i class="pi {{ cfg().icon }}"></i>
   } @else {
-    <span class="chip__letter">{{ cfg.letter }}</span>
+    <span class="chip__letter">{{ cfg().letter }}</span>
   }
-  <span class="chip__label">{{ cfg.label }}</span>
+  <span class="chip__label">{{ cfg().label }}</span>
 </span>

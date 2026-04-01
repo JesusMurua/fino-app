@@ -53,10 +53,10 @@ export class ConfigService {
   readonly config$ = new BehaviorSubject<AppConfig>({ ...DEFAULT_APP_CONFIG });
 
   /** Whether the current business has a kitchen */
-  readonly hasKitchen = computed(() => this.config$.getValue().hasKitchen ?? false);
+  readonly hasKitchen = signal(false);
 
   /** Whether the current business uses table management */
-  readonly hasTables = computed(() => this.config$.getValue().hasTables ?? false);
+  readonly hasTables = signal(false);
 
   /** Whether the current business receives delivery aggregator orders */
   readonly hasDelivery = signal(false);
@@ -98,6 +98,8 @@ export class ConfigService {
     }
 
     this.config$.next(config);
+    this.hasKitchen.set(config.hasKitchen ?? false);
+    this.hasTables.set(config.hasTables ?? false);
     this.hasDelivery.set(config.hasDelivery ?? false);
 
     // Step 2 — Try to fetch from API in background
@@ -125,6 +127,8 @@ export class ConfigService {
 
       await this.db.config.put(config);
       this.config$.next(config);
+      this.hasKitchen.set(config.hasKitchen ?? false);
+      this.hasTables.set(config.hasTables ?? false);
       this.hasDelivery.set(config.hasDelivery ?? false);
       console.info('[ConfigService] Config updated from API');
     } catch (error) {
@@ -142,6 +146,8 @@ export class ConfigService {
     const normalized = { ...config, id: 'main' as const };
     await this.db.config.put(normalized);
     this.config$.next(normalized);
+    this.hasKitchen.set(normalized.hasKitchen ?? false);
+    this.hasTables.set(normalized.hasTables ?? false);
     this.hasDelivery.set(normalized.hasDelivery ?? false);
   }
 
