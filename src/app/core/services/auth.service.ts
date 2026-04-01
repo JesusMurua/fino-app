@@ -110,11 +110,10 @@ export class AuthService {
 
   /**
    * Returns the current branch ID.
-   * Reads from the activeBranchId signal for consistency.
-   * Falls back to 1 when no user is logged in.
+   * Reads from the activeBranchId signal — 0 before login (auth guards block access).
    */
   get branchId(): number {
-    return this.activeBranchId() || 1;
+    return this.activeBranchId();
   }
 
   /**
@@ -320,12 +319,13 @@ export class AuthService {
 
   /**
    * Restores the active branch ID from localStorage.
-   * Falls back to the user's currentBranchId, then 0.
+   * Priority: ACTIVE_BRANCH_KEY → user.currentBranchId → user.branchId → 0.
    */
   private loadStoredBranchId(): number {
     const stored = localStorage.getItem(ACTIVE_BRANCH_KEY);
     if (stored) return parseInt(stored, 10) || 0;
-    return this.loadUserFromStorage()?.currentBranchId ?? 0;
+    const user = this.loadUserFromStorage();
+    return user?.currentBranchId || user?.branchId || 0;
   }
 
   /**

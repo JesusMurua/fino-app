@@ -9,6 +9,7 @@ import { DeliveryOrderCardComponent } from '../delivery-order-card/delivery-orde
   selector: 'app-delivery-panel',
   standalone: true,
   imports: [SidebarModule, DeliveryOrderCardComponent],
+  providers: [MessageService],
   templateUrl: './delivery-panel.component.html',
   styleUrl: './delivery-panel.component.scss',
 })
