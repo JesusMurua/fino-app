@@ -26,18 +26,6 @@
   --dlv-footer-border:   rgba(255, 255, 255, 0.06);
 }
 
-@media (prefers-color-scheme: dark) {
-  :host {
-    --dlv-card-bg:         #1E293B;
-    --dlv-card-head-bg:    #374151;
-    --dlv-card-border:     #374151;
-    --dlv-text-primary:    #F9FAFB;
-    --dlv-text-secondary:  #9CA3AF;
-    --dlv-text-item:       #D1D5DB;
-    --dlv-footer-border:   rgba(255, 255, 255, 0.06);
-  }
-}
-
 // =========================================================================
 // Card
 // =========================================================================

@@ -34,20 +34,6 @@
   --dlv-empty-color:     #6B7280;
 }
 
-@media (prefers-color-scheme: dark) {
-  :host {
-    --dlv-panel-bg:        #111827;
-    --dlv-panel-header-bg: #0F172A;
-    --dlv-panel-border:    #1E293B;
-    --dlv-panel-tabs-bg:   #0F172A;
-    --dlv-tab-count-bg:    #1E293B;
-    --dlv-tab-count-color: #9CA3AF;
-    --dlv-tab-count-active-bg:    #14532D;
-    --dlv-tab-count-active-color: #86EFAC;
-    --dlv-empty-color:     #6B7280;
-  }
-}
-
 // =========================================================================
 // PrimeNG sidebar overrides
 // =========================================================================
