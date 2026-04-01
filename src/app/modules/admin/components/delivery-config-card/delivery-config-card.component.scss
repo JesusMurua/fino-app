@@ -36,10 +36,15 @@
     align-items: center;
     gap: $space-3;
 
-    > i {
-      font-size: 14px;
-      color: $color-text-sub;
-      transition: transform 0.2s;
+  }
+
+  &__chevron {
+    font-size: 14px;
+    color: $color-text-sub;
+    transition: transform 0.2s;
+
+    &--open {
+      transform: rotate(180deg);
     }
   }
 

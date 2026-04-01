@@ -71,6 +71,11 @@ export class DeliveryConfigCardComponent implements OnChanges {
       this.showApiKey.set(false);
       this.showWebhookSecret.set(false);
       this.showDeleteConfirm.set(false);
+
+      // Auto-expand configured + active cards for discoverability
+      if (cfg?.isActive) {
+        this.isExpanded.set(true);
+      }
     }
   }
 

@@ -896,6 +896,12 @@
   }
 }
 
+.delivery-hint {
+  font-size: 12px;
+  color: $color-text-sub;
+  margin: 0 0 $space-3;
+}
+
 .delivery-configs {
   display: flex;
   flex-direction: column;

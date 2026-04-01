@@ -1,4 +1,4 @@
-import { Injectable, computed } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
 import {
@@ -59,7 +59,7 @@ export class ConfigService {
   readonly hasTables = computed(() => this.config$.getValue().hasTables ?? false);
 
   /** Whether the current business receives delivery aggregator orders */
-  readonly hasDelivery = computed(() => this.config$.getValue().hasDelivery ?? false);
+  readonly hasDelivery = signal(false);
 
   /** POS experience variant — undefined until config is loaded */
   readonly posExperience = computed<PosExperience | undefined>(() =>
@@ -98,6 +98,7 @@ export class ConfigService {
     }
 
     this.config$.next(config);
+    this.hasDelivery.set(config.hasDelivery ?? false);
 
     // Step 2 — Try to fetch from API in background
     try {
@@ -124,6 +125,7 @@ export class ConfigService {
 
       await this.db.config.put(config);
       this.config$.next(config);
+      this.hasDelivery.set(config.hasDelivery ?? false);
       console.info('[ConfigService] Config updated from API');
     } catch (error) {
       console.warn('[ConfigService] API unreachable — using local config:', error);
@@ -140,6 +142,7 @@ export class ConfigService {
     const normalized = { ...config, id: 'main' as const };
     await this.db.config.put(normalized);
     this.config$.next(normalized);
+    this.hasDelivery.set(normalized.hasDelivery ?? false);
   }
 
   /**
