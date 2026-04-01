@@ -1,10 +1,11 @@
-import { Injectable, OnDestroy, signal } from '@angular/core';
-import { catchError, EMPTY } from 'rxjs';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
+import { SyncService } from './sync.service';
 
 /** Polling interval for order list refresh (milliseconds) */
 const ORDERS_POLL_INTERVAL_MS = 10_000;
@@ -60,6 +61,8 @@ export class OrdersService implements OnDestroy {
   //#endregion
 
   //#region Constructor & Lifecycle
+  private readonly syncService = inject(SyncService);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
@@ -132,21 +135,37 @@ export class OrdersService implements OnDestroy {
 
   /**
    * Loads today's orders for the active branch from Dexie, sorted oldest first.
-   * Filters by branchId so only the current branch's orders are shown.
+   * Falls back to API if Dexie returns no orders (new session/device).
    */
   private async loadTodayOrders(): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const branchId = this.authService.branchId;
 
-    const orders = await this.db.orders
+    let orders = await this.db.orders
       .where('createdAt')
       .aboveOrEqual(todayStart)
       .filter(o => o.branchId === branchId)
       .toArray();
 
-    orders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    // Fallback: fetch from API if Dexie is empty
+    if (orders.length === 0 && navigator.onLine) {
+      try {
+        const dateParam = todayStart.toISOString().split('T')[0];
+        const dtos = await firstValueFrom(
+          this.api.get<any[]>(`/orders?date=${dateParam}`),
+        );
+        if (dtos?.length) {
+          const mapped = dtos.map(dto => this.syncService.mapPullDto(dto));
+          await this.db.orders.bulkPut(mapped);
+          orders = mapped.filter(o => o.branchId === branchId);
+        }
+      } catch (err) {
+        console.warn('[OrdersService] API fallback failed:', err);
+      }
+    }
 
+    orders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     this.todayOrders.set(orders);
   }
 

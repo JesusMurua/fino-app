@@ -347,15 +347,23 @@ export class CheckoutComponent implements OnInit {
   //#region Checkout Flow
 
   /**
-   * Loads an existing table order from Dexie for payment.
+   * Loads an existing order from Dexie (or API fallback) for payment.
    * Pre-fills cart items and table context.
    */
   private async loadExistingOrder(orderId: string): Promise<void> {
-    const order = await this.db.orders.get(orderId);
+    let order = await this.db.orders.get(orderId);
+
+    if (!order) {
+      order = await this.loadOrderFromApi(orderId);
+      if (order) {
+        await this.db.orders.put(order);
+      }
+    }
+
     if (!order) return;
 
     this.existingOrderId.set(order.id);
-    this.cartItems.set(order.items);
+    this.cartItems.set(order.items as CartItem[]);
     this.existingTotalCents.set(order.totalCents);
     this.tableId.set(order.tableId ?? null);
     this.tableName.set(order.tableName ?? null);
@@ -366,6 +374,19 @@ export class CheckoutComponent implements OnInit {
         tableId: order.tableId,
         tableName: order.tableName,
       }));
+    }
+  }
+
+  /** Fetches an order from the API and maps it to the local Order shape */
+  private async loadOrderFromApi(orderId: string): Promise<Order | undefined> {
+    try {
+      const dto = await firstValueFrom(
+        this.http.get<any>(`${environment.apiUrl}/orders/${orderId}`),
+      );
+      if (!dto) return undefined;
+      return this.syncService.mapPullDto(dto);
+    } catch {
+      return undefined;
     }
   }
 

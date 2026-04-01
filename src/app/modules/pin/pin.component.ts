@@ -6,6 +6,7 @@ import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
+import { SyncService } from '../../core/services/sync.service';
 import { TableService } from '../../core/services/table.service';
 
 /** Keys available on the PIN numpad */
@@ -45,6 +46,7 @@ export class PinComponent {
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
+  private readonly syncService = inject(SyncService);
   private readonly tableService = inject(TableService);
 
   //#region Constructor
@@ -132,6 +134,9 @@ export class PinComponent {
       } catch (error) {
         console.warn('[PinComponent] Preload failed — components will retry on mount:', error);
       }
+
+      // Pull today's orders in background — don't block navigation
+      this.syncService.pullTodayOrders().catch(() => {});
 
       const returnUrl = this.authService.consumeReturnUrl();
       if (returnUrl) {

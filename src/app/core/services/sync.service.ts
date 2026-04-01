@@ -147,6 +147,37 @@ export class SyncService implements OnDestroy {
   //#region Pull Sync
 
   /**
+   * Pulls today's orders from the API into Dexie.
+   * Intended to be called on login (fire-and-forget) so that
+   * new sessions/devices have orders available immediately.
+   */
+  async pullTodayOrders(): Promise<void> {
+    if (!navigator.onLine) return;
+
+    try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const since = todayStart.toISOString();
+
+      const remoteDtos = await firstValueFrom(
+        this.api.get<any[]>(`/orders/pull?since=${since}`),
+      );
+
+      for (const dto of remoteDtos) {
+        const local = await this.db.orders.get(dto.id);
+        if (local?.syncStatus === 'Pending') continue;
+
+        const order = this.mapPullDto(dto);
+        await this.db.orders.put(order);
+      }
+
+      this.lastPullAt = new Date().toISOString();
+    } catch (err) {
+      console.warn('[SyncService] pullTodayOrders failed:', err);
+    }
+  }
+
+  /**
    * Pulls orders from the backend that were created or updated
    * by other devices since the last pull.
    * Merges into local Dexie without overwriting orders that
@@ -186,7 +217,7 @@ export class SyncService implements OnDestroy {
    *     items: [{ id, productName, quantity, unitPriceCents }],
    *     payments: [] }
    */
-  private mapPullDto(dto: any): Order {
+  mapPullDto(dto: any): Order {
     return {
       id: dto.id,
       orderNumber: dto.orderNumber,
