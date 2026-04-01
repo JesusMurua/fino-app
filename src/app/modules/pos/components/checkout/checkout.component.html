@@ -22,7 +22,7 @@
       <!-- Order summary -->
       <section class="checkout-summary">
         <ul class="summary-list">
-          @for (item of cartItems; track item.id) {
+          @for (item of cartItems(); track item.id) {
             <li class="summary-item">
               <span class="summary-item__qty">{{ item.quantity }}×</span>
               <span class="summary-item__name">

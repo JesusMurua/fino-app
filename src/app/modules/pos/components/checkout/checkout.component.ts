@@ -68,7 +68,7 @@ export class CheckoutComponent implements OnInit {
   readonly showTableRelease = signal(false);
 
   /** Snapshot of cart items taken at mount — cart is cleared after confirm */
-  cartItems: CartItem[] = [];
+  readonly cartItems = signal<CartItem[]>([]);
 
   /** Whether the printer fallback "Ver ticket" button should be shown */
   readonly showTicketFallback = !this.printService.hasThermalPrinter();
@@ -243,7 +243,7 @@ export class CheckoutComponent implements OnInit {
     this.cartService.cart$.subscribe(items => {
       if (this.step() !== 'payment') return;
       if (!this.existingOrderId()) {
-        this.cartItems = items;
+        this.cartItems.set(items);
       }
       if (items.length === 0 && !this.existingOrderId() && (Date.now() - this.initTime) > 1000) {
         this.router.navigate(['/pos']);
@@ -355,7 +355,7 @@ export class CheckoutComponent implements OnInit {
     if (!order) return;
 
     this.existingOrderId.set(order.id);
-    this.cartItems = order.items;
+    this.cartItems.set(order.items);
     this.existingTotalCents.set(order.totalCents);
     this.tableId.set(order.tableId ?? null);
     this.tableName.set(order.tableName ?? null);
@@ -431,7 +431,7 @@ export class CheckoutComponent implements OnInit {
       order = {
         id: crypto.randomUUID(),
         orderNumber,
-        items: this.cartItems,
+        items: this.cartItems(),
         subtotalCents: this.subtotalCents(),
         orderDiscountCents: discount > 0 ? discount : undefined,
         totalDiscountCents: discount > 0 ? discount : undefined,
