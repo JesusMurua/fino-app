@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
+import { OrderSource } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -203,6 +204,11 @@ export class SyncService implements OnDestroy {
       cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
       tableId: dto.tableId,
       tableName: dto.tableName,
+      orderSource: dto.orderSource ?? OrderSource.Direct,
+      externalOrderId: dto.externalOrderId,
+      deliveryStatus: dto.deliveryStatus,
+      deliveryCustomerName: dto.deliveryCustomerName,
+      estimatedPickupAt: dto.estimatedPickupAt,
       orderDiscountCents: dto.orderDiscountCents ?? 0,
       totalDiscountCents: dto.totalDiscountCents ?? 0,
       orderPromotionId: dto.orderPromotionId,
