@@ -15,6 +15,8 @@ export interface BusinessConfig {
   hasKitchen: boolean;
   /** Whether this business uses table management */
   hasTables: boolean;
+  /** Whether this business receives delivery aggregator orders */
+  hasDelivery: boolean;
   /** Cached business type catalog entry — provides posExperience at startup */
   businessTypeCatalog?: BusinessTypeCatalog;
   /** Folio prefix for ticket numbering (e.g. "HMO") */
@@ -31,4 +33,5 @@ export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   locationName: '',
   hasKitchen: false,
   hasTables: false,
+  hasDelivery: false,
 };

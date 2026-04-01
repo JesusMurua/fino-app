@@ -1,0 +1,98 @@
+<div
+  class="dlv-card"
+  [style.border-left-color]="borderColor"
+>
+  <!-- Header -->
+  <div class="dlv-card__header">
+    <div class="dlv-card__header-top">
+      <app-platform-chip [source]="order.orderSource!" size="sm" />
+      <span class="dlv-card__id">#{{ order.externalOrderId || order.orderNumber }}</span>
+      <span
+        class="dlv-card__timer"
+        [class.dlv-card__timer--urgent]="isUrgent() && !isCritical()"
+        [class.dlv-card__timer--critical]="isCritical()"
+      >
+        @if (isCritical()) {
+          <i class="pi pi-exclamation-triangle"></i>
+        }
+        {{ elapsedFormatted() }}
+      </span>
+    </div>
+    <div class="dlv-card__header-sub">
+      @if (order.deliveryCustomerName) {
+        <span class="dlv-card__customer">
+          <i class="pi pi-user"></i>
+          {{ order.deliveryCustomerName }}
+        </span>
+      }
+      @if (order.estimatedPickupAt) {
+        <span class="dlv-card__pickup">
+          Est. {{ order.estimatedPickupAt | date:'HH:mm' }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <!-- Items -->
+  <ul class="dlv-card__items">
+    @for (item of order.items; track item.id) {
+      <li class="dlv-card__item">
+        <span class="dlv-card__qty">{{ item.quantity }}x</span>
+        <span class="dlv-card__name">{{ item.product.name }}</span>
+      </li>
+      @if (item.notes) {
+        <li class="dlv-card__note">
+          <i class="pi pi-comment"></i>
+          {{ item.notes }}
+        </li>
+      }
+    }
+  </ul>
+
+  <!-- Footer -->
+  <div class="dlv-card__footer">
+    <span class="dlv-card__total">${{ (order.totalCents / 100).toFixed(2) }}</span>
+
+    <div class="dlv-card__actions">
+      @switch (order.deliveryStatus) {
+        @case (DeliveryStatus.PendingAcceptance) {
+          <button
+            type="button"
+            class="dlv-btn dlv-btn--reject"
+            (click)="onReject.emit(order.id)"
+          >
+            <i class="pi pi-times"></i>
+            Rechazar
+          </button>
+          <button
+            type="button"
+            class="dlv-btn dlv-btn--accept"
+            (click)="onAccept.emit(order.id)"
+          >
+            <i class="pi pi-check"></i>
+            Aceptar
+          </button>
+        }
+        @case (DeliveryStatus.Accepted) {
+          <button
+            type="button"
+            class="dlv-btn dlv-btn--ready"
+            (click)="onMarkReady.emit(order.id)"
+          >
+            Marcar Lista
+          </button>
+        }
+        @case (DeliveryStatus.Ready) {
+          <button
+            type="button"
+            class="dlv-btn dlv-btn--pickup"
+            (click)="onMarkPickedUp.emit(order.id)"
+          >
+            Recogida
+            <i class="pi pi-check"></i>
+          </button>
+        }
+      }
+    </div>
+  </div>
+</div>

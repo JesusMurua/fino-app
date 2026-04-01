@@ -24,6 +24,7 @@ import {
 } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { DeliveryService } from '../../../../core/services/delivery.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -77,6 +78,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   private readonly messageService = inject(MessageService);
   private readonly supplierService = inject(SupplierService);
   private readonly stockReceiptService = inject(StockReceiptService);
+  readonly deliveryService = inject(DeliveryService);
   readonly pwaService = inject(PwaService);
   readonly syncService = inject(SyncService);
 
@@ -185,7 +187,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   private readonly onOffline = (): void => this.isOnline.set(false);
 
   constructor(
-    private readonly configService: ConfigService,
+    readonly configService: ConfigService,
     private readonly authService: AuthService,
     private readonly router: Router,
   ) {
@@ -207,6 +209,10 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
     await this.configService.load();
     this.setupScanDebounce();
+
+    if (this.configService.hasDelivery()) {
+      this.deliveryService.loadActiveOrders();
+    }
   }
 
   ngOnDestroy(): void {

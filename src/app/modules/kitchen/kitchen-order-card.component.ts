@@ -1,11 +1,13 @@
 import { Component, EventEmitter, Input, Output, computed } from '@angular/core';
 
 import { Order } from '../../core/models';
+import { OrderSource } from '../../core/enums';
+import { PlatformChipComponent } from '../../shared/components/platform-chip/platform-chip.component';
 
 @Component({
   selector: 'app-kitchen-order-card',
   standalone: true,
-  imports: [],
+  imports: [PlatformChipComponent],
   templateUrl: './kitchen-order-card.component.html',
   styleUrl: './kitchen-order-card.component.scss',
 })
@@ -20,6 +22,8 @@ export class KitchenOrderCardComponent {
   //#region Outputs
   @Output() markDone = new EventEmitter<string>();
   //#endregion
+
+  readonly OrderSource = OrderSource;
 
   //#region Computed
 

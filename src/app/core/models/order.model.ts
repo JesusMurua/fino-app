@@ -1,4 +1,5 @@
 import { CartItem } from './cart-item.model';
+import { DeliveryStatus, OrderSource } from '../enums';
 
 /** Supported payment methods */
 export enum PaymentMethod {
@@ -89,6 +90,16 @@ export interface Order {
   tableId?: number;
   /** Snapshot of the table name at order creation */
   tableName?: string;
+  /** Origin platform for this order */
+  orderSource?: OrderSource;
+  /** External order ID from aggregator platform */
+  externalOrderId?: string;
+  /** Delivery workflow status — only set for aggregator orders */
+  deliveryStatus?: DeliveryStatus;
+  /** Customer name from delivery platform */
+  deliveryCustomerName?: string;
+  /** Estimated pickup time (ISO string) */
+  estimatedPickupAt?: string;
 }
 
 // ---------------------------------------------------------------------------

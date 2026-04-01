@@ -49,6 +49,24 @@
       </button>
     }
 
+    @if (configService.hasDelivery()) {
+      <button
+        type="button"
+        class="pos-header__settings pos-header__delivery-btn"
+        aria-label="Órdenes delivery"
+        pTooltip="Delivery"
+        tooltipPosition="bottom"
+        (click)="deliveryService.toggle()"
+      >
+        <i class="pi pi-car"></i>
+        @if (deliveryService.pendingCount() > 0) {
+          <span class="pos-header__delivery-badge">
+            {{ deliveryService.pendingCount() }}
+          </span>
+        }
+      </button>
+    }
+
     <button
       type="button"
       class="pos-header__settings"

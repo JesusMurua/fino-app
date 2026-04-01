@@ -11,7 +11,9 @@ import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../data/pos.fixture';
+import { ConfigService } from '../../../../core/services/config.service';
 import { CartPanelComponent } from '../cart-panel/cart-panel.component';
+import { DeliveryPanelComponent } from '../delivery-panel/delivery-panel.component';
 import { PosHeaderComponent } from '../pos-header/pos-header.component';
 import { ProductCardComponent } from '../product-card/product-card.component';
 
@@ -23,6 +25,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
     ToastModule,
     ProductCardComponent,
     CartPanelComponent,
+    DeliveryPanelComponent,
     PosHeaderComponent,
   ],
   templateUrl: './product-grid.component.html',
@@ -43,6 +46,7 @@ export class ProductGridComponent implements OnInit, OnDestroy {
 
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
+  readonly configService = inject(ConfigService);
   private readonly scannerService = inject(ScannerService);
   private readonly messageService = inject(MessageService);
 

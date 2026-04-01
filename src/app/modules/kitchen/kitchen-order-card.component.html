@@ -3,9 +3,12 @@
   [class.kds-card--fading]="isFading"
   [class.kds-card--overdue]="isOverdue"
 >
-  <!-- Card header: order number + timer -->
+  <!-- Card header: order number + platform + timer -->
   <div class="kds-card__header">
     <span class="kds-card__number">#{{ order.orderNumber }}</span>
+    @if (order.orderSource && order.orderSource !== OrderSource.Direct) {
+      <app-platform-chip [source]="order.orderSource" size="sm" />
+    }
     <span class="kds-card__timer" [class.kds-card__timer--red]="isOverdue">
       @if (isOverdue) {
         <i class="pi pi-exclamation-triangle"></i>

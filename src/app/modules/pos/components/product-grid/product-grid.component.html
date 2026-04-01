@@ -60,4 +60,9 @@
 
   </div>
 
+  <!-- Delivery panel (global overlay, only when hasDelivery) -->
+  @if (configService.hasDelivery()) {
+    <app-delivery-panel />
+  }
+
 </div>

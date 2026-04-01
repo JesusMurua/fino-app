@@ -23,6 +23,7 @@ interface BranchConfigResponse {
   locationName?: string;
   hasKitchen?: boolean;
   hasTables?: boolean;
+  hasDelivery?: boolean;
   folioPrefix?: string;
   folioFormat?: string;
   folioCounter?: number;
@@ -56,6 +57,9 @@ export class ConfigService {
 
   /** Whether the current business uses table management */
   readonly hasTables = computed(() => this.config$.getValue().hasTables ?? false);
+
+  /** Whether the current business receives delivery aggregator orders */
+  readonly hasDelivery = computed(() => this.config$.getValue().hasDelivery ?? false);
 
   /** POS experience variant — undefined until config is loaded */
   readonly posExperience = computed<PosExperience | undefined>(() =>
@@ -111,6 +115,7 @@ export class ConfigService {
         locationName: remote.locationName || remote.branchName || config.locationName,
         hasKitchen: remote.hasKitchen ?? false,
         hasTables: remote.hasTables ?? false,
+        hasDelivery: remote.hasDelivery ?? false,
         businessTypeCatalog: btCatalog,
         folioPrefix: remote.folioPrefix ?? config.folioPrefix,
         folioFormat: remote.folioFormat ?? config.folioFormat,

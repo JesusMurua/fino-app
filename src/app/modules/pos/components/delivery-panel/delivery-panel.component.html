@@ -1,0 +1,93 @@
+<p-sidebar
+  [visible]="deliveryService.isOpen()"
+  (visibleChange)="deliveryService.close()"
+  position="right"
+  [style]="{ width: '420px', padding: '0' }"
+  [showCloseIcon]="false"
+  styleClass="delivery-sidebar"
+>
+  <!-- Custom header -->
+  <ng-template pTemplate="header">
+    <div class="dlv-panel__header">
+      <div class="dlv-panel__title">
+        <span class="dlv-panel__icon">&#x1F6F5;</span>
+        <span>Órdenes Delivery</span>
+        @if (deliveryService.pendingCount() > 0) {
+          <span class="dlv-panel__urgent-badge">
+            {{ deliveryService.pendingCount() }}
+          </span>
+        }
+      </div>
+      <button
+        type="button"
+        class="dlv-panel__close"
+        aria-label="Cerrar panel"
+        (click)="deliveryService.close()"
+      >
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  </ng-template>
+
+  <!-- Tabs -->
+  <div class="dlv-panel__tabs">
+    <button
+      type="button"
+      class="dlv-panel__tab"
+      [class.dlv-panel__tab--active]="activeTab() === 'pending'"
+      (click)="activeTab.set('pending')"
+    >
+      Nuevas
+      @if (deliveryService.pendingCount() > 0) {
+        <span class="dlv-panel__tab-badge">{{ deliveryService.pendingCount() }}</span>
+      }
+    </button>
+    <button
+      type="button"
+      class="dlv-panel__tab"
+      [class.dlv-panel__tab--active]="activeTab() === 'accepted'"
+      (click)="activeTab.set('accepted')"
+    >
+      En Cocina
+      @if (deliveryService.acceptedOrders().length > 0) {
+        <span class="dlv-panel__tab-badge">{{ deliveryService.acceptedOrders().length }}</span>
+      }
+    </button>
+    <button
+      type="button"
+      class="dlv-panel__tab"
+      [class.dlv-panel__tab--active]="activeTab() === 'ready'"
+      (click)="activeTab.set('ready')"
+    >
+      Listas
+      @if (deliveryService.readyOrders().length > 0) {
+        <span class="dlv-panel__tab-badge">{{ deliveryService.readyOrders().length }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="dlv-panel__content">
+    @if (deliveryService.loading()) {
+      <div class="dlv-panel__loading">
+        <i class="pi pi-spin pi-spinner"></i>
+      </div>
+    } @else {
+      @for (order of activeOrders(); track order.id) {
+        <app-delivery-order-card
+          [order]="order"
+          (onAccept)="handleAccept($event)"
+          (onReject)="handleReject($event)"
+          (onMarkReady)="handleMarkReady($event)"
+          (onMarkPickedUp)="handleMarkPickedUp($event)"
+        />
+      } @empty {
+        <div class="dlv-panel__empty">
+          <i class="pi pi-check-circle"></i>
+          <p>Sin órdenes en esta sección</p>
+        </div>
+      }
+    }
+  </div>
+
+</p-sidebar>

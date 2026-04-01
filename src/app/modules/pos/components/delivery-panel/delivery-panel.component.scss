@@ -1,0 +1,162 @@
+@use '../../../../../styles/variables' as *;
+
+// Override PrimeNG sidebar background
+:host ::ng-deep .delivery-sidebar {
+  .p-sidebar {
+    background: $color-delivery-panel !important;
+    border-left: 1px solid $color-delivery-badge;
+  }
+
+  .p-sidebar-header {
+    padding: 0;
+  }
+}
+
+.dlv-panel {
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: $space-5 $space-5 $space-4;
+    background: #0F172A;
+    border-bottom: 1px solid $color-delivery-badge;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #F9FAFB;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &__icon {
+    font-size: 20px;
+  }
+
+  &__urgent-badge {
+    background: #EF4444;
+    color: #fff;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    animation: dlv-pulse 1.5s infinite;
+  }
+
+  &__close {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #9CA3AF;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s;
+
+    &:hover { background: $color-delivery-badge; }
+  }
+
+  // Tabs
+  &__tabs {
+    display: flex;
+    background: #0F172A;
+    border-bottom: 1px solid $color-delivery-badge;
+    padding: 0 $space-5;
+  }
+
+  &__tab {
+    flex: 1;
+    padding: $space-3 $space-2;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #9CA3AF;
+    font-size: $font-size-label;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    &--active {
+      color: $color-primary;
+      border-bottom-color: $color-primary;
+    }
+  }
+
+  &__tab-badge {
+    background: $color-delivery-badge;
+    color: #F9FAFB;
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px;
+
+    .dlv-panel__tab--active & {
+      background: $color-primary-light;
+      color: $color-primary;
+    }
+  }
+
+  // Content
+  &__content {
+    padding: $space-4;
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $space-7;
+    color: #6B7280;
+    font-size: 24px;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: $space-7 $space-5;
+    color: #6B7280;
+
+    i {
+      font-size: 48px;
+      display: block;
+      margin-bottom: $space-4;
+    }
+
+    p {
+      margin: 0;
+      font-size: $font-size-label;
+    }
+  }
+}
+
+// Responsive: full-width on mobile
+@media (max-width: $breakpoint-md) {
+  :host ::ng-deep .delivery-sidebar .p-sidebar {
+    width: 100vw !important;
+  }
+}
+
+@keyframes dlv-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}

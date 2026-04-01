@@ -54,6 +54,19 @@ $color-bg-page:        #F9FAFB;  // Light grey — page background
 $color-border-soft:    #F3F4F6;  // Very light — separators
 
 // -----------------------------------------------------------------------------
+// Delivery platforms
+// -----------------------------------------------------------------------------
+$color-uber-eats:      #06C167;
+$color-uber-eats-bg:   #000000;
+$color-rappi:          #FF441B;
+$color-rappi-bg:       #FFF1EE;
+$color-didi-food:      #FF6B00;
+$color-didi-food-bg:   #FFF4EE;
+$color-delivery-panel: #111827;
+$color-delivery-card:  #1F2937;
+$color-delivery-badge: #374151;
+
+// -----------------------------------------------------------------------------
 // Breakpoints (align with PrimeFlex)
 // -----------------------------------------------------------------------------
 $breakpoint-sm:   576px;
