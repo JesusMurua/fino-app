@@ -121,29 +121,39 @@
   resize: none;
 }
 
-// Tame PrimeNG calendar icon button — match input height, subtle icon
+// Tame PrimeNG controls inside the reservation form
 :host ::ng-deep {
+  // Calendar trigger — override global 64px touch target for admin context
   .p-calendar {
     width: 100%;
 
-    .p-datepicker-trigger {
+    .p-datepicker-trigger.p-button {
+      min-width: 36px;
+      min-height: 36px;
       width: 36px;
+      height: 36px;
       background: #F9FAFB;
       border-color: #D1D5DB;
       color: $color-text-sub;
+      padding: 0;
 
       &:hover { background: #F3F4F6; }
 
-      .pi { font-size: 14px; }
+      .pi { font-size: 13px; }
     }
+
+    .p-inputtext { height: 36px; }
   }
 
+  // Consistent input sizing
   .p-inputtext {
     font-size: 14px;
     padding: 8px 12px;
+    height: 36px;
   }
 
   .p-dropdown {
+    height: 36px;
     .p-dropdown-label { font-size: 14px; padding: 8px 12px; }
   }
 }
