@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, input, output, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
 import { DeliveryOrderDto } from '../../../../core/models';
@@ -13,6 +13,8 @@ import { PlatformChipComponent } from '../../../../shared/components/platform-ch
   styleUrl: './delivery-order-card.component.scss',
 })
 export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
+
+  private readonly el = inject(ElementRef);
 
   //#region Inputs & Outputs
 
@@ -49,16 +51,15 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
   readonly isUrgent = computed(() => this.elapsedSeconds() >= 300);
   readonly isCritical = computed(() => this.elapsedSeconds() >= 600);
 
-  readonly borderColor = computed(() => {
-    switch (this.order().orderSource) {
-      case OrderSource.UberEats: return '#06C167';
-      case OrderSource.Rappi:    return '#FF441B';
-      case OrderSource.DidiFood: return '#FF6B00';
-      default:                   return '#16A34A';
-    }
-  });
-
   //#endregion
+
+  constructor() {
+    // Set platform accent color as CSS variable on host element
+    effect(() => {
+      const color = this.getPlatformColor(this.order().orderSource);
+      this.el.nativeElement.style.setProperty('--dlv-platform-color', color);
+    });
+  }
 
   ngOnInit(): void {
     this.timerId = setInterval(() => this.now.set(new Date()), 1000);
@@ -66,5 +67,15 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.timerId !== null) clearInterval(this.timerId);
+  }
+
+  private getPlatformColor(source: OrderSource): string {
+    const map: Record<string, string> = {
+      [OrderSource.UberEats]: '#06C167',
+      [OrderSource.Rappi]:    '#FF441B',
+      [OrderSource.DidiFood]: '#FF6B00',
+      [OrderSource.Direct]:   '#16A34A',
+    };
+    return map[source] ?? '#16A34A';
   }
 }

@@ -1,14 +1,64 @@
 @use '../../../../../styles/variables' as *;
 
-// Override PrimeNG sidebar — both classes on the same element
+// =========================================================================
+// Light theme (default)
+// =========================================================================
+:host {
+  --dlv-panel-bg:        #FFFFFF;
+  --dlv-panel-header-bg: #F9FAFB;
+  --dlv-panel-border:    #E5E7EB;
+  --dlv-panel-tabs-bg:   #F9FAFB;
+  --dlv-tab-active:      #16A34A;
+  --dlv-tab-inactive:    #6B7280;
+  --dlv-tab-count-bg:    #E5E7EB;
+  --dlv-tab-count-color: #374151;
+  --dlv-tab-count-active-bg:    #DCFCE7;
+  --dlv-tab-count-active-color: #16A34A;
+  --dlv-empty-color:     #9CA3AF;
+}
+
+// =========================================================================
+// Dark theme
+// =========================================================================
+:host-context(.theme-dark) {
+  --dlv-panel-bg:        #111827;
+  --dlv-panel-header-bg: #0F172A;
+  --dlv-panel-border:    #1E293B;
+  --dlv-panel-tabs-bg:   #0F172A;
+  --dlv-tab-active:      #16A34A;
+  --dlv-tab-inactive:    #6B7280;
+  --dlv-tab-count-bg:    #1E293B;
+  --dlv-tab-count-color: #9CA3AF;
+  --dlv-tab-count-active-bg:    #14532D;
+  --dlv-tab-count-active-color: #86EFAC;
+  --dlv-empty-color:     #6B7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --dlv-panel-bg:        #111827;
+    --dlv-panel-header-bg: #0F172A;
+    --dlv-panel-border:    #1E293B;
+    --dlv-panel-tabs-bg:   #0F172A;
+    --dlv-tab-count-bg:    #1E293B;
+    --dlv-tab-count-color: #9CA3AF;
+    --dlv-tab-count-active-bg:    #14532D;
+    --dlv-tab-count-active-color: #86EFAC;
+    --dlv-empty-color:     #6B7280;
+  }
+}
+
+// =========================================================================
+// PrimeNG sidebar overrides
+// =========================================================================
 :host ::ng-deep .p-sidebar.delivery-sidebar {
-  background: $color-delivery-panel !important;
-  border-left: 1px solid $color-delivery-badge;
+  background: var(--dlv-panel-bg) !important;
+  border-left: 0.5px solid var(--dlv-panel-border);
 }
 
 :host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-header {
   padding: 0;
-  background: #0F172A;
+  background: var(--dlv-panel-header-bg);
 }
 
 :host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-content {
@@ -17,8 +67,12 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background: var(--dlv-panel-bg);
 }
 
+// =========================================================================
+// Panel layout
+// =========================================================================
 .dlv-panel {
 
   &__header {
@@ -26,107 +80,110 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: $space-5 $space-5 $space-4;
-    background: #0F172A;
-    border-bottom: 1px solid $color-delivery-badge;
+    padding: $space-4 $space-5;
+    background: var(--dlv-panel-header-bg);
+    border-bottom: 0.5px solid var(--dlv-panel-border);
   }
 
   &__title {
     display: flex;
     align-items: center;
-    gap: 10px;
-    color: #F9FAFB;
-    font-size: 18px;
-    font-weight: 600;
+    gap: $space-2;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--dlv-tab-active);
   }
 
   &__icon {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   &__urgent-badge {
     background: #EF4444;
     color: #fff;
     border-radius: 50%;
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     animation: dlv-pulse 1.5s infinite;
   }
 
   &__close {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     background: transparent;
-    border: none;
-    color: #9CA3AF;
+    border: 0.5px solid var(--dlv-panel-border);
+    color: var(--dlv-tab-inactive);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     transition: background 0.15s;
 
-    &:hover { background: $color-delivery-badge; }
+    &:hover { background: var(--dlv-panel-border); }
   }
 
   // Tabs
   &__tabs {
     display: flex;
-    background: #0F172A;
-    border-bottom: 1px solid $color-delivery-badge;
-    padding: 0 $space-5;
+    background: var(--dlv-panel-tabs-bg);
+    border-bottom: 0.5px solid var(--dlv-panel-border);
+    padding: 0 $space-4;
+    gap: 4px;
   }
 
   &__tab {
     flex: 1;
-    padding: $space-3 $space-2;
+    padding: 10px $space-3;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
-    color: #9CA3AF;
-    font-size: $font-size-label;
-    font-weight: 500;
+    color: var(--dlv-tab-inactive);
+    font-size: 13px;
+    font-weight: 400;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: color 0.15s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
 
     &--active {
-      color: $color-primary;
-      border-bottom-color: $color-primary;
+      color: var(--dlv-tab-active);
+      border-bottom-color: var(--dlv-tab-active);
+      font-weight: 500;
     }
   }
 
   &__tab-badge {
-    background: $color-delivery-badge;
-    color: #F9FAFB;
+    background: var(--dlv-tab-count-bg);
+    color: var(--dlv-tab-count-color);
     border-radius: 20px;
-    padding: 2px 8px;
+    padding: 1px 7px;
     font-size: 11px;
 
     .dlv-panel__tab--active & {
-      background: $color-primary-light;
-      color: $color-primary;
+      background: var(--dlv-tab-count-active-bg);
+      color: var(--dlv-tab-count-active-color);
     }
   }
 
   // Content
   &__content {
-    padding: $space-4;
+    padding: $space-3;
     display: flex;
     flex-direction: column;
-    gap: $space-3;
+    gap: $space-2;
     overflow-y: auto;
     flex: 1;
+    background: var(--dlv-panel-bg);
   }
 
   &__loading {
@@ -134,24 +191,24 @@
     align-items: center;
     justify-content: center;
     padding: $space-7;
-    color: #6B7280;
+    color: var(--dlv-empty-color);
     font-size: 24px;
   }
 
   &__empty {
     text-align: center;
     padding: $space-7 $space-5;
-    color: #6B7280;
+    color: var(--dlv-empty-color);
 
     i {
-      font-size: 48px;
+      font-size: 36px;
       display: block;
-      margin-bottom: $space-4;
+      margin-bottom: $space-3;
     }
 
     p {
       margin: 0;
-      font-size: $font-size-label;
+      font-size: 13px;
     }
   }
 }

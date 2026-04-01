@@ -1,14 +1,57 @@
 @use '../../../../../styles/variables' as *;
 
+// =========================================================================
+// Light theme (default)
+// =========================================================================
+:host {
+  --dlv-card-bg:         #FFFFFF;
+  --dlv-card-head-bg:    #F9FAFB;
+  --dlv-card-border:     #E5E7EB;
+  --dlv-text-primary:    #111827;
+  --dlv-text-secondary:  #6B7280;
+  --dlv-text-item:       #374151;
+  --dlv-footer-border:   #F3F4F6;
+}
+
+// =========================================================================
+// Dark theme
+// =========================================================================
+:host-context(.theme-dark) {
+  --dlv-card-bg:         #1E293B;
+  --dlv-card-head-bg:    #374151;
+  --dlv-card-border:     #374151;
+  --dlv-text-primary:    #F9FAFB;
+  --dlv-text-secondary:  #9CA3AF;
+  --dlv-text-item:       #D1D5DB;
+  --dlv-footer-border:   rgba(255, 255, 255, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --dlv-card-bg:         #1E293B;
+    --dlv-card-head-bg:    #374151;
+    --dlv-card-border:     #374151;
+    --dlv-text-primary:    #F9FAFB;
+    --dlv-text-secondary:  #9CA3AF;
+    --dlv-text-item:       #D1D5DB;
+    --dlv-footer-border:   rgba(255, 255, 255, 0.06);
+  }
+}
+
+// =========================================================================
+// Card
+// =========================================================================
 .dlv-card {
-  background: $color-delivery-card;
-  border-radius: 12px;
-  border-left: 4px solid $color-primary;
+  background: var(--dlv-card-bg);
+  border: 0.5px solid var(--dlv-card-border);
+  border-left: 3px solid var(--dlv-platform-color, #{$color-primary});
+  border-radius: 10px;
   overflow: hidden;
 
+  // Header
   &__header {
-    padding: $space-3 $space-4;
-    background: $color-delivery-badge;
+    padding: 10px $space-3;
+    background: var(--dlv-card-head-bg);
     display: flex;
     flex-direction: column;
     gap: $space-2;
@@ -17,24 +60,24 @@
   &__header-top {
     display: flex;
     align-items: center;
-    gap: $space-3;
+    gap: $space-2;
   }
 
   &__id {
-    font-size: 16px;
-    font-weight: 700;
-    color: #F9FAFB;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dlv-text-primary);
     flex: 1;
   }
 
   &__timer {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
     color: #9CA3AF;
     font-variant-numeric: tabular-nums;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 
     &--urgent {
       color: #D97706;
@@ -42,9 +85,9 @@
 
     &--critical {
       color: #EF4444;
-      animation: timer-pulse 1.5s infinite;
+      animation: dlv-pulse 1s infinite;
 
-      i { font-size: 14px; }
+      i { font-size: 12px; }
     }
   }
 
@@ -52,8 +95,8 @@
     display: flex;
     align-items: center;
     gap: $space-3;
-    font-size: 13px;
-    color: #9CA3AF;
+    font-size: 11px;
+    color: var(--dlv-text-secondary);
   }
 
   &__customer {
@@ -61,53 +104,54 @@
     align-items: center;
     gap: 4px;
 
-    i { font-size: 12px; }
+    i { font-size: 11px; }
   }
 
   &__pickup {
-    color: #6B7280;
+    color: var(--dlv-text-secondary);
   }
 
   // Items
   &__items {
     list-style: none;
     margin: 0;
-    padding: $space-3 $space-4;
+    padding: 10px $space-3;
     display: flex;
     flex-direction: column;
-    gap: $space-2;
+    gap: $space-1;
   }
 
   &__item {
     display: flex;
     align-items: baseline;
     gap: $space-2;
-    color: #E5E7EB;
-    font-size: $font-size-base;
+    color: var(--dlv-text-item);
+    font-size: 12px;
   }
 
   &__qty {
-    font-weight: 700;
-    min-width: 28px;
-    color: #F9FAFB;
+    font-weight: 600;
+    min-width: 22px;
+    color: var(--dlv-text-primary);
   }
 
   &__name {
-    font-weight: 500;
+    font-weight: 400;
   }
 
   &__note {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-left: 36px;
-    padding: 4px $space-2;
-    background: rgba(#D97706, 0.15);
-    border-radius: 6px;
-    font-size: $font-size-label;
-    color: #FBBF24;
+    gap: 4px;
+    margin-left: 30px;
+    padding: 2px 6px;
+    background: rgba(#D97706, 0.08);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #D97706;
+    margin-top: 2px;
 
-    i { font-size: 12px; }
+    i { font-size: 10px; }
   }
 
   // Footer
@@ -115,67 +159,70 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: $space-3 $space-4;
-    border-top: 1px solid rgba(#fff, 0.08);
+    padding: $space-2 $space-3;
+    border-top: 0.5px solid var(--dlv-footer-border);
   }
 
   &__total {
-    font-size: 18px;
-    font-weight: 700;
-    color: #F9FAFB;
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: var(--dlv-text-primary);
   }
 
   &__actions {
     display: flex;
-    gap: $space-2;
+    gap: 6px;
   }
 }
 
+// =========================================================================
 // Action buttons
+// =========================================================================
 .dlv-btn {
   display: inline-flex;
   align-items: center;
   gap: $space-1;
-  min-height: $touch-target-min;
-  padding: $space-2 $space-4;
-  border: none;
-  border-radius: 8px;
-  font-size: $font-size-label;
-  font-weight: 600;
+  min-height: 32px;
+  padding: 6px $space-3;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: opacity 0.15s, background 0.15s;
 
   &:active { opacity: 0.8; }
 
   &--accept {
     background: $color-primary;
     color: #fff;
+    border: none;
     &:hover { background: #15803D; }
   }
 
   &--reject {
     background: transparent;
-    border: 1px solid rgba(#EF4444, 0.4);
+    border: 0.5px solid #FCA5A5;
     color: #EF4444;
-    &:hover { background: rgba(#EF4444, 0.1); }
+    &:hover { background: rgba(#EF4444, 0.06); }
   }
 
   &--ready {
     background: #D97706;
     color: #fff;
+    border: none;
     &:hover { background: #B45309; }
   }
 
   &--pickup {
     background: transparent;
-    border: 1px solid rgba(#3B82F6, 0.4);
+    border: 0.5px solid #93C5FD;
     color: #3B82F6;
-    &:hover { background: rgba(#3B82F6, 0.1); }
+    &:hover { background: rgba(#3B82F6, 0.06); }
   }
 }
 
-@keyframes timer-pulse {
+@keyframes dlv-pulse {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.5; }
+  50%      { opacity: 0.4; }
 }
