@@ -7,6 +7,7 @@ import {
   PLAN_DISPLAY_NAME,
   PLAN_FEATURE_MAP,
   PLAN_HIERARCHY,
+  PlanInfo,
   PlanType,
 } from '../models';
 import { AuthService } from './auth.service';
@@ -36,9 +37,7 @@ export class FeatureFlagService {
    */
   canUse(feature: FeatureKey): boolean {
     const info = this.authService.planInfo();
-    const effectivePlan = info.isOnTrial && info.planType === PlanType.Free
-      ? PlanType.Basic
-      : info.planType;
+    const effectivePlan = this.getEffectivePlan(info);
 
     const planFeatures = PLAN_FEATURE_MAP[effectivePlan];
     const giroFeatures = BUSINESS_FEATURE_MAP[info.businessType];
@@ -53,9 +52,7 @@ export class FeatureFlagService {
    */
   meetsPlan(required: PlanType): boolean {
     const info = this.authService.planInfo();
-    const effectivePlan = info.isOnTrial && info.planType === PlanType.Free
-      ? PlanType.Basic
-      : info.planType;
+    const effectivePlan = this.getEffectivePlan(info);
 
     return PLAN_HIERARCHY[effectivePlan] >= PLAN_HIERARCHY[required];
   }
@@ -101,6 +98,23 @@ export class FeatureFlagService {
       return 'No disponible para tu tipo de negocio';
     }
     return this.upgradeMessage(feature);
+  }
+
+  //#endregion
+
+  //#region Private Helpers
+
+  /**
+   * Resolves the effective plan for feature gating.
+   * During active trial: uses the contracted planType (Pro/Enterprise).
+   * If planType is Free and trial is active, falls back to Basic
+   * (subscription endpoint may not have updated the plan yet).
+   */
+  private getEffectivePlan(info: PlanInfo): PlanType {
+    if (info.isOnTrial) {
+      return info.planType !== PlanType.Free ? info.planType : PlanType.Basic;
+    }
+    return info.planType;
   }
 
   //#endregion
