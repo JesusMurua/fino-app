@@ -110,6 +110,11 @@
     background: #F3F4F6;
     color: #6B7280;
   }
+
+  &--platform {
+    color: $color-primary;
+    font-weight: 500;
+  }
 }
 
 .order-row__chevron {

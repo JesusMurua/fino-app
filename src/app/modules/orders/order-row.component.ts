@@ -2,13 +2,15 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
 import { CartItem, Order, getPaymentLabel } from '../../core/models';
+import { OrderSource } from '../../core/enums';
 import { OrderDisplayStatus } from '../../core/services/orders.service';
+import { PlatformChipComponent } from '../../shared/components/platform-chip/platform-chip.component';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
 @Component({
   selector: 'app-order-row',
   standalone: true,
-  imports: [DatePipe, PricePipe],
+  imports: [DatePipe, PricePipe, PlatformChipComponent],
   templateUrl: './order-row.component.html',
   styleUrl: './order-row.component.scss',
 })
@@ -30,6 +32,8 @@ export class OrderRowComponent {
   @Output() viewTicket = new EventEmitter<Order>();
   @Output() chargeOrder = new EventEmitter<Order>();
   //#endregion
+
+  readonly OrderSource = OrderSource;
 
   //#region State
   readonly expanded = signal(false);

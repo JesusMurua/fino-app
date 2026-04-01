@@ -4,16 +4,18 @@
     <div class="dlv-card__header-top">
       <app-platform-chip [source]="order().orderSource!" size="sm" />
       <span class="dlv-card__id">#{{ order().externalOrderId || order().orderNumber }}</span>
-      <span
-        class="dlv-card__timer"
-        [class.dlv-card__timer--urgent]="isUrgent() && !isCritical()"
-        [class.dlv-card__timer--critical]="isCritical()"
-      >
-        @if (isCritical()) {
-          <i class="pi pi-exclamation-triangle"></i>
-        }
-        {{ elapsedFormatted() }}
-      </span>
+      @if (showTimer()) {
+        <span
+          class="dlv-card__timer"
+          [class.dlv-card__timer--urgent]="isUrgent()"
+          [class.dlv-card__timer--critical]="isCritical()"
+        >
+          @if (isCritical()) {
+            <i class="pi pi-exclamation-triangle"></i>
+          }
+          {{ timerFormatted() }}
+        </span>
+      }
     </div>
     <div class="dlv-card__header-sub">
       @if (order().deliveryCustomerName) {
@@ -88,6 +90,12 @@
             Recogida
             <i class="pi pi-check"></i>
           </button>
+        }
+        @case (DeliveryStatus.PickedUp) {
+          <!-- terminal state — no actions -->
+        }
+        @case (DeliveryStatus.Rejected) {
+          <!-- terminal state — no actions -->
         }
       }
     </div>

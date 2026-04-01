@@ -5,6 +5,9 @@ import { DeliveryOrderDto } from '../../../../core/models';
 import { DeliveryStatus, OrderSource } from '../../../../core/enums';
 import { PlatformChipComponent } from '../../../../shared/components/platform-chip/platform-chip.component';
 
+/** Default acceptance window when no estimatedPickupAt is provided (5 min) */
+const DEFAULT_ACCEPTANCE_WINDOW_S = 300;
+
 @Component({
   selector: 'app-delivery-order-card',
   standalone: true,
@@ -34,22 +37,56 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
   readonly now = signal(new Date());
   private timerId: ReturnType<typeof setInterval> | null = null;
 
-  //#region Computed
+  //#region Computed — Timer
 
-  readonly elapsedSeconds = computed(() => {
-    const created = new Date(this.order().createdAt);
-    return Math.floor((this.now().getTime() - created.getTime()) / 1000);
+  /** Whether to show the timer (hide for terminal states) */
+  readonly showTimer = computed(() => {
+    const status = this.order().deliveryStatus;
+    return status !== DeliveryStatus.PickedUp && status !== DeliveryStatus.Rejected;
   });
 
-  readonly elapsedFormatted = computed(() => {
-    const totalSec = Math.max(0, this.elapsedSeconds());
+  /** True when status is PendingAcceptance (countdown mode) */
+  private readonly isCountdown = computed(() =>
+    this.order().deliveryStatus === DeliveryStatus.PendingAcceptance,
+  );
+
+  /** Seconds remaining (countdown) or elapsed (count-up) */
+  readonly timerSeconds = computed(() => {
+    const order = this.order();
+    const nowMs = this.now().getTime();
+
+    if (this.isCountdown()) {
+      // Countdown mode: remaining until pickup or default window
+      if (order.estimatedPickupAt) {
+        const pickupMs = new Date(order.estimatedPickupAt).getTime();
+        return Math.max(0, Math.floor((pickupMs - nowMs) / 1000));
+      }
+      const deadlineMs = new Date(order.createdAt).getTime() + DEFAULT_ACCEPTANCE_WINDOW_S * 1000;
+      return Math.max(0, Math.floor((deadlineMs - nowMs) / 1000));
+    }
+
+    // Count-up mode: elapsed since creation
+    const createdMs = new Date(order.createdAt).getTime();
+    return Math.max(0, Math.floor((nowMs - createdMs) / 1000));
+  });
+
+  /** Formatted as M:SS */
+  readonly timerFormatted = computed(() => {
+    const totalSec = this.timerSeconds();
     const min = Math.floor(totalSec / 60);
     const sec = totalSec % 60;
     return `${min}:${sec.toString().padStart(2, '0')}`;
   });
 
-  readonly isUrgent = computed(() => this.elapsedSeconds() >= 300);
-  readonly isCritical = computed(() => this.elapsedSeconds() >= 600);
+  readonly isUrgent = computed(() => {
+    if (this.isCountdown()) return this.timerSeconds() <= 120 && this.timerSeconds() > 0;
+    return this.timerSeconds() >= 300;
+  });
+
+  readonly isCritical = computed(() => {
+    if (this.isCountdown()) return this.timerSeconds() === 0;
+    return this.timerSeconds() >= 600;
+  });
 
   //#endregion
 
@@ -59,6 +96,16 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
       const color = this.getPlatformColor(this.order().orderSource);
       this.el.nativeElement.style.setProperty('--dlv-platform-color', color);
     });
+
+    // Auto-reject when countdown hits zero
+    effect(() => {
+      if (
+        this.order().deliveryStatus === DeliveryStatus.PendingAcceptance &&
+        this.isCritical()
+      ) {
+        this.reject.emit(this.order().id);
+      }
+    }, { allowSignalWrites: true });
   }
 
   ngOnInit(): void {

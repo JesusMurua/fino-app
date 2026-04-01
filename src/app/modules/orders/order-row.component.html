@@ -3,6 +3,9 @@
   <!-- Summary row (always visible) -->
   <button type="button" class="order-row__summary" (click)="toggle()">
     <span class="order-row__number">#{{ order.orderNumber }}</span>
+    @if (order.orderSource && order.orderSource !== OrderSource.Direct) {
+      <app-platform-chip [source]="order.orderSource" size="sm" />
+    }
     @if (order.tableName) {
       <span class="order-row__table-badge">{{ order.tableName }}</span>
     }
@@ -26,6 +29,8 @@
     <span class="order-row__total">{{ order.totalCents | price }}</span>
     @if (order.payments?.length > 0) {
       <span class="order-row__payment">{{ paymentLabel }}</span>
+    } @else if (order.orderSource && order.orderSource !== OrderSource.Direct) {
+      <span class="order-row__payment order-row__payment--platform">Pagado · plataforma</span>
     } @else {
       <span class="order-row__payment order-row__payment--unpaid">Sin cobrar</span>
     }
