@@ -214,7 +214,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     zones.forEach(z => zoneMap.set(z.id, z));
 
     // Group by zoneId
-    const groups = new Map<number | null, TableStatusDto[]>();
+    const groups = new Map<number | null, EnrichedTableStatus[]>();
     for (const dto of statuses) {
       const key = dto.zoneId ?? null;
       if (!groups.has(key)) groups.set(key, []);
