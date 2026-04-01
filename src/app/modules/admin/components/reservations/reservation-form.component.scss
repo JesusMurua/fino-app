@@ -132,14 +132,14 @@
       min-height: 36px;
       width: 36px;
       height: 36px;
-      background: #F9FAFB;
+      background: white;
       border-color: #D1D5DB;
-      color: $color-text-sub;
+      color: $color-text-title;
       padding: 0;
 
-      &:hover { background: #F3F4F6; }
+      &:hover { background: #F3F4F6; color: $color-primary; }
 
-      .pi { font-size: 13px; }
+      .pi { font-size: 14px; }
     }
 
     .p-inputtext { height: 36px; }
