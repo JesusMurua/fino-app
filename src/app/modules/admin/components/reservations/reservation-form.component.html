@@ -4,138 +4,171 @@
   (visibleChange)="onClose()"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '680px' }"
+  [style]="{ width: '600px' }"
   [draggable]="false"
+  styleClass="res-dialog"
 >
-  <form [formGroup]="form" class="res-form__grid">
+  <form [formGroup]="form" class="rf">
 
-    <!-- Row 1: Nombre (full) -->
-    <div class="form-field res-form__field--full">
-      <label class="form-field__label" for="rf-name">Nombre del cliente</label>
-      <input
-        formControlName="guestName"
-        id="rf-name"
-        type="text"
-        pInputText
-        placeholder="Ej. Juan Pérez"
-        class="form-field__input"
-      />
-      @if (form.get('guestName')?.touched && form.get('guestName')?.hasError('required')) {
-        <small class="form-field__error">El nombre es obligatorio</small>
-      }
+    <!-- Section: Guest info -->
+    <div class="rf__section">
+      <div class="rf__section-label">
+        <i class="pi pi-user"></i>
+        <span>Cliente</span>
+      </div>
+      <div class="rf__row">
+        <div class="rf__field rf__field--grow">
+          <label class="rf__label" for="rf-name">Nombre</label>
+          <input
+            formControlName="guestName"
+            id="rf-name"
+            type="text"
+            pInputText
+            placeholder="Juan Pérez"
+            class="rf__input"
+          />
+          @if (form.get('guestName')?.touched && form.get('guestName')?.hasError('required')) {
+            <small class="rf__error">Obligatorio</small>
+          }
+        </div>
+        <div class="rf__field">
+          <label class="rf__label" for="rf-phone">Teléfono</label>
+          <input
+            formControlName="guestPhone"
+            id="rf-phone"
+            type="tel"
+            pInputText
+            placeholder="55 1234 5678"
+            class="rf__input"
+          />
+        </div>
+        <div class="rf__field rf__field--sm">
+          <label class="rf__label" for="rf-party">Personas</label>
+          <p-inputNumber
+            formControlName="partySize"
+            inputId="rf-party"
+            [min]="1"
+            [max]="50"
+            [showButtons]="true"
+            styleClass="rf__input"
+          />
+        </div>
+      </div>
     </div>
 
-    <!-- Row 2: Teléfono | Personas -->
-    <div class="form-field">
-      <label class="form-field__label" for="rf-phone">Teléfono (opcional)</label>
-      <input
-        formControlName="guestPhone"
-        id="rf-phone"
-        type="tel"
-        pInputText
-        placeholder="Ej. 55 1234 5678"
-        class="form-field__input"
-      />
+    <!-- Section: When -->
+    <div class="rf__section">
+      <div class="rf__section-label">
+        <i class="pi pi-clock"></i>
+        <span>Cuándo</span>
+      </div>
+      <div class="rf__row">
+        <div class="rf__field">
+          <label class="rf__label" for="rf-date">Fecha</label>
+          <p-calendar
+            formControlName="reservationDate"
+            inputId="rf-date"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            styleClass="rf__input"
+            [appendTo]="'body'"
+            (onSelect)="checkAvailability()"
+          />
+        </div>
+        <div class="rf__field">
+          <label class="rf__label" for="rf-time">Hora</label>
+          <p-calendar
+            formControlName="reservationTime"
+            inputId="rf-time"
+            [timeOnly]="true"
+            [hourFormat]="'24'"
+            [showIcon]="true"
+            styleClass="rf__input"
+            [appendTo]="'body'"
+            (onSelect)="checkAvailability()"
+          />
+        </div>
+        <div class="rf__field">
+          <label class="rf__label" for="rf-duration">Duración</label>
+          <p-dropdown
+            formControlName="durationMinutes"
+            inputId="rf-duration"
+            [options]="durationOptions"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="rf__input"
+            (onChange)="checkAvailability()"
+          />
+        </div>
+      </div>
     </div>
 
-    <div class="form-field">
-      <label class="form-field__label" for="rf-party">Personas</label>
-      <p-inputNumber
-        formControlName="partySize"
-        inputId="rf-party"
-        [min]="1"
-        [max]="50"
-        [showButtons]="true"
-        styleClass="form-field__input"
-      />
+    <!-- Section: Where -->
+    <div class="rf__section">
+      <div class="rf__section-label">
+        <i class="pi pi-table"></i>
+        <span>Mesa</span>
+      </div>
+      <div class="rf__row">
+        <div class="rf__field rf__field--grow">
+          <p-dropdown
+            formControlName="tableId"
+            [options]="tableOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [group]="true"
+            groupLabel="zone"
+            placeholder="Sin mesa asignada"
+            [showClear]="true"
+            styleClass="rf__input"
+            [filter]="true"
+            filterPlaceholder="Buscar mesa..."
+            [appendTo]="'body'"
+            (onChange)="checkAvailability()"
+          />
+          @if (availabilityWarning()) {
+            <small class="rf__warning">
+              <i class="pi pi-exclamation-triangle"></i>
+              {{ availabilityWarning() }}
+            </small>
+          }
+        </div>
+      </div>
     </div>
 
-    <!-- Row 3: Fecha | Hora -->
-    <div class="form-field">
-      <label class="form-field__label" for="rf-date">Fecha</label>
-      <p-calendar
-        formControlName="reservationDate"
-        inputId="rf-date"
-        dateFormat="dd/mm/yy"
-        [showIcon]="true"
-        styleClass="form-field__input"
-        (onSelect)="checkAvailability()"
-      />
-    </div>
-
-    <div class="form-field">
-      <label class="form-field__label" for="rf-time">Hora</label>
-      <p-calendar
-        formControlName="reservationTime"
-        inputId="rf-time"
-        [timeOnly]="true"
-        [hourFormat]="'24'"
-        [showIcon]="true"
-        styleClass="form-field__input"
-        (onSelect)="checkAvailability()"
-      />
-    </div>
-
-    <!-- Row 4: Duración | Mesa -->
-    <div class="form-field">
-      <label class="form-field__label" for="rf-duration">Duración</label>
-      <p-dropdown
-        formControlName="durationMinutes"
-        inputId="rf-duration"
-        [options]="durationOptions"
-        optionLabel="label"
-        optionValue="value"
-        styleClass="form-field__input"
-        (onChange)="checkAvailability()"
-      />
-    </div>
-
-    <div class="form-field">
-      <label class="form-field__label" for="rf-table">Mesa (opcional)</label>
-      <p-dropdown
-        formControlName="tableId"
-        inputId="rf-table"
-        [options]="tables()"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Sin mesa asignada"
-        [showClear]="true"
-        styleClass="form-field__input"
-        [appendTo]="'body'"
-        (onChange)="checkAvailability()"
-      />
-      @if (availabilityWarning()) {
-        <small class="form-field__warning">{{ availabilityWarning() }}</small>
-      }
-    </div>
-
-    <!-- Row 5: Notas (full) -->
-    <div class="form-field res-form__field--full">
-      <label class="form-field__label" for="rf-notes">Notas (opcional)</label>
+    <!-- Section: Notes -->
+    <div class="rf__section rf__section--last">
+      <div class="rf__section-label">
+        <i class="pi pi-comment"></i>
+        <span>Notas</span>
+      </div>
       <textarea
         formControlName="notes"
-        id="rf-notes"
         pInputTextarea
-        rows="3"
-        placeholder="Ej. Cumpleaños, alergias, silla alta..."
-        class="form-field__input"
+        rows="2"
+        placeholder="Cumpleaños, alergias, silla alta..."
+        class="rf__input rf__textarea"
       ></textarea>
     </div>
 
   </form>
 
   <ng-template pTemplate="footer">
-    <button type="button" class="btn-ghost" (click)="onClose()">Cancelar</button>
-    <button
-      type="button"
-      class="btn-primary"
-      [disabled]="isSaving()"
-      (click)="onSave()"
-    >
-      @if (isSaving()) {
-        <i class="pi pi-spin pi-spinner"></i>
-      }
-      Guardar
-    </button>
+    <div class="rf__footer">
+      <button type="button" class="rf__btn rf__btn--ghost" (click)="onClose()">Cancelar</button>
+      <button
+        type="button"
+        class="rf__btn rf__btn--primary"
+        [disabled]="isSaving()"
+        (click)="onSave()"
+      >
+        @if (isSaving()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-check"></i>
+        }
+        {{ reservation ? 'Actualizar' : 'Crear reservación' }}
+      </button>
+    </div>
   </ng-template>
 </p-dialog>

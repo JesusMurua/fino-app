@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
@@ -9,10 +9,19 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
-import { Reservation, RestaurantTable } from '../../../../core/models';
+import { Reservation, RestaurantTable, Zone } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import { TableService } from '../../../../core/services/table.service';
+import { ZoneService } from '../../../../core/services/zone.service';
+
+/** Grouped table option for the dropdown */
+interface TableOption {
+  label: string;
+  value: number;
+  zone: string;
+  capacity?: number;
+}
 
 @Component({
   selector: 'app-reservation-form',
@@ -45,12 +54,28 @@ export class ReservationFormComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly reservationService = inject(ReservationService);
   private readonly tableService = inject(TableService);
+  private readonly zoneService = inject(ZoneService);
   private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
 
   readonly tables = signal<RestaurantTable[]>([]);
   readonly availabilityWarning = signal('');
   readonly isSaving = signal(false);
+
+  /** Tables grouped by zone for the dropdown */
+  readonly tableOptions = computed<TableOption[]>(() => {
+    const tables = this.tables();
+    const zones = this.zoneService.getActiveZones();
+    const zoneMap = new Map<number, string>();
+    zones.forEach(z => zoneMap.set(z.id, z.name));
+
+    return tables.map(t => ({
+      label: t.capacity ? `${t.name} (${t.capacity} pers.)` : t.name,
+      value: t.id,
+      zone: t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Otro') : 'Sin zona',
+      capacity: t.capacity,
+    }));
+  });
 
   readonly durationOptions = [
     { label: '1 hora', value: 60 },
