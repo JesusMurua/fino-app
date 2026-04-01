@@ -110,7 +110,7 @@
                 (click)="onTableCardClick(dto)"
               >
                 @if (getStatusClass(dto.displayStatus) !== 'free') {
-                  <span class="tcard-bar__dot"></span>
+                  <div class="tcard-bar__dot"></div>
                 }
                 <span class="tcard-bar__name">{{ dto.tableName }}</span>
                 @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free') {
@@ -120,7 +120,7 @@
             }
           </div>
         } @else {
-          <!-- Regular tables → squares -->
+          <!-- Regular tables → cards -->
           <div class="tables-grid">
             @for (dto of group.tables; track dto.tableId) {
               <button
@@ -128,21 +128,30 @@
                 class="tcard tcard--{{ getStatusClass(dto.displayStatus) }}"
                 (click)="onTableCardClick(dto)"
               >
-                <div class="tcard__top">
-                  @if (getStatusClass(dto.displayStatus) === 'free') {
-                    <span class="tcard__shape"></span>
-                  }
+                <div class="tcard__header">
                   <span class="tcard__name">{{ dto.tableName }}</span>
-                  @if (dto.guestName) {
+                </div>
+
+                <div class="tcard__body">
+                  @if (dto.guestName && getStatusClass(dto.displayStatus) !== 'free' && getStatusClass(dto.displayStatus) !== 'reserved') {
                     <span class="tcard__guest">{{ dto.guestName }}</span>
                   }
+                  @if (getStatusClass(dto.displayStatus) === 'reserved' && dto.reservationTime) {
+                    <div class="tcard__reservation">
+                      <div class="tcard__res-dot"></div>
+                      <div class="tcard__res-text">
+                        @if (dto.guestName) { {{ dto.guestName }} · }
+                        {{ dto.reservationTime }}
+                        @if (dto.partySize) { · {{ dto.partySize }} personas }
+                      </div>
+                    </div>
+                  }
                 </div>
-                <div class="tcard__bottom">
+
+                <div class="tcard__footer">
                   <span class="tcard__pill">{{ getStatusLabel(dto.displayStatus) }}</span>
-                  @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free') {
+                  @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free' && getStatusClass(dto.displayStatus) !== 'reserved') {
                     <span class="tcard__amount">{{ dto.orderTotalCents | price }}</span>
-                  } @else if (dto.reservationTime && getStatusClass(dto.displayStatus) === 'reserved') {
-                    <span class="tcard__time">{{ dto.reservationTime }}</span>
                   }
                 </div>
               </button>

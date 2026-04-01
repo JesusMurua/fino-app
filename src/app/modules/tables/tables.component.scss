@@ -245,120 +245,140 @@
 }
 
 // -----------------------------------------------------------------------
-// Table card — two-zone layout
+// Table card — header / body / footer layout
 // -----------------------------------------------------------------------
 .tcard {
-  border-radius: 18px;
-  min-height: 148px;
+  width: 100%;
+  border-radius: 14px;
   border: 1.5px solid #E5E7EB;
-  display: flex;
-  flex-direction: column;
+  background: white;
   overflow: hidden;
   cursor: pointer;
-  background: white;
-  font-family: inherit;
+  transition: transform 0.12s;
   text-align: left;
   padding: 0;
-  transition: transform 0.12s;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
 
   &:active { transform: scale(0.97); }
 
-  &__top {
-    padding: $space-4 $space-4 $space-3;
-    flex: 1;
+  &__header {
+    padding: $space-3 $space-3 $space-2;
     display: flex;
-    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: $space-2;
   }
 
-  &__shape {
-    width: 44px;
-    height: 44px;
-    border-radius: $space-2;
-    border: 2px solid #E5E7EB;
-    display: block;
-  }
-
   &__name {
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 500;
     color: $color-text-title;
-    margin-top: auto;
+    line-height: 1.2;
+  }
+
+  &__body {
+    padding: 0 $space-3 10px;
+    flex: 1;
+    min-height: 28px;
   }
 
   &__guest {
-    font-size: 11px;
+    font-size: 12px;
     color: $color-text-sub;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: block;
   }
 
-  &__bottom {
-    padding: 10px $space-4;
+  &__reservation {
+    background: #F5F3FF;
+    border-radius: 6px;
+    padding: 5px $space-2;
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  &__res-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #7C3AED;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__res-text {
+    font-size: 11px;
+    color: #5B21B6;
+    line-height: 1.4;
+  }
+
+  &__footer {
+    padding: $space-2 $space-3;
+    border-top: 0.5px solid #F3F4F6;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #F9FAFB;
-    border-top: 0.5px solid #E5E7EB;
+    background: #FAFAFA;
   }
 
   &__pill {
     font-size: 11px;
     font-weight: 500;
-    padding: 3px 10px;
-    border-radius: 99px;
+    padding: 3px $space-2;
+    border-radius: 20px;
     background: #F3F4F6;
     color: $color-text-sub;
   }
 
   &__amount {
-    font-size: 15px;
+    font-size: $font-size-label;
     font-weight: 500;
-  }
-
-  &__time {
-    font-size: 11px;
-    color: $color-text-sub;
   }
 
   // ---- Status variants ----
   &--order {
     border-color: $color-primary;
-    .tcard__bottom { background: #F0FDF4; border-top-color: #BBF7D0; }
+    .tcard__footer { background: #F0FDF4; }
     .tcard__pill   { background: #DCFCE7; color: #15803D; }
     .tcard__amount { color: #15803D; }
   }
 
   &--kitchen {
     border-color: #F59E0B;
-    .tcard__bottom { background: #FFFBEB; border-top-color: #FDE68A; }
+    .tcard__footer { background: #FFFBEB; }
     .tcard__pill   { background: #FEF3C7; color: #92400E; }
-    .tcard__amount { color: #92400E; }
+    .tcard__amount { color: #D97706; }
   }
 
   &--ready {
     border-color: #10B981;
-    .tcard__bottom { background: #ECFDF5; border-top-color: #A7F3D0; }
+    .tcard__footer { background: #ECFDF5; }
     .tcard__pill   { background: #D1FAE5; color: #065F46; }
-    .tcard__amount { color: #065F46; }
+    .tcard__amount { color: #059669; }
   }
 
   &--waiting {
     border-color: #3B82F6;
-    .tcard__bottom { background: #EFF6FF; border-top-color: #BFDBFE; }
+    .tcard__footer { background: #EFF6FF; }
     .tcard__pill   { background: #DBEAFE; color: #1E40AF; }
-    .tcard__amount { color: #1E40AF; }
+    .tcard__amount { color: #2563EB; }
   }
 
   &--paid {
-    opacity: 0.5;
-    .tcard__pill { background: #F3F4F6; color: $color-text-sub; }
+    border-color: #E5E7EB;
+    opacity: 0.6;
+    .tcard__footer { background: #F9FAFB; }
+    .tcard__pill   { background: #F3F4F6; color: #9CA3AF; }
   }
 
   &--reserved {
     border-color: #8B5CF6;
-    .tcard__bottom { background: #F5F3FF; border-top-color: #DDD6FE; }
+    .tcard__footer { background: #F5F3FF; }
     .tcard__pill   { background: #EDE9FE; color: #6D28D9; }
   }
 }
@@ -373,56 +393,62 @@
 }
 
 .tcard-bar {
-  width: 108px;
-  height: 108px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  border: 1.5px solid #E5E7EB;
+  border: 2.5px solid #E5E7EB;
   background: white;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   cursor: pointer;
-  gap: 4px;
-  position: relative;
+  transition: transform 0.12s;
   font-family: inherit;
   padding: 0;
-  transition: transform 0.12s;
 
   &:active { transform: scale(0.95); }
 
   &__dot {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: $color-primary;
-    border: 2px solid white;
+    background: #D1D5DB;
+    margin-bottom: 2px;
   }
 
   &__name {
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 500;
     color: $color-text-title;
   }
 
   &__amount {
-    font-size: 10px;
+    font-size: 11px;
+    color: $color-primary;
     font-weight: 500;
-    color: #15803D;
   }
 
-  &--order,
-  &--kitchen,
-  &--ready {
+  // ---- Status variants ----
+  &--free {
+    border-color: #E5E7EB;
+    .tcard-bar__dot { background: #D1D5DB; }
+  }
+
+  &--order {
     border-color: $color-primary;
+    .tcard-bar__dot { background: $color-primary; }
   }
 
   &--kitchen {
     border-color: #F59E0B;
     .tcard-bar__dot { background: #F59E0B; }
+  }
+
+  &--ready {
+    border-color: #10B981;
+    .tcard-bar__dot { background: #10B981; }
   }
 
   &--waiting {

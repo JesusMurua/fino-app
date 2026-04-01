@@ -28,12 +28,17 @@ import { PricePipe } from '../../shared/pipes/price.pipe';
 
 const POLL_INTERVAL = 15_000;
 
+/** TableStatusDto enriched with reservation data for the template */
+interface EnrichedTableStatus extends TableStatusDto {
+  partySize: number | null;
+}
+
 /** Grouped zone entry for template iteration */
 interface ZoneGroup {
   id: number | null;
   name: string;
   type: ZoneType;
-  tables: TableStatusDto[];
+  tables: EnrichedTableStatus[];
 }
 
 @Component({
@@ -189,9 +194,18 @@ export class TablesComponent implements OnInit, OnDestroy {
     return zones.filter(z => statusZoneIds.has(z.id));
   });
 
+  /** Table statuses enriched with reservation partySize */
+  readonly enrichedTables = computed<EnrichedTableStatus[]>(() => {
+    const reservations = this.todayReservations();
+    return this.tableStatuses().map(dto => ({
+      ...dto,
+      partySize: reservations.find(r => r.tableId === dto.tableId && r.status === 'Confirmed')?.partySize ?? null,
+    }));
+  });
+
   /** Tables grouped by zone, filtered by activeZone */
   readonly zoneGroups = computed<ZoneGroup[]>(() => {
-    const statuses = this.tableStatuses();
+    const statuses = this.enrichedTables();
     const zones = this.zoneService.getActiveZones();
     const activeZoneId = this.activeZone();
 
