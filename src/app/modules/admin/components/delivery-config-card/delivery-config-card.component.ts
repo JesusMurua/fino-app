@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Output, computed, effect, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputSwitchModule } from 'primeng/inputswitch';
@@ -21,14 +21,19 @@ interface PlatformMeta {
   templateUrl: './delivery-config-card.component.html',
   styleUrl: './delivery-config-card.component.scss',
 })
-export class DeliveryConfigCardComponent implements OnChanges {
+export class DeliveryConfigCardComponent {
 
-  @Input({ required: true }) platform!: OrderSource;
-  @Input() config: BranchDeliveryConfig | null = null;
-  @Input({ required: true }) branchId!: number;
-  @Input() saving = false;
+  //#region Inputs & Outputs
+
+  readonly platform = input.required<OrderSource>();
+  readonly config = input<BranchDeliveryConfig | null>(null);
+  readonly branchId = input.required<number>();
+  readonly saving = input(false);
+
   @Output() onSave = new EventEmitter<UpsertDeliveryConfigRequest>();
   @Output() onDelete = new EventEmitter<OrderSource>();
+
+  //#endregion
 
   //#region Internal State
 
@@ -54,30 +59,41 @@ export class DeliveryConfigCardComponent implements OnChanges {
   };
 
   readonly meta = computed<PlatformMeta>(() =>
-    this.platformMap[this.platform] ?? this.platformMap[OrderSource.Direct],
+    this.platformMap[this.platform()] ?? this.platformMap[OrderSource.Direct],
   );
 
-  readonly isConfigured = computed(() => this.config !== null);
+  readonly isConfigured = computed(() => this.config() !== null);
 
   //#endregion
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['config']) {
-      const cfg = this.config;
-      this.isActive.set(cfg?.isActive ?? false);
-      this.storeId.set(cfg?.storeId ?? '');
+  //#region Sync effect
+
+  constructor() {
+    effect(() => {
+      const cfg = this.config();
+      if (cfg) {
+        this.isActive.set(cfg.isActive);
+        this.storeId.set(cfg.storeId ?? '');
+        // Auto-expand configured + active cards for discoverability
+        if (cfg.isActive) {
+          this.isExpanded.set(true);
+        }
+      } else {
+        this.isActive.set(false);
+        this.storeId.set('');
+      }
+      // Never pre-fill secrets
       this.apiKeyInput.set('');
       this.webhookSecretInput.set('');
       this.showApiKey.set(false);
       this.showWebhookSecret.set(false);
       this.showDeleteConfirm.set(false);
-
-      // Auto-expand configured + active cards for discoverability
-      if (cfg?.isActive) {
-        this.isExpanded.set(true);
-      }
-    }
+    }, { allowSignalWrites: true });
   }
+
+  //#endregion
+
+  //#region Actions
 
   toggleExpand(): void {
     this.isExpanded.update(v => !v);
@@ -85,7 +101,7 @@ export class DeliveryConfigCardComponent implements OnChanges {
 
   emitSave(): void {
     const request: UpsertDeliveryConfigRequest = {
-      platform: this.platform,
+      platform: this.platform(),
       isActive: this.isActive(),
       storeId: this.storeId().trim() || undefined,
     };
@@ -97,14 +113,17 @@ export class DeliveryConfigCardComponent implements OnChanges {
   }
 
   emitDelete(): void {
-    this.onDelete.emit(this.platform);
+    this.onDelete.emit(this.platform());
     this.showDeleteConfirm.set(false);
   }
 
   copyWebhookUrl(): void {
-    if (!this.config?.webhookUrl) return;
-    navigator.clipboard.writeText(this.config.webhookUrl);
+    const cfg = this.config();
+    if (!cfg?.webhookUrl) return;
+    navigator.clipboard.writeText(cfg.webhookUrl);
     this.copiedFeedback.set(true);
     setTimeout(() => this.copiedFeedback.set(false), 2000);
   }
+
+  //#endregion
 }

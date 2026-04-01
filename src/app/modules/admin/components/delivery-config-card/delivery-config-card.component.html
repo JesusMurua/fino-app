@@ -17,9 +17,9 @@
     </div>
     <div class="dcc__header-right">
       @if (isConfigured()) {
-        <span class="dcc__status" [class.dcc__status--active]="config!.isActive" [class.dcc__status--inactive]="!config!.isActive">
+        <span class="dcc__status" [class.dcc__status--active]="config()!.isActive" [class.dcc__status--inactive]="!config()!.isActive">
           <span class="dcc__status-dot"></span>
-          {{ config!.isActive ? 'Activo' : 'Inactivo' }}
+          {{ config()!.isActive ? 'Activo' : 'Inactivo' }}
         </span>
       } @else {
         <span class="dcc__status dcc__status--none">No configurado</span>
@@ -58,7 +58,7 @@
       <!-- API Key -->
       <div class="dcc__field">
         <label class="dcc__label">API Key</label>
-        @if (config?.hasApiKey && !showApiKey()) {
+        @if (config()?.hasApiKey && !showApiKey()) {
           <div class="dcc__secret-row">
             <span class="dcc__secret-status">
               <i class="pi pi-check-circle"></i> Configurada
@@ -84,7 +84,7 @@
       <!-- Webhook Secret -->
       <div class="dcc__field">
         <label class="dcc__label">Webhook Secret</label>
-        @if (config?.hasWebhookSecret && !showWebhookSecret()) {
+        @if (config()?.hasWebhookSecret && !showWebhookSecret()) {
           <div class="dcc__secret-row">
             <span class="dcc__secret-status">
               <i class="pi pi-check-circle"></i> Configurado
@@ -108,11 +108,11 @@
       </div>
 
       <!-- Webhook URL -->
-      @if (config?.webhookUrl) {
+      @if (config()?.webhookUrl) {
         <div class="dcc__field">
           <label class="dcc__label">Webhook URL</label>
           <div class="dcc__webhook-url">
-            <code>{{ config.webhookUrl }}</code>
+            <code>{{ config()!.webhookUrl }}</code>
             <button
               type="button"
               class="dcc__copy-btn"
@@ -148,10 +148,10 @@
         <button
           type="button"
           class="dcc__save-btn"
-          [disabled]="saving"
+          [disabled]="saving()"
           (click)="emitSave()"
         >
-          @if (saving) {
+          @if (saving()) {
             <i class="pi pi-spin pi-spinner"></i>
           }
           {{ isConfigured() ? 'Guardar cambios' : 'Configurar' }}

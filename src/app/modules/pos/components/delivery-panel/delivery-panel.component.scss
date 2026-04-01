@@ -1,15 +1,22 @@
 @use '../../../../../styles/variables' as *;
 
-// Override PrimeNG sidebar background
-:host ::ng-deep .delivery-sidebar {
-  .p-sidebar {
-    background: $color-delivery-panel !important;
-    border-left: 1px solid $color-delivery-badge;
-  }
+// Override PrimeNG sidebar — both classes on the same element
+:host ::ng-deep .p-sidebar.delivery-sidebar {
+  background: $color-delivery-panel !important;
+  border-left: 1px solid $color-delivery-badge;
+}
 
-  .p-sidebar-header {
-    padding: 0;
-  }
+:host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-header {
+  padding: 0;
+  background: #0F172A;
+}
+
+:host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .dlv-panel {
@@ -151,7 +158,7 @@
 
 // Responsive: full-width on mobile
 @media (max-width: $breakpoint-md) {
-  :host ::ng-deep .delivery-sidebar .p-sidebar {
+  :host ::ng-deep .p-sidebar.delivery-sidebar {
     width: 100vw !important;
   }
 }
