@@ -53,6 +53,14 @@ export class ReservationService {
   }
 
   /**
+   * Confirms a pending reservation.
+   * @param id Reservation ID
+   */
+  confirm(id: number): Observable<void> {
+    return this.api.patch<void>(`/reservations/${id}/confirm`, {});
+  }
+
+  /**
    * Cancels a reservation.
    * @param id Reservation ID
    */

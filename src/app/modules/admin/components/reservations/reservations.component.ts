@@ -179,20 +179,7 @@ export class ReservationsComponent implements OnInit {
   /** Confirms a pending reservation */
   async onConfirm(reservation: Reservation): Promise<void> {
     try {
-      await firstValueFrom(
-        this.reservationService.update(reservation.id, {
-          ...reservation,
-          tableId: reservation.tableId,
-          guestName: reservation.guestName,
-          guestPhone: reservation.guestPhone,
-          partySize: reservation.partySize,
-          reservationDate: reservation.reservationDate,
-          reservationTime: reservation.reservationTime,
-          durationMinutes: reservation.durationMinutes,
-          notes: reservation.notes,
-        }),
-      );
-      // Backend handles status change via confirm logic
+      await firstValueFrom(this.reservationService.confirm(reservation.id));
       this.messageService.add({ severity: 'success', summary: 'Reservación confirmada', life: 3000 });
       await this.loadDayReservations();
     } catch {
