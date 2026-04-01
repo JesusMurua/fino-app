@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Order } from '../models';
+import { DeliveryOrderDto } from '../models';
 import { DeliveryStatus } from '../enums';
 
 @Injectable({ providedIn: 'root' })
@@ -14,7 +14,7 @@ export class DeliveryService {
 
   //#region State
 
-  private readonly _orders = signal<Order[]>([]);
+  private readonly _orders = signal<DeliveryOrderDto[]>([]);
   private readonly _isOpen = signal(false);
   private readonly _loading = signal(false);
 
@@ -93,7 +93,7 @@ export class DeliveryService {
   /** Loads active delivery orders from the API */
   loadActiveOrders(): void {
     this._loading.set(true);
-    this.http.get<Order[]>(`${this.baseUrl}/active`).subscribe({
+    this.http.get<DeliveryOrderDto[]>(`${this.baseUrl}/active`).subscribe({
       next: (data) => {
         this._orders.set(data);
         this._loading.set(false);
@@ -106,29 +106,29 @@ export class DeliveryService {
   }
 
   /** Accepts a pending delivery order */
-  acceptOrder(orderId: string): Observable<Order> {
-    return this.http.post<Order>(`${this.baseUrl}/${orderId}/accept`, {}).pipe(
+  acceptOrder(orderId: string): Observable<DeliveryOrderDto> {
+    return this.http.post<DeliveryOrderDto>(`${this.baseUrl}/${orderId}/accept`, {}).pipe(
       tap(updated => this.replaceOrder(updated)),
     );
   }
 
   /** Rejects a pending delivery order with a reason */
-  rejectOrder(orderId: string, reason: string): Observable<Order> {
-    return this.http.post<Order>(`${this.baseUrl}/${orderId}/reject`, { reason }).pipe(
+  rejectOrder(orderId: string, reason: string): Observable<DeliveryOrderDto> {
+    return this.http.post<DeliveryOrderDto>(`${this.baseUrl}/${orderId}/reject`, { reason }).pipe(
       tap(updated => this.removeOrder(updated.id)),
     );
   }
 
   /** Marks an accepted delivery order as ready for pickup */
-  markReady(orderId: string): Observable<Order> {
-    return this.http.post<Order>(`${this.baseUrl}/${orderId}/ready`, {}).pipe(
+  markReady(orderId: string): Observable<DeliveryOrderDto> {
+    return this.http.post<DeliveryOrderDto>(`${this.baseUrl}/${orderId}/ready`, {}).pipe(
       tap(updated => this.replaceOrder(updated)),
     );
   }
 
   /** Marks a ready order as picked up by the driver */
-  markPickedUp(orderId: string): Observable<Order> {
-    return this.http.post<Order>(`${this.baseUrl}/${orderId}/picked-up`, {}).pipe(
+  markPickedUp(orderId: string): Observable<DeliveryOrderDto> {
+    return this.http.post<DeliveryOrderDto>(`${this.baseUrl}/${orderId}/picked-up`, {}).pipe(
       tap(updated => this.removeOrder(updated.id)),
     );
   }
@@ -137,7 +137,7 @@ export class DeliveryService {
 
   //#region Helpers
 
-  private replaceOrder(updated: Order): void {
+  private replaceOrder(updated: DeliveryOrderDto): void {
     this._orders.update(orders =>
       orders.map(o => o.id === updated.id ? updated : o),
     );

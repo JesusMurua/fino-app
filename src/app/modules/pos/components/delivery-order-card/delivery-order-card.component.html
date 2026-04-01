@@ -38,7 +38,7 @@
     @for (item of order().items; track item.id) {
       <li class="dlv-card__item">
         <span class="dlv-card__qty">{{ item.quantity }}x</span>
-        <span class="dlv-card__name">{{ item.product.name }}</span>
+        <span class="dlv-card__name">{{ item.productName }}</span>
       </li>
       @if (item.notes) {
         <li class="dlv-card__note">

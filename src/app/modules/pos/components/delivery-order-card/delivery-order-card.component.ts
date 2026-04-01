@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
-import { Order } from '../../../../core/models';
+import { DeliveryOrderDto } from '../../../../core/models';
 import { DeliveryStatus, OrderSource } from '../../../../core/enums';
 import { PlatformChipComponent } from '../../../../shared/components/platform-chip/platform-chip.component';
 
@@ -16,7 +16,7 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
 
   //#region Inputs & Outputs
 
-  readonly order = input.required<Order>();
+  readonly order = input.required<DeliveryOrderDto>();
 
   readonly accept = output<string>();
   readonly reject = output<string>();
