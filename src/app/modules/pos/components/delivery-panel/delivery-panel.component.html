@@ -1,7 +1,7 @@
 <p-sidebar
   appendTo="body"
   [visible]="deliveryService.isOpen()"
-  (visibleChange)="deliveryService.close()"
+  (visibleChange)="$event ? null : deliveryService.close()"
   position="right"
   [style]="{ width: '420px', padding: '0' }"
   [showCloseIcon]="false"
