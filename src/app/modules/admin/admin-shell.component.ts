@@ -90,6 +90,12 @@ export class AdminShellComponent implements OnInit {
     if (saved === 'true') this.isCollapsed.set(true);
 
     this.selectedBranchId = this.authService.activeBranchId();
+
+    // Ensure config is loaded (APP_INITIALIZER may have skipped if user wasn't authenticated yet)
+    if (!this.configService.isLoaded()) {
+      await this.configService.load();
+    }
+
     await this.inventoryService.loadFromApi();
   }
 

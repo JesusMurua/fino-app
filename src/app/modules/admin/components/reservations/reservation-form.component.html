@@ -4,12 +4,13 @@
   (visibleChange)="onClose()"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '420px' }"
+  [style]="{ width: '680px' }"
   [draggable]="false"
 >
-  <form [formGroup]="form" class="res-form">
+  <form [formGroup]="form" class="res-form__grid">
 
-    <div class="form-field">
+    <!-- Row 1: Nombre (full) -->
+    <div class="form-field res-form__field--full">
       <label class="form-field__label" for="rf-name">Nombre del cliente</label>
       <input
         formControlName="guestName"
@@ -24,6 +25,7 @@
       }
     </div>
 
+    <!-- Row 2: Teléfono | Personas -->
     <div class="form-field">
       <label class="form-field__label" for="rf-phone">Teléfono (opcional)</label>
       <input
@@ -48,33 +50,33 @@
       />
     </div>
 
-    <div class="form-row">
-      <div class="form-field">
-        <label class="form-field__label" for="rf-date">Fecha</label>
-        <p-calendar
-          formControlName="reservationDate"
-          inputId="rf-date"
-          dateFormat="dd/mm/yy"
-          [showIcon]="true"
-          styleClass="form-field__input"
-          (onSelect)="checkAvailability()"
-        />
-      </div>
-
-      <div class="form-field">
-        <label class="form-field__label" for="rf-time">Hora</label>
-        <p-calendar
-          formControlName="reservationTime"
-          inputId="rf-time"
-          [timeOnly]="true"
-          [hourFormat]="'24'"
-          [showIcon]="true"
-          styleClass="form-field__input"
-          (onSelect)="checkAvailability()"
-        />
-      </div>
+    <!-- Row 3: Fecha | Hora -->
+    <div class="form-field">
+      <label class="form-field__label" for="rf-date">Fecha</label>
+      <p-calendar
+        formControlName="reservationDate"
+        inputId="rf-date"
+        dateFormat="dd/mm/yy"
+        [showIcon]="true"
+        styleClass="form-field__input"
+        (onSelect)="checkAvailability()"
+      />
     </div>
 
+    <div class="form-field">
+      <label class="form-field__label" for="rf-time">Hora</label>
+      <p-calendar
+        formControlName="reservationTime"
+        inputId="rf-time"
+        [timeOnly]="true"
+        [hourFormat]="'24'"
+        [showIcon]="true"
+        styleClass="form-field__input"
+        (onSelect)="checkAvailability()"
+      />
+    </div>
+
+    <!-- Row 4: Duración | Mesa -->
     <div class="form-field">
       <label class="form-field__label" for="rf-duration">Duración</label>
       <p-dropdown
@@ -107,7 +109,8 @@
       }
     </div>
 
-    <div class="form-field">
+    <!-- Row 5: Notas (full) -->
+    <div class="form-field res-form__field--full">
       <label class="form-field__label" for="rf-notes">Notas (opcional)</label>
       <textarea
         formControlName="notes"

@@ -66,6 +66,12 @@ export class ConfigService {
     this.config$.getValue().businessTypeCatalog?.posExperience
   );
 
+  /** Whether load() has completed successfully at least once */
+  private _isLoaded = false;
+
+  /** Returns true if config has been loaded from API or Dexie */
+  isLoaded(): boolean { return this._isLoaded; }
+
   /** Reactive device config stream — emits on every loadDeviceConfig() and saveDeviceConfig() */
   readonly deviceConfig$ = new BehaviorSubject<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
 
@@ -135,6 +141,7 @@ export class ConfigService {
       console.warn('[ConfigService] API unreachable — using local config:', error);
     }
 
+    this._isLoaded = true;
     return config;
   }
 

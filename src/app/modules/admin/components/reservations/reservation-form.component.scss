@@ -1,17 +1,14 @@
 @use '../../../../../styles/variables' as *;
 
-.res-form {
-  display: flex;
-  flex-direction: column;
+.res-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: $space-4;
   padding: $space-2 0;
 }
 
-.form-row {
-  display: flex;
-  gap: $space-3;
-
-  .form-field { flex: 1; }
+.res-form__field--full {
+  grid-column: 1 / -1;
 }
 
 .form-field {
