@@ -119,6 +119,33 @@
   resize: none;
 }
 
+// Tame PrimeNG calendar icon button — match input height, subtle icon
+:host ::ng-deep {
+  .p-calendar {
+    width: 100%;
+
+    .p-datepicker-trigger {
+      width: 36px;
+      background: #F9FAFB;
+      border-color: #D1D5DB;
+      color: $color-text-sub;
+
+      &:hover { background: #F3F4F6; }
+
+      .pi { font-size: 14px; }
+    }
+  }
+
+  .p-inputtext {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+
+  .p-dropdown {
+    .p-dropdown-label { font-size: 14px; padding: 8px 12px; }
+  }
+}
+
 .rf__error {
   font-size: 11px;
   color: #DC2626;

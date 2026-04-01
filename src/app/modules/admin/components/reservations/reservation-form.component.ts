@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { CalendarModule } from 'primeng/calendar';
@@ -26,7 +25,6 @@ interface TableZoneGroup {
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    FormsModule,
     CalendarModule,
     DialogModule,
     DropdownModule,
@@ -72,7 +70,7 @@ export class ReservationFormComponent implements OnChanges {
     const groups = new Map<string, { id: number; name: string; capacity?: number }[]>();
 
     for (const t of tables) {
-      const zoneName = t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Otro') : 'General';
+      const zoneName = t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Sin zona') : 'Sin zona';
       if (!groups.has(zoneName)) groups.set(zoneName, []);
       groups.get(zoneName)!.push({ id: t.id, name: t.name, capacity: t.capacity });
     }
@@ -162,6 +160,11 @@ export class ReservationFormComponent implements OnChanges {
 
   private async loadTables(): Promise<void> {
     try {
+      // Ensure zones are loaded for grouping
+      if (this.zoneService.getActiveZones().length === 0) {
+        await this.zoneService.loadZones();
+      }
+
       let tables = await this.tableService.getTables(this.authService.branchId);
       if (tables.length === 0) {
         await this.tableService.loadTables(this.authService.branchId);
