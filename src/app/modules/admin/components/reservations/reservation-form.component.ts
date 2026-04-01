@@ -1,26 +1,24 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { CalendarModule } from 'primeng/calendar';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
-import { Reservation, RestaurantTable, Zone } from '../../../../core/models';
+import { Reservation, RestaurantTable } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import { TableService } from '../../../../core/services/table.service';
 import { ZoneService } from '../../../../core/services/zone.service';
 
-/** Grouped table option for the dropdown */
-interface TableOption {
-  label: string;
-  value: number;
-  zone: string;
-  capacity?: number;
+/** A zone group with its tables for the chip selector */
+interface TableZoneGroup {
+  zoneName: string;
+  tables: { id: number; name: string; capacity?: number }[];
 }
 
 @Component({
@@ -28,10 +26,10 @@ interface TableOption {
   standalone: true,
   imports: [
     ReactiveFormsModule,
+    FormsModule,
     CalendarModule,
     DialogModule,
     DropdownModule,
-    InputNumberModule,
     InputTextModule,
     InputTextareaModule,
   ],
@@ -59,22 +57,41 @@ export class ReservationFormComponent implements OnChanges {
   private readonly messageService = inject(MessageService);
 
   readonly tables = signal<RestaurantTable[]>([]);
+  readonly selectedTableId = signal<number | null>(null);
+  readonly noTableAssigned = signal(false);
   readonly availabilityWarning = signal('');
   readonly isSaving = signal(false);
 
-  /** Tables grouped by zone for the dropdown */
-  readonly tableOptions = computed<TableOption[]>(() => {
+  /** Tables grouped by zone for the chip selector */
+  readonly zoneGroups = computed<TableZoneGroup[]>(() => {
     const tables = this.tables();
     const zones = this.zoneService.getActiveZones();
     const zoneMap = new Map<number, string>();
     zones.forEach(z => zoneMap.set(z.id, z.name));
 
-    return tables.map(t => ({
-      label: t.capacity ? `${t.name} (${t.capacity} pers.)` : t.name,
-      value: t.id,
-      zone: t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Otro') : 'Sin zona',
-      capacity: t.capacity,
-    }));
+    const groups = new Map<string, { id: number; name: string; capacity?: number }[]>();
+
+    for (const t of tables) {
+      const zoneName = t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Otro') : 'General';
+      if (!groups.has(zoneName)) groups.set(zoneName, []);
+      groups.get(zoneName)!.push({ id: t.id, name: t.name, capacity: t.capacity });
+    }
+
+    // Follow zone sort order
+    const result: TableZoneGroup[] = [];
+    for (const zone of zones) {
+      const g = groups.get(zone.name);
+      if (g) {
+        result.push({ zoneName: zone.name, tables: g });
+        groups.delete(zone.name);
+      }
+    }
+    // Remaining groups (no zone match)
+    for (const [zoneName, tbls] of groups) {
+      result.push({ zoneName, tables: tbls });
+    }
+
+    return result;
   });
 
   readonly durationOptions = [
@@ -98,7 +115,6 @@ export class ReservationFormComponent implements OnChanges {
       reservationDate: [null as Date | null, Validators.required],
       reservationTime: [null as Date | null, Validators.required],
       durationMinutes: [90, Validators.required],
-      tableId: [null as number | null],
       notes: [''],
     });
   }
@@ -120,9 +136,10 @@ export class ReservationFormComponent implements OnChanges {
           reservationDate: new Date(this.reservation.reservationDate + 'T00:00:00'),
           reservationTime: timeDate,
           durationMinutes: this.reservation.durationMinutes,
-          tableId: this.reservation.tableId,
           notes: this.reservation.notes ?? '',
         });
+        this.selectedTableId.set(this.reservation.tableId);
+        this.noTableAssigned.set(!this.reservation.tableId);
       } else {
         this.form.reset({
           guestName: '',
@@ -131,9 +148,10 @@ export class ReservationFormComponent implements OnChanges {
           reservationDate: new Date(),
           reservationTime: null,
           durationMinutes: 90,
-          tableId: null,
           notes: '',
         });
+        this.selectedTableId.set(null);
+        this.noTableAssigned.set(true);
       }
     }
   }
@@ -142,16 +160,13 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Data Loading
 
-  /** Loads branch tables for the dropdown — falls back to API if Dexie is empty */
   private async loadTables(): Promise<void> {
     try {
       let tables = await this.tableService.getTables(this.authService.branchId);
-
       if (tables.length === 0) {
         await this.tableService.loadTables(this.authService.branchId);
         tables = await this.tableService.getTables(this.authService.branchId);
       }
-
       this.tables.set(tables);
     } catch {
       this.tables.set([]);
@@ -160,11 +175,36 @@ export class ReservationFormComponent implements OnChanges {
 
   //#endregion
 
+  //#region Table Selection
+
+  /** Selects a table chip */
+  selectTable(tableId: number): void {
+    this.selectedTableId.set(tableId);
+    this.noTableAssigned.set(false);
+    this.checkAvailability();
+  }
+
+  /** Toggles "sin mesa asignada" */
+  toggleNoTable(): void {
+    this.noTableAssigned.set(true);
+    this.selectedTableId.set(null);
+    this.availabilityWarning.set('');
+  }
+
+  /** Custom party size increment/decrement */
+  adjustPartySize(delta: number): void {
+    const current = this.form.get('partySize')!.value ?? 2;
+    const next = Math.max(1, Math.min(50, current + delta));
+    this.form.get('partySize')!.setValue(next);
+  }
+
+  //#endregion
+
   //#region Availability Check
 
-  /** Checks table availability when table/date/time changes */
   async checkAvailability(): Promise<void> {
-    const { tableId, reservationDate, reservationTime, durationMinutes } = this.form.value;
+    const tableId = this.selectedTableId();
+    const { reservationDate, reservationTime, durationMinutes } = this.form.value;
     if (!tableId || !reservationDate || !reservationTime) {
       this.availabilityWarning.set('');
       return;
@@ -192,7 +232,6 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Save
 
-  /** Saves the reservation (create or update) */
   async onSave(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -203,7 +242,7 @@ export class ReservationFormComponent implements OnChanges {
     const v = this.form.value;
 
     const dto = {
-      tableId: v.tableId ?? null,
+      tableId: this.noTableAssigned() ? null : (this.selectedTableId() ?? null),
       guestName: v.guestName,
       guestPhone: v.guestPhone || null,
       partySize: v.partySize,
@@ -233,7 +272,6 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Dialog
 
-  /** Closes the dialog */
   onClose(): void {
     this.visibleChange.emit(false);
   }
@@ -242,7 +280,6 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Helpers
 
-  /** Formats a Date to YYYY-MM-DD */
   private formatDate(date: Date): string {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -250,7 +287,6 @@ export class ReservationFormComponent implements OnChanges {
     return `${y}-${m}-${d}`;
   }
 
-  /** Formats a Date to HH:mm:ss */
   private formatTime(date: Date): string {
     const h = String(date.getHours()).padStart(2, '0');
     const m = String(date.getMinutes()).padStart(2, '0');
