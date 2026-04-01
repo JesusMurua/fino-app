@@ -201,6 +201,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
+  &--edit { background: transparent; color: $color-text-sub; gap: 4px; &:hover { background: #F3F4F6; color: $color-text-title; } i { font-size: 11px; } }
   &--teal { background: #CCFBF1; color: #0F766E; &:hover { background: #99F6E4; } }
   &--blue { background: #DBEAFE; color: #1E40AF; &:hover { background: #BFDBFE; } }
   &--gray { background: #F3F4F6; color: #6B7280; &:hover { background: #E5E7EB; } }

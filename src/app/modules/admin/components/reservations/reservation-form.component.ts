@@ -117,10 +117,16 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Data Loading
 
-  /** Loads branch tables for the dropdown */
+  /** Loads branch tables for the dropdown — falls back to API if Dexie is empty */
   private async loadTables(): Promise<void> {
     try {
-      const tables = await this.tableService.getTables(this.authService.branchId);
+      let tables = await this.tableService.getTables(this.authService.branchId);
+
+      if (tables.length === 0) {
+        await this.tableService.loadTables(this.authService.branchId);
+        tables = await this.tableService.getTables(this.authService.branchId);
+      }
+
       this.tables.set(tables);
     } catch {
       this.tables.set([]);

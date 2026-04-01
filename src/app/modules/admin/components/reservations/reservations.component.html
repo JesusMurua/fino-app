@@ -86,10 +86,12 @@
 
               <div class="res-card__actions">
                 @if (r.status === 'Pending') {
+                  <button type="button" class="btn-action btn-action--edit" (click)="openEditForm(r)"><i class="pi pi-pencil"></i> Editar</button>
                   <button type="button" class="btn-action btn-action--teal" (click)="onConfirm(r)">Confirmar</button>
                   <button type="button" class="btn-action btn-action--gray" (click)="onCancel(r)">Cancelar</button>
                 }
                 @if (r.status === 'Confirmed') {
+                  <button type="button" class="btn-action btn-action--edit" (click)="openEditForm(r)"><i class="pi pi-pencil"></i> Editar</button>
                   <button type="button" class="btn-action btn-action--blue" (click)="onSeat(r)">Sentar</button>
                   <button type="button" class="btn-action btn-action--gray" (click)="onCancel(r)">Cancelar</button>
                   <button type="button" class="btn-action btn-action--red" (click)="onNoShow(r)">No show</button>
