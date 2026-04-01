@@ -175,9 +175,9 @@
       ></textarea>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- Footer                                                        -->
-    <!-- ============================================================ -->
+  </form>
+
+  <ng-template pTemplate="footer">
     <div class="rf__footer">
       <button type="button" class="rf__btn rf__btn--ghost" (click)="onClose()">Cancelar</button>
       <button
@@ -194,7 +194,6 @@
         {{ reservation ? 'Actualizar' : 'Crear reservación' }}
       </button>
     </div>
-
-  </form>
+  </ng-template>
 
 </p-dialog>

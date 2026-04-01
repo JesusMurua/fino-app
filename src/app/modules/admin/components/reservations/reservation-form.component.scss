@@ -10,10 +10,12 @@
     border-radius: 16px;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12);
     overflow: hidden;
+    max-height: 90vh;
   }
   .p-dialog-content {
     padding: 0 !important;
-    overflow: visible !important;
+    overflow-y: auto !important;
+    max-height: calc(90vh - 70px);
   }
 }
 
@@ -306,16 +308,20 @@
 }
 
 // -----------------------------------------------------------------------
-// Footer
+// Footer (inside PrimeNG footer template — sticky at bottom)
 // -----------------------------------------------------------------------
+:host ::ng-deep .rf-dialog .p-dialog-footer {
+  padding: 0 !important;
+  border-top: none !important;
+}
+
 .rf__footer {
   display: flex;
   justify-content: flex-end;
   gap: $space-3;
-  padding: $space-4 $space-5;
+  padding: $space-3 $space-5;
   border-top: 1px solid #F3F4F6;
   background: #FAFAFA;
-  border-radius: 0 0 16px 16px;
 }
 
 .rf__btn {

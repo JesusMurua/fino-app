@@ -1,7 +1,11 @@
-import { APP_INITIALIZER, ApplicationConfig, inject, isDevMode } from '@angular/core';
+import { APP_INITIALIZER, ApplicationConfig, LOCALE_ID, inject, isDevMode } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
+
+registerLocaleData(localeEs);
 
 import { pendingRequestsInterceptor$ } from 'ng-http-loader';
 
@@ -19,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, pendingRequestsInterceptor$])),
     provideAnimations(),
     MessageService,
+    { provide: LOCALE_ID, useValue: 'es' },
     {
       provide: APP_INITIALIZER,
       useFactory: (authService: AuthService, configService: ConfigService) => () =>
