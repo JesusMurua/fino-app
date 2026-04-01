@@ -9,7 +9,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 import { Reservation, ReservationStatus } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
+import { TableService } from '../../../../core/services/table.service';
 import { ReservationFormComponent } from './reservation-form.component';
 
 @Component({
@@ -24,6 +26,8 @@ export class ReservationsComponent implements OnInit {
   //#region Properties
 
   private readonly reservationService = inject(ReservationService);
+  private readonly tableService = inject(TableService);
+  private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
 
   readonly activeTab = signal<'calendar' | 'day'>('calendar');
@@ -95,14 +99,24 @@ export class ReservationsComponent implements OnInit {
     }
   }
 
-  /** Loads reservations for the selected day */
+  /** Loads reservations for the selected day, enriching with table names */
   async loadDayReservations(): Promise<void> {
     this.isLoading.set(true);
     try {
       const data = await firstValueFrom(
         this.reservationService.getByDay(this.selectedDate()),
       );
-      this.dayReservations.set(data);
+
+      // Enrich reservations with table names from Dexie
+      const tables = await this.tableService.getTables(this.authService.branchId);
+      const tableMap = new Map(tables.map(t => [t.id, t.name]));
+
+      const enriched = data.map(r => ({
+        ...r,
+        tableName: r.tableId ? (tableMap.get(r.tableId) ?? r.tableName) : r.tableName,
+      }));
+
+      this.dayReservations.set(enriched);
     } catch {
       console.warn('[Reservations] Failed to load day data');
     } finally {
