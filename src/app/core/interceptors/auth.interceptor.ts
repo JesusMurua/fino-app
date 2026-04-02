@@ -26,12 +26,17 @@ export const authInterceptor: HttpInterceptorFn = (
 
   const isPublic = PUBLIC_PATHS.some(path => req.url.includes(path));
 
-  let request = req;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  let request = req.clone({
+    setHeaders: { 'X-Timezone': timezone },
+  });
+
   if (!isPublic) {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (token) {
-      request = req.clone({
-        setHeaders: { Authorization: `Bearer ${token}` },
+      request = request.clone({
+        setHeaders: { Authorization: `Bearer ${token}`, 'X-Timezone': timezone },
       });
     }
   }
