@@ -397,6 +397,17 @@ export class CheckoutComponent implements OnInit {
 
     if (!order) return;
 
+    // Block re-payment of fully paid orders; allow partial payment completion
+    if (order.payments && order.payments.length > 0) {
+      const totalPaid = order.payments.reduce((sum, p) => sum + p.amountCents, 0);
+      if (totalPaid >= order.totalCents) {
+        this.completedOrder.set(order);
+        this.step.set('confirmed');
+        return;
+      }
+      this.pendingPayments.set(order.payments);
+    }
+
     this.existingOrderId.set(order.id);
     this.cartItems.set(order.items as CartItem[]);
     this.existingTotalCents.set(order.totalCents);
