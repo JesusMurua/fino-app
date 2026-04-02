@@ -612,6 +612,22 @@
   &--ready   { background: #DCFCE7; color: #16A34A; }
 }
 
+// Table release dialog
+.release-dialog {
+  &__text {
+    text-align: center;
+    margin: $space-2 0 $space-4;
+    font-size: $font-size-base;
+    color: $color-text-title;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: $space-3;
+  }
+}
+
 .td-btn {
   display: inline-flex;
   align-items: center;

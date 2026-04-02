@@ -730,3 +730,32 @@
     }
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Table release dialog                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Mesa lista"
+  [visible]="showReleaseDialog()"
+  (visibleChange)="showReleaseDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+>
+  <p class="release-dialog__text">
+    ¿Los clientes de <strong>{{ releaseTableName() }}</strong> ya se fueron?
+  </p>
+
+  <ng-template pTemplate="footer">
+    <div class="release-dialog__footer">
+      <button type="button" class="td-btn td-btn--outline" (click)="cancelReleaseTable()">
+        No, siguen aquí
+      </button>
+      <button type="button" class="td-btn td-btn--green" (click)="confirmReleaseTable()">
+        <i class="pi pi-check"></i>
+        Sí, liberar mesa
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

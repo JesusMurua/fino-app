@@ -133,6 +133,11 @@ export class TablesComponent implements OnInit, OnDestroy {
   private splitGroupCounter = 0;
   readonly splitGroups = signal<{ id: number; label: string; itemIds: number[] }[]>([]);
 
+  // ---- Table release dialog ----
+  readonly showReleaseDialog = signal(false);
+  readonly releaseTableId = signal<number | null>(null);
+  readonly releaseTableName = signal<string | null>(null);
+
   readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 
   //#endregion
@@ -838,6 +843,8 @@ export class TablesComponent implements OnInit, OnDestroy {
           // Best-effort — next pull sync will catch up
         }
 
+        const tableId = this.selectedTable()?.id;
+        const tableName = this.splitSourceTableName();
         this.cancelSplit();
         await this.loadTableStatuses();
         this.messageService.add({
@@ -845,6 +852,18 @@ export class TablesComponent implements OnInit, OnDestroy {
           summary: `Cuenta dividida y pagada en ${currentStep} partes`,
           life: 3000,
         });
+
+        // Check if table should be released
+        if (tableId) {
+          try {
+            const remaining = await this.tableService.getActiveOrdersByTable(tableId);
+            if (remaining.length === 0) {
+              this.releaseTableId.set(tableId);
+              this.releaseTableName.set(tableName || null);
+              this.showReleaseDialog.set(true);
+            }
+          } catch { /* best-effort */ }
+        }
       } else {
         this.splitEqualPaymentStep.set(currentStep + 1);
       }
@@ -946,6 +965,29 @@ export class TablesComponent implements OnInit, OnDestroy {
     } finally {
       this.splitBusy.set(false);
     }
+  }
+
+  //#endregion
+
+  //#region Table Release
+
+  async confirmReleaseTable(): Promise<void> {
+    const tableId = this.releaseTableId();
+    if (!tableId) return;
+
+    try {
+      await this.tableService.updateTableStatus(tableId, 'available');
+      this.messageService.add({ severity: 'success', summary: 'Mesa liberada', life: 3000 });
+    } catch {
+      this.messageService.add({ severity: 'error', summary: 'Error al liberar mesa', life: 3000 });
+    }
+
+    this.showReleaseDialog.set(false);
+    await this.loadTableStatuses();
+  }
+
+  cancelReleaseTable(): void {
+    this.showReleaseDialog.set(false);
   }
 
   //#endregion
