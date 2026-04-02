@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { Reservation, CreateReservationDto, UpdateReservationDto } from '../models';
 import { ApiService } from './api.service';
@@ -23,7 +23,9 @@ export class ReservationService {
    */
   getByDay(date: Date): Observable<Reservation[]> {
     const dateStr = this.formatDate(date);
-    return this.api.get<Reservation[]>(`/reservations/day?date=${dateStr}`);
+    return this.api.get<any[]>(`/reservations/day?date=${dateStr}`).pipe(
+      map(items => items.map(r => this.mapReservation(r))),
+    );
   }
 
   /**
@@ -32,7 +34,9 @@ export class ReservationService {
    * @param month 1-based month number
    */
   getByMonth(year: number, month: number): Observable<Reservation[]> {
-    return this.api.get<Reservation[]>(`/reservations/month?year=${year}&month=${month}`);
+    return this.api.get<any[]>(`/reservations/month?year=${year}&month=${month}`).pipe(
+      map(items => items.map(r => this.mapReservation(r))),
+    );
   }
 
   /**
@@ -107,6 +111,14 @@ export class ReservationService {
   //#endregion
 
   //#region Helpers
+
+  /** Maps API response (with nested table object) to flat Reservation model */
+  private mapReservation(dto: any): Reservation {
+    return {
+      ...dto,
+      tableName: dto.table?.name ?? dto.tableName ?? null,
+    };
+  }
 
   /** Formats a Date to YYYY-MM-DD */
   private formatDate(date: Date): string {
