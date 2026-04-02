@@ -250,5 +250,13 @@ export class TableService {
     }
   }
 
+  /**
+   * Gets a single order by ID from the API (pull DTO format)
+   * @param orderId The order UUID
+   */
+  getOrderById(orderId: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/orders/${orderId}`);
+  }
+
   //#endregion
 }

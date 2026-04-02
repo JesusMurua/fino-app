@@ -23,6 +23,7 @@ import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../c
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
+import { SyncService } from '../../core/services/sync.service';
 import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
@@ -55,6 +56,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   private readonly tableService = inject(TableService);
   private readonly zoneService = inject(ZoneService);
   private readonly db = inject(DatabaseService);
+  private readonly syncService = inject(SyncService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
@@ -823,7 +825,19 @@ export class TablesComponent implements OnInit, OnDestroy {
 
       const currentStep = this.splitEqualPaymentStep();
       if (currentStep >= this.splitPartsCount()) {
-        // All payments done
+        // All payments done — sync updated order to Dexie
+        try {
+          const dto = await firstValueFrom(
+            this.tableService.getOrderById(orderId),
+          );
+          if (dto) {
+            const mapped = this.syncService.mapPullDto(dto);
+            await this.db.orders.put(mapped);
+          }
+        } catch {
+          // Best-effort — next pull sync will catch up
+        }
+
         this.cancelSplit();
         await this.loadTableStatuses();
         this.messageService.add({
