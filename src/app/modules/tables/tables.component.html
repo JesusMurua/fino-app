@@ -311,16 +311,12 @@
             <button type="button" class="td-btn td-btn--outline" (click)="openMergeFlow(order)">
               <i class="pi pi-link"></i> Unir con mesa
             </button>
-            @if (!isOrderPaid(order)) {
-              <button type="button" class="td-btn td-btn--outline" (click)="openSplitFlow(order)">
-                <i class="pi pi-percentage"></i> Dividir cuenta
-              </button>
-              <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
-                <i class="pi pi-credit-card"></i> Cobrar
-              </button>
-            } @else {
-              <span class="td-badge td-badge--paid">Pagada</span>
-            }
+            <button type="button" class="td-btn td-btn--outline" (click)="openSplitFlow(order)">
+              <i class="pi pi-percentage"></i> Dividir cuenta
+            </button>
+            <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
+              <i class="pi pi-credit-card"></i> Cobrar
+            </button>
           </div>
         </div>
       }

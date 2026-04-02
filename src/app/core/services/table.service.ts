@@ -12,8 +12,6 @@ export interface OrderSummary {
   orderNumber: number;
   totalCents: number;
   kitchenStatus: string | null;
-  isPaid?: boolean;
-  paidCents?: number;
   createdAt: string;
   items: { id: number; productName: string; quantity: number }[];
 }
