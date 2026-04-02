@@ -48,7 +48,7 @@
     padding: 2px $space-2;
     background: #FEF3C7;
     color: #92400E;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     border-radius: 9999px;
     line-height: 1.4;
@@ -92,7 +92,7 @@
   }
 
   &__name {
-    font-size: 13px;
+    font-size: $font-size-base;
     font-weight: 600;
     color: $color-text-title;
     line-height: 1.2;

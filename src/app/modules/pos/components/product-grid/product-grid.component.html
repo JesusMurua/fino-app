@@ -40,10 +40,14 @@
     <main class="pos-products" aria-label="Productos">
 
       @for (product of filteredProducts(); track product.id) {
-        <app-product-card
-          [product]="product"
-          (selected)="onProductSelected($event)"
-        />
+        @defer (on viewport) {
+          <app-product-card
+            [product]="product"
+            (selected)="onProductSelected($event)"
+          />
+        } @placeholder {
+          <div class="product-card-placeholder"></div>
+        }
       } @empty {
         @if (!isLoading()) {
           <div class="pos-empty">

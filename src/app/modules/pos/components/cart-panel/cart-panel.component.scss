@@ -187,8 +187,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: $touch-target-pos;
+  height: $touch-target-pos;
   border: 1px solid #E5E7EB;
   border-radius: 8px;
   background: white;
@@ -197,7 +197,7 @@
   font-family: inherit;
   transition: background 0.1s, border-color 0.1s;
 
-  i { font-size: 12px; }
+  i { font-size: 16px; }
 
   &:hover {
     background: #F9FAFB;
@@ -219,10 +219,14 @@
 // -----------------------------------------------------------------------
 :host ::ng-deep .btn-checkout {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
   border-radius: 10px !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
+  background: #15803D !important;   // Green-700 — WCAG AA 4.8:1 with white
+  border-color: #15803D !important;
+
+  &:hover { background: #166534 !important; border-color: #166534 !important; }
 }
 
 .btn-cancel-adding {
@@ -245,9 +249,9 @@
 
 :host ::ng-deep .btn-kitchen {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
   border-radius: 10px !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
   background: #2563EB !important;
   border-color: #2563EB !important;
@@ -351,14 +355,14 @@
   &__input {
     flex: 1;
     font-size: $font-size-label;
-    height: 36px;
+    height: $touch-target-pos;
   }
 
   &__btn {
     display: flex;
     align-items: center;
-    padding: 0 $space-3;
-    height: 36px;
+    padding: 0 $space-4;
+    height: $touch-target-pos;
     border: 1px solid $color-primary;
     border-radius: 8px;
     background: transparent;
@@ -398,15 +402,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
     border: none;
     border-radius: 50%;
     background: rgba(#16A34A, 0.15);
     color: #15803D;
     cursor: pointer;
 
-    i { font-size: 10px; margin: 0; }
+    i { font-size: 12px; margin: 0; }
     &:hover { background: rgba(#16A34A, 0.3); }
   }
 }
