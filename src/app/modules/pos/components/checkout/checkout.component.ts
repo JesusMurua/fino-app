@@ -190,6 +190,17 @@ export class CheckoutComponent implements OnInit {
   /** Item count from cart service */
   readonly itemCount = this.cartService.itemCount;
 
+  // ---- Split payment ----
+  readonly showSplitDialog = signal(false);
+  readonly splitParts = signal(2);
+  readonly splitCurrentPart = signal(1);
+  readonly splitAmountCents = computed(() =>
+    Math.ceil(this.totalWithDiscount() / this.splitParts()),
+  );
+  readonly splitPartsArray = computed(() =>
+    Array.from({ length: this.splitParts() }, (_, i) => i + 1),
+  );
+
   /** Expose for template */
   readonly PaymentMethod = PaymentMethod;
 
@@ -301,6 +312,30 @@ export class CheckoutComponent implements OnInit {
   showReferenceField(): boolean {
     const m = this.dialogMethod();
     return m === PaymentMethod.Card || m === PaymentMethod.Transfer;
+  }
+
+  //#endregion
+
+  //#region Split Payment
+
+  openSplitDialog(): void {
+    this.splitParts.set(2);
+    this.splitCurrentPart.set(1);
+    this.showSplitDialog.set(true);
+  }
+
+  registerSplitPayment(method: PaymentMethod): void {
+    const payment: OrderPayment = {
+      method,
+      amountCents: this.splitAmountCents(),
+    };
+    this.pendingPayments.update(arr => [...arr, payment]);
+
+    if (this.splitCurrentPart() >= this.splitParts()) {
+      this.showSplitDialog.set(false);
+    } else {
+      this.splitCurrentPart.update(n => n + 1);
+    }
   }
 
   //#endregion

@@ -205,7 +205,14 @@
           }
         </div>
 
-        <!-- Add payment buttons -->
+        <!-- Split + payment buttons -->
+        <div class="payment-section__actions">
+          <button type="button" class="checkout__split-btn" (click)="openSplitDialog()">
+            <i class="pi pi-percentage"></i>
+            Dividir cuenta
+          </button>
+        </div>
+
         <div class="payment-methods-row">
           @for (opt of paymentMethodOptions; track opt.method) {
             <button
@@ -463,4 +470,62 @@
       </button>
     </div>
   </ng-template>
+</p-dialog>
+
+<!-- Split payment dialog -->
+<p-dialog
+  header="Dividir cuenta"
+  [visible]="showSplitDialog()"
+  (visibleChange)="showSplitDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+>
+  <div class="split-dialog">
+    <p class="split-dialog__total">Total: {{ totalWithDiscount() | price }}</p>
+
+    <div class="split-dialog__parts">
+      <span class="split-dialog__label">¿Entre cuántas personas?</span>
+      <div class="split-dialog__numbers">
+        @for (n of [2, 3, 4, 5, 6]; track n) {
+          <button
+            type="button"
+            class="split-dialog__num"
+            [class.split-dialog__num--active]="splitParts() === n"
+            (click)="splitParts.set(n)"
+          >
+            {{ n }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <p class="split-dialog__each">Cada persona paga: {{ splitAmountCents() | price }}</p>
+
+    <div class="split-dialog__progress">
+      <span>Pago {{ splitCurrentPart() }} de {{ splitParts() }}</span>
+      <span class="split-dialog__dots">
+        @for (i of splitPartsArray(); track i) {
+          <span
+            class="split-dialog__dot"
+            [class.split-dialog__dot--active]="i <= splitCurrentPart()"
+          ></span>
+        }
+      </span>
+    </div>
+
+    <div class="payment-methods-row">
+      @for (opt of paymentMethodOptions; track opt.method) {
+        <button
+          type="button"
+          class="payment-method-btn"
+          (click)="registerSplitPayment(opt.method)"
+        >
+          <i [class]="'pi ' + opt.icon"></i>
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+  </div>
 </p-dialog>

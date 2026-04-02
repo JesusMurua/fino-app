@@ -444,37 +444,124 @@
   }
 }
 
-.payment-methods-row {
-  display: flex;
-  gap: $space-2;
-  flex-wrap: wrap;
-}
+// payment-methods-row and payment-method-btn are in src/styles.scss (global)
 
-.payment-method-btn {
-  flex: 1;
-  min-width: 80px;
-  display: flex;
+// -----------------------------------------------------------------------
+// Split button + dialog
+// -----------------------------------------------------------------------
+.checkout__split-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: $space-2 $space-3;
-  min-height: 48px;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
   border: 1px solid #E5E7EB;
-  border-radius: 10px;
+  border-radius: 8px;
   background: white;
-  color: $color-text-title;
-  font-size: 13px;
+  color: $color-text-sub;
+  font-size: $font-size-label;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: all 0.15s;
 
-  i { font-size: 16px; color: $color-text-sub; }
+  i { font-size: 14px; }
 
   &:hover {
     border-color: $color-primary;
     color: $color-primary;
-    i { color: $color-primary; }
+    background: $color-primary-light;
+  }
+}
+
+.payment-section__actions {
+  margin-bottom: $space-3;
+}
+
+.split-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__total {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    color: $color-text-title;
+  }
+
+  &__parts {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    align-items: center;
+  }
+
+  &__label {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__numbers {
+    display: flex;
+    gap: $space-2;
+  }
+
+  &__num {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid #E5E7EB;
+    background: white;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: inherit;
+    color: $color-text-title;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover { border-color: $color-primary; }
+
+    &--active {
+      border-color: $color-primary;
+      color: $color-primary;
+      background: $color-primary-light;
+    }
+  }
+
+  &__each {
+    margin: 0;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    color: $color-primary;
+  }
+
+  &__progress {
+    text-align: center;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+  }
+
+  &__dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #E5E7EB;
+
+    &--active {
+      background: $color-primary;
+    }
   }
 }
 

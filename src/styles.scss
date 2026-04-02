@@ -226,6 +226,49 @@ textarea.p-inputtextarea:enabled:focus {
 }
 
 // =============================================================================
+// Shared payment method buttons (used in checkout + tables split)
+// =============================================================================
+.payment-methods-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.payment-method-btn {
+  flex: 1;
+  min-width: 80px;
+  min-height: 48px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #374151;
+  transition: all 0.15s;
+
+  i { font-size: 18px; color: $color-text-sub; }
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+    background: $color-primary-light;
+    i { color: $color-primary; }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// =============================================================================
 // PrimeNG Dialog — close button override (green accent removal)
 // =============================================================================
 .p-dialog-header-close {
