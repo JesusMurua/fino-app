@@ -138,6 +138,9 @@ export class PinComponent {
       // Pull today's orders in background — don't block navigation
       this.syncService.pullTodayOrders().catch(() => {});
 
+      // Refresh subscription status for feature flags and trial banner
+      this.authService.refreshSubscriptionStatus();
+
       const returnUrl = this.authService.consumeReturnUrl();
       if (returnUrl) {
         this.router.navigateByUrl(returnUrl);
