@@ -982,6 +982,13 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   //#region Display Helpers
 
+  /** Returns true if an order is fully paid */
+  isOrderPaid(order: OrderSummary): boolean {
+    if (order.isPaid) return true;
+    if ((order.paidCents ?? 0) >= order.totalCents && order.totalCents > 0) return true;
+    return false;
+  }
+
   /** Returns CSS class modifier for a display status code */
   getStatusClass(status: string): string {
     const s = normalizeDisplayStatus(status);
