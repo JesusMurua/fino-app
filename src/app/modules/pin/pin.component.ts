@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
+import { CashRegisterService } from '../../core/services/cash-register.service';
 import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -42,6 +43,7 @@ export class PinComponent {
 
   //#endregion
 
+  private readonly cashRegisterService = inject(CashRegisterService);
   private readonly configService = inject(ConfigService);
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
@@ -135,7 +137,8 @@ export class PinComponent {
         console.warn('[PinComponent] Preload failed — components will retry on mount:', error);
       }
 
-      // Pull today's orders in background — don't block navigation
+      // Load cash session + pull orders in background — don't block navigation
+      this.cashRegisterService.loadActiveSession(this.authService.activeBranchId()).catch(() => {});
       this.syncService.pullTodayOrders().catch(() => {});
 
       // Refresh subscription status for feature flags and trial banner

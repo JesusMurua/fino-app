@@ -23,6 +23,7 @@ import {
   UserRole,
 } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DeliveryService } from '../../../../core/services/delivery.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
@@ -78,6 +79,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   private readonly messageService = inject(MessageService);
   private readonly supplierService = inject(SupplierService);
   private readonly stockReceiptService = inject(StockReceiptService);
+  readonly cashRegisterService = inject(CashRegisterService);
   readonly deliveryService = inject(DeliveryService);
   readonly pwaService = inject(PwaService);
   readonly syncService = inject(SyncService);

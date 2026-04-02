@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -20,6 +20,14 @@ import { DatabaseService } from './database.service';
 @Injectable({ providedIn: 'root' })
 export class CashRegisterService {
 
+  //#region State
+
+  private readonly _activeSession = signal<CashRegisterSession | null>(null);
+  readonly activeSession = this._activeSession.asReadonly();
+  readonly hasOpenSession = computed(() => this._activeSession() !== null);
+
+  //#endregion
+
   //#region Constructor
   constructor(
     private readonly api: ApiService,
@@ -28,6 +36,16 @@ export class CashRegisterService {
   //#endregion
 
   //#region Public Methods
+
+  /**
+   * Loads the active cash session and updates the signal.
+   * Call on login to make hasOpenSession available in POS header.
+   * @param branchId Branch to query
+   */
+  async loadActiveSession(branchId: number): Promise<void> {
+    const session = await this.getOpenSession(branchId);
+    this._activeSession.set(session);
+  }
 
   /**
    * Gets the current open session from API and syncs to Dexie.
@@ -64,6 +82,7 @@ export class CashRegisterService {
       this.api.post<CashRegisterSession>('/cashregister/session/open', request),
     );
     await this.db.cashSessions.put(session);
+    this._activeSession.set(session);
     return session;
   }
 
@@ -77,6 +96,7 @@ export class CashRegisterService {
       this.api.post<CashRegisterSession>('/cashregister/session/close', request),
     );
     await this.db.cashSessions.put(session);
+    this._activeSession.set(null);
     return session;
   }
 

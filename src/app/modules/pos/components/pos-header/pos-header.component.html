@@ -124,6 +124,14 @@
   </div>
 }
 
+<!-- Cash session warning banner -->
+@if (!cashRegisterService.hasOpenSession()) {
+  <div class="pos-header__no-session" role="alert">
+    <i class="pi pi-exclamation-triangle"></i>
+    <span>Sin turno de caja — ve al Back Office para abrir uno</span>
+  </div>
+}
+
 <!-- ====================================================================== -->
 <!-- PIN verification dialog                                                -->
 <!-- ====================================================================== -->
