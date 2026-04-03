@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, signal } from '@angular/core';
+import { Injectable, Injector, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
@@ -81,6 +81,7 @@ export class SyncService implements OnDestroy {
     private readonly db: DatabaseService,
     private readonly api: ApiService,
     private readonly authService: AuthService,
+    private readonly injector: Injector,
   ) {}
 
   /**
@@ -343,7 +344,8 @@ export class SyncService implements OnDestroy {
    * Attempts to POST a single order to the backend API.
    * Classifies errors by HTTP status to determine retry strategy:
    *   - 2xx: success → mark 'Synced'
-   *   - 4xx (except 408/429): permanent failure → mark 'PermanentlyFailed'
+   *   - 409: table conflict → revert table assignment, retry without table
+   *   - 4xx (except 408/409/429): permanent failure → mark 'PermanentlyFailed'
    *   - 429: transient → backoff using Retry-After header
    *   - 5xx / network / timeout: transient → increment retryCount with backoff
    *   - After MAX_RETRIES transient failures → 'PermanentlyFailed'
@@ -365,8 +367,12 @@ export class SyncService implements OnDestroy {
     } catch (error: any) {
       const status = error?.status ?? 0;
 
-      if (this.isPermanentError(status)) {
-        // 4xx (except 408 timeout, 429 rate limit) — data is malformed, will never sync
+      // 409 Conflict — table already taken by another device (FDD-001)
+      if (status === 409 && order.tableId != null) {
+        console.warn(`[SyncService] Order ${order.id} got 409 — table ${order.tableId} conflict, reverting`);
+        await this.handleTableConflict(order);
+      } else if (this.isPermanentError(status)) {
+        // 4xx (except 408 timeout, 409 conflict, 429 rate limit) — data is malformed, will never sync
         console.error(`[SyncService] Order ${order.id} permanently failed (HTTP ${status}):`, error);
         await this.db.orders.update(order.id, {
           syncStatus: 'PermanentlyFailed',
@@ -394,12 +400,28 @@ export class SyncService implements OnDestroy {
   }
 
   /**
+   * Handles a 409 Conflict when the table is already taken.
+   * Reverts the optimistic Dexie state and re-queues the order without tableId.
+   * Uses lazy injection to break circular dependency with TableAssignmentService.
+   */
+  private async handleTableConflict(order: Order): Promise<void> {
+    try {
+      // Lazy-resolve to avoid circular dependency (TableAssignmentService → SyncService)
+      const { TableAssignmentService } = await import('./table-assignment.service');
+      const tableAssignment = this.injector.get(TableAssignmentService);
+      await tableAssignment.revertTableAssignment(order.id, order.tableId!);
+    } catch (err) {
+      console.error('[SyncService] Failed to revert table assignment:', err);
+    }
+  }
+
+  /**
    * Returns true for HTTP status codes that indicate the request
    * is fundamentally invalid and will never succeed on retry.
-   * Excludes 408 (timeout) and 429 (rate limit) which are transient.
+   * Excludes 408 (timeout), 409 (conflict — handled separately), and 429 (rate limit).
    */
   private isPermanentError(status: number): boolean {
-    return status >= 400 && status < 500 && status !== 408 && status !== 429;
+    return status >= 400 && status < 500 && status !== 408 && status !== 409 && status !== 429;
   }
 
   /**

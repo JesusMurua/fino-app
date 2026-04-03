@@ -7,8 +7,8 @@
     } @else {
       <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
     }
-    @if (activeTableName()) {
-      <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
+    @if (activeTableDisplay() || activeTableName()) {
+      <span class="cart-panel__table-badge">{{ activeTableDisplay() || activeTableName() }}</span>
     }
     @if (itemCount() > 0) {
       <span class="cart-panel__badge">{{ itemCount() }}</span>
@@ -180,6 +180,18 @@
       }
     }
 
+    <!-- Assign table button (FDD-001) — visible when active order has no table -->
+    @if (canAssignTable()) {
+      <button
+        type="button"
+        class="btn-assign-table"
+        (click)="onAssignTable()"
+      >
+        <i class="pi pi-map-marker"></i>
+        Asignar a Mesa
+      </button>
+    }
+
     @if (showSendToKitchen()) {
       @if (addingToOrder) {
         <p-button
@@ -239,3 +251,9 @@
   </div>
 
 </aside>
+
+<!-- Table selector dialog (FDD-001) -->
+<app-table-selector-dialog
+  [(visible)]="showTableSelector"
+  (tableSelected)="onTableSelected($event)"
+/>

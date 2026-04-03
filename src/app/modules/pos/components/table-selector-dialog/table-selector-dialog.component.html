@@ -1,0 +1,77 @@
+<p-dialog
+  [(visible)]="visible"
+  header="Seleccionar Mesa"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closeOnEscape]="true"
+  [dismissableMask]="true"
+  [breakpoints]="{ '960px': '90vw' }"
+  [style]="{ width: '600px' }"
+  styleClass="table-selector-dialog"
+  (onHide)="onCancel()"
+>
+
+  <!-- Loading state -->
+  @if (loading()) {
+    <div class="table-selector__loading">
+      <p-progressSpinner
+        [style]="{ width: '48px', height: '48px' }"
+        strokeWidth="4"
+      />
+    </div>
+  } @else if (availableCount() === 0) {
+    <!-- Empty state -->
+    <div class="table-selector__empty">
+      <i class="pi pi-info-circle"></i>
+      <p>No hay mesas disponibles</p>
+    </div>
+  } @else {
+    <!-- Table grid grouped by zone -->
+    <div class="table-selector__content">
+      @for (group of zoneGroups(); track group.zoneId) {
+        @if (zoneGroups().length > 1) {
+          <h4 class="table-selector__zone-label">{{ group.zoneName }}</h4>
+        }
+        <div class="table-selector__grid">
+          @for (table of group.tables; track table.id) {
+            <button
+              type="button"
+              class="table-card"
+              [class.table-card--selected]="isSelected(table)"
+              (click)="onTableClick(table)"
+            >
+              <span class="table-card__name">{{ table.name }}</span>
+              @if (table.capacity) {
+                <span class="table-card__capacity">{{ table.capacity }} personas</span>
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Footer actions -->
+  <ng-template pTemplate="footer">
+    <div class="table-selector__footer">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        styleClass="table-selector__btn-cancel"
+        (onClick)="onCancel()"
+      />
+      <p-button
+        [label]="selectedTable() ? 'Asignar ' + selectedTable()!.name : 'Selecciona una mesa'"
+        icon="pi pi-check"
+        severity="success"
+        styleClass="table-selector__btn-confirm"
+        [disabled]="!canConfirm()"
+        [loading]="confirming()"
+        (onClick)="onConfirm()"
+      />
+    </div>
+  </ng-template>
+
+</p-dialog>

@@ -13,13 +13,16 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { OrderContextService } from '../../../../core/services/order-context.service';
 import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { TableAssignmentService } from '../../../../core/services/table-assignment.service';
+import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe],
+  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe, TableSelectorDialogComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
@@ -50,6 +53,16 @@ export class CartPanelComponent implements OnInit {
 
   /** True when the business has a kitchen — determines button label */
   readonly showSendToKitchen = computed(() => this.configService.hasKitchen());
+
+  // ---- Table assignment (FDD-001) ----
+  /** Controls TableSelectorDialog visibility */
+  readonly showTableSelector = signal(false);
+
+  /** True when a table can be assigned to the active order */
+  readonly canAssignTable = this.orderContextService.canAssignTable;
+
+  /** Display name of the assigned table from OrderContextService */
+  readonly activeTableDisplay = this.orderContextService.activeTableName;
   //#endregion
 
   //#region Constructor
@@ -60,6 +73,8 @@ export class CartPanelComponent implements OnInit {
     private readonly authService: AuthService,
     private readonly db: DatabaseService,
     private readonly promotionService: PromotionService,
+    private readonly orderContextService: OrderContextService,
+    private readonly tableAssignmentService: TableAssignmentService,
     private readonly messageService: MessageService,
     private readonly router: Router,
   ) {}
@@ -76,6 +91,16 @@ export class CartPanelComponent implements OnInit {
     const addingTo = sessionStorage.getItem('addingToOrder');
     if (addingTo) {
       this.addingToOrder = JSON.parse(addingTo);
+      // Load the full order into OrderContextService for table assignment
+      this.loadActiveOrder(this.addingToOrder!.orderId);
+    }
+  }
+
+  /** Loads an existing order from Dexie into OrderContextService */
+  private async loadActiveOrder(orderId: string): Promise<void> {
+    const order = await this.db.orders.get(orderId);
+    if (order) {
+      this.orderContextService.setActiveOrder(order);
     }
   }
   //#endregion
@@ -156,6 +181,7 @@ export class CartPanelComponent implements OnInit {
     };
 
     await this.syncService.saveOrder(order);
+    this.orderContextService.setActiveOrder(order);
     await this.cartService.clearCart();
     sessionStorage.removeItem('activeTable');
 
@@ -204,7 +230,38 @@ export class CartPanelComponent implements OnInit {
   /** Clears the entire cart after user confirmation */
   async onCancelOrder(): Promise<void> {
     await this.cartService.clearCart();
+    this.orderContextService.clearActiveOrder();
   }
+  //#endregion
+
+  //#region Table Assignment Methods (FDD-001)
+
+  /** Opens the table selector dialog */
+  onAssignTable(): void {
+    this.showTableSelector.set(true);
+  }
+
+  /** Handles table selection from the dialog */
+  async onTableSelected(event: TableSelectedEvent): Promise<void> {
+    const order = this.orderContextService.activeOrder();
+    if (!order) return;
+
+    const success = await this.tableAssignmentService.assignTable(
+      order.id,
+      event.tableId,
+      event.tableName,
+    );
+
+    if (success) {
+      this.activeTableName.set(event.tableName);
+      this.messageService.add({
+        severity: 'success',
+        summary: `Orden asignada a ${event.tableName}`,
+        life: 3000,
+      });
+    }
+  }
+
   //#endregion
 
   //#region Coupon Methods

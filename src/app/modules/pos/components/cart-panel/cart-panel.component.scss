@@ -215,6 +215,43 @@
 // Action buttons
 // -----------------------------------------------------------------------
 
+// Assign table — outlined secondary button (FDD-001)
+.btn-assign-table {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  min-height: $touch-target-pos;
+  padding: $space-3 $space-4;
+  border: 2px solid #D1D5DB;
+  border-radius: $radius-button;
+  background: transparent;
+  color: $color-text-title;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  i { font-size: 16px; color: $color-primary; }
+
+  &:hover {
+    border-color: $color-primary;
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+
+  &:active {
+    background: #DCFCE7;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
 // Checkout (green gradient) — non-kitchen POS (Kaja Pro)
 :host ::ng-deep .btn-checkout {
   width: 100%;

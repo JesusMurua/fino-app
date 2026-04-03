@@ -1,0 +1,167 @@
+@use '../../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Dialog overrides
+// -----------------------------------------------------------------------
+:host ::ng-deep .table-selector-dialog {
+  .p-dialog-header {
+    padding: $space-4 $space-5;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  .p-dialog-content {
+    padding: $space-4 $space-5;
+  }
+
+  .p-dialog-footer {
+    padding: $space-3 $space-5 $space-4;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+// -----------------------------------------------------------------------
+// Loading
+// -----------------------------------------------------------------------
+.table-selector__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-7;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+.table-selector__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: $space-7 $space-4;
+  color: $color-text-sub;
+
+  i {
+    font-size: 2.5rem;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    font-size: $font-size-base;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Content
+// -----------------------------------------------------------------------
+.table-selector__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.table-selector__zone-label {
+  margin: 0;
+  font-size: $font-size-label;
+  font-weight: 500;
+  color: $color-text-sub;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// -----------------------------------------------------------------------
+// Table grid
+// -----------------------------------------------------------------------
+.table-selector__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: $space-3;
+}
+
+// -----------------------------------------------------------------------
+// Table card
+// -----------------------------------------------------------------------
+.table-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-1;
+  min-height: 100px;
+  padding: $space-4;
+  border: 2px solid $color-border-soft;
+  border-radius: $radius-button;
+  background: #FFFFFF;
+  box-shadow: $shadow-card;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: rgba($color-primary, 0.4);
+    box-shadow: $shadow-card-hover;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+
+  // Selected state
+  &--selected {
+    border-color: $color-primary;
+    background: $color-primary-light;
+    box-shadow: 0 0 0 1px $color-primary, $shadow-card;
+
+    .table-card__name {
+      color: $color-primary;
+    }
+  }
+
+  &__name {
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__capacity {
+    font-size: 13px;
+    font-weight: 400;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Footer
+// -----------------------------------------------------------------------
+.table-selector__footer {
+  display: flex;
+  gap: $space-3;
+  justify-content: flex-end;
+}
+
+:host ::ng-deep .table-selector__btn-cancel {
+  min-height: 48px;
+  border-radius: $radius-button !important;
+  font-size: $font-size-base !important;
+}
+
+:host ::ng-deep .table-selector__btn-confirm {
+  min-height: 48px;
+  border-radius: $radius-button !important;
+  font-size: $font-size-base !important;
+  font-weight: 600 !important;
+}
