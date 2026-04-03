@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -17,6 +17,7 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Disco
  *   v12 — Migrated syncStatus/kitchenStatus from lowercase to PascalCase
  *   v13 — Added hasKitchen/hasTables flags to config
  *   v14 — Initialize retryCount; rescue 'Failed' → 'Pending'
+ *   v15 — Added employeeHashes table for offline PIN authentication
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -34,6 +35,7 @@ export class DatabaseService extends Dexie {
   inventoryItems!: Table<InventoryItem & { syncStatus?: string }, number>;
   inventoryMovements!: Table<InventoryMovement, number>;
   promotions!: Table<Promotion, number>;
+  employeeHashes!: Table<EmployeeHash, number>;
   //#endregion
 
   //#region Constructor
@@ -115,6 +117,11 @@ export class DatabaseService extends Dexie {
         if (order.retryCount === undefined) order.retryCount = 0;
         if (order.syncStatus === 'Failed') order.syncStatus = 'Pending';
       });
+    });
+
+    // Add employeeHashes table for offline PIN authentication
+    this.version(15).stores({
+      employeeHashes: 'userId, branchId, pinHash',
     });
   }
   //#endregion

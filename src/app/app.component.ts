@@ -7,6 +7,7 @@ import { NgHttpLoaderComponent } from 'ng-http-loader';
 
 import { AuthService } from './core/services/auth.service';
 import { CatalogService } from './core/services/catalog.service';
+import { IdleService } from './core/services/idle.service';
 import { PrinterService } from './core/services/printer.service';
 import { SyncService } from './core/services/sync.service';
 import { ExpiredOverlayComponent } from './shared/components/expired-overlay/expired-overlay.component';
@@ -23,6 +24,7 @@ import { UpdateBannerComponent } from './shared/components/update-banner/update-
 export class AppComponent implements OnInit {
 
   private readonly authService = inject(AuthService);
+  private readonly idleService = inject(IdleService);
   private readonly printerService = inject(PrinterService);
   private readonly syncService = inject(SyncService);
   private readonly catalogService = inject(CatalogService);
@@ -41,11 +43,12 @@ export class AppComponent implements OnInit {
   private readonly POS_ROUTES = ['/pos', '/kitchen', '/tables', '/kiosk', '/orders'];
 
   constructor() {
-    // Reactively initialize sync when auth state becomes true.
-    // SyncService.initialize() is idempotent — safe on repeated calls.
+    // Reactively initialize sync and idle lock when auth state becomes true.
+    // Both services are idempotent — safe on repeated calls.
     effect(() => {
       if (this.authService.isAuthenticated()) {
         this.syncService.initialize();
+        this.idleService.start();
       }
     });
 

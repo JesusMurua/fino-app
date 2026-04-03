@@ -23,3 +23,4 @@ export * from './supplier.model';
 export * from './stock-receipt.model';
 export * from './branch-delivery-config.model';
 export * from './delivery-order.model';
+export * from './employee-hash.model';

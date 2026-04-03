@@ -9,11 +9,13 @@ import {
   AuthUser,
   BranchInfo,
   BusinessType,
+  EmployeeHash,
   LoginResponse,
   PlanInfo,
   PlanType,
   RETURN_URL_KEY,
   SubscriptionStatus,
+  sha256Hex,
 } from '../models';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
@@ -156,18 +158,103 @@ export class AuthService {
 
   /**
    * Authenticates via 4-digit PIN (cashiers, kitchen staff).
+   * Online-first with offline fallback:
+   *   1. Try API → on success, sync hashes and return user
+   *   2. On network failure → try offline Dexie lookup
+   *   3. On 401 (wrong PIN) → return null (no fallback)
    * @param branchId Branch to authenticate against
    * @param pin 4-digit PIN string
-   * @returns The authenticated user on success, or null on failure
+   * @returns Object with user (or null) and whether auth was offline
    */
-  async pinLogin(branchId: number, pin: string): Promise<AuthUser | null> {
+  async pinLogin(branchId: number, pin: string): Promise<{ user: AuthUser | null; offline: boolean }> {
+    // 1. Try online auth
     try {
       const response = await firstValueFrom(
         this.api.post<LoginResponse>('/auth/pin-login', { branchId, pin }),
       );
-      return this.handleLoginSuccess(response);
+      const user = this.handleLoginSuccess(response);
+
+      // Sync employee hashes in background after successful online login
+      this.syncEmployeeHashes(branchId).catch(() => {});
+
+      return { user, offline: false };
+    } catch (error: any) {
+      const status = error?.status ?? 0;
+
+      // 401 = wrong PIN — don't fall back to offline
+      if (status === 401) {
+        return { user: null, offline: false };
+      }
+
+      // Network error (status 0) or timeout — try offline
+      console.warn('[AuthService] Online PIN login unavailable, trying offline:', error);
+      const offlineUser = await this.offlinePinLogin(branchId, pin);
+      return { user: offlineUser, offline: true };
+    }
+  }
+
+  /**
+   * Fetches employee PIN hashes from the API and stores them in Dexie.
+   * Called after every successful online login to keep the cache fresh.
+   * @param branchId Branch to fetch hashes for
+   */
+  async syncEmployeeHashes(branchId: number): Promise<void> {
+    try {
+      const hashes = await firstValueFrom(
+        this.api.get<EmployeeHash[]>(`/auth/employee-hashes?branchId=${branchId}`),
+      );
+      await this.db.transaction('rw', this.db.employeeHashes, async () => {
+        // Clear old hashes for this branch and replace with fresh ones
+        await this.db.employeeHashes.where('branchId').equals(branchId).delete();
+        if (hashes.length > 0) {
+          await this.db.employeeHashes.bulkPut(hashes);
+        }
+      });
     } catch (error) {
-      console.error('[AuthService] PIN login failed:', error);
+      console.warn('[AuthService] Failed to sync employee hashes:', error);
+    }
+  }
+
+  /**
+   * Authenticates offline by hashing the PIN and comparing against Dexie.
+   * Creates a local-only AuthUser (no real JWT) to enable the UI.
+   * @param branchId Branch to authenticate against
+   * @param pin 4-digit PIN string
+   * @returns AuthUser on match, or null
+   */
+  private async offlinePinLogin(branchId: number, pin: string): Promise<AuthUser | null> {
+    try {
+      const pinHash = await sha256Hex(pin);
+      const match = await this.db.employeeHashes
+        .where({ branchId, pinHash })
+        .first();
+
+      if (!match) return null;
+
+      // Build a local-only AuthUser — use a marker token so isAuthenticated works
+      // but the interceptor knows not to send it to the API
+      const user: AuthUser = {
+        token: `offline-session-${Date.now()}`,
+        role: match.role,
+        name: match.name,
+        businessId: 0,
+        branchId,
+        branches: [{ id: branchId, name: '' }],
+        currentBranchId: branchId,
+        planType: this.planType(),
+        businessType: this.businessType(),
+        trialEndsAt: this.trialEndsAt() ?? undefined,
+      };
+
+      localStorage.setItem(AUTH_TOKEN_KEY, user.token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+      this.currentUser.set(user);
+      this.activeBranchId.set(branchId);
+
+      return user;
+    } catch (error) {
+      console.error('[AuthService] Offline PIN login failed:', error);
       return null;
     }
   }
