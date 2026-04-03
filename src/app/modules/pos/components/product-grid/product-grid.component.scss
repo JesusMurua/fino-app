@@ -12,55 +12,60 @@
 }
 
 // -----------------------------------------------------------------------
-// Category bar
+// Category bar — horizontal scroll, pill-shaped chips
 // -----------------------------------------------------------------------
 .pos-category-bar {
   display: flex;
   align-items: center;
   gap: $space-2;
-  padding: 0 $space-4;
+  padding: $space-2 $space-4;
   min-height: $category-bar-height;
-  background: white;
-  border-bottom: 1px solid $color-border-soft;
+  background: $color-bg-page;
   overflow-x: auto;
   flex-shrink: 0;
 
-  // Hide scrollbar on mobile (swipe to scroll)
+  // Hide scrollbar (swipe to scroll)
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }
 
-// Category pill — native button replacing p-button
+// Category pill
 .cat-pill {
   display: inline-flex;
   align-items: center;
   gap: $space-2;
   padding: $space-2 $space-5;
-  min-height: $touch-target-pos;
+  min-height: 48px;
   border: none;
-  border-radius: 9999px;
-  background: #F3F4F6;
-  color: #374151;
+  border-radius: $radius-pill;
+  background: #FFFFFF;
+  box-shadow: $shadow-panel;
+  color: $color-text-sub;
   font-size: $font-size-label;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.15s ease;
 
-  i {
-    font-size: 14px;
-  }
+  i { font-size: 14px; }
 
   &:focus-visible {
     outline: 2px solid $color-primary;
     outline-offset: 2px;
   }
 
+  &:hover {
+    background: #F1F5F9;
+  }
+
   &--active {
     background: $color-primary;
     color: white;
     font-weight: 700;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+
+    &:hover { background: #15803D; }
   }
 }
 
@@ -79,10 +84,10 @@
 .pos-products {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   grid-auto-rows: max-content;
   gap: $space-4;
-  padding: $space-4;
+  padding: $space-3 $space-4 $space-4;
   overflow-y: auto;
   align-content: start;
 }
@@ -98,18 +103,18 @@
   padding: $space-8;
   color: $color-text-sub;
 
-  i { font-size: 3rem; }
+  i { font-size: 3rem; opacity: 0.4; }
   p { margin: 0; font-size: $font-size-base; }
 }
 
 // -----------------------------------------------------------------------
-// @defer placeholder — lightweight skeleton while card loads
+// @defer placeholder — skeleton card
 // -----------------------------------------------------------------------
 .product-card-placeholder {
   min-width: $product-card-min;
   min-height: $product-card-min;
-  border-radius: 12px;
-  background: #F3F4F6;
+  border-radius: $radius-card;
+  background: #F1F5F9;
 }
 
 // -----------------------------------------------------------------------
@@ -122,7 +127,7 @@
   }
 
   .pos-products {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     overflow-y: visible;
     flex-shrink: 0;
   }

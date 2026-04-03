@@ -9,15 +9,15 @@
   min-width: $product-card-min;
   min-height: $product-card-min;
   width: 100%;
-  padding: $space-3;
+  padding: $space-4;
   gap: $space-2;
 
-  background: white;
+  background: #FFFFFF;
   border: none;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
 
   // Reset button defaults
   appearance: none;
@@ -26,7 +26,7 @@
   text-align: center;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: $shadow-card-hover;
   }
 
   &:active {
@@ -39,19 +39,20 @@
   }
 
   // -----------------------------------------------------------------------
-  // Popular badge
+  // Badges (Popular / Low stock)
   // -----------------------------------------------------------------------
   &__badge {
     position: absolute;
     top: $space-2;
     right: $space-2;
-    padding: 2px $space-2;
+    padding: 3px $space-3;
     background: #FEF3C7;
     color: #92400E;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    border-radius: 9999px;
+    border-radius: $radius-pill;
     line-height: 1.4;
+    letter-spacing: 0.02em;
 
     &--stock {
       background: #FEF2F2;
@@ -63,9 +64,9 @@
   // Icon box
   // -----------------------------------------------------------------------
   &__icon-box {
-    width: 52px;
-    height: 52px;
-    border-radius: 10px;
+    width: 56px;
+    height: 56px;
+    border-radius: $radius-button;
     background: $color-primary-light;
     display: flex;
     align-items: center;
@@ -73,7 +74,7 @@
     flex-shrink: 0;
 
     i {
-      font-size: 22px;
+      font-size: 24px;
       color: $color-primary;
     }
 
@@ -81,12 +82,12 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 10px;
+      border-radius: $radius-button;
     }
   }
 
   // -----------------------------------------------------------------------
-  // Info row
+  // Info
   // -----------------------------------------------------------------------
   &__info {
     display: flex;
@@ -97,12 +98,11 @@
   }
 
   &__name {
-    font-size: $font-size-base;
+    font-size: 14px;
     font-weight: 600;
     color: $color-text-title;
-    line-height: 1.2;
+    line-height: 1.25;
     text-align: center;
-    // Clamp to 2 lines
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -110,20 +110,20 @@
   }
 
   &__price {
-    font-size: 16px;
-    font-weight: 700;
-    color: $color-primary;
+    font-size: 18px;
+    font-weight: 800;
+    color: $color-text-title;
   }
 
   // -----------------------------------------------------------------------
   // Unavailable / out-of-stock state
   // -----------------------------------------------------------------------
   &--unavailable {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
     pointer-events: none;
 
-    &:hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+    &:hover { box-shadow: $shadow-card; }
     &:active { transform: none; }
   }
 
@@ -133,16 +133,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: $radius-card;
+    backdrop-filter: blur(2px);
   }
 
   &__overlay-text {
-    padding: 4px 12px;
-    border-radius: 8px;
-    background: #DC2626;
+    padding: 5px $space-4;
+    border-radius: $radius-pill;
+    background: #EF4444;
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 }

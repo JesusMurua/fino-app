@@ -205,6 +205,16 @@
           [loading]="isProcessing()"
           (onClick)="onSendToKitchen()"
         />
+        <!-- Walk-up bar customer: bypass kitchen, go straight to payment -->
+        <button
+          type="button"
+          class="btn-direct-pay"
+          [disabled]="itemCount() === 0"
+          (click)="onCheckout()"
+        >
+          <i class="pi pi-credit-card"></i>
+          Cobrar directo {{ totalCents() | price }}
+        </button>
       }
     } @else {
       <p-button

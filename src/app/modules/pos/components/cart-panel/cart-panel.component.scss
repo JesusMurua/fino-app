@@ -5,8 +5,9 @@
   flex-direction: column;
   width: $cart-panel-width;
   height: 100%;
-  background: white;
-  border-left: 1px solid $color-border-soft;
+  background: #FFFFFF;
+  border-left: none;
+  box-shadow: -1px 0 0 $color-border-soft;
   flex-shrink: 0;
 
   // -----------------------------------------------------------------------
@@ -16,24 +17,25 @@
     display: flex;
     align-items: center;
     gap: $space-3;
-    padding: $space-4;
+    padding: $space-4 $space-4 $space-3;
   }
 
   &__title {
-    font-size: $font-size-title;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 800;
     color: $color-text-title;
     flex: 1;
 
     &--adding {
       color: #D97706;
       font-size: 15px;
+      font-weight: 700;
     }
   }
 
   &__table-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
+    padding: 4px $space-3;
+    border-radius: $radius-pill;
     font-size: 13px;
     font-weight: 600;
     background: $color-primary;
@@ -45,18 +47,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 24px;
-    height: 24px;
+    min-width: 26px;
+    height: 26px;
     padding: 0 $space-2;
-    background: $color-primary;
+    background: $color-text-title;
     color: white;
     font-size: 12px;
     font-weight: 700;
-    border-radius: 9999px;
+    border-radius: $radius-pill;
   }
 
   // -----------------------------------------------------------------------
-  // Soft divider
+  // Divider
   // -----------------------------------------------------------------------
   &__divider {
     height: 1px;
@@ -82,7 +84,7 @@
     padding: $space-7 $space-4;
     color: $color-text-sub;
 
-    i { font-size: 3rem; }
+    i { font-size: 3rem; opacity: 0.3; }
     p { margin: 0; font-size: $font-size-base; }
   }
 
@@ -105,14 +107,15 @@
 
   &__total-label {
     font-size: $font-size-base;
-    font-weight: 600;
+    font-weight: 500;
     color: $color-text-sub;
   }
 
   &__total-amount {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: $color-text-title;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -132,13 +135,13 @@
   }
 
   &__name {
-    font-size: $font-size-base;
+    font-size: 15px;
     font-weight: 600;
     color: $color-text-title;
   }
 
   &__meta {
-    font-size: $font-size-label;
+    font-size: 13px;
     color: $color-text-sub;
   }
 
@@ -153,7 +156,7 @@
   }
 
   &__qty {
-    font-size: $font-size-base;
+    font-size: 16px;
     font-weight: 700;
     min-width: 2rem;
     text-align: center;
@@ -167,9 +170,9 @@
   }
 
   &__total {
-    font-size: $font-size-base;
+    font-size: 15px;
     font-weight: 700;
-    color: $color-primary;
+    color: $color-text-title;
   }
 
   &__price-group {
@@ -181,32 +184,26 @@
 }
 
 // -----------------------------------------------------------------------
-// Quantity control button
+// Quantity control button — 56px minimum touch target
 // -----------------------------------------------------------------------
 .qty-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: $touch-target-pos;
-  height: $touch-target-pos;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  background: white;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #F1F5F9;
   color: $color-text-title;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s;
 
-  i { font-size: 16px; }
+  i { font-size: 14px; }
 
-  &:hover {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
-  }
-
-  &:active {
-    background: #F3F4F6;
-  }
+  &:hover { background: #E2E8F0; }
+  &:active { background: #CBD5E1; }
 
   &:focus-visible {
     outline: 2px solid $color-primary;
@@ -215,18 +212,75 @@
 }
 
 // -----------------------------------------------------------------------
-// Checkout button override
+// Action buttons
 // -----------------------------------------------------------------------
+
+// Checkout (green) — non-kitchen POS
 :host ::ng-deep .btn-checkout {
   width: 100%;
   min-height: 56px;
-  border-radius: 10px !important;
+  border-radius: $radius-button !important;
   font-size: 18px !important;
   font-weight: 700 !important;
-  background: #15803D !important;   // Green-700 — WCAG AA 4.8:1 with white
-  border-color: #15803D !important;
+  background: $color-primary !important;
+  border-color: $color-primary !important;
 
-  &:hover { background: #166534 !important; border-color: #166534 !important; }
+  &:hover { background: #15803D !important; border-color: #15803D !important; }
+}
+
+// Kitchen (blue) — send to kitchen
+:host ::ng-deep .btn-kitchen {
+  width: 100%;
+  min-height: 56px;
+  border-radius: $radius-button !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  background: #2563EB !important;
+  border-color: #2563EB !important;
+
+  &:hover { background: #1D4ED8 !important; border-color: #1D4ED8 !important; }
+}
+
+// "Cobrar directo" — secondary full-width button below "Enviar a cocina"
+.btn-direct-pay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  min-height: 48px;
+  padding: $space-2 $space-4;
+  border: 2px solid #E2E8F0;
+  border-radius: $radius-button;
+  background: #FFFFFF;
+  color: $color-text-title;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  i { font-size: 16px; color: $color-primary; }
+
+  &:hover {
+    border-color: $color-primary;
+    background: $color-primary-light;
+  }
+
+  &:active {
+    background: #DCFCE7;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    &:hover { border-color: #E2E8F0; background: white; }
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
 }
 
 .btn-cancel-adding {
@@ -247,37 +301,24 @@
   &:hover { color: #DC2626; }
 }
 
-:host ::ng-deep .btn-kitchen {
-  width: 100%;
-  min-height: 56px;
-  border-radius: 10px !important;
-  font-size: 18px !important;
-  font-weight: 700 !important;
-  background: #2563EB !important;
-  border-color: #2563EB !important;
-
-  &:hover { background: #1D4ED8 !important; border-color: #1D4ED8 !important; }
-}
-
-// -----------------------------------------------------------------------
-// Cancel order button
-// -----------------------------------------------------------------------
+// Cancel order
 .btn-cancel {
   width: 100%;
   padding: $space-3;
   border: none;
-  border-radius: 10px;
+  border-radius: $radius-button;
   background: transparent;
-  color: #DC2626;
-  font-size: $font-size-base;
+  color: $color-text-sub;
+  font-size: $font-size-label;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   text-align: center;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 
   &:hover {
     background: #FEF2F2;
+    color: #DC2626;
   }
 
   &:focus-visible {
@@ -293,10 +334,10 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 99px;
+  border-radius: $radius-pill;
   font-size: 11px;
   font-weight: 500;
-  background: #F0FDF4;
+  background: $color-primary-light;
   color: #15803D;
   border: 0.5px solid rgba(#16A34A, 0.2);
   white-space: nowrap;
@@ -337,9 +378,9 @@
 }
 
 .savings-banner {
-  background: #F0FDF4;
+  background: $color-primary-light;
   border: 0.5px solid rgba(#16A34A, 0.2);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: $space-2 $space-3;
   text-align: center;
   font-size: 13px;
@@ -363,8 +404,8 @@
     align-items: center;
     padding: 0 $space-4;
     height: $touch-target-pos;
-    border: 1px solid $color-primary;
-    border-radius: 8px;
+    border: 1.5px solid $color-primary;
+    border-radius: 10px;
     background: transparent;
     color: $color-primary;
     font-size: $font-size-label;
@@ -374,7 +415,7 @@
     transition: background 0.15s;
     white-space: nowrap;
 
-    &:hover { background: #F0FDF4; }
+    &:hover { background: $color-primary-light; }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 }
@@ -389,9 +430,9 @@
   align-items: center;
   justify-content: space-between;
   padding: $space-2 $space-3;
-  background: #F0FDF4;
+  background: $color-primary-light;
   border: 0.5px solid rgba(#16A34A, 0.2);
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   color: #15803D;
