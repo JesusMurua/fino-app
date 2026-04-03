@@ -13,6 +13,7 @@ import { ScannerService } from '../../../../core/services/scanner.service';
 import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../data/pos.fixture';
 import { ConfigService } from '../../../../core/services/config.service';
 import { CartPanelComponent } from '../cart-panel/cart-panel.component';
+import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
 import { DeliveryPanelComponent } from '../delivery-panel/delivery-panel.component';
 import { PosHeaderComponent } from '../pos-header/pos-header.component';
 import { ProductCardComponent } from '../product-card/product-card.component';
@@ -23,6 +24,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
   imports: [
     ButtonModule,
     ToastModule,
+    CategorySidebarComponent,
     ProductCardComponent,
     CartPanelComponent,
     DeliveryPanelComponent,

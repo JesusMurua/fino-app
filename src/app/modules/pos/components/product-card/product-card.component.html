@@ -6,31 +6,43 @@
   [disabled]="!product.isAvailable"
   (click)="selected.emit(product)"
 >
-  <!-- Popular badge -->
-  @if (product.isPopular && product.isAvailable) {
-    <span class="product-card__badge">Popular</span>
-  }
-
-  <!-- Low stock badge -->
-  @if (product.trackStock && product.isAvailable && isLowStock) {
-    <span class="product-card__badge product-card__badge--stock">
-      Quedan {{ product.currentStock }}
-    </span>
-  }
-
-  <!-- Icon box (image or fallback icon) -->
-  <div class="product-card__icon-box">
+  <!-- Image section (60% of card) -->
+  <div class="product-card__image">
     @if (product.imageUrl) {
       <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
+    } @else if (product.images?.length) {
+      <img [src]="product.images[0].url" [alt]="product.name" loading="lazy" />
     } @else {
-      <i class="pi pi-shopping-bag"></i>
+      <div class="product-card__image-fallback">
+        <i class="pi pi-shopping-bag"></i>
+      </div>
+    }
+
+    <!-- Popular badge -->
+    @if (product.isPopular && product.isAvailable) {
+      <span class="product-card__badge">Popular</span>
+    }
+
+    <!-- Low stock badge -->
+    @if (product.trackStock && product.isAvailable && isLowStock) {
+      <span class="product-card__badge product-card__badge--stock">
+        Quedan {{ product.currentStock }}
+      </span>
     }
   </div>
 
-  <!-- Info -->
-  <div class="product-card__info">
+  <!-- Info section -->
+  <div class="product-card__body">
     <span class="product-card__name">{{ product.name }}</span>
-    <span class="product-card__price">{{ product.priceCents | price }}</span>
+    @if (product.description) {
+      <span class="product-card__desc">{{ product.description }}</span>
+    }
+    <div class="product-card__footer">
+      <span class="product-card__price">{{ product.priceCents | price }}</span>
+      <span class="product-card__add-icon">
+        <i class="pi pi-plus"></i>
+      </span>
+    </div>
   </div>
 
   <!-- Out-of-stock overlay -->

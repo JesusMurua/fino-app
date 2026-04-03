@@ -215,55 +215,64 @@
 // Action buttons
 // -----------------------------------------------------------------------
 
-// Checkout (green) — non-kitchen POS
+// Checkout (green gradient) — non-kitchen POS (Kaja Pro)
 :host ::ng-deep .btn-checkout {
   width: 100%;
   min-height: 56px;
-  border-radius: $radius-button !important;
+  border-radius: 14px !important;
   font-size: 18px !important;
   font-weight: 700 !important;
-  background: $color-primary !important;
+  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
   border-color: $color-primary !important;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
 
-  &:hover { background: #15803D !important; border-color: #15803D !important; }
+  &:hover {
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4) !important;
+    transform: translateY(-1px);
+  }
 }
 
-// Kitchen (blue) — send to kitchen
+// Kitchen (green gradient) — send to kitchen (Kaja Pro)
 :host ::ng-deep .btn-kitchen {
   width: 100%;
   min-height: 56px;
-  border-radius: $radius-button !important;
+  border-radius: 14px !important;
   font-size: 18px !important;
   font-weight: 700 !important;
-  background: #2563EB !important;
-  border-color: #2563EB !important;
+  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
+  border-color: $color-primary !important;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
 
-  &:hover { background: #1D4ED8 !important; border-color: #1D4ED8 !important; }
+  &:hover {
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4) !important;
+    transform: translateY(-1px);
+  }
 }
 
-// "Cobrar directo" — secondary full-width button below "Enviar a cocina"
+// "Cobrar directo" — outline button below "Enviar a cocina" (Kaja Pro)
 .btn-direct-pay {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: $space-2;
   width: 100%;
-  min-height: 48px;
-  padding: $space-2 $space-4;
+  min-height: 52px;
+  padding: $space-3 $space-4;
   border: 2px solid #E2E8F0;
-  border-radius: $radius-button;
-  background: #FFFFFF;
+  border-radius: 14px;
+  background: transparent;
   color: $color-text-title;
-  font-size: $font-size-base;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 
-  i { font-size: 16px; color: $color-primary; }
+  i { font-size: 18px; color: $color-primary; }
 
   &:hover {
     border-color: $color-primary;
+    color: $color-primary;
     background: $color-primary-light;
   }
 
@@ -274,7 +283,7 @@
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    &:hover { border-color: #E2E8F0; background: white; }
+    &:hover { border-color: #E2E8F0; background: transparent; color: $color-text-title; }
   }
 
   &:focus-visible {

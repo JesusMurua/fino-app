@@ -36,9 +36,10 @@ $space-8:  64px;
 // -----------------------------------------------------------------------------
 // Layout
 // -----------------------------------------------------------------------------
-$cart-panel-width:      340px;  // Sidebar cart width on desktop
-$category-bar-height:    64px;  // Category filter bar height (= touch target)
-$header-height:          60px;  // Top app bar height
+$cart-panel-width:          340px;  // Sidebar cart width on desktop
+$category-sidebar-width:     90px;  // Vertical category nav width
+$category-bar-height:        64px;  // Category filter bar height (= touch target)
+$header-height:              60px;  // Top app bar height
 
 // -----------------------------------------------------------------------------
 // POS Color overrides
@@ -55,9 +56,11 @@ $color-bg-page:        #F8FAFC;  // Premium off-white — page background
 $color-border-soft:    #F1F5F9;  // Very light slate — separators
 
 // Premium UI tokens
-$shadow-card:          0 4px 20px rgba(0, 0, 0, 0.04);  // Extremely soft
-$shadow-card-hover:    0 8px 30px rgba(0, 0, 0, 0.08);  // Lift on hover
-$shadow-panel:         0 1px 3px rgba(0, 0, 0, 0.04);   // Subtle sidebar
+$shadow-card:          0 4px 20px rgba(0, 0, 0, 0.04);   // Extremely soft
+$shadow-card-hover:    0 8px 30px rgba(0, 0, 0, 0.08);   // Lift on hover
+$shadow-card-deep:     0 20px 40px rgba(0, 0, 0, 0.04);  // Mockup deep shadow
+$shadow-card-deep-hover: 0 24px 48px rgba(0, 0, 0, 0.08); // Mockup deep hover
+$shadow-panel:         0 1px 3px rgba(0, 0, 0, 0.04);    // Subtle sidebar
 $radius-card:          16px;
 $radius-button:        12px;
 $radius-pill:          9999px;

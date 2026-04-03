@@ -1,40 +1,20 @@
 <p-toast />
 
-<!-- POS Layout: Sidebar-first grid -->
+<!-- POS Layout: 3-column grid (Sidebar | Center | Cart) -->
 <div class="pos-layout">
 
-  <!-- LEFT PANE: Header + Categories + Products -->
-  <div class="pos-left-pane">
+  <!-- LEFT SIDEBAR: Vertical category navigation -->
+  <app-category-sidebar
+    [categories]="categories()"
+    [selectedCategoryId]="selectedCategoryId()"
+    (categorySelected)="selectCategory($event)"
+  />
 
-    <!-- Integrated header -->
+  <!-- CENTER STAGE: Header + Products -->
+  <div class="pos-center">
+
+    <!-- Transparent header -->
     <app-pos-header />
-
-    <!-- Category Filter Bar -->
-    <nav class="pos-category-bar" aria-label="Categorías">
-      <button
-        type="button"
-        class="cat-pill"
-        [class.cat-pill--active]="selectedCategoryId() === null"
-        (click)="selectCategory(null)"
-      >
-        <i class="pi pi-list"></i>
-        <span>Todos</span>
-      </button>
-
-      @for (cat of categories(); track cat.id) {
-        <button
-          type="button"
-          class="cat-pill"
-          [class.cat-pill--active]="selectedCategoryId() === cat.id"
-          (click)="selectCategory(cat.id)"
-        >
-          @if (cat.icon) {
-            <i class="pi {{ cat.icon }}"></i>
-          }
-          <span>{{ cat.name }}</span>
-        </button>
-      }
-    </nav>
 
     <!-- Product Grid (scrollable) -->
     <main class="pos-products" aria-label="Productos">

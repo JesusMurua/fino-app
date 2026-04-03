@@ -1,12 +1,19 @@
 <p-toast />
 
-<!-- Retail POS Layout: Sidebar-first grid -->
+<!-- Retail POS Layout: 3-column grid (Sidebar | Center | Cart) -->
 <div class="retail-layout">
 
-  <!-- LEFT PANE: Header + Search + Categories + Products -->
-  <div class="retail-left-pane">
+  <!-- LEFT SIDEBAR: Vertical category navigation -->
+  <app-category-sidebar
+    [categories]="categories()"
+    [selectedCategoryId]="selectedCategory()"
+    (categorySelected)="selectCategory($event)"
+  />
 
-    <!-- Integrated header -->
+  <!-- CENTER STAGE: Header + Search + Dense Product Table -->
+  <div class="retail-center">
+
+    <!-- Transparent header -->
     <app-pos-header />
 
     <!-- Search Bar -->
@@ -31,54 +38,63 @@
       }
     </div>
 
-    <!-- Category Chips -->
-    <nav class="retail-categories" aria-label="Categorías">
-      <button
-        type="button"
-        class="retail-chip"
-        [class.retail-chip--active]="selectedCategory() === null"
-        (click)="selectCategory(null)"
-      >
-        Todos
-      </button>
-      @for (cat of categories(); track cat.id) {
-        <button
-          type="button"
-          class="retail-chip"
-          [class.retail-chip--active]="selectedCategory() === cat.id"
-          (click)="selectCategory(cat.id)"
-        >
-          {{ cat.name }}
-        </button>
-      }
-    </nav>
-
-    <!-- Product Grid (scrollable) -->
-    <div class="retail-products">
-      @for (product of filteredProducts(); track product.id) {
-        <button
-          type="button"
-          class="retail-product-card"
-          [class.retail-product-card--unavailable]="!product.isAvailable"
-          [disabled]="!product.isAvailable"
-          (click)="addToCart(product)"
-        >
-          <span class="retail-product-card__name">{{ product.name }}</span>
-          <span class="retail-product-card__price">{{ product.priceCents | price }}</span>
-          @if (!product.isAvailable) {
-            <span class="retail-product-card__sold-out">Agotado</span>
-          } @else if (product.trackStock && (product.currentStock ?? 0) <= (product.lowStockThreshold ?? 5)) {
-            <span class="retail-product-card__low-stock">{{ product.currentStock }}</span>
+    <!-- Dense Product Table (scrollable) -->
+    <div class="retail-table-wrapper">
+      <table class="retail-table">
+        <thead>
+          <tr>
+            <th class="retail-table__th-name">Producto</th>
+            <th class="retail-table__th-price">Precio</th>
+            <th class="retail-table__th-stock">Stock</th>
+            <th class="retail-table__th-action"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (product of filteredProducts(); track product.id) {
+            <tr
+              class="retail-table__row"
+              [class.retail-table__row--unavailable]="!product.isAvailable"
+            >
+              <td class="retail-table__name">
+                <span class="retail-table__product-name">{{ product.name }}</span>
+                @if (product.barcode) {
+                  <span class="retail-table__barcode">{{ product.barcode }}</span>
+                }
+              </td>
+              <td class="retail-table__price">{{ product.priceCents | price }}</td>
+              <td class="retail-table__stock">
+                @if (!product.isAvailable) {
+                  <span class="retail-table__stock-badge retail-table__stock-badge--out">Agotado</span>
+                } @else if (product.trackStock && (product.currentStock ?? 0) <= (product.lowStockThreshold ?? 5)) {
+                  <span class="retail-table__stock-badge retail-table__stock-badge--low">{{ product.currentStock }}</span>
+                } @else if (product.trackStock) {
+                  <span class="retail-table__stock-val">{{ product.currentStock }}</span>
+                }
+              </td>
+              <td class="retail-table__action">
+                <button
+                  type="button"
+                  class="retail-table__add-btn"
+                  [disabled]="!product.isAvailable"
+                  (click)="addToCart(product)"
+                  aria-label="Agregar al carrito"
+                >
+                  <i class="pi pi-plus"></i>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            @if (!isLoading()) {
+              <tr>
+                <td colspan="4" class="retail-table__empty">
+                  <i class="pi pi-inbox"></i>
+                  <p>No hay productos</p>
+                </td>
+              </tr>
+            }
           }
-        </button>
-      } @empty {
-        @if (!isLoading()) {
-          <div class="retail-empty">
-            <i class="pi pi-inbox"></i>
-            <p>No hay productos</p>
-          </div>
-        }
-      }
+        </tbody>
+      </table>
     </div>
 
   </div>

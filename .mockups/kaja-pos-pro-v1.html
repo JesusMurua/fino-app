@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1194, initial-scale=1.0">
+<title>Kaja POS Pro — Visual Mockup v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════
+     RESET & BASE
+     ═══════════════════════════════════════════ */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #F8FAFC;
+    color: #374151;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══════════════════════════════════════════
+     3-COLUMN MASTER GRID
+     ═══════════════════════════════════════════ */
+  .pos-shell {
+    display: grid;
+    grid-template-columns: 90px 1fr 340px;
+    height: 100vh;
+    width: 100%;
+  }
+
+  /* ═══════════════════════════════════════════
+     LEFT SIDEBAR — Category Nav (90px)
+     ═══════════════════════════════════════════ */
+  .category-sidebar {
+    background: #FFFFFF;
+    border-right: 1px solid #F1F5F9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 4px;
+    z-index: 10;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+  }
+
+  .cat-item {
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #94A3B8;
+  }
+  .cat-item:hover {
+    background: #F8FAFC;
+    color: #64748B;
+  }
+  .cat-item.active {
+    background: #F0FDF4;
+    color: #16A34A;
+  }
+  .cat-item .cat-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .cat-item .cat-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .sidebar-spacer { flex: 1; }
+
+  .cat-item.settings-btn {
+    margin-top: auto;
+    color: #CBD5E1;
+  }
+  .cat-item.settings-btn:hover { color: #94A3B8; }
+
+  /* ═══════════════════════════════════════════
+     CENTER STAGE — Products
+     ═══════════════════════════════════════════ */
+  .center-stage {
+    background: #F8FAFC;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Minimalist transparent header */
+  .stage-header {
+    padding: 20px 28px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .stage-header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.3px;
+  }
+  .stage-header .subtitle {
+    font-size: 13px;
+    color: #94A3B8;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 16px;
+    width: 260px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus-within { border-color: #16A34A; }
+  .search-box svg { color: #94A3B8; flex-shrink: 0; }
+  .search-box input {
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    color: #374151;
+    width: 100%;
+    background: transparent;
+  }
+  .search-box input::placeholder { color: #CBD5E1; }
+
+  /* Pill filters row */
+  .filter-row {
+    padding: 0 28px 16px;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .filter-pill {
+    padding: 7px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1.5px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-pill:hover { border-color: #CBD5E1; color: #374151; }
+  .filter-pill.active {
+    background: #111827;
+    color: #FFFFFF;
+    border-color: #111827;
+  }
+
+  /* Product grid */
+  .product-grid-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 28px 28px;
+  }
+  .product-grid-wrapper::-webkit-scrollbar { width: 6px; }
+  .product-grid-wrapper::-webkit-scrollbar-track { background: transparent; }
+  .product-grid-wrapper::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 3px; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  /* ═══════════════════════════════════════════
+     PRODUCT CARDS
+     ═══════════════════════════════════════════ */
+  .product-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+    position: relative;
+  }
+  .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
+  }
+  .product-card:active {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .card-image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+    overflow: hidden;
+    position: relative;
+  }
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #16A34A;
+  }
+
+  .card-body {
+    padding: 14px 16px 16px;
+  }
+  .card-body .product-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1E293B;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .card-body .product-desc {
+    font-size: 12px;
+    color: #94A3B8;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-footer .price {
+    font-size: 18px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.3px;
+  }
+  .card-footer .price span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #94A3B8;
+  }
+  .add-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: #16A34A;
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+  }
+  .add-btn:hover {
+    background: #15803D;
+    transform: scale(1.08);
+  }
+
+  /* ═══════════════════════════════════════════
+     RIGHT SIDEBAR — Cart (340px, full height)
+     ═══════════════════════════════════════════ */
+  .cart-sidebar {
+    background: #FFFFFF;
+    border-left: 1px solid #F1F5F9;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .cart-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #F1F5F9;
+    flex-shrink: 0;
+  }
+  .cart-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .cart-header h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .cart-badge-count {
+    background: #16A34A;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+  .cart-clear-btn {
+    font-size: 13px;
+    color: #94A3B8;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .cart-clear-btn:hover { color: #DC2626; }
+
+  .cart-customer {
+    margin: 12px 24px 0;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .customer-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #3B82F6;
+  }
+  .customer-info { flex: 1; }
+  .customer-info .name { font-size: 13px; font-weight: 600; color: #1E293B; }
+  .customer-info .type { font-size: 11px; color: #94A3B8; font-weight: 500; }
+
+  /* Cart items list */
+  .cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 24px;
+  }
+  .cart-items::-webkit-scrollbar { width: 4px; }
+  .cart-items::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+
+  .cart-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #F8FAFC;
+    align-items: flex-start;
+  }
+  .cart-item:last-child { border-bottom: none; }
+
+  .cart-item-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #F1F5F9, #E2E8F0);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .cart-item-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-info .item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1E293B;
+    margin-bottom: 3px;
+  }
+  .cart-item-info .item-variant {
+    font-size: 11px;
+    color: #94A3B8;
+    margin-bottom: 8px;
+  }
+
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #F8FAFC;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .qty-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #64748B;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+  }
+  .qty-btn:hover { background: #E2E8F0; }
+  .qty-val {
+    width: 28px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1E293B;
+  }
+
+  .cart-item-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  /* Cart footer / totals */
+  .cart-footer {
+    padding: 0 24px 24px;
+    flex-shrink: 0;
+  }
+
+  .cart-totals {
+    background: #F8FAFC;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .total-row:last-child { margin-bottom: 0; }
+  .total-row .label {
+    font-size: 13px;
+    color: #64748B;
+    font-weight: 500;
+  }
+  .total-row .value {
+    font-size: 13px;
+    color: #374151;
+    font-weight: 600;
+  }
+  .total-row.grand {
+    padding-top: 10px;
+    margin-top: 4px;
+    border-top: 1.5px solid #E2E8F0;
+  }
+  .total-row.grand .label {
+    font-size: 15px;
+    color: #111827;
+    font-weight: 700;
+  }
+  .total-row.grand .value {
+    font-size: 20px;
+    color: #111827;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  /* Action buttons */
+  .cart-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+    color: white;
+    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-outline {
+    width: 100%;
+    padding: 14px 24px;
+    border: 2px solid #E2E8F0;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-outline:hover {
+    border-color: #16A34A;
+    color: #16A34A;
+    background: #F0FDF4;
+  }
+
+  /* ═══════════════════════════════════════════
+     TABLET FRAME — 1194×834 simulation
+     ═══════════════════════════════════════════ */
+  @media (min-width: 1200px) {
+    body {
+      background: #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+    .pos-shell {
+      width: 1194px;
+      height: 834px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.05),
+        0 50px 100px rgba(0,0,0,0.12),
+        0 20px 40px rgba(0,0,0,0.08);
+    }
+    .cart-sidebar { height: 834px; }
+  }
+
+  /* ═══════════════════════════════════════════
+     ANNOTATION WATERMARK
+     ═══════════════════════════════════════════ */
+  .mockup-watermark {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.85);
+    backdrop-filter: blur(12px);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 999;
+  }
+  .mockup-watermark span { color: #4ADE80; }
+</style>
+</head>
+<body>
+
+<div class="pos-shell">
+
+  <!-- ═══════ LEFT SIDEBAR — Categories ═══════ -->
+  <nav class="category-sidebar">
+    <div class="brand-mark">K</div>
+
+    <a class="cat-item active">
+      <div class="cat-icon">🍔</div>
+      <div class="cat-label">Comida</div>
+    </a>
+    <a class="cat-item">
+      <div class="cat-icon">🥤</div>
+      <div class="cat-label">Bebidas</div>
+    </a>
+    <a class="cat-item">
+      <div class="cat-icon">🌮</div>
+      <div class="cat-label">Tacos</div>
+    </a>
+    <a class="cat-item">
+      <div class="cat-icon">🍰</div>
+      <div class="cat-label">Postres</div>
+    </a>
+    <a class="cat-item">
+      <div class="cat-icon">🥗</div>
+      <div class="cat-label">Ensala.</div>
+    </a>
+    <a class="cat-item">
+      <div class="cat-icon">☕</div>
+      <div class="cat-label">Café</div>
+    </a>
+
+    <div class="sidebar-spacer"></div>
+
+    <a class="cat-item settings-btn">
+      <div class="cat-icon">⚙️</div>
+      <div class="cat-label">Config</div>
+    </a>
+  </nav>
+
+  <!-- ═══════ CENTER STAGE — Products ═══════ -->
+  <main class="center-stage">
+
+    <div class="stage-header">
+      <div>
+        <h1>Comida</h1>
+        <div class="subtitle">12 productos disponibles</div>
+      </div>
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Buscar producto...">
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-pill active">Todos</button>
+      <button class="filter-pill">Populares</button>
+      <button class="filter-pill">Nuevos</button>
+      <button class="filter-pill">En oferta</button>
+    </div>
+
+    <div class="product-grid-wrapper">
+      <div class="product-grid">
+
+        <!-- Card 1 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/f0fdf4/16a34a?text=Hamburguesa+Cl%C3%A1sica" alt="Hamburguesa">
+            <div class="card-badge">⭐ Popular</div>
+          </div>
+          <div class="card-body">
+            <div class="product-name">Hamburguesa Clásica</div>
+            <div class="product-desc">Carne 150g, lechuga, tomate, queso</div>
+            <div class="card-footer">
+              <div class="price">$89 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/fef3c7/d97706?text=Torta+Cubana" alt="Torta">
+          </div>
+          <div class="card-body">
+            <div class="product-name">Torta Cubana</div>
+            <div class="product-desc">Jamón, queso, milanesa, aguacate</div>
+            <div class="card-footer">
+              <div class="price">$75 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/fce4ec/dc2626?text=Orden+de+Tacos" alt="Tacos">
+            <div class="card-badge">🔥 Nuevo</div>
+          </div>
+          <div class="card-body">
+            <div class="product-name">Orden de Tacos (5)</div>
+            <div class="product-desc">Pastor, cilantro, cebolla, piña</div>
+            <div class="card-footer">
+              <div class="price">$65 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/ede9fe/7c3aed?text=Ensalada+César" alt="Ensalada">
+          </div>
+          <div class="card-body">
+            <div class="product-name">Ensalada César</div>
+            <div class="product-desc">Lechuga romana, crutones, parmesano</div>
+            <div class="card-footer">
+              <div class="price">$55 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/dbeafe/2563eb?text=Agua+de+Horchata" alt="Horchata">
+          </div>
+          <div class="card-body">
+            <div class="product-name">Agua de Horchata</div>
+            <div class="product-desc">1 litro, arroz, canela, vainilla</div>
+            <div class="card-footer">
+              <div class="price">$30 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/f0fdf4/16a34a?text=Quesadilla+Grande" alt="Quesadilla">
+            <div class="card-badge">⭐ Popular</div>
+          </div>
+          <div class="card-body">
+            <div class="product-name">Quesadilla Grande</div>
+            <div class="product-desc">Queso Oaxaca, champiñones, flor</div>
+            <div class="card-footer">
+              <div class="price">$45 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 7 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/fef9c3/ca8a04?text=Papas+con+Queso" alt="Papas">
+          </div>
+          <div class="card-body">
+            <div class="product-name">Papas con Queso</div>
+            <div class="product-desc">Papas fritas, queso cheddar, tocino</div>
+            <div class="card-footer">
+              <div class="price">$52 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 8 -->
+        <div class="product-card">
+          <div class="card-image">
+            <img src="https://placehold.co/400x300/fce7f3/db2777?text=Pastel+de+Chocolate" alt="Pastel">
+          </div>
+          <div class="card-body">
+            <div class="product-name">Pastel de Chocolate</div>
+            <div class="product-desc">Rebanada con ganache y fresas</div>
+            <div class="card-footer">
+              <div class="price">$48 <span>MXN</span></div>
+              <button class="add-btn">+</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════ RIGHT SIDEBAR — Cart (Full Height) ═══════ -->
+  <aside class="cart-sidebar">
+
+    <div class="cart-header">
+      <div class="cart-header-row">
+        <h2>Orden Actual</h2>
+        <div class="cart-badge-count">3 items</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+        <span style="font-size:12px; color:#94A3B8; font-weight:500;">Mesa 4 · 12:34 PM</span>
+        <button class="cart-clear-btn">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="cart-customer">
+      <div class="customer-avatar">👤</div>
+      <div class="customer-info">
+        <div class="name">Cliente Directo</div>
+        <div class="type">Walk-up · Sin cuenta</div>
+      </div>
+    </div>
+
+    <div class="cart-items">
+
+      <!-- Cart item 1 -->
+      <div class="cart-item">
+        <div class="cart-item-thumb">
+          <img src="https://placehold.co/96x96/f0fdf4/16a34a?text=🍔" alt="">
+        </div>
+        <div class="cart-item-info">
+          <div class="item-name">Hamburguesa Clásica</div>
+          <div class="item-variant">Grande · Extra queso</div>
+          <div class="qty-control">
+            <button class="qty-btn">−</button>
+            <div class="qty-val">2</div>
+            <button class="qty-btn">+</button>
+          </div>
+        </div>
+        <div class="cart-item-price">$178</div>
+      </div>
+
+      <!-- Cart item 2 -->
+      <div class="cart-item">
+        <div class="cart-item-thumb">
+          <img src="https://placehold.co/96x96/fce4ec/dc2626?text=🌮" alt="">
+        </div>
+        <div class="cart-item-info">
+          <div class="item-name">Orden de Tacos (5)</div>
+          <div class="item-variant">Pastor · Extra salsa</div>
+          <div class="qty-control">
+            <button class="qty-btn">−</button>
+            <div class="qty-val">1</div>
+            <button class="qty-btn">+</button>
+          </div>
+        </div>
+        <div class="cart-item-price">$65</div>
+      </div>
+
+      <!-- Cart item 3 -->
+      <div class="cart-item">
+        <div class="cart-item-thumb">
+          <img src="https://placehold.co/96x96/dbeafe/2563eb?text=🥤" alt="">
+        </div>
+        <div class="cart-item-info">
+          <div class="item-name">Agua de Horchata</div>
+          <div class="item-variant">1 litro</div>
+          <div class="qty-control">
+            <button class="qty-btn">−</button>
+            <div class="qty-val">1</div>
+            <button class="qty-btn">+</button>
+          </div>
+        </div>
+        <div class="cart-item-price">$30</div>
+      </div>
+
+    </div>
+
+    <div class="cart-footer">
+      <div class="cart-totals">
+        <div class="total-row">
+          <span class="label">Subtotal</span>
+          <span class="value">$273.00</span>
+        </div>
+        <div class="total-row">
+          <span class="label">IVA (16%)</span>
+          <span class="value">$43.68</span>
+        </div>
+        <div class="total-row grand">
+          <span class="label">Total</span>
+          <span class="value">$316.68</span>
+        </div>
+      </div>
+
+      <div class="cart-actions">
+        <button class="btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          Enviar a Cocina
+        </button>
+        <button class="btn-outline">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          Cobrar Directo
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<div class="mockup-watermark">
+  <span>KAJA POS PRO</span> — Visual Mockup v1 · Tablet 1194×834
+</div>
+
+</body>
+</html>
