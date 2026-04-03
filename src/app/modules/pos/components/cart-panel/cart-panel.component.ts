@@ -11,6 +11,7 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { OrderContextService } from '../../../../core/services/order-context.service';
@@ -71,6 +72,7 @@ export class CartPanelComponent implements OnInit {
     private readonly syncService: SyncService,
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
+    private readonly cashRegisterService: CashRegisterService,
     private readonly db: DatabaseService,
     private readonly promotionService: PromotionService,
     private readonly orderContextService: OrderContextService,
@@ -127,6 +129,7 @@ export class CartPanelComponent implements OnInit {
 
   /** Navigates to the checkout page */
   onCheckout(): void {
+    if (!this.requireOpenSession()) return;
     this.router.navigate(['/pos/checkout']);
   }
 
@@ -135,6 +138,7 @@ export class CartPanelComponent implements OnInit {
    * Used in waiter/tables mode. Guarded against double-tap.
    */
   async onSendToKitchen(): Promise<void> {
+    if (!this.requireOpenSession()) return;
     if (this.isProcessing()) return;
 
     const newItems = this.cartService.getSnapshot();
@@ -178,6 +182,7 @@ export class CartPanelComponent implements OnInit {
       tableName: tableName ?? undefined,
       createdAt: new Date(),
       branchId: this.authService.branchId,
+      cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
     };
 
     await this.syncService.saveOrder(order);
@@ -231,6 +236,22 @@ export class CartPanelComponent implements OnInit {
   async onCancelOrder(): Promise<void> {
     await this.cartService.clearCart();
     this.orderContextService.clearActiveOrder();
+  }
+
+  /**
+   * Checks for an active cash register session.
+   * Shows a warning toast and returns false when no session is open.
+   */
+  private requireOpenSession(): boolean {
+    if (this.cashRegisterService.hasOpenSession()) return true;
+
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Apertura de caja requerida',
+      detail: 'Debes abrir un turno de caja para procesar órdenes.',
+      life: 5000,
+    });
+    return false;
   }
   //#endregion
 

@@ -100,6 +100,8 @@ export interface Order {
   tableId?: number;
   /** Snapshot of the table name at order creation */
   tableName?: string;
+  /** Cash register session active when the order was created */
+  cashRegisterSessionId?: number;
   /** Origin platform for this order */
   orderSource?: OrderSource;
   /** External order ID from aggregator platform */

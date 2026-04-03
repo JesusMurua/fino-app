@@ -11,8 +11,11 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 
 import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
+import { MessageService } from 'primeng/api';
+
 import { CartItem, DiscountPreset, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
@@ -222,6 +225,9 @@ export class CheckoutComponent implements OnInit {
   /** Expose for template */
   readonly PaymentMethod = PaymentMethod;
 
+  /** True when no cash register session is open — blocks payment confirmation */
+  readonly sessionBlocked = computed(() => !this.cashRegisterService.hasOpenSession());
+
   /** Returns display label for an order's payments */
   orderPaymentLabel(order: Order): string {
     return getPaymentLabel(order);
@@ -236,6 +242,7 @@ export class CheckoutComponent implements OnInit {
   constructor(
     private readonly cartService: CartService,
     private readonly syncService: SyncService,
+    private readonly cashRegisterService: CashRegisterService,
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
     private readonly tableService: TableService,
@@ -246,6 +253,7 @@ export class CheckoutComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly authService: AuthService,
+    private readonly messageService: MessageService,
   ) {
     // Phase 2: Replace orphaned cart$.subscribe() with an effect
     effect(() => {
@@ -464,6 +472,7 @@ export class CheckoutComponent implements OnInit {
    * Guarded against double-tap via isProcessing signal.
    */
   async onConfirmPayment(): Promise<void> {
+    if (!this.requireOpenSession()) return;
     if (this.isProcessing() || !this.canConfirm()) return;
 
     // Check if existing order is still in kitchen
@@ -513,6 +522,7 @@ export class CheckoutComponent implements OnInit {
           orderPromotionName: this.discountLabel() || undefined,
           totalCents: finalTotal,
           syncStatus: 'Pending',
+          cashRegisterSessionId: existing.cashRegisterSessionId ?? this.cashRegisterService.activeSession()?.id,
         };
 
         await this.db.orders.put(order);
@@ -537,6 +547,7 @@ export class CheckoutComponent implements OnInit {
           createdAt: new Date(),
           syncStatus: 'Pending',
           branchId: this.authService.branchId,
+          cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
           tableId: this.tableId() ?? undefined,
           tableName: this.tableName() ?? undefined,
         };
@@ -586,6 +597,22 @@ export class CheckoutComponent implements OnInit {
     sessionStorage.removeItem('addingToOrder');
     // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
     // NOT removed here so the table release prompt still works on the confirmed step.
+  }
+
+  /**
+   * Checks for an active cash register session.
+   * Shows a warning toast and returns false when no session is open.
+   */
+  private requireOpenSession(): boolean {
+    if (this.cashRegisterService.hasOpenSession()) return true;
+
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Apertura de caja requerida',
+      detail: 'Debes abrir un turno de caja para procesar órdenes.',
+      life: 5000,
+    });
+    return false;
   }
 
   /** Navigates back to the POS grid without completing the order */

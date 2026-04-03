@@ -280,8 +280,8 @@
       <button
         type="button"
         class="btn-confirm"
-        [class.btn-confirm--disabled]="!canConfirm() || isProcessing()"
-        [disabled]="!canConfirm() || isProcessing()"
+        [class.btn-confirm--disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
+        [disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
         (click)="onConfirmPayment()"
       >
         @if (isProcessing()) {
@@ -292,6 +292,12 @@
           Confirmar pago
         }
       </button>
+      @if (sessionBlocked()) {
+        <span class="checkout-footer__session-warning">
+          <i class="pi pi-exclamation-triangle"></i>
+          Abre un turno de caja para cobrar
+        </span>
+      }
     </footer>
 
   }
