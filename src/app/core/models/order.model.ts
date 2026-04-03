@@ -7,7 +7,12 @@ export enum PaymentMethod {
   Card = 'Card',
   Transfer = 'Transfer',
   Other = 'Other',
+  Clip = 'Clip',
+  MercadoPagoQR = 'MercadoPagoQR',
 }
+
+/** Transaction status for provider-backed payments */
+export type PaymentTransactionStatus = 'approved' | 'pending' | 'declined';
 
 /** A single payment applied to an order */
 export interface OrderPayment {
@@ -17,6 +22,16 @@ export interface OrderPayment {
   amountCents: number;
   /** Optional reference (last 4 digits, auth number, etc.) */
   reference?: string;
+  /** Payment provider identifier (e.g. 'clip', 'mercadopago') */
+  paymentProvider?: string;
+  /** Transaction ID from the external payment provider */
+  externalTransactionId?: string;
+  /** Provider-specific metadata (receipt ID, terminal info, etc.) */
+  paymentMetadata?: Record<string, unknown>;
+  /** Transaction status from the provider */
+  transactionStatus?: PaymentTransactionStatus;
+  /** Timestamp when the provider authorized the payment */
+  authorizedAt?: Date;
 }
 
 /** Display metadata for payment method buttons */
@@ -24,14 +39,28 @@ export interface PaymentMethodOption {
   method: PaymentMethod;
   label: string;
   icon: string;
+  /** True if this method requires async processing via an external provider */
+  requiresProvider?: boolean;
 }
 
-/** All available payment method options */
+/** Base payment method options — always available */
 export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { method: PaymentMethod.Cash,     label: 'Efectivo',       icon: 'pi-money-bill' },
   { method: PaymentMethod.Card,     label: 'Tarjeta',        icon: 'pi-credit-card' },
   { method: PaymentMethod.Transfer, label: 'Transferencia',  icon: 'pi-arrows-h' },
   { method: PaymentMethod.Other,    label: 'Otro',           icon: 'pi-ellipsis-h' },
+];
+
+/** Provider-backed payment method options — shown only when enabled in branch config */
+export const PROVIDER_PAYMENT_OPTIONS: PaymentMethodOption[] = [
+  { method: PaymentMethod.Clip,          label: 'Clip',        icon: 'pi-credit-card', requiresProvider: true },
+  { method: PaymentMethod.MercadoPagoQR, label: 'MercadoPago', icon: 'pi-qrcode',      requiresProvider: true },
+];
+
+/** Lookup map for all payment method labels (including providers) */
+export const ALL_PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
+  ...PAYMENT_METHOD_OPTIONS,
+  ...PROVIDER_PAYMENT_OPTIONS,
 ];
 
 /**
@@ -126,7 +155,7 @@ export interface Order {
 export function getPaymentLabel(order: Order): string {
   if (!order.payments || order.payments.length === 0) return 'Sin cobrar';
   return order.payments
-    .map(p => PAYMENT_METHOD_OPTIONS.find(o => o.method === p.method)?.label ?? p.method)
+    .map(p => ALL_PAYMENT_METHOD_OPTIONS.find(o => o.method === p.method)?.label ?? p.method)
     .join(' + ');
 }
 

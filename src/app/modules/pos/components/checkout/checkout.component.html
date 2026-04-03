@@ -214,14 +214,18 @@
         </div>
 
         <div class="payment-methods-row">
-          @for (opt of paymentMethodOptions; track opt.method) {
+          @for (opt of paymentOptions(); track opt.method) {
             <button
               type="button"
               class="payment-method-btn"
+              [class.payment-method-btn--provider]="opt.requiresProvider"
               (click)="openAddPayment(opt.method)"
             >
               <i [class]="'pi ' + opt.icon"></i>
               {{ opt.label }}
+              @if (opt.requiresProvider) {
+                <span class="payment-method-btn__badge">Terminal</span>
+              }
             </button>
           }
         </div>
@@ -235,7 +239,7 @@
                   {{ getPaymentMethodLabel(p.method) }}
                 </span>
                 @if (p.reference) {
-                  <span class="payment-reference">{{ p.reference }}</span>
+                  <span class="payment-reference">{{ p.paymentProvider ? '•••' : '' }}{{ p.reference }}</span>
                 }
                 <span class="payment-amount">{{ p.amountCents | price }}</span>
                 <button
@@ -532,7 +536,7 @@
     </div>
 
     <div class="payment-methods-row">
-      @for (opt of paymentMethodOptions; track opt.method) {
+      @for (opt of paymentOptions(); track opt.method) {
         <button
           type="button"
           class="payment-method-btn"
@@ -545,3 +549,11 @@
     </div>
   </div>
 </p-dialog>
+
+<!-- Payment processing dialog (Clip / MercadoPago) -->
+<app-payment-processing-dialog
+  [(visible)]="showProcessingDialog"
+  [transaction]="paymentProviderService.activeTransaction()"
+  (paymentConfirmed)="onProviderPaymentConfirmed($event)"
+  (paymentCancelled)="onProviderPaymentCancelled()"
+/>

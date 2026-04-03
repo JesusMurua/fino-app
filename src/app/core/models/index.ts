@@ -11,6 +11,7 @@ export * from './cash-register.model';
 export * from './discount-preset.model';
 export * from './inventory.model';
 export * from './order.model';
+export * from './payment.model';
 export * from './plan.model';
 export * from './product-import.model';
 export * from './promotion.model';

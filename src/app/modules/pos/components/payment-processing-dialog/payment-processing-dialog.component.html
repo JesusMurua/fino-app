@@ -1,0 +1,178 @@
+<p-dialog
+  [header]="dialogHeader()"
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="false"
+  [style]="{ width: '420px' }"
+  styleClass="payment-processing-dialog"
+>
+  @if (transaction(); as tx) {
+
+    <!-- ================================================================ -->
+    <!-- Clip: awaiting reference input                                    -->
+    <!-- ================================================================ -->
+    @if (tx.provider === 'clip' && (tx.status === 'processing' || tx.status === 'awaiting_reference')) {
+      <div class="ppd__body">
+        <div class="ppd__icon ppd__icon--processing">
+          <i class="pi pi-credit-card"></i>
+        </div>
+
+        <p class="ppd__title">Procesa el pago en la terminal</p>
+        <p class="ppd__amount">{{ tx.amountCents | price }}</p>
+
+        <div class="ppd__field">
+          <label for="clip-ref" class="ppd__label">Referencia / últimos 4 dígitos</label>
+          <input
+            id="clip-ref"
+            type="text"
+            pInputText
+            [ngModel]="clipReference()"
+            (ngModelChange)="clipReference.set($event)"
+            placeholder="Ej. 4532"
+            class="ppd__input"
+            maxlength="20"
+            (keydown.enter)="canConfirmClip() && onConfirmClip()"
+          />
+        </div>
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="ppd__footer">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="ppd__btn ppd__btn--primary"
+            [disabled]="!canConfirmClip()"
+            (click)="onConfirmClip()"
+          >
+            <i class="pi pi-check"></i>
+            Confirmar pago
+          </button>
+        </div>
+      </ng-template>
+    }
+
+    <!-- ================================================================ -->
+    <!-- MercadoPago: QR + polling                                         -->
+    <!-- ================================================================ -->
+    @if (tx.provider === 'mercadopago' && tx.status === 'processing') {
+      <div class="ppd__body">
+        @if (tx.qrCodeData) {
+          <div class="ppd__qr-wrapper">
+            <img [src]="tx.qrCodeData" alt="QR MercadoPago" class="ppd__qr-img" />
+          </div>
+        } @else {
+          <div class="ppd__icon ppd__icon--processing">
+            <i class="pi pi-spin pi-spinner"></i>
+          </div>
+        }
+
+        <p class="ppd__title">Escanea con MercadoPago</p>
+        <p class="ppd__amount">{{ tx.amountCents | price }}</p>
+        <p class="ppd__hint">
+          <i class="pi pi-spin pi-spinner ppd__hint-spinner"></i>
+          Esperando escaneo...
+        </p>
+
+        <p-progressBar
+          [value]="0"
+          mode="indeterminate"
+          [style]="{ height: '4px' }"
+          styleClass="ppd__progress"
+        />
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="ppd__footer ppd__footer--center">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+        </div>
+      </ng-template>
+    }
+
+    <!-- ================================================================ -->
+    <!-- Approved state (both providers)                                    -->
+    <!-- ================================================================ -->
+    @if (tx.status === 'approved') {
+      <div class="ppd__body">
+        <div class="ppd__icon ppd__icon--success">
+          <i class="pi pi-check"></i>
+        </div>
+        <p class="ppd__title">Pago aprobado</p>
+        <p class="ppd__amount">{{ tx.amountCents | price }}</p>
+        @if (tx.reference) {
+          <p class="ppd__detail">Ref. {{ tx.reference }}</p>
+        }
+        @if (tx.externalTransactionId) {
+          <p class="ppd__detail ppd__detail--muted">ID: {{ tx.externalTransactionId }}</p>
+        }
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="ppd__footer ppd__footer--center">
+          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onAcceptApproved()">
+            Continuar
+          </button>
+        </div>
+      </ng-template>
+    }
+
+    <!-- ================================================================ -->
+    <!-- Declined state                                                    -->
+    <!-- ================================================================ -->
+    @if (tx.status === 'declined') {
+      <div class="ppd__body">
+        <div class="ppd__icon ppd__icon--error">
+          <i class="pi pi-times"></i>
+        </div>
+        <p class="ppd__title">Pago rechazado</p>
+        @if (tx.errorMessage) {
+          <p class="ppd__detail">{{ tx.errorMessage }}</p>
+        }
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="ppd__footer">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onRetry()">
+            <i class="pi pi-refresh"></i>
+            Reintentar
+          </button>
+        </div>
+      </ng-template>
+    }
+
+    <!-- ================================================================ -->
+    <!-- Timeout state                                                     -->
+    <!-- ================================================================ -->
+    @if (tx.status === 'timeout') {
+      <div class="ppd__body">
+        <div class="ppd__icon ppd__icon--warning">
+          <i class="pi pi-clock"></i>
+        </div>
+        <p class="ppd__title">Tiempo expirado</p>
+        <p class="ppd__detail">No se recibió confirmación del pago</p>
+      </div>
+
+      <ng-template pTemplate="footer">
+        <div class="ppd__footer">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onRetry()">
+            <i class="pi pi-refresh"></i>
+            Reintentar
+          </button>
+        </div>
+      </ng-template>
+    }
+
+  }
+</p-dialog>

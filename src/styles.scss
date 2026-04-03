@@ -266,6 +266,25 @@ textarea.p-inputtextarea:enabled:focus {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  // Provider-backed method (Clip, MercadoPago) — accent left border
+  &--provider {
+    position: relative;
+    border-left: 3px solid #3B82F6;
+  }
+
+  &__badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-size: 9px;
+    font-weight: 600;
+    background: #EFF6FF;
+    color: #3B82F6;
+    line-height: 1.4;
+  }
 }
 
 // =============================================================================

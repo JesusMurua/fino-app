@@ -13,9 +13,11 @@ import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
-import { CartItem, DiscountPreset, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, getPaymentLabel } from '../../../../core/models';
+import { CartItem, DiscountPreset, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
+import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
@@ -39,6 +41,7 @@ type CheckoutStep = 'payment' | 'confirmed';
     InputTextModule,
     RadioButtonModule,
     PricePipe,
+    PaymentProcessingDialogComponent,
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.scss',
@@ -60,7 +63,11 @@ export class CheckoutComponent implements OnInit {
   dialogAmountPesos = 0;
   dialogReference = '';
 
-  readonly paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
+  /** Available payment methods (base + enabled providers from branch config) */
+  readonly paymentOptions = computed(() => this.paymentProviderService.getAvailableOptions());
+
+  /** Controls visibility of the PaymentProcessingDialog */
+  readonly showProcessingDialog = signal(false);
 
   /** The completed order, available after confirmPayment() succeeds */
   readonly completedOrder = signal<Order | null>(null);
@@ -243,6 +250,7 @@ export class CheckoutComponent implements OnInit {
     private readonly cartService: CartService,
     private readonly syncService: SyncService,
     private readonly cashRegisterService: CashRegisterService,
+    readonly paymentProviderService: PaymentProviderService,
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
     private readonly tableService: TableService,
@@ -297,11 +305,16 @@ export class CheckoutComponent implements OnInit {
   //#region Multi-Payment Methods
 
   /**
-   * Opens the add payment dialog for a given method.
-   * Pre-fills amount with remainingCents in pesos.
+   * Opens the appropriate payment dialog for a given method.
+   * Provider-backed methods (Clip, MercadoPago) open the processing dialog.
+   * Standard methods open the simple amount/reference dialog.
    * @param method The payment method to add
    */
   openAddPayment(method: PaymentMethod): void {
+    if (this.paymentProviderService.requiresProcessing(method)) {
+      this.startProviderPayment(method);
+      return;
+    }
     this.dialogMethod.set(method);
     this.dialogAmountPesos = this.remainingCents() / 100;
     this.dialogReference = '';
@@ -333,15 +346,42 @@ export class CheckoutComponent implements OnInit {
     this.pendingPayments.update(arr => arr.filter((_, i) => i !== index));
   }
 
-  /** Returns display label for a payment method */
+  /** Returns display label for a payment method (including providers) */
   getPaymentMethodLabel(method: PaymentMethod): string {
-    return PAYMENT_METHOD_OPTIONS.find(o => o.method === method)?.label ?? method;
+    return ALL_PAYMENT_METHOD_OPTIONS.find(o => o.method === method)?.label ?? method;
   }
 
   /** Whether the reference field should show for a method */
   showReferenceField(): boolean {
     const m = this.dialogMethod();
     return m === PaymentMethod.Card || m === PaymentMethod.Transfer;
+  }
+
+  //#endregion
+
+  //#region Provider Payment Methods
+
+  /**
+   * Starts a provider-backed payment transaction.
+   * Opens the processing dialog and initiates the provider flow.
+   */
+  private async startProviderPayment(method: PaymentMethod): Promise<void> {
+    const amountCents = this.remainingCents();
+    if (amountCents <= 0) return;
+
+    this.showProcessingDialog.set(true);
+    await this.paymentProviderService.startTransaction(method, amountCents);
+  }
+
+  /** Handles a confirmed payment from the processing dialog */
+  onProviderPaymentConfirmed(payment: OrderPayment): void {
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showProcessingDialog.set(false);
+  }
+
+  /** Handles cancellation from the processing dialog */
+  onProviderPaymentCancelled(): void {
+    this.showProcessingDialog.set(false);
   }
 
   //#endregion
@@ -543,7 +583,7 @@ export class CheckoutComponent implements OnInit {
           payments,
           paidCents,
           changeCents: this.changeCents(),
-          paymentProvider: null,
+          paymentProvider: this.derivePaymentProvider(payments),
           createdAt: new Date(),
           syncStatus: 'Pending',
           branchId: this.authService.branchId,
@@ -613,6 +653,18 @@ export class CheckoutComponent implements OnInit {
       life: 5000,
     });
     return false;
+  }
+
+  /**
+   * Derives the order-level paymentProvider from the payments array.
+   * Returns the single provider if all payments use the same one,
+   * 'mixed' if multiple providers are used, or null if none.
+   */
+  private derivePaymentProvider(payments: OrderPayment[]): string | null {
+    const providers = [...new Set(payments.map(p => p.paymentProvider).filter(Boolean))];
+    if (providers.length === 0) return null;
+    if (providers.length === 1) return providers[0]!;
+    return 'mixed';
   }
 
   /** Navigates back to the POS grid without completing the order */
