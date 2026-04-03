@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 
 import { CartItem, Order, getPaymentLabel } from '../../core/models';
 import { OrderSource } from '../../core/enums';
 import { OrderDisplayStatus } from '../../core/services/orders.service';
+import { PrintService } from '../../core/services/print.service';
 import { PlatformChipComponent } from '../../shared/components/platform-chip/platform-chip.component';
 import { PricePipe } from '../../shared/pipes/price.pipe';
 
@@ -15,6 +16,8 @@ import { PricePipe } from '../../shared/pipes/price.pipe';
   styleUrl: './order-row.component.scss',
 })
 export class OrderRowComponent {
+
+  private readonly printService = inject(PrintService);
 
   //#region Inputs
   @Input({ required: true }) order!: Order;
@@ -31,6 +34,7 @@ export class OrderRowComponent {
   @Output() cancelOrder = new EventEmitter<string>();
   @Output() viewTicket = new EventEmitter<Order>();
   @Output() chargeOrder = new EventEmitter<Order>();
+  @Output() printError = new EventEmitter<string>();
   //#endregion
 
   readonly OrderSource = OrderSource;
@@ -102,42 +106,18 @@ export class OrderRowComponent {
     this.viewTicket.emit(this.order);
   }
 
-  /** Generates a kitchen comanda (no prices) and triggers window.print() */
-  onPrint(): void {
-    const time = new Date(this.order.createdAt);
-    const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
-
-    let html = `
-      <div class="print-comanda">
-        <div class="print-comanda__separator">────────────────────</div>
-        <div class="print-comanda__title">COMANDA</div>
-        <div class="print-comanda__order">Orden #${this.order.orderNumber}</div>
-        <div class="print-comanda__time">${timeStr} hrs</div>
-        <div class="print-comanda__separator">────────────────────</div>`;
-
-    for (const item of this.order.items) {
-      html += `<div class="print-comanda__item">${item.quantity}x  ${item.product.name}</div>`;
-      if (item.size) {
-        html += `<div class="print-comanda__meta">    Tamaño: ${item.size.label}</div>`;
-      }
-      for (const extra of item.extras) {
-        html += `<div class="print-comanda__meta">    + ${extra.label}</div>`;
-      }
-      if (item.notes) {
-        html += `<div class="print-comanda__notes">    ⚠ ${item.notes}</div>`;
-      }
+  /**
+   * Prints a kitchen comanda (items + qty + table, NO prices).
+   * If thermal printer connected → ESC/POS (non-blocking).
+   * If not → falls back to window.print() (blocking).
+   */
+  async onPrint(): Promise<void> {
+    try {
+      await this.printService.printKitchenComanda(this.order);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error de impresora';
+      this.printError.emit(msg);
     }
-
-    html += `<div class="print-comanda__separator">────────────────────</div></div>`;
-
-    const printEl = document.createElement('div');
-    printEl.id = 'print-comanda-area';
-    printEl.innerHTML = html;
-    document.body.appendChild(printEl);
-
-    window.print();
-
-    document.body.removeChild(printEl);
   }
 
   //#endregion

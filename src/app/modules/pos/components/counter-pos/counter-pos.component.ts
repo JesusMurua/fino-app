@@ -299,7 +299,16 @@ export class CounterPosComponent implements OnInit, OnDestroy {
 
     // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
 
-    await this.printService.printTicket(order);
+    try {
+      await this.printService.printTicket(order);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error de impresora',
+        detail: 'No se pudo imprimir el ticket. Reimprime desde Órdenes.',
+        life: 5000,
+      });
+    }
 
     this.messageService.add({
       severity: 'success',

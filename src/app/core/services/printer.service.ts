@@ -81,6 +81,9 @@ export class PrinterService {
   /** Port/connection description */
   readonly printerPort = signal('');
 
+  /** Last print error message — components can display this reactively */
+  readonly lastPrintError = signal<string | null>(null);
+
   /** Active transport instance */
   private transport: PrinterTransport | null = null;
 
@@ -257,6 +260,60 @@ export class PrinterService {
     await this.cutPaper();
   }
 
+  /**
+   * Prints a kitchen comanda via ESC/POS — items + qty + table, NO prices.
+   * @param order The order data for the comanda
+   */
+  async printKitchenComanda(order: {
+    orderNumber: number;
+    tableName?: string;
+    createdAt: Date;
+    items: { quantity: number; product: { name: string }; size?: { label: string }; extras: { label: string }[]; notes?: string }[];
+  }): Promise<void> {
+    const time = new Date(order.createdAt);
+    const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+
+    const lines: TicketLine[] = [
+      { text: 'COMANDA', align: 'center', bold: true, large: true },
+      { text: '', align: 'center' },
+      { text: '', align: 'center', divider: true },
+      { text: `Orden #${order.orderNumber}`, align: 'center', bold: true },
+      { text: timeStr + ' hrs', align: 'center' },
+    ];
+
+    if (order.tableName) {
+      lines.push({ text: `Mesa: ${order.tableName}`, align: 'center', bold: true });
+    }
+
+    lines.push(
+      { text: '', align: 'center', divider: true },
+      { text: '', align: 'center' },
+    );
+
+    for (const item of order.items) {
+      lines.push({ text: `${item.quantity}x  ${item.product.name}`, align: 'left', bold: true });
+      if (item.size) {
+        lines.push({ text: `    Tamaño: ${item.size.label}`, align: 'left' });
+      }
+      for (const extra of item.extras) {
+        lines.push({ text: `    + ${extra.label}`, align: 'left' });
+      }
+      if (item.notes) {
+        lines.push({ text: `    * ${item.notes}`, align: 'left' });
+      }
+    }
+
+    lines.push(
+      { text: '', align: 'center' },
+      { text: '', align: 'center', divider: true },
+      { text: '', align: 'center' },
+      { text: '', align: 'center' },
+    );
+
+    await this.sendBytes(this.buildTicketBytes(lines));
+    await this.cutPaper();
+  }
+
   //#endregion
 
   //#region Private Helpers
@@ -303,18 +360,24 @@ export class PrinterService {
     return serial;
   }
 
-  /** Sends raw bytes through the active transport */
+  /**
+   * Sends raw bytes through the active transport.
+   * Throws on failure so callers can handle errors (toast, retry).
+   */
   private async sendBytes(data: Uint8Array): Promise<void> {
     if (!this.transport?.isConnected) {
-      console.warn('[PrinterService] No transport connected');
-      return;
+      throw new Error('Impresora no conectada');
     }
 
     try {
       await this.transport.write(data);
+      this.lastPrintError.set(null);
     } catch (error) {
       console.error('[PrinterService] Failed to send bytes:', error);
       this.resetState();
+      const message = error instanceof Error ? error.message : 'Error de comunicación con la impresora';
+      this.lastPrintError.set(message);
+      throw new Error(message);
     }
   }
 

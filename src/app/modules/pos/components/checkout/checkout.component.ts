@@ -72,7 +72,7 @@ export class CheckoutComponent implements OnInit {
   readonly cartItems = signal<CartItem[]>([]);
 
   /** Whether the printer fallback "Ver ticket" button should be shown */
-  readonly showTicketFallback = !this.printService.hasThermalPrinter();
+  readonly showTicketFallback = computed(() => !this.printService.hasThermalPrinter());
 
   /** Timestamp of component init — used to debounce empty-cart redirect */
   private readonly initTime = Date.now();
@@ -547,7 +547,13 @@ export class CheckoutComponent implements OnInit {
       // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
       // No frontend deduction needed — optimistic local stock was already adjusted by CartService.
 
-      await this.printService.printTicket(order);
+      try {
+        await this.printService.printTicket(order);
+      } catch {
+        // Print failed — order is saved, show fallback ticket button.
+        // showTicketFallback is already true when no printer or print fails.
+        console.warn('[Checkout] Print failed — ticket available via "Ver ticket"');
+      }
 
       this.completedOrder.set(order);
       this.step.set('confirmed');

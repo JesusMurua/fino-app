@@ -347,7 +347,7 @@
         </div>
 
         <!-- Ticket fallback -->
-        @if (showTicketFallback) {
+        @if (showTicketFallback()) {
           <button type="button" class="btn-ticket" (click)="viewTicket()">
             <i class="pi pi-print"></i>
             Ver ticket

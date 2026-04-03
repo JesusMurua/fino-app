@@ -1,3 +1,5 @@
+<p-toast />
+
 <div class="orders-page">
 
   <!-- Header -->
@@ -50,6 +52,7 @@
         (cancelOrder)="openCancelDialog(order)"
         (viewTicket)="onViewTicket($event)"
         (chargeOrder)="onChargeOrder($event)"
+        (printError)="onPrintError($event)"
       />
     } @empty {
       <div class="orders-empty">
@@ -141,14 +144,25 @@
       >
         Cerrar
       </button>
-      <button
-        type="button"
-        class="cancel-dialog__btn cancel-dialog__btn--print"
-        (click)="onPrintTicket()"
-      >
-        <i class="pi pi-print"></i>
-        Imprimir
-      </button>
+      @if (hasThermalPrinter()) {
+        <button
+          type="button"
+          class="cancel-dialog__btn cancel-dialog__btn--thermal"
+          (click)="onReprintThermal()"
+        >
+          <i class="pi pi-print"></i>
+          Reimprimir ticket
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="cancel-dialog__btn cancel-dialog__btn--print"
+          (click)="onPrintTicket()"
+        >
+          <i class="pi pi-print"></i>
+          Imprimir
+        </button>
+      }
     </div>
   </ng-template>
 </p-dialog>

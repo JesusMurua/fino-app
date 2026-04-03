@@ -11,6 +11,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { OrdersService, getDisplayStatus } from '../../core/services/orders.service';
 import { PrintService } from '../../core/services/print.service';
 import { TableService } from '../../core/services/table.service';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 import { OrderRowComponent } from './order-row.component';
 
 /** Filter tabs for the order list */
@@ -19,7 +21,8 @@ type StatusFilter = 'all' | 'new' | 'cooking' | 'ready' | 'delivered' | 'cancell
 @Component({
   selector: 'app-orders-list',
   standalone: true,
-  imports: [FormsModule, OrderRowComponent, DialogModule, RadioButtonModule, InputTextareaModule],
+  imports: [FormsModule, OrderRowComponent, DialogModule, RadioButtonModule, InputTextareaModule, ToastModule],
+  providers: [MessageService],
   templateUrl: './orders-list.component.html',
   styleUrl: './orders-list.component.scss',
 })
@@ -85,11 +88,15 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Constructor
+  /** Whether the thermal printer is currently connected */
+  readonly hasThermalPrinter = () => this.printService.hasThermalPrinter();
+
   constructor(
     private readonly ordersService: OrdersService,
     private readonly authService: AuthService,
     private readonly printService: PrintService,
     private readonly tableService: TableService,
+    private readonly messageService: MessageService,
     private readonly router: Router,
   ) {
     const role = this.authService.currentUser()?.role;
@@ -176,6 +183,39 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     `);
     win.document.close();
     win.print();
+  }
+
+  /** Reprints a ticket via thermal printer (ESC/POS) */
+  async onReprintThermal(): Promise<void> {
+    const order = this.ticketOrder();
+    if (!order) return;
+
+    try {
+      await this.printService.printTicket(order);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Ticket reimpreso',
+        detail: `Orden #${order.orderNumber}`,
+        life: 3000,
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error de impresora',
+        detail: 'Verifica la conexión de la impresora e intenta de nuevo.',
+        life: 5000,
+      });
+    }
+  }
+
+  /** Handles print errors bubbled from order-row components */
+  onPrintError(message: string): void {
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error de impresora',
+      detail: message,
+      life: 5000,
+    });
   }
 
   /** Opens the cancellation dialog for a specific order */
