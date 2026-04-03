@@ -8,6 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { CartItem, Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
 import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
+import { PosHeaderComponent } from '../pos-header/pos-header.component';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
@@ -29,7 +30,7 @@ const QUICK_ITEM_PRODUCT_ID = 0;
 @Component({
   selector: 'app-quick-pos',
   standalone: true,
-  imports: [ButtonModule, DialogModule, ToastModule, PricePipe],
+  imports: [ButtonModule, DialogModule, ToastModule, PricePipe, PosHeaderComponent],
   templateUrl: './quick-pos.component.html',
   styleUrl: './quick-pos.component.scss',
   providers: [MessageService],

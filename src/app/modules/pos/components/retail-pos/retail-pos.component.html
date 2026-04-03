@@ -1,9 +1,13 @@
 <p-toast />
 
+<!-- Retail POS Layout: Sidebar-first grid -->
 <div class="retail-layout">
 
-  <!-- LEFT COLUMN: Search + Categories + Products -->
-  <div class="retail-left">
+  <!-- LEFT PANE: Header + Search + Categories + Products -->
+  <div class="retail-left-pane">
+
+    <!-- Integrated header -->
+    <app-pos-header />
 
     <!-- Search Bar -->
     <div class="retail-search">
@@ -49,7 +53,7 @@
       }
     </nav>
 
-    <!-- Product Grid -->
+    <!-- Product Grid (scrollable) -->
     <div class="retail-products">
       @for (product of filteredProducts(); track product.id) {
         <button
@@ -79,8 +83,8 @@
 
   </div>
 
-  <!-- RIGHT COLUMN: Cart + Bills + Cobrar -->
-  <div class="retail-right">
+  <!-- RIGHT PANE: Cart -->
+  <div class="retail-right-pane">
 
     <!-- Cart Header -->
     <div class="retail-cart-header">
@@ -140,7 +144,7 @@
       }
     </div>
 
-    <!-- Divider + Total -->
+    <!-- Cart Footer: Total + Bills + Cobrar -->
     <div class="retail-cart-footer">
       <div class="retail-total">
         <span>Total</span>

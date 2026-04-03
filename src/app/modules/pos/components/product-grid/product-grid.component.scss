@@ -1,26 +1,46 @@
 @use '../../../../../styles/variables' as *;
 
-// -----------------------------------------------------------------------
-// POS full-page layout
-// -----------------------------------------------------------------------
+// ==========================================================================
+// POS Restaurant Layout — Sidebar-first grid
+// ==========================================================================
+
 .pos-layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr $cart-panel-width;
   height: 100dvh;
   overflow: hidden;
   background: $color-bg-page;
 }
 
-// -----------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// LEFT PANE — Header + Categories + Scrollable product grid
+// --------------------------------------------------------------------------
+.pos-left-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// --------------------------------------------------------------------------
+// RIGHT PANE — Full-height cart sidebar
+// --------------------------------------------------------------------------
+.pos-right-pane {
+  height: 100%;
+  background: #FFFFFF;
+  border-left: 1px solid $color-border-soft;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.02);
+  z-index: 10;
+  overflow: hidden;
+}
+
+// --------------------------------------------------------------------------
 // Category bar — horizontal scroll, pill-shaped chips
-// -----------------------------------------------------------------------
+// --------------------------------------------------------------------------
 .pos-category-bar {
   display: flex;
   align-items: center;
   gap: $space-2;
-  padding: $space-2 $space-4;
-  min-height: $category-bar-height;
-  background: $color-bg-page;
+  padding: $space-1 $space-4 $space-2;
   overflow-x: auto;
   flex-shrink: 0;
 
@@ -29,13 +49,12 @@
   &::-webkit-scrollbar { display: none; }
 }
 
-// Category pill
 .cat-pill {
   display: inline-flex;
   align-items: center;
   gap: $space-2;
   padding: $space-2 $space-5;
-  min-height: 48px;
+  min-height: 44px;
   border: none;
   border-radius: $radius-pill;
   background: #FFFFFF;
@@ -55,9 +74,7 @@
     outline-offset: 2px;
   }
 
-  &:hover {
-    background: #F1F5F9;
-  }
+  &:hover { background: #F1F5F9; }
 
   &--active {
     background: $color-primary;
@@ -69,30 +86,20 @@
   }
 }
 
-// -----------------------------------------------------------------------
-// Main content area
-// -----------------------------------------------------------------------
-.pos-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-// -----------------------------------------------------------------------
-// Product grid
-// -----------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Product grid — scrollable, cards
+// --------------------------------------------------------------------------
 .pos-products {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   grid-auto-rows: max-content;
-  gap: $space-4;
-  padding: $space-3 $space-4 $space-4;
+  gap: $space-3;
+  padding: $space-2 $space-4 $space-4;
   overflow-y: auto;
   align-content: start;
 }
 
-.pos-loading,
 .pos-empty {
   grid-column: 1 / -1;
   display: flex;
@@ -103,13 +110,11 @@
   padding: $space-8;
   color: $color-text-sub;
 
-  i { font-size: 3rem; opacity: 0.4; }
+  i { font-size: 3rem; opacity: 0.3; }
   p { margin: 0; font-size: $font-size-base; }
 }
 
-// -----------------------------------------------------------------------
-// @defer placeholder — skeleton card
-// -----------------------------------------------------------------------
+// @defer placeholder
 .product-card-placeholder {
   min-width: $product-card-min;
   min-height: $product-card-min;
@@ -117,42 +122,24 @@
   background: #F1F5F9;
 }
 
-// -----------------------------------------------------------------------
-// Responsive — stack cart below products on small screens (≤ md)
-// -----------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Responsive — portrait tablets
+// --------------------------------------------------------------------------
 @media (max-width: #{$breakpoint-md}) {
-  .pos-content {
-    flex-direction: column;
+  .pos-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+
+  .pos-right-pane {
+    border-left: none;
+    border-top: 1px solid $color-border-soft;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.02);
+    max-height: 45vh;
     overflow-y: auto;
   }
 
   .pos-products {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    overflow-y: visible;
-    flex-shrink: 0;
-  }
-
-  app-cart-panel {
-    display: block;
-
-    .cart-panel {
-      width: 100%;
-      height: auto;
-      border-left: none;
-      border-top: 1px solid $color-border-soft;
-    }
-
-    .cart-panel__items {
-      overflow-y: visible;
-      max-height: none;
-    }
-
-    .cart-panel__footer {
-      position: sticky;
-      bottom: 0;
-      background: white;
-      z-index: 10;
-      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
-    }
   }
 }

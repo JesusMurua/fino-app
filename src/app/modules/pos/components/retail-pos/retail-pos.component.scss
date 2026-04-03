@@ -1,52 +1,37 @@
 @use '../../../../../styles/variables' as *;
 
-// ---------------------------------------------------------------------------
-// Retail POS — Premium two-column layout
-// ---------------------------------------------------------------------------
+// ==========================================================================
+// Retail POS — Sidebar-first grid layout
+// ==========================================================================
 
-:host {
-  display: block;
+.retail-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
   height: 100dvh;
   overflow: hidden;
   background: $color-bg-page;
 }
 
-// ---------------------------------------------------------------------------
-// Main layout — 60/40 split on tablet+
-// ---------------------------------------------------------------------------
-
-.retail-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  height: 100%;
-
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 380px;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// LEFT COLUMN
-// ---------------------------------------------------------------------------
-
-.retail-left {
+// --------------------------------------------------------------------------
+// LEFT PANE — Header + Search + Categories + Scrollable products
+// --------------------------------------------------------------------------
+.retail-left-pane {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: $space-4 $space-4 $space-2;
-  gap: $space-3;
 }
 
-// Search bar — 56px height, prominent
+// Search bar
 .retail-search {
   position: relative;
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  padding: 0 $space-4 $space-2;
 
   &__icon {
     position: absolute;
-    left: $space-4;
+    left: $space-8;
     font-size: 18px;
     color: $color-text-sub;
     pointer-events: none;
@@ -54,18 +39,19 @@
 
   &__input {
     width: 100%;
-    height: 56px;
+    height: 52px;
     padding: 0 48px;
     border: none;
     border-radius: $radius-card;
-    font-size: 18px;
+    font-size: 17px;
     outline: none;
     background: #FFFFFF;
     box-shadow: $shadow-card;
     transition: box-shadow 0.2s;
+    font-family: inherit;
 
     &:focus {
-      box-shadow: $shadow-card-hover, 0 0 0 2px rgba($color-primary, 0.2);
+      box-shadow: $shadow-card-hover, 0 0 0 2px rgba($color-primary, 0.15);
     }
 
     &::placeholder { color: #94A3B8; }
@@ -73,7 +59,7 @@
 
   &__clear {
     position: absolute;
-    right: $space-2;
+    right: $space-5;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -89,13 +75,13 @@
   }
 }
 
-// Category chips — horizontal scroll, pill-shaped
+// Category chips
 .retail-categories {
   display: flex;
   gap: $space-2;
   overflow-x: auto;
   flex-shrink: 0;
-  padding-bottom: 2px;
+  padding: 0 $space-4 $space-2;
   -webkit-overflow-scrolling: touch;
 
   scrollbar-width: none;
@@ -104,20 +90,20 @@
 
 .retail-chip {
   flex-shrink: 0;
-  height: 44px;
-  padding: 0 $space-5;
+  height: 40px;
+  padding: 0 $space-4;
   border: none;
   border-radius: $radius-pill;
   background: #FFFFFF;
   box-shadow: $shadow-panel;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: $color-text-sub;
   cursor: pointer;
   white-space: nowrap;
+  font-family: inherit;
   transition: all 0.15s;
 
-  &:active { transform: scale(0.96); }
   &:hover { background: #F1F5F9; }
 
   &--active {
@@ -130,15 +116,15 @@
   }
 }
 
-// Product grid — dense, clean cards
+// Product grid (scrollable)
 .retail-products {
   flex: 1;
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: $space-2;
+  padding: 0 $space-4 $space-4;
   align-content: start;
-  padding-bottom: $space-2;
 }
 
 .retail-product-card {
@@ -146,8 +132,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 80px;
-  padding: $space-3 $space-4;
+  min-height: 76px;
+  padding: $space-3 $space-3;
   border: none;
   border-radius: $radius-card;
   background: #FFFFFF;
@@ -161,27 +147,23 @@
   &:active { transform: scale(0.97); }
 
   &__name {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: $color-text-title;
     line-height: 1.3;
   }
 
   &__price {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     color: $color-text-title;
     margin-top: 4px;
   }
 
-  // Unavailable state
   &--unavailable {
     opacity: 0.4;
     cursor: not-allowed;
     pointer-events: none;
-
-    &:hover { box-shadow: $shadow-card; }
-    &:active { transform: none; }
   }
 
   &__sold-out {
@@ -192,7 +174,7 @@
     border-radius: $radius-pill;
     background: #EF4444;
     color: white;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -205,13 +187,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 24px;
-    height: 24px;
+    min-width: 22px;
+    height: 22px;
     padding: 0 $space-2;
     border-radius: $radius-pill;
     background: #FEF2F2;
     color: #DC2626;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
   }
 }
@@ -229,23 +211,20 @@
   p { font-size: $font-size-base; margin: 0; }
 }
 
-// ---------------------------------------------------------------------------
-// RIGHT COLUMN — Cart
-// ---------------------------------------------------------------------------
-
-.retail-right {
+// --------------------------------------------------------------------------
+// RIGHT PANE — Full-height cart sidebar
+// --------------------------------------------------------------------------
+.retail-right-pane {
   display: flex;
   flex-direction: column;
+  height: 100%;
   background: #FFFFFF;
+  border-left: 1px solid $color-border-soft;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.02);
+  z-index: 10;
   overflow: hidden;
-  box-shadow: -1px 0 0 $color-border-soft;
-
-  @media (max-width: 767px) {
-    box-shadow: 0 -1px 0 $color-border-soft;
-  }
 }
 
-// Cart header
 .retail-cart-header {
   display: flex;
   align-items: center;
@@ -277,7 +256,6 @@
   }
 }
 
-// Cart items — scrollable list
 .retail-cart-items {
   flex: 1;
   overflow-y: auto;
@@ -375,10 +353,7 @@
   p { font-size: $font-size-base; margin: 0; }
 }
 
-// ---------------------------------------------------------------------------
-// Cart Footer — Total, Bills, Cobrar
-// ---------------------------------------------------------------------------
-
+// Cart Footer
 .retail-cart-footer {
   flex-shrink: 0;
   padding: $space-3 $space-4 $space-4;
@@ -405,7 +380,6 @@
   }
 }
 
-// Bill denomination buttons
 .retail-bills {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -414,11 +388,11 @@
 }
 
 .retail-bill-btn {
-  height: 56px;
+  height: 52px;
   border: none;
   border-radius: $radius-button;
   background: #F1F5F9;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: $color-text-title;
   cursor: pointer;
@@ -437,7 +411,6 @@
   }
 }
 
-// Change display
 .retail-change {
   display: flex;
   justify-content: space-between;
@@ -460,10 +433,9 @@
   }
 }
 
-// COBRAR button — 64px height, full width, prominent
 .retail-cobrar-btn {
   width: 100%;
-  height: 64px;
+  height: 60px;
   border: none;
   border-radius: $radius-card;
   background: $color-primary;
@@ -485,10 +457,7 @@
   }
 }
 
-// ---------------------------------------------------------------------------
 // Payment Dialog
-// ---------------------------------------------------------------------------
-
 .retail-pay-dialog {
   display: flex;
   flex-direction: column;
@@ -518,5 +487,23 @@
     display: flex;
     justify-content: flex-end;
     gap: $space-3;
+  }
+}
+
+// --------------------------------------------------------------------------
+// Responsive — portrait tablets
+// --------------------------------------------------------------------------
+@media (max-width: #{$breakpoint-md}) {
+  .retail-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+
+  .retail-right-pane {
+    border-left: none;
+    border-top: 1px solid $color-border-soft;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.02);
+    max-height: 45vh;
+    overflow-y: auto;
   }
 }

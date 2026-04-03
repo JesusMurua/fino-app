@@ -8,6 +8,7 @@ import { ToastModule } from 'primeng/toast';
 
 import { Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
+import { PosHeaderComponent } from '../pos-header/pos-header.component';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -28,7 +29,7 @@ const BILL_DENOMINATIONS = [
 @Component({
   selector: 'app-retail-pos',
   standalone: true,
-  imports: [ButtonModule, DialogModule, ToastModule, PricePipe],
+  imports: [ButtonModule, DialogModule, ToastModule, PricePipe, PosHeaderComponent],
   templateUrl: './retail-pos.component.html',
   styleUrl: './retail-pos.component.scss',
   providers: [MessageService],

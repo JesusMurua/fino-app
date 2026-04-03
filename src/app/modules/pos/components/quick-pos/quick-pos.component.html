@@ -1,79 +1,90 @@
 <p-toast />
 
+<!-- Quick POS Layout: Sidebar-first grid -->
 <div class="quick-layout">
 
-  <!-- Quick Product Form -->
-  <section class="quick-form">
-    <h2 class="quick-form__title">
-      <i class="pi pi-plus-circle"></i>
-      Producto rápido
-    </h2>
-    <div class="quick-form__fields">
-      <input
-        #descriptionInput
-        type="text"
-        placeholder="¿Qué vendiste?"
-        class="quick-form__description"
-        [value]="quickDescription()"
-        (input)="onDescriptionInput($event)"
-        (keydown.enter)="addQuickItem()"
-      />
-      <div class="quick-form__price-wrapper">
-        <span class="quick-form__currency">$</span>
+  <!-- LEFT PANE: Header + Quick form + Catalog search -->
+  <div class="quick-left-pane">
+
+    <!-- Integrated header -->
+    <app-pos-header />
+
+    <!-- Quick Product Form -->
+    <section class="quick-form">
+      <h2 class="quick-form__title">
+        <i class="pi pi-plus-circle"></i>
+        Producto rápido
+      </h2>
+      <div class="quick-form__fields">
         <input
+          #descriptionInput
           type="text"
-          inputmode="decimal"
-          placeholder="0.00"
-          class="quick-form__price"
-          [value]="quickPricePesos()"
-          (input)="onPriceInput($event)"
+          placeholder="¿Qué vendiste?"
+          class="quick-form__description"
+          [value]="quickDescription()"
+          (input)="onDescriptionInput($event)"
           (keydown.enter)="addQuickItem()"
         />
-      </div>
-    </div>
-    <button
-      type="button"
-      class="quick-form__add-btn"
-      [disabled]="!canAddQuick()"
-      (click)="addQuickItem()"
-    >
-      AGREGAR AL CARRITO
-    </button>
-  </section>
-
-  <!-- Catalog Search (secondary — only if catalog has products) -->
-  @if (hasCatalog()) {
-    <section class="quick-catalog">
-      <div class="quick-catalog__search">
-        <i class="pi pi-search quick-catalog__icon"></i>
-        <input
-          type="text"
-          placeholder="Buscar producto del catálogo..."
-          class="quick-catalog__input"
-          [value]="catalogSearch()"
-          (input)="onCatalogSearchInput($event)"
-        />
-      </div>
-
-      @if (catalogResults().length > 0) {
-        <div class="quick-catalog__results">
-          @for (product of catalogResults(); track product.id) {
-            <button
-              type="button"
-              class="quick-catalog__chip"
-              (click)="addCatalogProduct(product)"
-            >
-              <span class="quick-catalog__chip-name">{{ product.name }}</span>
-              <span class="quick-catalog__chip-price">{{ product.priceCents | price }}</span>
-            </button>
-          }
+        <div class="quick-form__price-wrapper">
+          <span class="quick-form__currency">$</span>
+          <input
+            type="text"
+            inputmode="decimal"
+            placeholder="0.00"
+            class="quick-form__price"
+            [value]="quickPricePesos()"
+            (input)="onPriceInput($event)"
+            (keydown.enter)="addQuickItem()"
+          />
         </div>
-      }
+      </div>
+      <button
+        type="button"
+        class="quick-form__add-btn"
+        [disabled]="!canAddQuick()"
+        (click)="addQuickItem()"
+      >
+        AGREGAR AL CARRITO
+      </button>
     </section>
-  }
 
-  <!-- Cart -->
-  <section class="quick-cart">
+    <!-- Catalog Search (secondary — only if catalog has products) -->
+    @if (hasCatalog()) {
+      <section class="quick-catalog">
+        <div class="quick-catalog__search">
+          <i class="pi pi-search quick-catalog__icon"></i>
+          <input
+            type="text"
+            placeholder="Buscar producto del catálogo..."
+            class="quick-catalog__input"
+            [value]="catalogSearch()"
+            (input)="onCatalogSearchInput($event)"
+          />
+        </div>
+
+        @if (catalogResults().length > 0) {
+          <div class="quick-catalog__results">
+            @for (product of catalogResults(); track product.id) {
+              <button
+                type="button"
+                class="quick-catalog__chip"
+                (click)="addCatalogProduct(product)"
+              >
+                <span class="quick-catalog__chip-name">{{ product.name }}</span>
+                <span class="quick-catalog__chip-price">{{ product.priceCents | price }}</span>
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+
+  </div>
+
+  <!-- RIGHT PANE: Cart -->
+  <div class="quick-right-pane">
+
+    <!-- Cart header -->
     <div class="quick-cart__header">
       <h2>Carrito</h2>
       @if (cartItems().length > 0) {
@@ -88,6 +99,7 @@
       }
     </div>
 
+    <!-- Cart items (scrollable) -->
     <div class="quick-cart__items">
       @for (item of cartItems(); track item.id) {
         <div class="quick-cart-item">
@@ -129,45 +141,46 @@
         </div>
       }
     </div>
-  </section>
 
-  <!-- Footer: Total + Bills + Cobrar -->
-  <div class="quick-footer">
-    <div class="quick-total">
-      <span>Total</span>
-      <span class="quick-total__amount">{{ cartTotal() | price }}</span>
-    </div>
-
-    @if (cartItems().length > 0) {
-      <div class="quick-bills">
-        @for (bill of bills; track bill.cents) {
-          <button
-            type="button"
-            class="quick-bill-btn"
-            [class.quick-bill-btn--active]="amountTendered() === bill.cents"
-            (click)="selectBill(bill.cents)"
-          >
-            {{ bill.label }}
-          </button>
-        }
+    <!-- Footer: Total + Bills + Cobrar -->
+    <div class="quick-footer">
+      <div class="quick-total">
+        <span>Total</span>
+        <span class="quick-total__amount">{{ cartTotal() | price }}</span>
       </div>
 
-      @if (amountTendered() > 0) {
-        <div class="quick-change">
-          <span>Cambio:</span>
-          <span class="quick-change__amount">{{ change() | price }}</span>
+      @if (cartItems().length > 0) {
+        <div class="quick-bills">
+          @for (bill of bills; track bill.cents) {
+            <button
+              type="button"
+              class="quick-bill-btn"
+              [class.quick-bill-btn--active]="amountTendered() === bill.cents"
+              (click)="selectBill(bill.cents)"
+            >
+              {{ bill.label }}
+            </button>
+          }
         </div>
-      }
-    }
 
-    <button
-      type="button"
-      class="quick-cobrar-btn"
-      [disabled]="cartItems().length === 0"
-      (click)="openPayDialog()"
-    >
-      COBRAR {{ cartTotal() | price }}
-    </button>
+        @if (amountTendered() > 0) {
+          <div class="quick-change">
+            <span>Cambio:</span>
+            <span class="quick-change__amount">{{ change() | price }}</span>
+          </div>
+        }
+      }
+
+      <button
+        type="button"
+        class="quick-cobrar-btn"
+        [disabled]="cartItems().length === 0"
+        (click)="openPayDialog()"
+      >
+        COBRAR {{ cartTotal() | price }}
+      </button>
+    </div>
+
   </div>
 
 </div>
@@ -175,7 +188,8 @@
 <!-- Payment Confirmation Dialog -->
 <p-dialog
   header="Confirmar cobro"
-  [(visible)]="showPayDialog"
+  [visible]="showPayDialog()"
+  (visibleChange)="showPayDialog.set($event)"
   [modal]="true"
   [closable]="true"
   [style]="{ width: '90vw', maxWidth: '400px' }"

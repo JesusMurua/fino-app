@@ -1,42 +1,42 @@
 <p-toast />
 
-<!-- POS Main Layout: [Header] | [Category bar] | [Product grid] [Cart panel] -->
+<!-- POS Layout: Sidebar-first grid -->
 <div class="pos-layout">
 
-  <!-- Top app bar -->
-  <app-pos-header />
+  <!-- LEFT PANE: Header + Categories + Products -->
+  <div class="pos-left-pane">
 
-  <!-- Category Filter Bar -->
-  <nav class="pos-category-bar" aria-label="Categorías">
-    <button
-      type="button"
-      class="cat-pill"
-      [class.cat-pill--active]="selectedCategoryId() === null"
-      (click)="selectCategory(null)"
-    >
-      <i class="pi pi-list"></i>
-      <span>Todos</span>
-    </button>
+    <!-- Integrated header -->
+    <app-pos-header />
 
-    @for (cat of categories(); track cat.id) {
+    <!-- Category Filter Bar -->
+    <nav class="pos-category-bar" aria-label="Categorías">
       <button
         type="button"
         class="cat-pill"
-        [class.cat-pill--active]="selectedCategoryId() === cat.id"
-        (click)="selectCategory(cat.id)"
+        [class.cat-pill--active]="selectedCategoryId() === null"
+        (click)="selectCategory(null)"
       >
-        @if (cat.icon) {
-          <i class="pi {{ cat.icon }}"></i>
-        }
-        <span>{{ cat.name }}</span>
+        <i class="pi pi-list"></i>
+        <span>Todos</span>
       </button>
-    }
-  </nav>
 
-  <!-- Main Content Area -->
-  <div class="pos-content">
+      @for (cat of categories(); track cat.id) {
+        <button
+          type="button"
+          class="cat-pill"
+          [class.cat-pill--active]="selectedCategoryId() === cat.id"
+          (click)="selectCategory(cat.id)"
+        >
+          @if (cat.icon) {
+            <i class="pi {{ cat.icon }}"></i>
+          }
+          <span>{{ cat.name }}</span>
+        </button>
+      }
+    </nav>
 
-    <!-- Product Grid -->
+    <!-- Product Grid (scrollable) -->
     <main class="pos-products" aria-label="Productos">
 
       @for (product of filteredProducts(); track product.id) {
@@ -59,9 +59,11 @@
 
     </main>
 
-    <!-- Cart Panel Sidebar -->
-    <app-cart-panel />
+  </div>
 
+  <!-- RIGHT PANE: Cart Panel -->
+  <div class="pos-right-pane">
+    <app-cart-panel />
   </div>
 
   <!-- Delivery panel (global overlay, only when hasDelivery) -->
