@@ -193,6 +193,14 @@
           }
         </div>
 
+        @if (selectedMode === 'cashier') {
+          <p class="setup-hint">
+            <i class="pi pi-info-circle"></i>
+            El tipo de POS (mostrador, caja rápida o servicio a mesas)
+            se configura automáticamente según tu giro de negocio.
+          </p>
+        }
+
         <button class="setup-btn" (click)="saveEmailSetup()">
           Configurar dispositivo
         </button>
@@ -204,13 +212,19 @@
     <!-- ============================================================== -->
     @if (step() === 'code-name') {
       <div class="setup-header">
-        <h1 class="setup-header__title">Nombre del dispositivo</h1>
+        <h1 class="setup-header__title">Dispositivo activado</h1>
         <p class="setup-header__sub">{{ activateData?.businessName }} — {{ activateData?.branchName }}</p>
+      </div>
+
+      <!-- Assigned mode badge -->
+      <div class="setup-mode-badge">
+        <span class="setup-mode-badge__label">Modo asignado:</span>
+        <span class="setup-mode-badge__value">{{ getActivateModeBadge() }}</span>
       </div>
 
       <div class="setup-form">
         <div class="setup-field">
-          <label class="setup-field__label">Nombre (opcional)</label>
+          <label class="setup-field__label">Nombre del dispositivo (opcional)</label>
           <input
             type="text"
             pInputText
@@ -219,6 +233,11 @@
             class="setup-field__input"
           />
         </div>
+
+        <p class="setup-hint">
+          <i class="pi pi-info-circle"></i>
+          ¿Modo incorrecto? Pide un nuevo código a tu administrador.
+        </p>
 
         <button class="setup-btn" (click)="saveCodeSetup()">
           Activar dispositivo

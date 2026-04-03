@@ -302,3 +302,47 @@
     background: #F0FDF4;
   }
 }
+
+// -----------------------------------------------------------------------
+// Hint text (info message below mode selector)
+// -----------------------------------------------------------------------
+.setup-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-3;
+  background: #F0F9FF;
+  border-radius: 8px;
+  color: #0369A1;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+
+  i { flex-shrink: 0; margin-top: 1px; font-size: 14px; }
+}
+
+// -----------------------------------------------------------------------
+// Mode badge (code flow — shows admin-assigned mode)
+// -----------------------------------------------------------------------
+.setup-mode-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 12px;
+  margin-bottom: $space-4;
+
+  &__label {
+    font-size: 14px;
+    color: $color-text-sub;
+  }
+
+  &__value {
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-primary;
+  }
+}

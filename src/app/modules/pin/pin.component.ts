@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
 import { CashRegisterService } from '../../core/services/cash-register.service';
+import { CatalogService } from '../../core/services/catalog.service';
 import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -80,6 +81,7 @@ export class PinComponent implements OnInit {
 
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
+  private readonly catalogService = inject(CatalogService);
   private readonly configService = inject(ConfigService);
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
@@ -139,16 +141,30 @@ export class PinComponent implements OnInit {
 
   /**
    * Returns the POS route based on the current business type's posExperience.
-   * Restaurant → /pos, Retail → /pos/retail, Counter → /pos/counter, Quick → /pos/quick.
+   *
+   * Resolution order:
+   *   1. configService.posExperience() — loaded from Dexie/API during preload
+   *   2. Fallback: derive from authService.businessType() using static catalog
+   *   3. Last resort: /pos (Restaurant default)
+   *
+   * This ensures first-login on a fresh device (Dexie empty) always gets a valid route.
    */
   private getPosDest(): string {
-    const experience = this.configService.posExperience();
+    let experience = this.configService.posExperience();
+
+    // Fallback: if Dexie had no businessTypeCatalog, derive from the JWT businessType
+    if (!experience) {
+      const btCode = this.authService.businessType();
+      const catalog = this.catalogService.getBusinessType(btCode);
+      experience = catalog?.posExperience;
+    }
+
     switch (experience) {
       case 'Restaurant': return '/pos';
       case 'Retail':     return '/pos/retail';
       case 'Counter':    return '/pos/counter';
       case 'Quick':      return '/pos/quick';
-      default:           return '/pos/error-config';
+      default:           return '/pos';
     }
   }
 

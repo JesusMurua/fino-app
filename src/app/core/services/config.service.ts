@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
 import {
@@ -61,10 +61,12 @@ export class ConfigService {
   /** Whether the current business receives delivery aggregator orders */
   readonly hasDelivery = signal(false);
 
-  /** POS experience variant — undefined until config is loaded */
-  readonly posExperience = computed<PosExperience | undefined>(() =>
-    this.config$.getValue().businessTypeCatalog?.posExperience
-  );
+  /**
+   * POS experience variant — undefined until config is loaded.
+   * Explicit signal (not computed from BehaviorSubject) to guarantee
+   * synchronous updates within the same change detection cycle as load().
+   */
+  readonly posExperience = signal<PosExperience | undefined>(undefined);
 
   /** Whether load() has completed successfully at least once */
   private _isLoaded = false;
@@ -107,6 +109,7 @@ export class ConfigService {
     this.hasKitchen.set(config.hasKitchen ?? false);
     this.hasTables.set(config.hasTables ?? false);
     this.hasDelivery.set(config.hasDelivery ?? false);
+    this.posExperience.set(config.businessTypeCatalog?.posExperience);
 
     // Step 2 — Try to fetch from API in background
     try {
@@ -136,6 +139,7 @@ export class ConfigService {
       this.hasKitchen.set(config.hasKitchen ?? false);
       this.hasTables.set(config.hasTables ?? false);
       this.hasDelivery.set(config.hasDelivery ?? false);
+      this.posExperience.set(config.businessTypeCatalog?.posExperience);
       console.info('[ConfigService] Config updated from API');
     } catch (error) {
       console.warn('[ConfigService] API unreachable — using local config:', error);
@@ -156,6 +160,7 @@ export class ConfigService {
     this.hasKitchen.set(normalized.hasKitchen ?? false);
     this.hasTables.set(normalized.hasTables ?? false);
     this.hasDelivery.set(normalized.hasDelivery ?? false);
+    this.posExperience.set(normalized.businessTypeCatalog?.posExperience);
   }
 
   /**

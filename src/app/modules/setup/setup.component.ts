@@ -89,11 +89,25 @@ export class SetupComponent {
   private activateData: ActivateResponse | null = null;
 
   readonly modes: ModeOption[] = [
-    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
+    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'Cobro y venta directa' },
+    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Servicio a Mesas (Restaurante, Bar)' },
     { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
     { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes' },
   ];
+
+  /** Human-readable labels for device modes — used in code flow badge */
+  private readonly modeLabels: Record<string, string> = {
+    cashier: '💳 Cajero',
+    tables:  '🪑 Mesas',
+    kitchen: '👨‍🍳 Cocina',
+    kiosk:   '📱 Kiosko',
+  };
+
+  /** Returns the display label for the activation code's pre-assigned mode */
+  getActivateModeBadge(): string {
+    if (!this.activateData) return '';
+    return this.modeLabels[this.activateData.mode] ?? this.activateData.mode;
+  }
 
   //#endregion
 
