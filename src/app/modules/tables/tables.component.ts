@@ -276,10 +276,20 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   //#region Split Bill Computeds
 
-  /** Amount each person pays in equal split */
-  readonly splitEqualAmount = computed(() =>
-    Math.ceil(this.splitOrderTotal() / this.splitPartsCount()),
-  );
+  /**
+   * Amount each person pays in equal split.
+   * Uses Math.floor for all parts except the last, which absorbs the remainder.
+   * This guarantees the sum of all parts === order total (no overcharge).
+   */
+  readonly splitEqualAmount = computed(() => {
+    const total = this.splitOrderTotal();
+    const parts = this.splitPartsCount();
+    const base = Math.floor(total / parts);
+    const step = this.splitEqualPaymentStep();
+    // Last person absorbs the remainder so the sum is exact
+    if (step >= parts) return total - base * (parts - 1);
+    return base;
+  });
 
   /** All item IDs currently assigned to any split group */
   readonly splitItemsAssigned = computed(() => {
@@ -565,6 +575,17 @@ export class TablesComponent implements OnInit, OnDestroy {
    * @param order The order whose items to move
    */
   openMoveFlow(order: OrderSummary): void {
+    // Phase 3: Requires internet — moving modifies two orders on the backend
+    if (!navigator.onLine) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Esta acción requiere internet',
+        detail: 'Conéctate a la red para mover artículos.',
+        life: 4000,
+      });
+      return;
+    }
+
     const tableName = this.selectedTable()?.name ?? '';
     this.moveSourceOrderId.set(order.id);
     this.moveSourceTableName.set(tableName);
@@ -687,9 +708,20 @@ export class TablesComponent implements OnInit, OnDestroy {
   /**
    * Opens the merge dialog for the current active order.
    * Shows list of other occupied tables to merge from.
+   * Phase 3: Requires internet — merging modifies two orders atomically on the backend.
    * @param order The order that will survive (target)
    */
   openMergeFlow(order: OrderSummary): void {
+    if (!navigator.onLine) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Esta acción requiere internet',
+        detail: 'Conéctate a la red para unir mesas.',
+        life: 4000,
+      });
+      return;
+    }
+
     const tableName = this.selectedTable()?.name ?? '';
     this.mergeTargetOrderId.set(order.id);
     this.mergeTargetTableName.set(tableName);
@@ -756,9 +788,22 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /**
    * Opens the split bill dialog for a given order.
+   * Restores progress from sessionStorage if a previous split was interrupted.
    * @param order The order to split
    */
   openSplitFlow(order: OrderSummary): void {
+    // Phase 3: Block if offline (items split and merge require API)
+    // Equal split payments also require API — guard here too
+    if (!navigator.onLine) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Esta acción requiere internet',
+        detail: 'Conéctate a la red para dividir la cuenta.',
+        life: 4000,
+      });
+      return;
+    }
+
     const tableName = this.selectedTable()?.name ?? '';
     this.splitSourceOrderId.set(order.id);
     this.splitSourceTableName.set(tableName);
@@ -766,12 +811,26 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.splitSourceItems.set(order.items.map(i => ({
       id: i.id, productName: i.productName, quantity: i.quantity,
     })));
-    this.splitMode.set('choice');
-    this.splitPartsCount.set(2);
-    this.splitEqualPaymentStep.set(0);
     this.splitEqualMethod.set(null);
     this.splitGroupCounter = 0;
     this.splitGroups.set([]);
+
+    // Phase 2: Restore interrupted split progress if it exists
+    const saved = this.loadSplitProgress(order.id);
+    if (saved) {
+      this.splitMode.set('equal');
+      this.splitPartsCount.set(saved.parts);
+      this.splitEqualPaymentStep.set(saved.step);
+      this.messageService.add({
+        severity: 'info',
+        summary: `Retomando pago ${saved.step} de ${saved.parts}`,
+        life: 3000,
+      });
+    } else {
+      this.splitMode.set('choice');
+      this.splitPartsCount.set(2);
+      this.splitEqualPaymentStep.set(0);
+    }
 
     this.showTableDialog.set(false);
     this.showSplitDialog.set(true);
@@ -800,6 +859,9 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.splitEqualMethod.set(null);
     this.splitGroupCounter = 0;
     this.splitGroups.set([]);
+    // Note: split progress in sessionStorage is NOT cleared here —
+    // only clearSplitProgress() removes it after successful completion.
+    // This preserves resume capability if the dialog is dismissed accidentally.
   }
 
   // ---- Equal split ----
@@ -814,7 +876,8 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /**
    * Registers one payment for the current equal-split step.
-   * Advances to next step or completes when all done.
+   * Persists each payment to Dexie immediately for offline safety.
+   * Saves progress to sessionStorage so an interrupted split can resume.
    * @param method Payment method to use
    */
   async registerEqualPayment(method: PaymentMethod): Promise<void> {
@@ -822,15 +885,28 @@ export class TablesComponent implements OnInit, OnDestroy {
     if (!orderId) return;
 
     this.splitBusy.set(true);
+    const amountCents = this.splitEqualAmount();
 
     try {
       await firstValueFrom(
-        this.tableService.addPayment(orderId, method, this.splitEqualAmount()),
+        this.tableService.addPayment(orderId, method, amountCents),
       );
+
+      // Phase 2: Persist partial payment to Dexie immediately (not only at the end)
+      try {
+        const localOrder = await this.db.orders.get(orderId);
+        if (localOrder) {
+          const payments = [...(localOrder.payments ?? []), { method, amountCents }];
+          const paidCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
+          await this.db.orders.update(orderId, { payments, paidCents });
+        }
+      } catch {
+        // Best-effort Dexie update — backend is source of truth
+      }
 
       const currentStep = this.splitEqualPaymentStep();
       if (currentStep >= this.splitPartsCount()) {
-        // All payments done — sync updated order to Dexie
+        // All payments done — full sync from backend to reconcile
         try {
           const dto = await firstValueFrom(
             this.tableService.getOrderById(orderId),
@@ -845,6 +921,7 @@ export class TablesComponent implements OnInit, OnDestroy {
 
         const tableId = this.selectedTable()?.id;
         const tableName = this.splitSourceTableName();
+        this.clearSplitProgress(orderId);
         this.cancelSplit();
         await this.loadTableStatuses();
         this.messageService.add({
@@ -865,7 +942,11 @@ export class TablesComponent implements OnInit, OnDestroy {
           } catch { /* best-effort */ }
         }
       } else {
-        this.splitEqualPaymentStep.set(currentStep + 1);
+        const nextStep = currentStep + 1;
+        this.splitEqualPaymentStep.set(nextStep);
+
+        // Phase 2: Persist progress to sessionStorage for resume after interruption
+        this.saveSplitProgress(orderId, nextStep, this.splitPartsCount());
       }
     } catch {
       this.messageService.add({
@@ -929,6 +1010,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   /**
    * Confirms the items split — calls splitOrderByItems API.
    * Creates separate orders per group.
+   * Phase 4: Validates that split totals sum to the original order total.
    */
   async confirmItemsSplit(): Promise<void> {
     const orderId = this.splitSourceOrderId();
@@ -945,6 +1027,18 @@ export class TablesComponent implements OnInit, OnDestroy {
       const result = await firstValueFrom(
         this.tableService.splitOrderByItems(orderId, splits),
       );
+
+      // Phase 4: Post-validation — verify split totals match original
+      const splitSum = result.splitOrders.reduce((sum, o) => sum + o.totalCents, 0);
+      const originalTotal = this.splitOrderTotal();
+      if (splitSum !== originalTotal) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'Diferencia en totales',
+          detail: `La suma de las sub-órdenes ($${(splitSum / 100).toFixed(2)}) difiere del total original ($${(originalTotal / 100).toFixed(2)}). Verifica con el administrador.`,
+          life: 8000,
+        });
+      }
 
       this.cancelSplit();
       await this.loadTableStatuses();
@@ -965,6 +1059,31 @@ export class TablesComponent implements OnInit, OnDestroy {
     } finally {
       this.splitBusy.set(false);
     }
+  }
+
+  // ---- Split progress persistence (Phase 2) ----
+
+  /** Saves split payment progress to sessionStorage for resume after interruption */
+  private saveSplitProgress(orderId: string, step: number, parts: number): void {
+    sessionStorage.setItem(`split-progress-${orderId}`, JSON.stringify({ step, parts }));
+  }
+
+  /** Loads saved split progress from sessionStorage, or null if none exists */
+  private loadSplitProgress(orderId: string): { step: number; parts: number } | null {
+    const raw = sessionStorage.getItem(`split-progress-${orderId}`);
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (data.step > 0 && data.parts > 0) return data;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Clears split progress from sessionStorage after successful completion */
+  private clearSplitProgress(orderId: string): void {
+    sessionStorage.removeItem(`split-progress-${orderId}`);
   }
 
   //#endregion
