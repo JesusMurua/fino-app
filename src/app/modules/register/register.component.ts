@@ -8,7 +8,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { environment } from '../../../environments/environment';
-import { BusinessType, LoginResponse } from '../../core/models';
+import { BusinessType, LoginResponse, PlanType } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 
 /** Giro display info for the read-only badge */
@@ -153,11 +153,19 @@ export class RegisterComponent implements OnInit {
 
     const { businessName, ownerName, email, password, businessType } = this.form.getRawValue();
 
+    /** Resolve planType: URL param → PlanType enum, default Free */
+    const planMap: Record<string, PlanType> = {
+      basic: PlanType.Basic,
+      pro: PlanType.Pro,
+      enterprise: PlanType.Enterprise,
+    };
+    const planType = (this.pendingPlan && planMap[this.pendingPlan]) ?? PlanType.Free;
+
     try {
       const response = await firstValueFrom(
         this.http.post<LoginResponse>(
           `${environment.apiUrl}/auth/register`,
-          { businessName, ownerName, email, password, businessType },
+          { businessName, ownerName, email, password, businessType, planType },
         ),
       );
 

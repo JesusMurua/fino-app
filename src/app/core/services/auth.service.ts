@@ -90,9 +90,11 @@ export class AuthService {
   /** Cached subscription status from the API */
   readonly subscriptionStatus = signal<SubscriptionStatus | null>(null);
 
-  /** True when the plan is expired — Free plan with trial ended or no trial */
+  /** True when the plan is expired — only paid/trialing plans can expire */
   readonly isExpired = computed(() => {
-    if (this.planType() !== PlanType.Free) return false;
+    // Free plans never expire — they just have limited features
+    if (this.planType() === PlanType.Free) return false;
+    // Paid plans without a trial end date are treated as expired (missing data)
     const trial = this.trialEndsAt();
     if (!trial) return true;
     return new Date(trial) < new Date();
