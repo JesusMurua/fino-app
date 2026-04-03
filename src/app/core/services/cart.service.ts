@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { DatabaseService } from './database.service';
+import { ProductService } from './product.service';
 import { PromotionService } from './promotion.service';
 
 /**
@@ -40,6 +41,12 @@ export class CartService {
     this.items().reduce((sum, i) => sum + i.quantity, 0),
   );
 
+  /**
+   * Emitted when an addItem/updateQuantity is rejected due to insufficient stock.
+   * Components can read this signal to show a toast. Resets after 3 seconds.
+   */
+  readonly stockExceeded = signal<{ productName: string; available: number } | null>(null);
+
   /** Returns a snapshot of current cart items */
   getSnapshot(): CartItem[] {
     return [...this.items()];
@@ -49,6 +56,7 @@ export class CartService {
   //#region Constructor & Initialization
   constructor(
     private readonly db: DatabaseService,
+    private readonly productService: ProductService,
     private readonly promotionService: PromotionService,
   ) {
     this.loadFromDb();
@@ -73,6 +81,7 @@ export class CartService {
   /**
    * Adds a product to the cart with the selected size and extras.
    * If an identical configuration already exists, increments its quantity.
+   * Enforces stock limits for trackStock products and applies optimistic deduction.
    * @param product The product to add
    * @param size Selected size variant (optional)
    * @param extras Selected extras (may be empty)
@@ -84,6 +93,16 @@ export class CartService {
     extras: ProductExtra[] = [],
     notes?: string,
   ): Promise<void> {
+    // Stock guard — check available stock for trackStock products
+    if (product.trackStock) {
+      const available = this.productService.getAvailableStock(product.id);
+      const inCart = this.getQuantityInCart(product.id);
+      if (inCart + 1 > available) {
+        this.emitStockExceeded(product.name, Math.max(0, available - inCart));
+        return;
+      }
+    }
+
     const unitPriceCents = calcUnitPriceCents(product, size, extras);
     const existing = this.findMatchingItem(product.id, size?.id, extras.map(e => e.id));
 
@@ -106,11 +125,15 @@ export class CartService {
 
     const updated = [...this.items(), newItem];
     await this.persist(updated);
+
+    // Optimistic local deduction
+    this.productService.deductLocalStock(product.id, 1);
   }
 
   /**
    * Updates the quantity of a cart item.
    * If quantity reaches 0, the item is removed from the cart.
+   * Enforces stock limits and applies optimistic deduction/restoration.
    * @param itemId Cart item UUID
    * @param quantity New quantity (must be >= 0)
    */
@@ -120,21 +143,49 @@ export class CartService {
       return;
     }
 
+    const currentItem = this.items().find(i => i.id === itemId);
+    if (!currentItem) return;
+
+    const delta = quantity - currentItem.quantity;
+
+    // Stock guard on increase
+    if (delta > 0 && currentItem.product.trackStock) {
+      const available = this.productService.getAvailableStock(currentItem.product.id);
+      if (delta > available) {
+        this.emitStockExceeded(currentItem.product.name, available);
+        return;
+      }
+    }
+
     const updated = this.items().map(item =>
       item.id === itemId
         ? { ...item, quantity, totalPriceCents: item.unitPriceCents * quantity }
         : item,
     );
     await this.persist(updated);
+
+    // Optimistic stock adjustment
+    if (delta > 0) {
+      this.productService.deductLocalStock(currentItem.product.id, delta);
+    } else if (delta < 0) {
+      this.productService.restoreLocalStock(currentItem.product.id, Math.abs(delta));
+    }
   }
 
   /**
    * Removes a single item from the cart entirely.
+   * Restores optimistic stock deduction.
    * @param itemId Cart item UUID
    */
   async removeItem(itemId: string): Promise<void> {
+    const removedItem = this.items().find(i => i.id === itemId);
     const updated = this.items().filter(item => item.id !== itemId);
     await this.persist(updated);
+
+    // Restore stock for the removed item
+    if (removedItem) {
+      this.productService.restoreLocalStock(removedItem.product.id, removedItem.quantity);
+    }
   }
 
   /**
@@ -148,6 +199,27 @@ export class CartService {
   //#endregion
 
   //#region Private Helpers
+
+  /**
+   * Returns the total quantity of a product currently in the cart
+   * across all configurations (sizes/extras).
+   * @param productId Product ID to sum
+   */
+  private getQuantityInCart(productId: number): number {
+    return this.items()
+      .filter(i => i.product.id === productId)
+      .reduce((sum, i) => sum + i.quantity, 0);
+  }
+
+  /**
+   * Emits a stock-exceeded warning and auto-clears it after 3 seconds.
+   * @param productName Display name for the toast
+   * @param available Remaining stock available
+   */
+  private emitStockExceeded(productName: string, available: number): void {
+    this.stockExceeded.set({ productName, available });
+    setTimeout(() => this.stockExceeded.set(null), 3000);
+  }
 
   /**
    * Finds a cart item that matches the same product + size + extras combination.

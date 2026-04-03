@@ -6,15 +6,14 @@ import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
-import { CartItem, Category, Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
-import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
+import { Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
-import { InventoryService } from '../../../../core/services/inventory.service';
 
 /** Bill denominations in MXN (in centavos) */
 const BILL_DENOMINATIONS = [
@@ -40,11 +39,11 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
   private readonly authService = inject(AuthService);
+  private readonly cartService = inject(CartService);
   private readonly productService = inject(ProductService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
   private readonly scannerService = inject(ScannerService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
 
@@ -68,7 +67,7 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
   /** Filtered products based on search and category */
   readonly filteredProducts = computed(() => {
-    let items = this.products().filter(p => p.isAvailable);
+    let items = this.products();
     const catId = this.selectedCategory();
     if (catId !== null) {
       items = items.filter(p => p.categoryId === catId);
@@ -80,21 +79,18 @@ export class RetailPosComponent implements OnInit, OnDestroy {
         (p.barcode && p.barcode.toLowerCase().includes(term))
       );
     }
-    return items;
+    // Sort: available first, then unavailable at end
+    return [...items].sort((a, b) => (b.isAvailable ? 1 : 0) - (a.isAvailable ? 1 : 0));
   });
 
-  /** Local cart items (signal-based, no BehaviorSubject) */
-  readonly cartItems = signal<CartItem[]>([]);
+  /** Cart items from the shared CartService */
+  readonly cartItems = this.cartService.items;
 
-  /** Cart total in centavos */
-  readonly cartTotal = computed(() =>
-    this.cartItems().reduce((sum, item) => sum + item.totalPriceCents, 0)
-  );
+  /** Cart total from the shared CartService */
+  readonly cartTotal = this.cartService.totalCents;
 
   /** Number of items in cart */
-  readonly cartItemCount = computed(() =>
-    this.cartItems().reduce((sum, item) => sum + item.quantity, 0)
-  );
+  readonly cartItemCount = this.cartService.itemCount;
 
   /** Amount tendered by customer in centavos */
   readonly amountTendered = signal(0);
@@ -106,6 +102,9 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
   /** Whether the payment confirmation dialog is visible */
   readonly showPayDialog = signal(false);
+
+  /** Guards against double-tap on payment */
+  readonly isProcessing = signal(false);
 
   /** Debounce timer for search input */
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -119,6 +118,21 @@ export class RetailPosComponent implements OnInit, OnDestroy {
       const branchId = this.authService.activeBranchId();
       if (branchId) this.productService.loadCatalog();
     }, { allowSignalWrites: true });
+
+    // Show stock-exceeded toast from CartService
+    effect(() => {
+      const exceeded = this.cartService.stockExceeded();
+      if (exceeded) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'Sin stock suficiente',
+          detail: exceeded.available > 0
+            ? `Solo quedan ${exceeded.available} unidades de "${exceeded.productName}"`
+            : `"${exceeded.productName}" está agotado`,
+          life: 3000,
+        });
+      }
+    });
   }
 
   //#endregion
@@ -169,61 +183,31 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region Cart Methods
+  //#region Cart Methods (delegated to CartService)
 
-  /** Adds a product to the cart or increments quantity if already present */
+  /** Adds a product to the cart via CartService (stock-guarded) */
   addToCart(product: Product): void {
-    const items = this.cartItems();
-    const existing = items.find(i => i.product.id === product.id && !i.size && i.extras.length === 0);
-
-    if (existing) {
-      this.cartItems.set(items.map(i =>
-        i.id === existing.id
-          ? { ...i, quantity: i.quantity + 1, totalPriceCents: i.unitPriceCents * (i.quantity + 1) }
-          : i
-      ));
-    } else {
-      const unitPrice = calcUnitPriceCents(product);
-      const item: CartItem = {
-        id: crypto.randomUUID(),
-        product,
-        quantity: 1,
-        extras: [],
-        unitPriceCents: unitPrice,
-        totalPriceCents: unitPrice,
-        discountCents: 0,
-      };
-      this.cartItems.set([...items, item]);
-    }
+    if (!product.isAvailable) return;
+    this.cartService.addItem(product);
   }
 
-  /** Updates quantity for a cart item; removes if quantity reaches 0 */
+  /** Updates quantity for a cart item via CartService */
   updateQuantity(itemId: string, delta: number): void {
-    const items = this.cartItems();
-    const item = items.find(i => i.id === itemId);
+    const item = this.cartItems().find(i => i.id === itemId);
     if (!item) return;
 
     const newQty = item.quantity + delta;
-    if (newQty <= 0) {
-      this.removeItem(itemId);
-      return;
-    }
-
-    this.cartItems.set(items.map(i =>
-      i.id === itemId
-        ? { ...i, quantity: newQty, totalPriceCents: i.unitPriceCents * newQty }
-        : i
-    ));
+    this.cartService.updateQuantity(itemId, newQty);
   }
 
-  /** Removes an item from the cart */
+  /** Removes an item from the cart via CartService */
   removeItem(itemId: string): void {
-    this.cartItems.set(this.cartItems().filter(i => i.id !== itemId));
+    this.cartService.removeItem(itemId);
   }
 
-  /** Clears the entire cart */
+  /** Clears the entire cart via CartService */
   clearCart(): void {
-    this.cartItems.set([]);
+    this.cartService.clearCart();
     this.amountTendered.set(0);
   }
 
@@ -248,53 +232,53 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
   /** Confirms payment and persists the order using existing SyncService pattern */
   async confirmPayment(): Promise<void> {
+    if (this.isProcessing()) return;
+    this.isProcessing.set(true);
     this.showPayDialog.set(false);
 
-    const totalCents = this.cartTotal();
-    const paidCents = Math.max(this.amountTendered(), totalCents);
-    const orderNumber = this.syncService.consumeOrderNumber();
-
-    const payment: OrderPayment = {
-      method: PaymentMethod.Cash,
-      amountCents: paidCents,
-    };
-
-    const order: Order = {
-      id: crypto.randomUUID(),
-      orderNumber,
-      items: this.cartItems(),
-      subtotalCents: totalCents,
-      totalCents,
-      payments: [payment],
-      paidCents,
-      changeCents: Math.max(0, paidCents - totalCents),
-      paymentProvider: null,
-      createdAt: new Date(),
-      syncStatus: 'Pending',
-      branchId: this.authService.branchId,
-    };
-
-    await this.syncService.saveOrder(order);
-
-    // Deduct inventory (best-effort — does not block payment)
     try {
-      await this.inventoryService.deductFromSale(order.id, order.items);
-      await this.inventoryService.loadFromApi();
-      await this.productService.loadCatalog();
-    } catch {
-      console.warn('[RetailPOS] Inventory deduction failed for order', order.id);
+      const totalCents = this.cartTotal();
+      const paidCents = Math.max(this.amountTendered(), totalCents);
+      const orderNumber = this.syncService.consumeOrderNumber();
+
+      const payment: OrderPayment = {
+        method: PaymentMethod.Cash,
+        amountCents: paidCents,
+      };
+
+      const order: Order = {
+        id: crypto.randomUUID(),
+        orderNumber,
+        items: this.cartService.getSnapshot(),
+        subtotalCents: totalCents,
+        totalCents,
+        payments: [payment],
+        paidCents,
+        changeCents: Math.max(0, paidCents - totalCents),
+        paymentProvider: null,
+        createdAt: new Date(),
+        syncStatus: 'Pending',
+        branchId: this.authService.branchId,
+      };
+
+      await this.syncService.saveOrder(order);
+
+      // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
+
+      await this.printService.printTicket(order);
+
+      this.messageService.add({
+        severity: 'success',
+        summary: `Venta #${orderNumber}`,
+        detail: `Cambio: ${(order.changeCents / 100).toFixed(2)}`,
+        life: 3000,
+      });
+
+      await this.cartService.clearCart();
+      this.amountTendered.set(0);
+    } finally {
+      this.isProcessing.set(false);
     }
-
-    await this.printService.printTicket(order);
-
-    this.messageService.add({
-      severity: 'success',
-      summary: `Venta #${orderNumber}`,
-      detail: `Cambio: ${(order.changeCents / 100).toFixed(2)}`,
-      life: 3000,
-    });
-
-    this.clearCart();
   }
 
   //#endregion

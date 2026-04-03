@@ -13,7 +13,6 @@ import { ConfigService } from '../../../../core/services/config.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { PrintService } from '../../../../core/services/print.service';
-import { InventoryService } from '../../../../core/services/inventory.service';
 
 /** Bill denominations in MXN (in centavos) */
 const BILL_DENOMINATIONS = [
@@ -43,7 +42,6 @@ export class CounterPosComponent implements OnInit, OnDestroy {
   private readonly productService = inject(ProductService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly messageService = inject(MessageService);
 
   /** All loaded products */
@@ -299,14 +297,7 @@ export class CounterPosComponent implements OnInit, OnDestroy {
 
     await this.syncService.saveOrder(order);
 
-    // Deduct inventory (best-effort — does not block payment)
-    try {
-      await this.inventoryService.deductFromSale(order.id, order.items);
-      await this.inventoryService.loadFromApi();
-      await this.productService.loadCatalog();
-    } catch {
-      console.warn('[CounterPOS] Inventory deduction failed for order', order.id);
-    }
+    // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
 
     await this.printService.printTicket(order);
 

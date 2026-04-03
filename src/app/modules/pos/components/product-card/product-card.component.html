@@ -7,8 +7,15 @@
   (click)="selected.emit(product)"
 >
   <!-- Popular badge -->
-  @if (product.isPopular) {
+  @if (product.isPopular && product.isAvailable) {
     <span class="product-card__badge">Popular</span>
+  }
+
+  <!-- Low stock badge -->
+  @if (product.trackStock && product.isAvailable && isLowStock) {
+    <span class="product-card__badge product-card__badge--stock">
+      Quedan {{ product.currentStock }}
+    </span>
   }
 
   <!-- Icon box (image or fallback icon) -->

@@ -16,7 +16,6 @@ import { CartService } from '../../../../core/services/cart.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
-import { InventoryService } from '../../../../core/services/inventory.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableService } from '../../../../core/services/table.service';
@@ -240,7 +239,6 @@ export class CheckoutComponent implements OnInit {
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
     private readonly tableService: TableService,
-    private readonly inventoryService: InventoryService,
     private readonly productService: ProductService,
     private readonly promotionService: PromotionService,
     private readonly db: DatabaseService,
@@ -546,14 +544,8 @@ export class CheckoutComponent implements OnInit {
         await this.syncService.saveOrder(order);
       }
 
-      // Deduct inventory (best-effort — does not block payment)
-      try {
-        await this.inventoryService.deductFromSale(order.id, order.items);
-        await this.inventoryService.loadFromApi();
-        await this.productService.loadCatalog();
-      } catch {
-        console.warn('[Checkout] Inventory deduction failed for order', order.id);
-      }
+      // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
+      // No frontend deduction needed — optimistic local stock was already adjusted by CartService.
 
       await this.printService.printTicket(order);
 

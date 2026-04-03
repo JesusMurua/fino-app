@@ -115,6 +115,64 @@ export class ProductService {
   }
   //#endregion
 
+  //#region Stock Methods
+
+  /**
+   * Returns available stock for a product.
+   * For trackStock products: currentStock (from signal), clamped to 0.
+   * For non-trackStock products: Infinity (no limit — backend controls availability).
+   * @param productId Product ID to check
+   */
+  getAvailableStock(productId: number): number {
+    const product = this._products().find(p => p.id === productId);
+    if (!product || !product.trackStock) return Infinity;
+    return Math.max(0, product.currentStock ?? 0);
+  }
+
+  /**
+   * Optimistic local stock deduction — decrements currentStock in the signal.
+   * Automatically marks product as unavailable if stock reaches 0.
+   * Called by CartService when adding items to the cart.
+   * @param productId Product to deduct from
+   * @param quantity Amount to deduct (positive)
+   */
+  deductLocalStock(productId: number, quantity: number): void {
+    this._products.update(products =>
+      products.map(p => {
+        if (p.id !== productId || !p.trackStock) return p;
+        const newStock = (p.currentStock ?? 0) - quantity;
+        return {
+          ...p,
+          currentStock: newStock,
+          isAvailable: newStock > 0 ? p.isAvailable : false,
+        };
+      }),
+    );
+  }
+
+  /**
+   * Restores local stock — increments currentStock in the signal.
+   * Called by CartService when removing items from the cart.
+   * Re-marks product as available if stock becomes positive.
+   * @param productId Product to restore
+   * @param quantity Amount to restore (positive)
+   */
+  restoreLocalStock(productId: number, quantity: number): void {
+    this._products.update(products =>
+      products.map(p => {
+        if (p.id !== productId || !p.trackStock) return p;
+        const newStock = (p.currentStock ?? 0) + quantity;
+        return {
+          ...p,
+          currentStock: newStock,
+          isAvailable: newStock > 0 ? true : p.isAvailable,
+        };
+      }),
+    );
+  }
+
+  //#endregion
+
   //#region Filter Methods
 
   /**
@@ -186,19 +244,34 @@ export class ProductService {
   /**
    * Marks products as unavailable (in-memory only) if their inventory
    * items are depleted. Does not persist — re-applied on every load.
+   *
+   * Two-layer strategy:
+   *   1. API: GET /inventory/out-of-stock-products (covers recipe-based stock)
+   *   2. Local fallback: products with trackStock && currentStock <= 0
    */
   private async applyOutOfStock(): Promise<void> {
-    try {
-      const outOfStockIds = await this.inventoryService.getOutOfStockProductIds();
-      if (outOfStockIds.length === 0) return;
+    const idsToDisable = new Set<number>();
 
-      const idsSet = new Set(outOfStockIds);
-      this._products.update(products =>
-        products.map(p => idsSet.has(p.id) ? { ...p, isAvailable: false } : p)
-      );
+    // Layer 1: API-based out-of-stock (recipe-aware) — best-effort
+    try {
+      const apiIds = await this.inventoryService.getOutOfStockProductIds();
+      for (const id of apiIds) idsToDisable.add(id);
     } catch {
-      // Silent — auto-86 is best-effort
+      // Offline — API unavailable, rely on local data only
     }
+
+    // Layer 2: Local trackStock products with depleted stock (always runs)
+    for (const p of this._products()) {
+      if (p.trackStock && (p.currentStock ?? 0) <= 0) {
+        idsToDisable.add(p.id);
+      }
+    }
+
+    if (idsToDisable.size === 0) return;
+
+    this._products.update(products =>
+      products.map(p => idsToDisable.has(p.id) ? { ...p, isAvailable: false } : p)
+    );
   }
 
   /**

@@ -12,7 +12,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { PrintService } from '../../../../core/services/print.service';
-import { InventoryService } from '../../../../core/services/inventory.service';
 
 /** Bill denominations in MXN (in centavos) */
 const BILL_DENOMINATIONS = [
@@ -44,7 +43,6 @@ export class QuickPosComponent implements OnInit, OnDestroy {
   private readonly productService = inject(ProductService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
-  private readonly inventoryService = inject(InventoryService);
   private readonly messageService = inject(MessageService);
 
   /** Reference to the description input for re-focus after add */
@@ -324,17 +322,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
 
     await this.syncService.saveOrder(order);
 
-    // Deduct inventory only for catalog items (best-effort)
-    const catalogItems = order.items.filter(i => i.product.id !== QUICK_ITEM_PRODUCT_ID);
-    if (catalogItems.length > 0) {
-      try {
-        await this.inventoryService.deductFromSale(order.id, catalogItems);
-        await this.inventoryService.loadFromApi();
-        await this.productService.loadCatalog();
-      } catch {
-        console.warn('[QuickPOS] Inventory deduction failed for order', order.id);
-      }
-    }
+    // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
 
     await this.printService.printTicket(order);
 
