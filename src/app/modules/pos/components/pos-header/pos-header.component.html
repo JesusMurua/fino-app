@@ -14,7 +14,18 @@
   <!-- Right side: order number + connection status + settings -->
   <div class="pos-header__right">
     <!-- Sync status indicator -->
-    @if (syncService.isSyncing()) {
+    @if (syncService.permanentlyFailedCount() > 0) {
+      <button
+        type="button"
+        class="pos-header__sync pos-header__sync--error"
+        aria-label="Ver órdenes con error de sincronización"
+        (click)="openSyncCenter()"
+      >
+        <i class="pi pi-exclamation-triangle"></i>
+        <span class="pos-header__sync-badge">{{ syncService.permanentlyFailedCount() }}</span>
+        <span>{{ syncService.permanentlyFailedCount() === 1 ? 'orden con error' : 'órdenes con error' }}</span>
+      </button>
+    } @else if (syncService.isSyncing()) {
       <div class="pos-header__sync pos-header__sync--active">
         <i class="pi pi-sync pos-header__sync-spin"></i>
         <span>Sincronizando...</span>
@@ -437,3 +448,103 @@
     </button>
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Sync Center modal                                                       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="failedOrders().length > 0
+    ? '⚠ Órdenes con error de sincronización'
+    : '✅ Sincronización'"
+  [visible]="showSyncCenter()"
+  (visibleChange)="showSyncCenter.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', 'max-width': '600px' }"
+  [draggable]="false"
+>
+  <div class="sync-center">
+
+    @if (failedOrders().length > 0) {
+
+      <p class="sync-center__subtitle">
+        Estas órdenes no pudieron enviarse al servidor. Puedes reintentar o descartarlas.
+      </p>
+
+      <!-- Failed orders list -->
+      <div class="sync-center__list">
+        @for (order of failedOrders(); track order.id) {
+          <div class="sync-center__row">
+            <div class="sync-center__info">
+              <span class="sync-center__order-num">#{{ order.orderNumber }}</span>
+              <span class="sync-center__total">{{ order.totalCents | price }}</span>
+              <span class="sync-center__meta">{{ order.createdAt | date:'HH:mm' }}</span>
+              <span class="sync-center__meta">{{ order.retryCount ?? 0 }}/10 intentos</span>
+            </div>
+            <div class="sync-center__actions">
+              <button
+                type="button"
+                class="sync-center__btn sync-center__btn--retry"
+                aria-label="Reintentar orden"
+                (click)="retryOrder(order)"
+              >
+                <i class="pi pi-refresh"></i>
+              </button>
+              <button
+                type="button"
+                class="sync-center__btn sync-center__btn--discard"
+                aria-label="Descartar orden"
+                (click)="discardOrder(order)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Risk summary -->
+      <div class="sync-center__summary">
+        <span>Total en riesgo:</span>
+        <span class="sync-center__summary-amount">{{ failedTotalCents() | price }}</span>
+      </div>
+
+    } @else {
+
+      <!-- Empty state — all resolved -->
+      <div class="sync-center__empty">
+        <i class="pi pi-check-circle"></i>
+        <p>Todas las órdenes están sincronizadas</p>
+      </div>
+
+    }
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    @if (failedOrders().length > 0) {
+      <button
+        type="button"
+        class="sync-center__footer-btn sync-center__footer-btn--retry"
+        [disabled]="isRetrying()"
+        (click)="retryAll()"
+      >
+        @if (isRetrying()) {
+          <i class="pi pi-spinner pi-spin"></i> Reintentando...
+        } @else {
+          <i class="pi pi-refresh"></i> Reintentar todas
+        }
+      </button>
+    }
+    <button
+      type="button"
+      class="sync-center__footer-btn sync-center__footer-btn--close"
+      (click)="showSyncCenter.set(false)"
+    >
+      Cerrar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Confirm dialog for discard action -->
+<p-confirmDialog />

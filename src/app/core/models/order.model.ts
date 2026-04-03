@@ -34,8 +34,14 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { method: PaymentMethod.Other,    label: 'Otro',           icon: 'pi-ellipsis-h' },
 ];
 
-/** Lifecycle state of an order relative to backend sync — PascalCase to match backend */
-export type OrderSyncStatus = 'Pending' | 'Synced' | 'Failed';
+/**
+ * Lifecycle state of an order relative to backend sync — PascalCase to match backend.
+ *   Pending            — Awaiting first sync attempt or retryable after transient failure
+ *   Synced             — Successfully persisted in the backend
+ *   Failed             — Transient failure, will be retried with exponential backoff
+ *   PermanentlyFailed  — Non-retryable (4xx validation error or exceeded MAX_RETRIES)
+ */
+export type OrderSyncStatus = 'Pending' | 'Synced' | 'Failed' | 'PermanentlyFailed';
 
 /** Kitchen display status — PascalCase to match backend enum */
 export type KitchenStatus = 'Pending' | 'Ready' | 'Delivered';
@@ -69,6 +75,10 @@ export interface Order {
   /** Set when the order is successfully persisted in the backend */
   syncedAt?: Date;
   syncStatus: OrderSyncStatus;
+  /** Number of failed sync attempts — used for exponential backoff */
+  retryCount?: number;
+  /** Timestamp of the last sync attempt — used to calculate backoff delay */
+  lastSyncAttempt?: Date;
   branchId: number;
   /** Kitchen display status — undefined on legacy orders */
   kitchenStatus?: KitchenStatus;

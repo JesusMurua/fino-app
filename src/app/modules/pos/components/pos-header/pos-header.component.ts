@@ -1,17 +1,19 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 import {
   AppConfig,
@@ -19,9 +21,12 @@ import {
   DEFAULT_APP_CONFIG,
   DEFAULT_DEVICE_CONFIG,
   DeviceConfig,
+  Order,
   Supplier,
   UserRole,
 } from '../../../../core/models';
+import { DatabaseService } from '../../../../core/services/database.service';
+import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -57,22 +62,28 @@ interface VerifyPinResponse {
   selector: 'app-pos-header',
   standalone: true,
   imports: [
+    DatePipe,
     RouterModule,
     FormsModule,
     DialogModule,
+    ConfirmDialogModule,
     DropdownModule,
     InputNumberModule,
     InputTextModule,
     InputTextareaModule,
     TableModule,
     TooltipModule,
+    PricePipe,
   ],
+  providers: [ConfirmationService],
   templateUrl: './pos-header.component.html',
   styleUrl: './pos-header.component.scss',
 })
 export class PosHeaderComponent implements OnInit, OnDestroy {
 
   private readonly http = inject(HttpClient);
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly db = inject(DatabaseService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
   private readonly productService = inject(ProductService);
@@ -182,6 +193,24 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       .map(p => ({ label: `${p.name} (producto)`, value: `prod:${p.id}`, name: p.name }));
     return [...invItems, ...prodItems];
   });
+
+  //#endregion
+
+  //#region Sync Center
+
+  /** Whether the Sync Center modal is visible */
+  readonly showSyncCenter = signal(false);
+
+  /** Orders that have permanently failed sync */
+  readonly failedOrders = signal<Order[]>([]);
+
+  /** True while a bulk retry is in progress */
+  readonly isRetrying = signal(false);
+
+  /** Total cents at risk across all failed orders */
+  readonly failedTotalCents = computed(() =>
+    this.failedOrders().reduce((sum, o) => sum + o.totalCents, 0),
+  );
 
   //#endregion
 
@@ -508,6 +537,73 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       },
       complete: () => {
         this.receiptSaving.set(false);
+      },
+    });
+  }
+
+  //#endregion
+
+  //#region Sync Center Methods
+
+  /** Opens the Sync Center modal and loads permanently failed orders from Dexie */
+  async openSyncCenter(): Promise<void> {
+    const orders = await this.db.orders
+      .where('syncStatus')
+      .equals('PermanentlyFailed')
+      .toArray();
+    this.failedOrders.set(orders);
+    this.showSyncCenter.set(true);
+  }
+
+  /** Resets a single order to Pending and triggers immediate sync */
+  async retryOrder(order: Order): Promise<void> {
+    await this.db.orders.update(order.id, { syncStatus: 'Pending', retryCount: 0 });
+    this.failedOrders.update(arr => arr.filter(o => o.id !== order.id));
+    await this.syncService.refreshCounts();
+
+    if (this.failedOrders().length === 0) {
+      this.showSyncCenter.set(false);
+    }
+
+    this.syncService.syncPendingOrders();
+  }
+
+  /** Resets all failed orders to Pending in a single Dexie transaction */
+  async retryAll(): Promise<void> {
+    this.isRetrying.set(true);
+    try {
+      const ids = this.failedOrders().map(o => o.id);
+      await this.db.transaction('rw', this.db.orders, async () => {
+        for (const id of ids) {
+          await this.db.orders.update(id, { syncStatus: 'Pending', retryCount: 0 });
+        }
+      });
+      this.failedOrders.set([]);
+      await this.syncService.refreshCounts();
+      this.showSyncCenter.set(false);
+      this.syncService.syncPendingOrders();
+    } finally {
+      this.isRetrying.set(false);
+    }
+  }
+
+  /** Shows a confirm dialog before permanently deleting a failed order from Dexie */
+  discardOrder(order: Order): void {
+    this.confirmationService.confirm({
+      header: `¿Descartar Orden #${order.orderNumber}?`,
+      message: `Esta orden se eliminará permanentemente del dispositivo. Esta acción NO se puede deshacer.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, descartar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: async () => {
+        await this.db.orders.delete(order.id);
+        this.failedOrders.update(arr => arr.filter(o => o.id !== order.id));
+        await this.syncService.refreshCounts();
+
+        if (this.failedOrders().length === 0) {
+          this.showSyncCenter.set(false);
+        }
       },
     });
   }

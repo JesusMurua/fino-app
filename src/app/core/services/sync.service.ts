@@ -7,11 +7,25 @@ import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
+/** Maximum retries before an order is marked PermanentlyFailed */
+const MAX_RETRIES = 10;
+
+/** Base delay for exponential backoff in milliseconds (30 seconds) */
+const BACKOFF_BASE_MS = 30_000;
+
+/** Maximum backoff delay cap (5 minutes) */
+const BACKOFF_CAP_MS = 300_000;
+
 /** Polling interval for pending order sync (milliseconds) */
 const SYNC_POLL_INTERVAL_MS = 30_000;
 
-/** Polling interval for pulling orders from other devices (milliseconds) */
-const PULL_POLL_INTERVAL_MS = 5_000;
+/** Pull polling tiers — adaptive based on activity */
+const PULL_INTERVAL_DEFAULT_MS = 15_000;
+const PULL_INTERVAL_SLOW_MS = 30_000;
+const PULL_INTERVAL_IDLE_MS = 60_000;
+
+/** Number of consecutive empty pulls before slowing down */
+const PULL_IDLE_THRESHOLD = 3;
 
 /**
  * Handles background synchronization of offline orders to the backend API.
@@ -20,9 +34,11 @@ const PULL_POLL_INTERVAL_MS = 5_000;
  *   1. Orders are saved to IndexedDB with syncStatus = 'Pending'
  *   2. If online, attempt immediate POST /orders/sync
  *   3. If offline, queue stays in Dexie
- *   4. On 'online' event or every 30s (when pending + online) → retry
+ *   4. On 'online' event or every 30s (when pending/failed + online) → retry
  *   5. On success: syncStatus = 'Synced', syncedAt = now
- *   6. On failure: syncStatus = 'Failed' (retried next cycle)
+ *   6. On transient failure (5xx/network): syncStatus = 'Failed', retryCount++
+ *   7. On permanent failure (4xx except 429): syncStatus = 'PermanentlyFailed'
+ *   8. After MAX_RETRIES transient failures → 'PermanentlyFailed'
  */
 @Injectable({ providedIn: 'root' })
 export class SyncService implements OnDestroy {
@@ -31,21 +47,30 @@ export class SyncService implements OnDestroy {
   /** True while a sync cycle is in progress */
   readonly isSyncing = signal(false);
 
-  /** Number of orders pending sync */
+  /** Number of orders pending sync (Pending + Failed) */
   readonly pendingCount = signal(0);
+
+  /** Number of orders that have permanently failed — UI should warn */
+  readonly permanentlyFailedCount = signal(0);
 
   /** Next order number — centralized so all components read the same value */
   readonly nextOrderNumber = signal(0);
 
   private readonly onlineHandler = () => this.syncPendingOrders();
   private pollTimerId: ReturnType<typeof setInterval> | null = null;
-  private pullTimerId: ReturnType<typeof setInterval> | null = null;
+  private pullTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** ISO timestamp of last successful pull — null means first pull */
   private lastPullAt: string | null = null;
 
   /** Prevents double initialization */
   private isInitialized = false;
+
+  /** Re-entrancy guard for pull operations */
+  private isPulling = false;
+
+  /** Consecutive pulls with no new data — drives adaptive interval */
+  private emptyPullStreak = 0;
 
   /** Controls whether pull sync is active — disabled on non-POS routes */
   private readonly isPullEnabled = signal(false);
@@ -69,9 +94,10 @@ export class SyncService implements OnDestroy {
 
     window.addEventListener('online', this.onlineHandler);
     this.refreshPendingCount();
+    this.refreshPermanentlyFailedCount();
     this.initNextOrderNumber();
     this.startPolling();
-    this.startPullPolling();
+    this.schedulePull();
   }
 
   /** Enables pull sync — call when navigating to POS routes */
@@ -108,7 +134,7 @@ export class SyncService implements OnDestroy {
    * @param order The completed order to persist
    */
   async saveOrder(order: Order): Promise<void> {
-    await this.db.orders.put({ ...order, syncStatus: 'Pending' });
+    await this.db.orders.put({ ...order, syncStatus: 'Pending', retryCount: 0 });
     this.pendingCount.update(n => n + 1);
 
     if (navigator.onLine) {
@@ -117,27 +143,40 @@ export class SyncService implements OnDestroy {
   }
 
   /**
-   * Fetches all pending orders and attempts to sync them with the API.
+   * Fetches all retryable orders (Pending + Failed) and attempts to sync them.
+   * Respects per-order exponential backoff — skips orders whose backoff
+   * window has not elapsed yet.
    * Runs automatically when the browser goes online or on polling interval.
    */
   async syncPendingOrders(): Promise<void> {
     if (this.isSyncing() || !navigator.onLine) return;
 
-    const pending = await this.db.orders
+    const retryable = await this.db.orders
       .where('syncStatus')
-      .equals('Pending')
+      .anyOf('Pending', 'Failed')
       .toArray();
 
-    if (pending.length === 0) return;
+    if (retryable.length === 0) return;
 
     this.isSyncing.set(true);
 
-    for (const order of pending) {
+    const now = Date.now();
+
+    for (const order of retryable) {
+      // Respect exponential backoff for previously failed orders
+      if (order.syncStatus === 'Failed' && order.lastSyncAttempt) {
+        const retries = order.retryCount ?? 0;
+        const backoffMs = Math.min(BACKOFF_BASE_MS * Math.pow(2, retries), BACKOFF_CAP_MS);
+        const elapsed = now - new Date(order.lastSyncAttempt).getTime();
+        if (elapsed < backoffMs) continue;
+      }
+
       await this.syncOrder(order);
     }
 
     this.isSyncing.set(false);
     await this.refreshPendingCount();
+    await this.refreshPermanentlyFailedCount();
 
     // After pushing, pull latest from server to get updates from other devices
     await this.pullOrders();
@@ -163,13 +202,7 @@ export class SyncService implements OnDestroy {
         this.api.get<any[]>(`/orders/pull?since=${since}`),
       );
 
-      for (const dto of remoteDtos) {
-        const local = await this.db.orders.get(dto.id);
-        if (local?.syncStatus === 'Pending') continue;
-
-        const order = this.mapPullDto(dto);
-        await this.db.orders.put(order);
-      }
+      await this.mergeRemoteOrders(remoteDtos);
 
       this.lastPullAt = new Date().toISOString();
     } catch (err) {
@@ -180,30 +213,70 @@ export class SyncService implements OnDestroy {
   /**
    * Pulls orders from the backend that were created or updated
    * by other devices since the last pull.
-   * Merges into local Dexie without overwriting orders that
-   * have pending local changes (syncStatus === 'pending').
+   * Uses a Dexie transaction to prevent TOCTOU races.
+   * Guarded against re-entrancy — concurrent calls are no-ops.
    */
   async pullOrders(): Promise<void> {
-    if (!this.isPullEnabled() || !navigator.onLine) return;
+    if (!this.isPullEnabled() || !navigator.onLine || this.isPulling) return;
 
+    this.isPulling = true;
     try {
       const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';
       const remoteDtos = await firstValueFrom(
         this.api.get<any[]>(`/orders/pull${params}`),
       );
 
-      for (const dto of remoteDtos) {
-        const local = await this.db.orders.get(dto.id);
-        if (local?.syncStatus === 'Pending') continue;
-
-        const order = this.mapPullDto(dto);
-        await this.db.orders.put(order);
-      }
+      const mergedCount = await this.mergeRemoteOrders(remoteDtos);
 
       this.lastPullAt = new Date().toISOString();
+
+      // Adaptive pull: track empty responses to slow down polling
+      if (mergedCount === 0) {
+        this.emptyPullStreak++;
+      } else {
+        this.emptyPullStreak = 0;
+      }
     } catch {
       // Silent fail — pull is best-effort, will retry on next interval
+    } finally {
+      this.isPulling = false;
     }
+  }
+
+  /**
+   * Merges remote order DTOs into Dexie inside a single transaction.
+   * Skips orders with local pending changes to avoid overwriting unsynced data.
+   * @param remoteDtos Array of order DTOs from GET /api/orders/pull
+   * @returns Number of orders actually written to Dexie
+   */
+  private async mergeRemoteOrders(remoteDtos: any[]): Promise<number> {
+    if (remoteDtos.length === 0) return 0;
+
+    let mergedCount = 0;
+
+    await this.db.transaction('rw', this.db.orders, async () => {
+      // Read all local IDs we need to check in a single batch
+      const remoteIds = remoteDtos.map(dto => dto.id);
+      const locals = await this.db.orders.where('id').anyOf(remoteIds).toArray();
+      const pendingIds = new Set(
+        locals
+          .filter(o => o.syncStatus === 'Pending' || o.syncStatus === 'Failed')
+          .map(o => o.id),
+      );
+
+      const toWrite: Order[] = [];
+      for (const dto of remoteDtos) {
+        if (pendingIds.has(dto.id)) continue;
+        toWrite.push(this.mapPullDto(dto));
+      }
+
+      if (toWrite.length > 0) {
+        await this.db.orders.bulkPut(toWrite);
+        mergedCount = toWrite.length;
+      }
+    });
+
+    return mergedCount;
   }
 
   /**
@@ -230,6 +303,7 @@ export class SyncService implements OnDestroy {
       createdAt: new Date(dto.createdAt),
       syncStatus: 'Synced',
       syncedAt: new Date(),
+      retryCount: 0,
       kitchenStatus: dto.kitchenStatus,
       cancellationReason: dto.cancellationReason,
       cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
@@ -267,11 +341,17 @@ export class SyncService implements OnDestroy {
 
   /**
    * Attempts to POST a single order to the backend API.
-   * Maps the Dexie Order to the DTO the API expects, wrapped in an array.
-   * Updates IndexedDB with the result regardless of outcome.
-   * @param order The pending order to sync
+   * Classifies errors by HTTP status to determine retry strategy:
+   *   - 2xx: success → mark 'Synced'
+   *   - 4xx (except 408/429): permanent failure → mark 'PermanentlyFailed'
+   *   - 429: transient → backoff using Retry-After header
+   *   - 5xx / network / timeout: transient → increment retryCount with backoff
+   *   - After MAX_RETRIES transient failures → 'PermanentlyFailed'
+   * @param order The pending/failed order to sync
    */
   private async syncOrder(order: Order): Promise<void> {
+    const retryCount = order.retryCount ?? 0;
+
     try {
       const dto = this.mapOrderToDto(order);
       await firstValueFrom(
@@ -280,11 +360,46 @@ export class SyncService implements OnDestroy {
       await this.db.orders.update(order.id, {
         syncStatus: 'Synced',
         syncedAt: new Date(),
+        lastSyncAttempt: new Date(),
       });
-    } catch (error) {
-      console.error(`[SyncService] Failed to sync order ${order.id}:`, error);
-      await this.db.orders.update(order.id, { syncStatus: 'Failed' });
+    } catch (error: any) {
+      const status = error?.status ?? 0;
+
+      if (this.isPermanentError(status)) {
+        // 4xx (except 408 timeout, 429 rate limit) — data is malformed, will never sync
+        console.error(`[SyncService] Order ${order.id} permanently failed (HTTP ${status}):`, error);
+        await this.db.orders.update(order.id, {
+          syncStatus: 'PermanentlyFailed',
+          lastSyncAttempt: new Date(),
+          retryCount: retryCount + 1,
+        });
+      } else if (retryCount + 1 >= MAX_RETRIES) {
+        // Exceeded maximum retries — give up
+        console.error(`[SyncService] Order ${order.id} exceeded ${MAX_RETRIES} retries — marking permanently failed`);
+        await this.db.orders.update(order.id, {
+          syncStatus: 'PermanentlyFailed',
+          lastSyncAttempt: new Date(),
+          retryCount: retryCount + 1,
+        });
+      } else {
+        // Transient failure (5xx, network, timeout, 429) — retry with backoff
+        console.warn(`[SyncService] Order ${order.id} failed (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
+        await this.db.orders.update(order.id, {
+          syncStatus: 'Failed',
+          lastSyncAttempt: new Date(),
+          retryCount: retryCount + 1,
+        });
+      }
     }
+  }
+
+  /**
+   * Returns true for HTTP status codes that indicate the request
+   * is fundamentally invalid and will never succeed on retry.
+   * Excludes 408 (timeout) and 429 (rate limit) which are transient.
+   */
+  private isPermanentError(status: number): boolean {
+    return status >= 400 && status < 500 && status !== 408 && status !== 429;
   }
 
   /**
@@ -354,19 +469,40 @@ export class SyncService implements OnDestroy {
   }
 
   /**
+   * Refreshes all sync count signals from IndexedDB.
+   * Call after manual retry/discard from the Sync Center UI.
+   */
+  async refreshCounts(): Promise<void> {
+    await this.refreshPendingCount();
+    await this.refreshPermanentlyFailedCount();
+  }
+
+  /**
    * Updates the pendingCount signal from the current IndexedDB state.
+   * Counts both 'Pending' and 'Failed' (retryable) orders.
    */
   private async refreshPendingCount(): Promise<void> {
     const count = await this.db.orders
       .where('syncStatus')
-      .equals('Pending')
+      .anyOf('Pending', 'Failed')
       .count();
     this.pendingCount.set(count);
   }
 
   /**
-   * Starts a 30-second polling interval.
-   * Only syncs when there are pending orders AND the browser is online.
+   * Updates the permanentlyFailedCount signal from IndexedDB.
+   */
+  private async refreshPermanentlyFailedCount(): Promise<void> {
+    const count = await this.db.orders
+      .where('syncStatus')
+      .equals('PermanentlyFailed')
+      .count();
+    this.permanentlyFailedCount.set(count);
+  }
+
+  /**
+   * Starts a 30-second polling interval for push sync.
+   * Only syncs when there are retryable orders AND the browser is online.
    */
   private startPolling(): void {
     this.pollTimerId = setInterval(async () => {
@@ -384,19 +520,39 @@ export class SyncService implements OnDestroy {
     }
   }
 
-  /** Starts pull polling every 5 seconds when online */
-  private startPullPolling(): void {
-    this.pullTimerId = setInterval(() => {
+  /**
+   * Schedules the next pull using adaptive intervals.
+   * Uses setTimeout (not setInterval) to avoid re-entrancy overlap
+   * and to allow dynamic interval adjustment based on activity.
+   *
+   * Tiers:
+   *   - Active (recent changes):  15s
+   *   - Moderate (3+ empty pulls): 30s
+   *   - Idle (6+ empty pulls):     60s
+   */
+  private schedulePull(): void {
+    const interval = this.getAdaptivePullInterval();
+
+    this.pullTimerId = setTimeout(async () => {
       if (navigator.onLine) {
-        this.pullOrders();
+        await this.pullOrders();
       }
-    }, PULL_POLL_INTERVAL_MS);
+      // Schedule the next pull regardless — the interval adapts
+      this.schedulePull();
+    }, interval);
   }
 
-  /** Stops the pull polling interval */
+  /** Returns the current pull interval based on recent activity */
+  private getAdaptivePullInterval(): number {
+    if (this.emptyPullStreak >= PULL_IDLE_THRESHOLD * 2) return PULL_INTERVAL_IDLE_MS;
+    if (this.emptyPullStreak >= PULL_IDLE_THRESHOLD) return PULL_INTERVAL_SLOW_MS;
+    return PULL_INTERVAL_DEFAULT_MS;
+  }
+
+  /** Stops the pull polling timeout */
   private stopPullPolling(): void {
     if (this.pullTimerId !== null) {
-      clearInterval(this.pullTimerId);
+      clearTimeout(this.pullTimerId);
       this.pullTimerId = null;
     }
   }

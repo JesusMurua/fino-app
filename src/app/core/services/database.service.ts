@@ -8,16 +8,15 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Disco
  * Single source of truth for all offline-first storage.
  * Schema version must be incremented whenever stores or indexes change.
  *
- * Version history:
- *   v1 — products, categories, cart, orders
- *   v2 — added config (business settings + PIN)
- *   v3 — added kitchenStatus index to orders (KDS)
- *   v4 — added deliveryStatus index to orders (order tracking)
- *   v5 — added cancellationStatus index to orders (order cancellation)
- *   v6 — added discountPresets table
- *   v7 — added cashSessions and cashMovements tables
- *   v8 — added restaurantTables table
- *   v9 — added inventoryItems and inventoryMovements tables
+ * Version history (consolidated — no production data before v9):
+ *   v9  — Base: all tables with full indexes (products, categories, cart,
+ *          orders, config, discountPresets, cashSessions, cashMovements,
+ *          restaurantTables, inventoryItems, inventoryMovements)
+ *   v10 — Added branchId index to orders; migrate businessId → branchId
+ *   v11 — Added promotions table; migrated discount fields on orders
+ *   v12 — Migrated syncStatus/kitchenStatus from lowercase to PascalCase
+ *   v13 — Added hasKitchen/hasTables flags to config
+ *   v14 — Initialize retryCount; rescue 'Failed' → 'Pending'
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -41,84 +40,7 @@ export class DatabaseService extends Dexie {
   constructor() {
     super('pos-tactil-db');
 
-    this.version(1).stores({
-      // Only indexed fields are listed here — all other fields are stored automatically
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt',
-    });
-
-    this.version(2).stores({
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt',
-      config:     'id',
-    });
-
-    this.version(3).stores({
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt, kitchenStatus',
-      config:     'id',
-    });
-
-    this.version(4).stores({
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt, kitchenStatus, deliveryStatus',
-      config:     'id',
-    });
-
-    this.version(5).stores({
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
-      config:     'id',
-    }).upgrade(tx => {
-      return tx.table('orders').toCollection().modify(order => {
-        if (order.cancellationStatus === undefined) {
-          order.cancellationStatus = 'none';
-        }
-      });
-    });
-
-    this.version(6).stores({
-      products:        'id, categoryId, isAvailable',
-      categories:      'id, sortOrder',
-      cart:            'id',
-      orders:          'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
-      config:          'id',
-      discountPresets: '++id, branchId, isActive',
-    });
-
-    this.version(7).stores({
-      products:        'id, categoryId, isAvailable',
-      categories:      'id, sortOrder',
-      cart:            'id',
-      orders:          'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
-      config:          'id',
-      discountPresets: '++id, branchId, isActive',
-      cashSessions:    '++id, branchId, status, openedAt',
-      cashMovements:   '++id, sessionId, createdAt',
-    });
-
-    this.version(8).stores({
-      products:         'id, categoryId, isAvailable',
-      categories:       'id, sortOrder',
-      cart:             'id',
-      orders:           'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
-      config:           'id',
-      discountPresets:  '++id, branchId, isActive',
-      cashSessions:     '++id, branchId, status, openedAt',
-      cashMovements:    '++id, sessionId, createdAt',
-      restaurantTables: '++id, branchId, status, isActive',
-    });
-
+    // ── Base schema (consolidated from v1–v9, no production users) ──
     this.version(9).stores({
       products:            'id, categoryId, isAvailable',
       categories:          'id, sortOrder',
@@ -133,10 +55,10 @@ export class DatabaseService extends Dexie {
       inventoryMovements:  'id, inventoryItemId, type, createdAt',
     });
 
+    // Add branchId index to orders; migrate legacy businessId
     this.version(10).stores({
       orders:              'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus, branchId',
     }).upgrade(async tx => {
-      // Migrate legacy orders from businessId to branchId
       const table = tx.table('orders');
       const orders = await table.toArray();
       for (const order of orders) {
@@ -148,6 +70,7 @@ export class DatabaseService extends Dexie {
       }
     });
 
+    // Add promotions table; migrate discount fields on orders
     this.version(11).stores({
       promotions:          'id, branchId, type, isActive',
     }).upgrade(tx => {
@@ -178,11 +101,19 @@ export class DatabaseService extends Dexie {
       });
     });
 
-    // Add hasKitchen/hasTables to business config; derive from existing businessType
+    // Add hasKitchen/hasTables to business config
     this.version(13).stores({}).upgrade(tx => {
       return tx.table('config').toCollection().modify((cfg: any) => {
         if (cfg.hasKitchen === undefined) cfg.hasKitchen = true;
         if (cfg.hasTables === undefined) cfg.hasTables = true;
+      });
+    });
+
+    // Initialize retryCount on existing orders; rescue 'Failed' → 'Pending'
+    this.version(14).stores({}).upgrade(tx => {
+      return tx.table('orders').toCollection().modify((order: any) => {
+        if (order.retryCount === undefined) order.retryCount = 0;
+        if (order.syncStatus === 'Failed') order.syncStatus = 'Pending';
       });
     });
   }
