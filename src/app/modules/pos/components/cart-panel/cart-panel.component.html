@@ -19,7 +19,7 @@
 
   <!-- Item list -->
   <div class="cart-panel__items">
-    @if (cart$ | async; as items) {
+    @if (cartItems(); as items) {
       @for (item of items; track item.id) {
         <div class="cart-item">
 
@@ -183,11 +183,12 @@
     @if (showSendToKitchen()) {
       @if (addingToOrder) {
         <p-button
-          [label]="'Agregar a Orden #' + addingToOrder.orderNumber"
+          [label]="isProcessing() ? 'Enviando...' : 'Agregar a Orden #' + addingToOrder.orderNumber"
           icon="pi pi-plus"
           styleClass="w-full btn-kitchen"
           size="large"
-          [disabled]="itemCount() === 0"
+          [disabled]="itemCount() === 0 || isProcessing()"
+          [loading]="isProcessing()"
           (onClick)="onSendToKitchen()"
         />
         <button type="button" class="btn-cancel-adding" (click)="onCancelAddingItems()">
@@ -196,11 +197,12 @@
         </button>
       } @else {
         <p-button
-          label="Enviar a cocina"
+          [label]="isProcessing() ? 'Enviando...' : 'Enviar a cocina'"
           icon="pi pi-send"
           styleClass="w-full btn-kitchen"
           size="large"
-          [disabled]="itemCount() === 0"
+          [disabled]="itemCount() === 0 || isProcessing()"
+          [loading]="isProcessing()"
           (onClick)="onSendToKitchen()"
         />
       }

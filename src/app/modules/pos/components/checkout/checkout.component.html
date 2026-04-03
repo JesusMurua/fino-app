@@ -280,12 +280,17 @@
       <button
         type="button"
         class="btn-confirm"
-        [class.btn-confirm--disabled]="!canConfirm()"
-        [disabled]="!canConfirm()"
+        [class.btn-confirm--disabled]="!canConfirm() || isProcessing()"
+        [disabled]="!canConfirm() || isProcessing()"
         (click)="onConfirmPayment()"
       >
-        <i class="pi pi-check"></i>
-        Confirmar pago
+        @if (isProcessing()) {
+          <i class="pi pi-spinner pi-spin"></i>
+          Procesando...
+        } @else {
+          <i class="pi pi-check"></i>
+          Confirmar pago
+        }
       </button>
     </footer>
 
@@ -461,12 +466,17 @@
 
   <ng-template pTemplate="footer">
     <div class="kitchen-confirm__footer">
-      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--cancel" (click)="showKitchenConfirm.set(false)">
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--cancel" [disabled]="isProcessing()" (click)="showKitchenConfirm.set(false)">
         Cancelar
       </button>
-      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--confirm" (click)="confirmPayment()">
-        <i class="pi pi-check"></i>
-        Sí, cobrar
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--confirm" [disabled]="isProcessing()" (click)="confirmPayment()">
+        @if (isProcessing()) {
+          <i class="pi pi-spinner pi-spin"></i>
+          Procesando...
+        } @else {
+          <i class="pi pi-check"></i>
+          Sí, cobrar
+        }
       </button>
     </div>
   </ng-template>

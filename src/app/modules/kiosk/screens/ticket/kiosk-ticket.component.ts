@@ -1,6 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 
 import { CartItem, Order } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
@@ -49,8 +48,8 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // ── Step 1: Snapshot cart synchronously (BehaviorSubject emits immediately) ──
-    const snapshot = await firstValueFrom(this.cartService.cart$);
+    // ── Step 1: Snapshot cart from signal ──
+    const snapshot = this.cartService.getSnapshot();
 
     if (snapshot.length === 0) {
       this.router.navigate(['/kiosk/welcome']);

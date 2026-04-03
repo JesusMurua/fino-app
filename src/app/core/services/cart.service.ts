@@ -1,5 +1,4 @@
-import { Injectable, signal } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, computed, signal } from '@angular/core';
 
 import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { DatabaseService } from './database.service';
@@ -8,8 +7,8 @@ import { PromotionService } from './promotion.service';
 /**
  * Manages the active order cart.
  *
- * State is held in a BehaviorSubject (reactive) and persisted to IndexedDB
- * so the cart survives page refreshes.
+ * State is held in Angular signals (single source of truth) and persisted
+ * to IndexedDB so the cart survives page refreshes.
  *
  * Pricing rules (CLAUDE.md):
  *   - All monetary values are in cents
@@ -21,26 +20,29 @@ import { PromotionService } from './promotion.service';
 export class CartService {
 
   //#region Properties
-  private readonly _cart$ = new BehaviorSubject<CartItem[]>([]);
 
-  /** Observable cart items — subscribe or use async pipe in templates */
-  readonly cart$: Observable<CartItem[]> = this._cart$.asObservable();
-
-  /**
-   * Total order amount in cents (reactive signal).
-   * Components can read this as a signal for change detection efficiency.
-   */
-  readonly totalCents = signal(0);
-
-  /** Number of individual items in the cart (sum of quantities) */
-  readonly itemCount = signal(0);
+  /** Single source of truth for cart items */
+  readonly items = signal<CartItem[]>([]);
 
   /** Latest promotion evaluation result (null when cart is empty) */
   readonly cartEvaluation = signal<PromotionEvaluation | null>(null);
 
+  /** Total order amount in cents — derived from items + promotions */
+  readonly totalCents = computed(() => {
+    const evaluation = this.cartEvaluation();
+    if (!evaluation) return 0;
+    const subtotal = this.items().reduce((sum, i) => sum + i.totalPriceCents, 0);
+    return Math.max(0, subtotal - evaluation.totalDiscountCents);
+  });
+
+  /** Number of individual items in the cart (sum of quantities) */
+  readonly itemCount = computed(() =>
+    this.items().reduce((sum, i) => sum + i.quantity, 0),
+  );
+
   /** Returns a snapshot of current cart items */
   getSnapshot(): CartItem[] {
-    return [...this._cart$.getValue()];
+    return [...this.items()];
   }
   //#endregion
 
@@ -102,7 +104,7 @@ export class CartService {
       discountCents: 0,
     };
 
-    const updated = [...this._cart$.getValue(), newItem];
+    const updated = [...this.items(), newItem];
     await this.persist(updated);
   }
 
@@ -118,7 +120,7 @@ export class CartService {
       return;
     }
 
-    const updated = this._cart$.getValue().map(item =>
+    const updated = this.items().map(item =>
       item.id === itemId
         ? { ...item, quantity, totalPriceCents: item.unitPriceCents * quantity }
         : item,
@@ -131,7 +133,7 @@ export class CartService {
    * @param itemId Cart item UUID
    */
   async removeItem(itemId: string): Promise<void> {
-    const updated = this._cart$.getValue().filter(item => item.id !== itemId);
+    const updated = this.items().filter(item => item.id !== itemId);
     await this.persist(updated);
   }
 
@@ -157,7 +159,7 @@ export class CartService {
     extraIds: number[],
   ): CartItem | undefined {
     const sortedExtras = [...extraIds].sort();
-    return this._cart$.getValue().find(item => {
+    return this.items().find(item => {
       if (item.product.id !== productId) return false;
       if ((item.size?.id ?? undefined) !== sizeId) return false;
       const itemExtras = item.extras.map(e => e.id).sort();
@@ -185,16 +187,14 @@ export class CartService {
 
   /**
    * Evaluates promotions against current items, updates discount fields
-   * on each CartItem, emits updated items, and recalculates totals.
+   * on each CartItem, and sets the items signal with decorated data.
    * Called after every cart mutation and on initial load from Dexie.
    * @param items Raw cart items (without promotion discounts applied)
    */
   private reevaluatePromotions(items: CartItem[]): void {
     if (items.length === 0) {
       this.cartEvaluation.set(null);
-      this._cart$.next([]);
-      this.totalCents.set(0);
-      this.itemCount.set(0);
+      this.items.set([]);
       return;
     }
 
@@ -213,12 +213,8 @@ export class CartService {
       };
     });
 
-    this._cart$.next(updatedItems);
-
-    const count = updatedItems.reduce((sum, i) => sum + i.quantity, 0);
-    const total = Math.max(0, subtotalCents - evaluation.totalDiscountCents);
-    this.totalCents.set(total);
-    this.itemCount.set(count);
+    // Single atomic update — totalCents and itemCount derive via computed()
+    this.items.set(updatedItems);
   }
   //#endregion
 

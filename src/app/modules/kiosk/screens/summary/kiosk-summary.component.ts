@@ -1,6 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, effect, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
 
 import { CartItem } from '../../../../core/models';
 
@@ -14,15 +13,13 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
   templateUrl: './kiosk-summary.component.html',
   styleUrl: './kiosk-summary.component.scss',
 })
-export class KioskSummaryComponent implements OnInit {
+export class KioskSummaryComponent {
 
   //#region Properties
 
-  readonly items = signal<CartItem[]>([]);
+  readonly items = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
   readonly cartEvaluation = this.cartService.cartEvaluation;
-
-  private cartSub?: Subscription;
 
   //#endregion
 
@@ -30,25 +27,14 @@ export class KioskSummaryComponent implements OnInit {
   constructor(
     private readonly cartService: CartService,
     private readonly router: Router,
-  ) {}
-  //#endregion
-
-  //#region Lifecycle
-
-  ngOnInit(): void {
-    this.cartSub = this.cartService.cart$.subscribe(items => {
-      this.items.set(items);
-      // If cart becomes empty redirect back to catalog
-      if (items.length === 0) {
+  ) {
+    // Redirect back to catalog when cart becomes empty
+    effect(() => {
+      if (this.cartService.items().length === 0) {
         this.router.navigate(['/kiosk/catalog']);
       }
     });
   }
-
-  ngOnDestroy(): void {
-    this.cartSub?.unsubscribe();
-  }
-
   //#endregion
 
   //#region Cart Item Actions

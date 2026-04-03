@@ -1,5 +1,4 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -20,19 +19,22 @@ import { SyncService } from '../../../../core/services/sync.service';
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [AsyncPipe, FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe],
+  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
 export class CartPanelComponent implements OnInit {
 
   //#region Properties
-  readonly cart$ = this.cartService.cart$;
+  readonly cartItems = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
   readonly itemCount = this.cartService.itemCount;
   readonly cartEvaluation = this.cartService.cartEvaluation;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
   readonly activeTableName = signal<string | null>(null);
+
+  /** Guards against double-tap on kitchen/checkout actions */
+  readonly isProcessing = signal(false);
 
   // ---- Coupon state ----
   readonly activeCoupon = this.promotionService.activeCoupon;
@@ -105,16 +107,23 @@ export class CartPanelComponent implements OnInit {
 
   /**
    * Sends order to kitchen or adds items to existing order.
-   * Used in waiter/tables mode.
+   * Used in waiter/tables mode. Guarded against double-tap.
    */
   async onSendToKitchen(): Promise<void> {
+    if (this.isProcessing()) return;
+
     const newItems = this.cartService.getSnapshot();
     if (newItems.length === 0) return;
 
-    if (this.addingToOrder) {
-      await this.addItemsToExistingOrder(newItems);
-    } else {
-      await this.createKitchenOrder(newItems);
+    this.isProcessing.set(true);
+    try {
+      if (this.addingToOrder) {
+        await this.addItemsToExistingOrder(newItems);
+      } else {
+        await this.createKitchenOrder(newItems);
+      }
+    } finally {
+      this.isProcessing.set(false);
     }
   }
 
