@@ -44,8 +44,8 @@ export const adminRoutes: Routes = [
       {
         path: 'inventory',
         loadComponent: () =>
-          import('./components/inventory/admin-inventory.component')
-            .then(m => m.AdminInventoryComponent),
+          import('./components/inventory/admin-inventory-shell.component')
+            .then(m => m.AdminInventoryShellComponent),
       },
       {
         path: 'recipes',
