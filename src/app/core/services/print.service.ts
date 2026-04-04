@@ -1,8 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
+import { CartItem } from '../models/cart-item.model';
 import { Order, getPaymentLabel } from '../models';
 import { DatabaseService } from './database.service';
 import { InvoicingService } from './invoicing.service';
+import { PrinterDestination } from '../models/printer.model';
+import { PrinterDestinationService } from './printer-destination.service';
 import { PrinterService, PrintableOrder } from './printer.service';
 import { ConfigService } from './config.service';
 
@@ -22,6 +25,7 @@ export class PrintService {
   private readonly invoicingService = inject(InvoicingService);
   private readonly printerService = inject(PrinterService);
   private readonly configService = inject(ConfigService);
+  private readonly printerDestinationService = inject(PrinterDestinationService);
 
   //#region Public API
 
@@ -344,6 +348,172 @@ export class PrintService {
       line,
       '¡Gracias por su visita!',
     ].filter(Boolean).join('\n');
+  }
+
+  //#endregion
+
+  //#region Destination-Based Printing (Phase 19)
+
+  /**
+   * Main entry point for destination-aware printing.
+   * Groups order items by their product's printingDestinationId and dispatches
+   * one kitchen ticket per destination in parallel. Always prints the customer receipt.
+   * @param order Completed order with items and payment data
+   */
+  async printOrder(order: Order): Promise<void> {
+    const groups = this.groupItemsByDestination(order.items);
+
+    const context = {
+      orderNumber: order.orderNumber.toString().padStart(4, '0'),
+      tableLabel:  order.tableName,
+      createdAt:   new Date(order.createdAt),
+    };
+
+    // Kitchen tickets — dispatched in parallel
+    const kitchenJobs: Promise<void>[] = [];
+    for (const [destinationId, items] of groups) {
+      const dest = this.printerDestinationService.destinations().find(d => d.id === destinationId);
+      if (dest) {
+        kitchenJobs.push(this.dispatchDestinationKitchenTicket(items, dest, context));
+      }
+    }
+    await Promise.all(kitchenJobs);
+
+    // Customer receipt — always dispatched after kitchen tickets
+    const defaultDest = this.printerDestinationService.defaultDestination();
+    await this.dispatchDestinationReceipt(order, defaultDest);
+  }
+
+  /**
+   * Groups cart items by product.printingDestinationId.
+   * Items with null or undefined printingDestinationId are excluded (no kitchen printing).
+   */
+  private groupItemsByDestination(items: CartItem[]): Map<number, CartItem[]> {
+    const groups = new Map<number, CartItem[]>();
+    for (const item of items) {
+      const destId = item.product.printingDestinationId;
+      if (destId == null) continue;
+      if (!groups.has(destId)) groups.set(destId, []);
+      groups.get(destId)!.push(item);
+    }
+    return groups;
+  }
+
+  /**
+   * Dispatches a kitchen ticket to a named printer destination.
+   * Phase 19: only 'none' (window.print()) is functional. Other types log a stub warning.
+   */
+  private async dispatchDestinationKitchenTicket(
+    items: CartItem[],
+    destination: PrinterDestination,
+    context: { orderNumber: string; tableLabel?: string; createdAt: Date },
+  ): Promise<void> {
+    switch (destination.connectionType) {
+      case 'none':
+        this.openDestinationKitchenPrintWindow(items, destination.name, context);
+        break;
+      case 'network':
+        console.warn(`[PrintService] Network printing not yet implemented. Destination: ${destination.name} (${destination.address})`);
+        break;
+      case 'usb':
+        console.warn(`[PrintService] USB printing not yet implemented. Destination: ${destination.name}`);
+        break;
+      case 'bluetooth':
+        console.warn(`[PrintService] Bluetooth printing not yet implemented. Destination: ${destination.name}`);
+        break;
+    }
+  }
+
+  /**
+   * Dispatches the customer receipt to the default destination.
+   * Phase 19: non-'none' types log a warning and fall back to window.print().
+   */
+  private async dispatchDestinationReceipt(order: Order, destination: PrinterDestination | null): Promise<void> {
+    if (!destination || destination.connectionType === 'none') {
+      this.openDestinationReceiptWindow(order);
+      return;
+    }
+    console.warn(`[PrintService] ${destination.connectionType} receipt printing not yet implemented. Falling back to window.print().`);
+    this.openDestinationReceiptWindow(order);
+  }
+
+  /** Opens a popup window with the kitchen ticket HTML and triggers window.print() */
+  private openDestinationKitchenPrintWindow(
+    items: CartItem[],
+    destinationName: string,
+    context: { orderNumber: string; tableLabel?: string; createdAt: Date },
+  ): void {
+    const time      = context.createdAt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const tableInfo = context.tableLabel ? `• ${context.tableLabel} ` : '';
+
+    const itemRows = items.map(item => {
+      const sizeRow   = item.size   ? `<div class="item-detail">${item.size.label}</div>` : '';
+      const extrasRow = item.extras.length ? `<div class="item-detail">${item.extras.map(e => e.label).join(', ')}</div>` : '';
+      const notesRow  = item.notes  ? `<div class="item-note">nota: ${item.notes}</div>` : '';
+      return `
+        <div class="item-row">
+          <span class="item-qty">${item.quantity}x</span>
+          <div class="item-desc"><span>${item.product.name}</span>${sizeRow}${extrasRow}${notesRow}</div>
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Ticket Cocina</title>
+<style>
+  @media print{body{margin:0}}
+  body{font-family:monospace;font-size:12pt;width:72mm;margin:0 auto;padding:8px}
+  .header{text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:8px}
+  .dest{font-size:15pt;font-weight:bold;text-transform:uppercase}
+  .meta{font-size:9pt;color:#333}
+  .item-row{display:flex;gap:6px;margin-bottom:6px}
+  .item-qty{font-size:14pt;font-weight:bold;min-width:24px}
+  .item-desc{font-size:11pt}
+  .item-detail,.item-note{font-size:9pt;color:#555}
+</style></head><body>
+  <div class="header"><div class="dest">${destinationName}</div><div class="meta">${tableInfo}${time} &bull; #${context.orderNumber}</div></div>
+  ${itemRows}
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=320,height=480');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 250);
+  }
+
+  /** Opens a popup window with the customer receipt HTML and triggers window.print() */
+  private openDestinationReceiptWindow(order: Order): void {
+    const time  = new Date(order.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const total = (order.totalCents / 100).toFixed(2);
+
+    const itemRows = order.items.map(item => {
+      const unitPrice = (item.unitPriceCents / 100).toFixed(2);
+      const lineTotal = (item.totalPriceCents / 100).toFixed(2);
+      return `<tr><td>${item.quantity}x ${item.product.name}</td><td class="price">${unitPrice}</td><td class="price">${lineTotal}</td></tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Ticket</title>
+<style>
+  @media print{body{margin:0}}
+  body{font-family:monospace;font-size:11pt;width:72mm;margin:0 auto;padding:8px}
+  .header{text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:8px}
+  table{width:100%;border-collapse:collapse}
+  td{padding:2px 0;vertical-align:top}
+  .price{text-align:right;white-space:nowrap}
+  .total-row{border-top:1px dashed #000;font-weight:bold}
+  .footer{text-align:center;font-size:9pt;margin-top:8px}
+</style></head><body>
+  <div class="header"><div style="font-weight:bold;font-size:13pt">TICKET</div><div style="font-size:9pt">#${order.orderNumber} &bull; ${time}</div></div>
+  <table><tbody>${itemRows}</tbody><tfoot><tr class="total-row"><td colspan="2">TOTAL</td><td class="price">$${total}</td></tr></tfoot></table>
+  <div class="footer">¡Gracias por su compra!</div>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=320,height=540');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 250);
   }
 
   //#endregion

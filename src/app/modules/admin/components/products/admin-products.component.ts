@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -28,6 +28,7 @@ import { InventoryConsumptionService } from '../../../../core/services/inventory
 import { ProductImportService } from '../../../../core/services/product-import.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
+import { PrinterDestinationService } from '../../../../core/services/printer-destination.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Editable row for a product size inside the form */
@@ -58,6 +59,7 @@ interface ProductForm {
   satProductCode: string;
   satUnitCode: string;
   taxRate: number;
+  printingDestinationId: number | null;
 }
 
 /** Shape of the category form used in the create/edit dialog */
@@ -118,6 +120,17 @@ export class AdminProductsComponent implements OnInit {
   // ---- SAT catalog options for fiscal dropdowns ----
   readonly satUnitOptions = SAT_UNIT_OPTIONS;
   readonly ivaRateOptions = IVA_RATE_OPTIONS;
+
+  // ---- Printing destination options ----
+  /** True when at least one active printer destination is configured */
+  readonly hasPrinters = computed(() =>
+    this.printerDestinationService.activeDestinations().length > 0,
+  );
+  /** Dropdown options: null entry (no printing) + all active destinations */
+  readonly printingDestinationOptions = computed(() => [
+    { id: null, name: 'Sin impresión de cocina' },
+    ...this.printerDestinationService.activeDestinations(),
+  ]);
 
   // ---- Category dialog ----
   catDialogVisible = false;
@@ -193,6 +206,7 @@ export class AdminProductsComponent implements OnInit {
     private readonly http: HttpClient,
     private readonly authService: AuthService,
     private readonly scannerService: ScannerService,
+    readonly printerDestinationService: PrinterDestinationService,
   ) {
     effect(() => {
       const branchId = this.authService.activeBranchId();
@@ -207,6 +221,7 @@ export class AdminProductsComponent implements OnInit {
     await Promise.all([
       this.loadData(),
       this.loadDiscounts(),
+      this.printerDestinationService.loadFromLocal(),
     ]);
   }
 
@@ -255,6 +270,7 @@ export class AdminProductsComponent implements OnInit {
       satProductCode: product.satProductCode ?? '',
       satUnitCode: product.satUnitCode ?? 'H87',
       taxRate: product.taxRate ?? 16,
+      printingDestinationId: product.printingDestinationId ?? null,
     };
     this.productImages.set(product.images ?? []);
     this.dialogTabIndex = 0;
@@ -296,6 +312,7 @@ export class AdminProductsComponent implements OnInit {
       satProductCode: this.form.satProductCode.trim() || undefined,
       satUnitCode: this.form.satUnitCode || undefined,
       taxRate: this.form.taxRate,
+      printingDestinationId: this.form.printingDestinationId,
     };
 
     if (this.editingProduct) {
@@ -768,7 +785,7 @@ export class AdminProductsComponent implements OnInit {
   }
 
   private emptyProductForm(): ProductForm {
-    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16 };
+    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16, printingDestinationId: null };
   }
 
   private emptyCatForm(): CategoryForm {

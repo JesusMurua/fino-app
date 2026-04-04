@@ -9,6 +9,30 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "npx tsc": true
+        "npx tsc": true,
+        "/^python3 -c \"\nimport json, re\n\nwith open\\(r'C:\\\\Users\\\\jesus\\\\\\.claude\\\\projects\\\\d--Source-restaurant-app\\\\85810889-fff3-4b10-b4b8-c3f7b1d738f8\\\\tool-results\\\\toolu_vrtx_01W5fBi4qrjDudiUYXx1Eq6D\\.json', 'r', encoding='utf-8'\\) as f:\n    raw = json\\.load\\(f\\)\n\n# The outer structure is \\[\\{type: 'text', text: '\\.\\.\\.'\\}\\]\ncontent = raw\\[0\\]\\['text'\\]\ndata = json\\.loads\\(content\\)\n\ntarget_files = \\[\n    'printer\\.model\\.ts',\n    'printer-destination\\.service\\.ts',\n    'print\\.service\\.ts',\n    'admin-printer-settings\\.component\\.ts',\n    'admin-printer-settings\\.component\\.html',\n    'admin-settings\\.component\\.ts',\n    'admin-settings\\.component\\.html',\n    'admin-products\\.component\\.ts',\n    'admin-products\\.component\\.html',\n    'database\\.service\\.ts',\n    'product\\.model\\.ts',\n    'index\\.ts',\n\\]\n\nfound = \\[\\]\nfor entry in data:\n    fp = entry\\.get\\('filePath', ''\\) or entry\\.get\\('uri', ''\\)\n    # Check if this file matches any target\n    matched = any\\(fp\\.replace\\('\\\\\\\\\\\\\\\\', '/'\\)\\.replace\\('\\\\\\\\', '/'\\)\\.endswith\\(t\\) for t in target_files\\)\n    if not matched:\n        continue\n    for diag in entry\\.get\\('diagnostics', \\[\\]\\):\n        if diag\\.get\\('severity'\\) == 'error':\n            line = diag\\.get\\('range', \\{\\}\\)\\.get\\('start', \\{\\}\\)\\.get\\('line', '\\?'\\)\n            found\\.append\\(\\(fp, line, diag\\.get\\('message', ''\\)\\)\\)\n\nif found:\n    for fp, line, msg in found:\n        short = fp\\.replace\\('\\\\\\\\\\\\\\\\', '/'\\)\\.replace\\('\\\\\\\\', '/'\\)\\.split\\('/'\\)\\[-1\\]\n        print\\(f'\\{short\\} \\| line \\{line\\} \\| \\{msg\\}'\\)\nelse:\n    print\\('No errors found in Phase 19 files'\\)\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node -e \"\nconst fs = require\\('fs'\\);\nconst raw = JSON\\.parse\\(fs\\.readFileSync\\('C:/Users/jesus/\\.claude/projects/d--Source-restaurant-app/85810889-fff3-4b10-b4b8-c3f7b1d738f8/tool-results/toolu_vrtx_01W5fBi4qrjDudiUYXx1Eq6D\\.json', 'utf8'\\)\\);\n\nconst content = raw\\[0\\]\\.text;\nconst data = JSON\\.parse\\(content\\);\n\nconst targetFiles = \\[\n  'printer\\.model\\.ts',\n  'printer-destination\\.service\\.ts',\n  'print\\.service\\.ts',\n  'admin-printer-settings\\.component\\.ts',\n  'admin-printer-settings\\.component\\.html',\n  'admin-settings\\.component\\.ts',\n  'admin-settings\\.component\\.html',\n  'admin-products\\.component\\.ts',\n  'admin-products\\.component\\.html',\n  'database\\.service\\.ts',\n  'product\\.model\\.ts',\n  'index\\.ts',\n\\];\n\nconst found = \\[\\];\nfor \\(const entry of data\\) \\{\n  const fp = \\(entry\\.filePath \\|\\| entry\\.uri \\|\\| ''\\)\\.replace\\(/\\\\\\\\\\\\\\\\/g, '/'\\)\\.replace\\(/\\\\\\\\/g, '/'\\);\n  const matched = targetFiles\\.some\\(t => fp\\.endsWith\\(t\\)\\);\n  if \\(!matched\\) continue;\n  for \\(const diag of \\(entry\\.diagnostics \\|\\| \\[\\]\\)\\) \\{\n    if \\(diag\\.severity === 'error'\\) \\{\n      const line = \\(diag\\.range && diag\\.range\\.start\\) \\? diag\\.range\\.start\\.line : '\\?';\n      found\\.push\\(\\{ file: fp\\.split\\('/'\\)\\.pop\\(\\), line, msg: diag\\.message \\}\\);\n    \\}\n  \\}\n\\}\n\nif \\(found\\.length === 0\\) \\{\n  console\\.log\\('No errors found in Phase 19 files'\\);\n\\} else \\{\n  found\\.forEach\\(e => console\\.log\\(e\\.file \\+ ' \\| line ' \\+ e\\.line \\+ ' \\| ' \\+ e\\.msg\\)\\);\n\\}\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node -e \"\nconst fs = require\\('fs'\\);\nconst raw = JSON\\.parse\\(fs\\.readFileSync\\('C:/Users/jesus/\\.claude/projects/d--Source-restaurant-app/85810889-fff3-4b10-b4b8-c3f7b1d738f8/tool-results/toolu_vrtx_01W5fBi4qrjDudiUYXx1Eq6D\\.json', 'utf8'\\)\\);\n\nconst content = raw\\[0\\]\\.text;\nconst data = JSON\\.parse\\(content\\);\n\nconst targetFiles = \\[\n  'printer\\.model\\.ts',\n  'printer-destination\\.service\\.ts',\n  'print\\.service\\.ts',\n  'admin-printer-settings\\.component\\.ts',\n  'admin-printer-settings\\.component\\.html',\n  'admin-settings\\.component\\.ts',\n  'admin-settings\\.component\\.html',\n  'admin-products\\.component\\.ts',\n  'admin-products\\.component\\.html',\n  'database\\.service\\.ts',\n  'product\\.model\\.ts',\n  'index\\.ts',\n\\];\n\nconst found = \\[\\];\nfor \\(const entry of data\\) \\{\n  const rawFp = \\(entry\\.filePath \\|\\| entry\\.uri \\|\\| ''\\);\n  const fp = rawFp\\.split\\('\\\\\\\\\\\\\\\\'\\)\\.join\\('/'\\)\\.split\\('\\\\\\\\\\\\\\\\'\\)\\.join\\('/'\\);\n  const matched = targetFiles\\.some\\(function\\(t\\) \\{ return fp\\.endsWith\\(t\\); \\}\\);\n  if \\(!matched\\) continue;\n  for \\(const diag of \\(entry\\.diagnostics \\|\\| \\[\\]\\)\\) \\{\n    if \\(diag\\.severity === 'error'\\) \\{\n      const line = \\(diag\\.range && diag\\.range\\.start\\) \\? diag\\.range\\.start\\.line : '\\?';\n      const shortName = fp\\.split\\('/'\\)\\.pop\\(\\);\n      found\\.push\\(shortName \\+ ' \\| line ' \\+ line \\+ ' \\| ' \\+ diag\\.message\\);\n    \\}\n  \\}\n\\}\n\nif \\(found\\.length === 0\\) \\{\n  console\\.log\\('No errors found in Phase 19 files'\\);\n\\} else \\{\n  found\\.forEach\\(function\\(e\\) \\{ console\\.log\\(e\\); \\}\\);\n\\}\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node /tmp/parse_diag\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node /tmp/parse_diag2\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node \"d:/Source/restaurant-app/parse_diag\\.js\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -38,6 +38,7 @@ export class DatabaseService extends Dexie {
   promotions!: Table<Promotion, number>;
   employeeHashes!: Table<EmployeeHash, number>;
   customers!: Table<Customer, number>;
+  printerDestinations!: Table<PrinterDestination, number>;
   //#endregion
 
   //#region Constructor
@@ -129,6 +130,11 @@ export class DatabaseService extends Dexie {
     // Add customers table for CRM
     this.version(16).stores({
       customers: '++id, branchId, phone, name, isActive',
+    });
+
+    // Add printerDestinations table for printing destination config (Phase 19)
+    this.version(17).stores({
+      printerDestinations: '++id, isDefault, isActive',
     });
   }
   //#endregion

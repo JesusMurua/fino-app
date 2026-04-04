@@ -1,0 +1,234 @@
+<div class="printer-settings">
+
+  <p-toast />
+  <p-confirmDialog />
+
+  <!-- Header toolbar -->
+  <div class="printer-settings__toolbar">
+    <div>
+      <h2 class="printer-settings__title">Destinos de impresión</h2>
+      <p class="printer-settings__subtitle">
+        Configura dónde se imprimen los tickets de cocina al completar una venta.
+      </p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openCreate()">
+      <i class="pi pi-plus"></i>
+      Nuevo destino
+    </button>
+  </div>
+
+  <!-- Destinations table -->
+  <div class="printer-settings__table-wrap">
+    <p-table
+      [value]="destinations()"
+      [loading]="printerService.isLoading()"
+      [rowHover]="true"
+      dataKey="id"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="min-width: 14rem">Nombre</th>
+          <th style="min-width: 14rem">Tipo de conexión</th>
+          <th style="min-width: 12rem">Dirección</th>
+          <th style="min-width: 6rem; text-align: center">Activo</th>
+          <th style="min-width: 10rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-dest>
+        <tr>
+          <!-- Name + Default badge -->
+          <td>
+            <span class="dest-name">{{ dest.name }}</span>
+            @if (dest.isDefault) {
+              <span class="dest-badge dest-badge--default">Ticket cliente</span>
+            }
+          </td>
+
+          <!-- Connection type chip -->
+          <td>
+            <span [class]="'conn-chip conn-chip--' + dest.connectionType">
+              {{ connectionTypeLabel(dest.connectionType) }}
+            </span>
+          </td>
+
+          <!-- Address -->
+          <td class="dest-address">{{ dest.address || '—' }}</td>
+
+          <!-- Active toggle -->
+          <td style="text-align: center">
+            <p-inputSwitch
+              [ngModel]="dest.isActive"
+              (onChange)="toggleActive(dest)"
+            />
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="dest-actions">
+              <button
+                type="button"
+                class="btn-icon"
+                aria-label="Editar destino"
+                pTooltip="Editar"
+                tooltipPosition="top"
+                (click)="openEdit(dest)"
+              >
+                <i class="pi pi-pencil"></i>
+              </button>
+
+              @if (!dest.isDefault) {
+                <button
+                  type="button"
+                  class="btn-icon"
+                  aria-label="Usar como ticket de cliente"
+                  pTooltip="Ticket cliente (default)"
+                  tooltipPosition="top"
+                  (click)="setDefault(dest)"
+                >
+                  <i class="pi pi-star"></i>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn-icon btn-icon--active"
+                  aria-label="Destino por defecto activo"
+                  pTooltip="Ticket cliente (activo)"
+                  tooltipPosition="top"
+                  disabled
+                >
+                  <i class="pi pi-star-fill"></i>
+                </button>
+              }
+
+              <button
+                type="button"
+                class="btn-icon btn-icon--danger"
+                aria-label="Eliminar destino"
+                pTooltip="Eliminar"
+                tooltipPosition="top"
+                (click)="confirmDelete(dest)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="destinations-empty">
+            <i class="pi pi-print" style="font-size: 2rem; color: #D1D5DB"></i>
+            <p>No hay destinos de impresión configurados.</p>
+            <button type="button" class="btn-primary" (click)="openCreate()">
+              <i class="pi pi-plus"></i>
+              Crear primer destino
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- Info card -->
+  <div class="printer-info-card">
+    <i class="pi pi-info-circle printer-info-card__icon"></i>
+    <div>
+      <p><strong>Phase 19:</strong> La impresión vía <em>Ninguna</em> abre una ventana del navegador para imprimir. Los modos USB, Red y Bluetooth están disponibles en la próxima versión.</p>
+      <p>Para asignar un destino a un producto, edítalo en <strong>Catálogo → Productos</strong>.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ======================================================================== -->
+<!-- Create / Edit Dialog                                                       -->
+<!-- ======================================================================== -->
+<p-dialog
+  [header]="editingDest() ? 'Editar destino' : 'Nuevo destino'"
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+>
+
+  <div class="dest-form">
+
+    <!-- Name -->
+    <div class="form-field">
+      <label class="form-field__label" for="df-name">Nombre</label>
+      <input
+        [(ngModel)]="form.name"
+        id="df-name"
+        type="text"
+        pInputText
+        [maxlength]="40"
+        placeholder="Ej. Cocina, Barra, Caja"
+        class="form-field__input"
+      />
+    </div>
+
+    <!-- Connection type -->
+    <div class="form-field">
+      <label class="form-field__label" for="df-type">Tipo de conexión</label>
+      <p-dropdown
+        [(ngModel)]="form.connectionType"
+        inputId="df-type"
+        [options]="connectionTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <!-- Address (only for non-none connection types) -->
+    @if (showAddressField()) {
+      <div class="form-field">
+        <label class="form-field__label" for="df-addr">Dirección (IP:Puerto)</label>
+        <input
+          [(ngModel)]="form.address"
+          id="df-addr"
+          type="text"
+          pInputText
+          placeholder="Ej. 192.168.1.100:9100"
+          class="form-field__input"
+        />
+        <span class="form-hint">Formato: IP:Puerto. Ej. 192.168.1.100:9100</span>
+      </div>
+    }
+
+    <!-- Active toggle -->
+    <div class="form-field form-field--row">
+      <label class="form-field__label" for="df-active">Activo</label>
+      <p-inputSwitch inputId="df-active" [(ngModel)]="form.isActive" />
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <button
+        type="button"
+        class="btn-secondary"
+        [disabled]="isSaving()"
+        (click)="closeDialog()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="isSaving() || !form.name.trim()"
+        (click)="save()"
+      >
+        @if (isSaving()) { <i class="pi pi-spin pi-spinner"></i> }
+        Guardar
+      </button>
+    </div>
+  </ng-template>
+
+</p-dialog>

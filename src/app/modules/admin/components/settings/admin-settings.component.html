@@ -58,6 +58,15 @@
         <i class="pi pi-receipt"></i>
         Facturación
       </button>
+      <button
+        type="button"
+        class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'printers'"
+        (click)="setTab('printers')"
+      >
+        <i class="pi pi-print"></i>
+        Impresoras
+      </button>
       @if (authService.currentUser()?.role === 'Owner') {
         <button
           type="button"
@@ -1140,6 +1149,15 @@
           </div>
         </ng-template>
       </p-dialog>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Impresoras                                                   -->
+    <!-- ================================================================ -->
+    @case ('printers') {
+      <div class="settings-content settings-content--full">
+        <app-admin-printer-settings />
+      </div>
     }
 
   }

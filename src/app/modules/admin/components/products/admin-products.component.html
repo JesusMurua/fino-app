@@ -442,6 +442,33 @@
 
         <!-- Fiscal / SAT metadata -->
         <div class="form-section-divider"></div>
+        <span class="form-section-title">Impresión de cocina</span>
+
+        @if (hasPrinters()) {
+          <div class="form-field">
+            <label class="form-field__label" for="pf-print-dest">Destino de impresión</label>
+            <p-dropdown
+              inputId="pf-print-dest"
+              [options]="printingDestinationOptions()"
+              optionLabel="name"
+              optionValue="id"
+              [(ngModel)]="form.printingDestinationId"
+              placeholder="Sin impresión de cocina"
+              [showClear]="true"
+              styleClass="form-field__input"
+              [appendTo]="'body'"
+            />
+            <span class="form-hint">El ticket de cocina se enviará a este destino al completar la venta.</span>
+          </div>
+        } @else {
+          <p class="form-hint">
+            <i class="pi pi-info-circle"></i>
+            Configura impresoras en <strong>Ajustes → Impresoras</strong> para activar esta función.
+          </p>
+        }
+
+        <!-- Fiscal / SAT metadata -->
+        <div class="form-section-divider"></div>
         <span class="form-section-title">Datos fiscales (CFDI)</span>
 
         <div class="form-field">

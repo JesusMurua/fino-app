@@ -63,4 +63,6 @@ export interface Product {
   satUnitCode?: string;
   /** IVA tax rate as integer percentage (e.g. 16, 8, 0). Default: 16 */
   taxRate?: number;
+  /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
+  printingDestinationId?: number | null;
 }

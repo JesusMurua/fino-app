@@ -22,6 +22,7 @@ import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-config-card.component';
+import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
 import { environment } from '../../../../../environments/environment';
 
 type DeviceMode = DeviceConfig['mode'];
@@ -39,6 +40,7 @@ type DeviceMode = DeviceConfig['mode'];
     RadioButtonModule,
     TableModule,
     DeliveryConfigCardComponent,
+    AdminPrinterSettingsComponent,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrl: './admin-settings.component.scss',
@@ -60,7 +62,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Properties
 
   /** Active settings tab */
-  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing'>('business');
+  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing' | 'printers'>('business');
 
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
@@ -358,7 +360,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Tab Navigation
 
   /** Switches the active settings tab */
-  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing'): void {
+  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing' | 'printers'): void {
     // Stop scanner when leaving peripherals tab
     if (this.activeTab() === 'peripherals' && tab !== 'peripherals') {
       this.scannerService.stopListening();
