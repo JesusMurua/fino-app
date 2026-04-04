@@ -1,3 +1,13 @@
 {
-    "angular.enable-strict-mode-prompt": false
+    "angular.enable-strict-mode-prompt": false,
+    "chat.tools.terminal.autoApprove": {
+        "/^node -e \"\nconst fs = require\\('fs'\\);\nconst data = JSON\\.parse\\(fs\\.readFileSync\\('C:/Users/jesus/\\.claude/projects/d--Source-restaurant-app/20a5308e-e6d5-48fc-a14b-7bb39509dddc/tool-results/toolu_vrtx_01CsLkt5ayP3t6Hiu4nCq8EU\\.json','utf8'\\)\\);\nconst arr = JSON\\.parse\\(data\\[0\\]\\.text\\);\nconst targets = \\['dashboard\\.component', 'report\\.service', 'report\\.model'\\];\nconst relevant = arr\\.filter\\(f => targets\\.some\\(t => f\\.filePath\\.includes\\(t\\)\\)\\);\nconst errWarn = relevant\\.map\\(f => \\(\\{\n  file: f\\.filePath\\.split\\('\\\\\\\\\\\\\\\\'\\)\\.pop\\(\\),\n  issues: f\\.diagnostics\\.filter\\(d => d\\.severity === 'error' \\|\\| d\\.severity === 'warning'\\)\n\\}\\)\\)\\.filter\\(f => f\\.issues\\.length > 0\\);\nconsole\\.log\\(JSON\\.stringify\\(errWarn, null, 2\\)\\);\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node -e \"const fs=require\\('fs'\\);const data=JSON\\.parse\\(fs\\.readFileSync\\('C:/Users/jesus/\\.claude/projects/d--Source-restaurant-app/20a5308e-e6d5-48fc-a14b-7bb39509dddc/tool-results/toolu_vrtx_01CsLkt5ayP3t6Hiu4nCq8EU\\.json','utf8'\\)\\);const arr=JSON\\.parse\\(data\\[0\\]\\.text\\);const targets=\\['dashboard\\.component','report\\.service','report\\.model'\\];const relevant=arr\\.filter\\(f=>targets\\.some\\(t=>f\\.filePath\\.includes\\(t\\)\\)\\);const out=relevant\\.map\\(f=>\\(\\{file:f\\.filePath\\.split\\('/'\\)\\.pop\\(\\),issues:f\\.diagnostics\\.filter\\(d=>d\\.severity==='error'\\|\\|d\\.severity==='warning'\\)\\}\\)\\)\\.filter\\(f=>f\\.issues\\.length>0\\);console\\.log\\(JSON\\.stringify\\(out,null,2\\)\\);\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

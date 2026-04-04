@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { ReportPeriod, ReportSummary } from '../models';
+import { DashboardChartsDto, ReportPeriod, ReportSummary } from '../models';
 import { ApiService } from './api.service';
 
 /**
@@ -81,6 +81,33 @@ export class ReportService {
       this.http.get(url, { responseType: 'blob' }),
     );
     this.triggerDownload(blob, `fiscal-${this.formatDateRange(from, to)}.csv`);
+  }
+
+  /**
+   * Fetches all BI chart datasets for the dashboard in a single request.
+   * @param from Start date (inclusive, time set to 00:00:00)
+   * @param to End date (inclusive, time set to 23:59:59)
+   */
+  async getDashboardCharts(from: Date, to: Date): Promise<DashboardChartsDto> {
+    return firstValueFrom(
+      this.api.get<DashboardChartsDto>(
+        `/report/charts?from=${from.toISOString()}&to=${to.toISOString()}`,
+      ),
+    );
+  }
+
+  /**
+   * Downloads simplified sales detail CSV (not SAT-compatible).
+   * Columns: Order ID, Date, Time, Customer, Items, Subtotal, Discount, Total, Payment Method.
+   * @param from Start date (inclusive)
+   * @param to End date (inclusive)
+   */
+  async downloadDetailedCsv(from: Date, to: Date): Promise<void> {
+    const url = `${environment.apiUrl}/report/export/sales-csv?from=${from.toISOString()}&to=${to.toISOString()}`;
+    const blob = await firstValueFrom(
+      this.http.get(url, { responseType: 'blob' }),
+    );
+    this.triggerDownload(blob, `ventas-detalle-${this.formatDateRange(from, to)}.csv`);
   }
 
   /**

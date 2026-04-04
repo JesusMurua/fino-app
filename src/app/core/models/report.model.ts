@@ -46,6 +46,40 @@ export interface OrderReportRow {
 export type ReportPeriod = 'today' | 'week' | 'month' | 'custom';
 
 // ---------------------------------------------------------------------------
+// BI Dashboard chart DTOs — returned by GET /api/report/charts
+// ---------------------------------------------------------------------------
+
+/** Single data point for the sales-over-time line chart */
+export interface SalesPointDto {
+  date: string;        // YYYY-MM-DD
+  totalCents: number;
+  orderCount: number;
+}
+
+/** Product entry for the top-products bar chart */
+export interface TopProductDto {
+  productId: number;
+  productName: string;
+  quantity: number;
+  revenueCents: number;
+}
+
+/** Single slice for the payment-methods doughnut chart */
+export interface PaymentMethodSalesDto {
+  method: string;      // Internal code (e.g. 'cash', 'card')
+  label: string;       // Display label (e.g. 'Efectivo')
+  orderCount: number;
+  totalCents: number;
+}
+
+/** Aggregate BI chart response — all three datasets in one request */
+export interface DashboardChartsDto {
+  salesOverTime: SalesPointDto[];
+  topProducts: TopProductDto[];       // Max 10
+  paymentMethods: PaymentMethodSalesDto[];
+}
+
+// ---------------------------------------------------------------------------
 // Dashboard summary — returned by GET /api/dashboard/summary?date={ISO}
 // ---------------------------------------------------------------------------
 

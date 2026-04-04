@@ -395,3 +395,132 @@
     color: #DC2626 !important;
   }
 }
+
+// -----------------------------------------------------------------------
+// BI Charts Toolbar
+// -----------------------------------------------------------------------
+.charts-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $space-4;
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    flex-wrap: wrap;
+  }
+
+  &__calendar {
+    min-width: 240px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// BI Charts Section
+// -----------------------------------------------------------------------
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__heading {
+    display: flex;
+    align-items: baseline;
+    gap: $space-3;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__period {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__error {
+    width: 100%;
+  }
+
+  &__retry {
+    display: flex;
+    justify-content: center;
+    margin-top: -$space-2;
+  }
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-5;
+
+  @media (max-width: #{$breakpoint-lg}) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Chart Card
+// -----------------------------------------------------------------------
+.chart-card {
+  background: white;
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
+  padding: $space-5 $space-6;
+
+  &__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__body {
+    position: relative;
+
+    &--line    { height: 300px; }
+    &--bar     { height: 280px; }
+    &--doughnut { height: 280px; }
+
+    // Make p-chart fill its container
+    p-chart,
+    p-chart > canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+
+  &__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    color: $color-text-sub;
+
+    i {
+      font-size: 32px;
+      opacity: 0.4;
+    }
+
+    span {
+      font-size: $font-size-label;
+    }
+  }
+}

@@ -1,6 +1,30 @@
 <div class="dashboard">
 
-  <h1 class="dashboard__title">Dashboard — Hoy</h1>
+  <!-- BI Toolbar: title + date range picker + CSV export -->
+  <div class="charts-toolbar">
+    <h1 class="dashboard__title">Dashboard</h1>
+    <div class="charts-toolbar__controls">
+      <p-calendar
+        [ngModel]="selectedDateRange()"
+        (ngModelChange)="onDateRangeChange($event)"
+        selectionMode="range"
+        [readonlyInput]="true"
+        [maxDate]="today"
+        dateFormat="dd/mm/yy"
+        [showIcon]="true"
+        placeholder="Inicio – Fin"
+        styleClass="charts-toolbar__calendar"
+      />
+      <p-button
+        label="Exportar Detalle (CSV)"
+        icon="pi pi-download"
+        severity="secondary"
+        [loading]="isExportingCsv()"
+        [disabled]="isLoadingCharts()"
+        (click)="onExportDetailedCsv()"
+      />
+    </div>
+  </div>
 
   @if (isLoading()) {
     <div class="dashboard__loading">
@@ -246,5 +270,107 @@
     </div>
 
   }
+
+  <!-- BI Charts Section (independent from daily summary, has its own loading state) -->
+  <section class="charts-section">
+
+    <div class="charts-section__heading">
+      <h2 class="charts-section__title">Análisis del período</h2>
+      <span class="charts-section__period">
+        {{ dateFrom() | date:'dd MMM' }} – {{ dateTo() | date:'dd MMM, yyyy' }}
+      </span>
+    </div>
+
+    @if (chartError()) {
+      <p-message
+        severity="error"
+        [text]="chartError()!"
+        styleClass="charts-section__error"
+      />
+      <div class="charts-section__retry">
+        <p-button
+          label="Reintentar"
+          icon="pi pi-refresh"
+          severity="secondary"
+          (click)="loadChartData()"
+        />
+      </div>
+    }
+
+    <!-- Row 1: Line Chart — full width -->
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <h3 class="chart-card__title">Ventas en el tiempo</h3>
+      </div>
+      <div class="chart-card__body chart-card__body--line">
+        @if (isLoadingCharts()) {
+          <p-skeleton width="100%" height="100%" borderRadius="8px" />
+        } @else if (!chartData()?.salesOverTime?.length) {
+          <div class="chart-card__empty">
+            <i class="pi pi-chart-line"></i>
+            <span>Sin ventas en este período</span>
+          </div>
+        } @else {
+          <p-chart
+            type="line"
+            [data]="salesLineData()"
+            [options]="salesLineOptions"
+          />
+        }
+      </div>
+    </div>
+
+    <!-- Row 2: Bar + Doughnut side by side -->
+    <div class="charts-row">
+
+      <!-- Bar Chart: Top Productos -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">Top productos</h3>
+        </div>
+        <div class="chart-card__body chart-card__body--bar">
+          @if (isLoadingCharts()) {
+            <p-skeleton width="100%" height="100%" borderRadius="8px" />
+          } @else if (!chartData()?.topProducts?.length) {
+            <div class="chart-card__empty">
+              <i class="pi pi-list"></i>
+              <span>Sin datos en este período</span>
+            </div>
+          } @else {
+            <p-chart
+              type="bar"
+              [data]="topProductsData()"
+              [options]="topProductsOptions"
+            />
+          }
+        </div>
+      </div>
+
+      <!-- Doughnut Chart: Métodos de pago -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">Métodos de pago</h3>
+        </div>
+        <div class="chart-card__body chart-card__body--doughnut">
+          @if (isLoadingCharts()) {
+            <p-skeleton width="100%" height="100%" borderRadius="8px" />
+          } @else if (!chartData()?.paymentMethods?.length) {
+            <div class="chart-card__empty">
+              <i class="pi pi-credit-card"></i>
+              <span>Sin datos en este período</span>
+            </div>
+          } @else {
+            <p-chart
+              type="doughnut"
+              [data]="paymentDoughnutData()"
+              [options]="paymentDoughnutOptions"
+            />
+          }
+        </div>
+      </div>
+
+    </div>
+
+  </section>
 
 </div>
