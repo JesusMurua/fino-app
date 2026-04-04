@@ -14,12 +14,12 @@
   <!-- Column headers -->
   <ng-template pTemplate="header">
     <tr>
-      <th style="min-width: 14rem">Name</th>
-      <th style="min-width: 6rem">Unit</th>
+      <th style="min-width: 14rem">Nombre</th>
+      <th style="min-width: 6rem">Unidad</th>
       <th style="min-width: 8rem">Stock</th>
-      <th style="min-width: 7rem">Min Alert</th>
-      <th style="min-width: 8rem">Unit Cost</th>
-      <th style="min-width: 12rem">Actions</th>
+      <th style="min-width: 7rem">Alerta mín.</th>
+      <th style="min-width: 8rem">Costo unit.</th>
+      <th style="min-width: 12rem">Acciones</th>
     </tr>
   </ng-template>
 
@@ -55,8 +55,8 @@
             [rounded]="true"
             [text]="true"
             severity="success"
-            aria-label="Add stock"
-            pTooltip="Entry"
+            aria-label="Entrada de stock"
+            pTooltip="Entrada"
             tooltipPosition="top"
             (onClick)="addStock.emit(item)"
           />
@@ -65,8 +65,8 @@
             [rounded]="true"
             [text]="true"
             severity="danger"
-            aria-label="Remove stock"
-            pTooltip="Exit"
+            aria-label="Salida de stock"
+            pTooltip="Salida"
             tooltipPosition="top"
             (onClick)="removeStock.emit(item)"
           />
@@ -74,8 +74,8 @@
             icon="pi pi-pencil"
             [rounded]="true"
             [text]="true"
-            aria-label="Edit item"
-            pTooltip="Edit"
+            aria-label="Editar artículo"
+            pTooltip="Editar"
             tooltipPosition="top"
             (onClick)="edit.emit(item)"
           />
@@ -83,8 +83,8 @@
             icon="pi pi-history"
             [rounded]="true"
             [text]="true"
-            aria-label="View history"
-            pTooltip="History"
+            aria-label="Ver historial"
+            pTooltip="Historial"
             tooltipPosition="left"
             (onClick)="viewHistory.emit(item)"
           />
@@ -125,7 +125,7 @@
       <td colspan="6">
         <div class="flex flex-column align-items-center gap-3 py-6">
           <i class="pi pi-box text-4xl text-300"></i>
-          <span class="text-lg text-500">No inventory items found.</span>
+          <span class="text-lg text-500">No hay artículos registrados.</span>
         </div>
       </td>
     </tr>

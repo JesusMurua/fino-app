@@ -16,7 +16,7 @@ import { InventoryItemsTabComponent } from './items/inventory-items-tab.componen
     <div class="flex flex-column gap-5 p-4">
 
       <!-- Header -->
-      <h1 class="text-900 text-2xl font-semibold m-0">Inventory</h1>
+      <h1 class="text-900 text-2xl font-semibold m-0">Inventario</h1>
 
       <!-- Tabs -->
       <p-tabView
@@ -24,24 +24,24 @@ import { InventoryItemsTabComponent } from './items/inventory-items-tab.componen
         (activeIndexChange)="onTabChange($event)"
       >
 
-        <!-- Tab 0: Items -->
-        <p-tabPanel header="Items">
+        <!-- Tab 0: Artículos -->
+        <p-tabPanel header="Artículos">
           <app-inventory-items-tab />
         </p-tabPanel>
 
-        <!-- Tab 1: Suppliers (Phase 3) -->
-        <p-tabPanel header="Suppliers">
+        <!-- Tab 1: Proveedores (Phase 3) -->
+        <p-tabPanel header="Proveedores">
           <div class="flex flex-column align-items-center gap-3 py-8">
             <i class="pi pi-truck text-4xl text-300"></i>
-            <span class="text-500 text-lg">Suppliers management — coming in Phase 3.</span>
+            <span class="text-500 text-lg">Gestión de proveedores — disponible en Fase 3.</span>
           </div>
         </p-tabPanel>
 
-        <!-- Tab 2: Stock Receipts (Phase 4) -->
-        <p-tabPanel header="Receipts">
+        <!-- Tab 2: Recepciones (Phase 4) -->
+        <p-tabPanel header="Recepciones">
           <div class="flex flex-column align-items-center gap-3 py-8">
             <i class="pi pi-inbox text-4xl text-300"></i>
-            <span class="text-500 text-lg">Stock receipts — coming in Phase 4.</span>
+            <span class="text-500 text-lg">Recepciones de mercancía — disponible en Fase 4.</span>
           </div>
         </p-tabPanel>
 
