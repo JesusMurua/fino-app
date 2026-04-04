@@ -29,6 +29,16 @@
     <!-- Section: Cliente                                               -->
     <!-- ============================================================ -->
     <div class="rf__section">
+      <!-- Customer selector (FDD-005) -->
+      <div class="rf__customer-selector">
+        <app-customer-selector
+          [selectedCustomer]="selectedCustomer()"
+          (selectedCustomerChange)="selectedCustomer.set($event)"
+          (customerChanged)="onCustomerChanged($event)"
+          placeholder="Buscar cliente existente..."
+        />
+      </div>
+
       <div class="rf__row">
         <div class="rf__field rf__field--grow">
           <label class="rf__label">Nombre</label>

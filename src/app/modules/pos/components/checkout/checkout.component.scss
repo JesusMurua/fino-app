@@ -16,6 +16,43 @@
 // -----------------------------------------------------------------------
 // Header
 // -----------------------------------------------------------------------
+// Customer selector + balance (FDD-005)
+.checkout-customer {
+  padding: $space-2 $space-4;
+  background: white;
+  border-bottom: 1px solid $color-border-soft;
+}
+
+.checkout-customer-balance {
+  display: flex;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  background: #F9FAFB;
+  border-bottom: 1px solid $color-border-soft;
+}
+
+.balance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+
+  i { font-size: 12px; }
+
+  &--points {
+    background: #FFF7ED;
+    color: #D97706;
+  }
+
+  &--credit {
+    background: #EFF6FF;
+    color: #3B82F6;
+  }
+}
+
 .checkout-header {
   display: flex;
   align-items: center;

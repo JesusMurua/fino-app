@@ -17,6 +17,32 @@
       }
     </header>
 
+    <!-- Customer selector (FDD-005) -->
+    <div class="checkout-customer">
+      <app-customer-selector
+        [(selectedCustomer)]="customerService.selectedCustomer"
+        placeholder="Vincular cliente (nombre o teléfono)..."
+      />
+    </div>
+
+    <!-- Customer balance info (if selected and has balance) -->
+    @if (selectedCustomer(); as customer) {
+      @if (customer.pointsBalance > 0 || customer.creditBalanceCents > 0) {
+        <div class="checkout-customer-balance">
+          @if (customer.pointsBalance > 0) {
+            <span class="balance-pill balance-pill--points">
+              <i class="pi pi-star"></i> {{ customer.pointsBalance }} pts
+            </span>
+          }
+          @if (customer.creditBalanceCents > 0) {
+            <span class="balance-pill balance-pill--credit">
+              <i class="pi pi-wallet"></i> {{ customer.creditBalanceCents | price }} crédito
+            </span>
+          }
+        </div>
+      }
+    }
+
     <div class="checkout-body">
 
       <!-- Order summary -->

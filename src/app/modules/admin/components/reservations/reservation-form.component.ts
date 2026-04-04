@@ -8,8 +8,9 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
-import { Reservation, RestaurantTable } from '../../../../core/models';
+import { Customer, Reservation, RestaurantTable } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import { TableService } from '../../../../core/services/table.service';
 import { ZoneService } from '../../../../core/services/zone.service';
@@ -30,6 +31,7 @@ interface TableZoneGroup {
     DropdownModule,
     InputTextModule,
     InputTextareaModule,
+    CustomerSelectorComponent,
   ],
   templateUrl: './reservation-form.component.html',
   styleUrl: './reservation-form.component.scss',
@@ -53,6 +55,9 @@ export class ReservationFormComponent implements OnChanges {
   private readonly zoneService = inject(ZoneService);
   private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
+
+  /** Customer linked to this reservation (optional CRM integration) */
+  readonly selectedCustomer = signal<Customer | null>(null);
 
   readonly tables = signal<RestaurantTable[]>([]);
   readonly selectedTableId = signal<number | null>(null);
@@ -233,6 +238,21 @@ export class ReservationFormComponent implements OnChanges {
 
   //#endregion
 
+  //#region Customer
+
+  /** Maps a selected customer to the guestName/guestPhone form fields */
+  onCustomerChanged(customer: Customer | null): void {
+    this.selectedCustomer.set(customer);
+    if (customer) {
+      this.form.patchValue({
+        guestName: customer.name,
+        guestPhone: customer.phone,
+      });
+    }
+  }
+
+  //#endregion
+
   //#region Save
 
   async onSave(): Promise<void> {
@@ -246,6 +266,7 @@ export class ReservationFormComponent implements OnChanges {
 
     const dto = {
       tableId: this.noTableAssigned() ? null : (this.selectedTableId() ?? null),
+      customerId: this.selectedCustomer()?.id ?? null,
       guestName: v.guestName,
       guestPhone: v.guestPhone || null,
       partySize: v.partySize,

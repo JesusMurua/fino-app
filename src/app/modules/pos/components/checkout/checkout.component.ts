@@ -13,11 +13,13 @@ import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
-import { CartItem, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
+import { CartItem, Customer, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { CustomerService } from '../../../../core/services/customer.service';
 import { InvoicingService } from '../../../../core/services/invoicing.service';
+import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { CustomerFiscalModalComponent } from '../../../../shared/components/customer-fiscal-modal/customer-fiscal-modal.component';
 import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
 import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
@@ -46,6 +48,7 @@ type CheckoutStep = 'payment' | 'confirmed';
     PricePipe,
     PaymentProcessingDialogComponent,
     CustomerFiscalModalComponent,
+    CustomerSelectorComponent,
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.scss',
@@ -67,8 +70,21 @@ export class CheckoutComponent implements OnInit {
   dialogAmountPesos = 0;
   dialogReference = '';
 
-  /** Available payment methods (base + enabled providers from branch config) */
-  readonly paymentOptions = computed(() => this.paymentProviderService.getAvailableOptions());
+  /** Available payment methods (base + providers + customer balance methods) */
+  readonly paymentOptions = computed(() => {
+    const base = this.paymentProviderService.getAvailableOptions();
+    const customer = this.customerService.selectedCustomer();
+    if (!customer) return base;
+
+    const extras: PaymentMethodOption[] = [];
+    if (customer.creditBalanceCents > 0) {
+      extras.push(CUSTOMER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.StoreCredit)!);
+    }
+    if (customer.pointsBalance > 0) {
+      extras.push(CUSTOMER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.LoyaltyPoints)!);
+    }
+    return [...base, ...extras];
+  });
 
   /** Controls visibility of the PaymentProcessingDialog */
   readonly showProcessingDialog = signal(false);
@@ -256,6 +272,10 @@ export class CheckoutComponent implements OnInit {
     this.completedOrder()?.invoiceRequest?.status === 'completed',
   );
 
+  // ---- Customer (FDD-005) ----
+  /** Selected customer from the CustomerSelectorComponent */
+  readonly selectedCustomer = this.customerService.selectedCustomer;
+
   /** Returns display label for an order's payments */
   orderPaymentLabel(order: Order): string {
     return getPaymentLabel(order);
@@ -272,6 +292,7 @@ export class CheckoutComponent implements OnInit {
     private readonly syncService: SyncService,
     private readonly cashRegisterService: CashRegisterService,
     private readonly configService: ConfigService,
+    readonly customerService: CustomerService,
     private readonly invoicingService: InvoicingService,
     readonly paymentProviderService: PaymentProviderService,
     private readonly printService: PrintService,
@@ -339,7 +360,18 @@ export class CheckoutComponent implements OnInit {
       return;
     }
     this.dialogMethod.set(method);
-    this.dialogAmountPesos = this.remainingCents() / 100;
+
+    // Cap credit/points amounts to available balance
+    const remaining = this.remainingCents();
+    const customer = this.customerService.selectedCustomer();
+    if (method === PaymentMethod.StoreCredit && customer) {
+      this.dialogAmountPesos = Math.min(remaining, customer.creditBalanceCents) / 100;
+    } else if (method === PaymentMethod.LoyaltyPoints && customer) {
+      this.dialogAmountPesos = Math.min(remaining, customer.pointsBalance * 100) / 100;
+    } else {
+      this.dialogAmountPesos = remaining / 100;
+    }
+
     this.dialogReference = '';
     this.showPaymentDialog.set(true);
   }
@@ -611,6 +643,8 @@ export class CheckoutComponent implements OnInit {
           syncStatus: 'Pending',
           branchId: this.authService.branchId,
           cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
+          customerId: this.customerService.selectedCustomer()?.id,
+          customerName: this.customerService.selectedCustomer()?.name,
           tableId: this.tableId() ?? undefined,
           tableName: this.tableName() ?? undefined,
         };
@@ -657,6 +691,7 @@ export class CheckoutComponent implements OnInit {
   private async resetCheckoutState(): Promise<void> {
     await this.cartService.clearCart();
     this.promotionService.clearCoupon();
+    this.customerService.clearSelection();
     sessionStorage.removeItem('addingToOrder');
     // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
     // NOT removed here so the table release prompt still works on the confirmed step.
