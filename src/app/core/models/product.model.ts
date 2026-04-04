@@ -57,4 +57,10 @@ export interface Product {
   lowStockThreshold?: number;
   sizes: ProductSize[];
   extras: ProductExtra[];
+  /** SAT product/service code (c_ClaveProdServ) for CFDI invoicing */
+  satProductCode?: string;
+  /** SAT unit code (c_ClaveUnidad) for CFDI invoicing (e.g. "H87" = Pieza) */
+  satUnitCode?: string;
+  /** IVA tax rate as integer percentage (e.g. 16, 8, 0). Default: 16 */
+  taxRate?: number;
 }

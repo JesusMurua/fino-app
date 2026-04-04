@@ -59,6 +59,12 @@
     color: #DC2626;
     &:hover:not(:disabled) { background: #FECACA; }
   }
+
+  &--fiscal {
+    background: #EFF6FF;
+    color: #2563EB;
+    &:hover:not(:disabled) { background: #DBEAFE; }
+  }
 }
 
 // -----------------------------------------------------------------------

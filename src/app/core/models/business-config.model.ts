@@ -7,6 +7,7 @@
  * in a different mode simultaneously (e.g. one tablet as kiosk, one as cashier).
  */
 import { BusinessTypeCatalog } from './catalog.model';
+import { BusinessFiscalConfig } from './invoice.model';
 
 export interface BusinessConfig {
   businessName: string;
@@ -17,6 +18,8 @@ export interface BusinessConfig {
   hasTables: boolean;
   /** Whether this business receives delivery aggregator orders */
   hasDelivery: boolean;
+  /** Whether CFDI invoicing is enabled for this branch (requires Pro plan) */
+  hasInvoicing: boolean;
   /** Cached business type catalog entry — provides posExperience at startup */
   businessTypeCatalog?: BusinessTypeCatalog;
   /** Folio prefix for ticket numbering (e.g. "HMO") */
@@ -25,6 +28,8 @@ export interface BusinessConfig {
   folioFormat?: string;
   /** Current folio counter value */
   folioCounter?: number;
+  /** Fiscal data for the business as CFDI issuer */
+  fiscalConfig?: BusinessFiscalConfig;
 }
 
 /** Default business config used before the owner sets up the back office */
@@ -34,4 +39,5 @@ export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   hasKitchen: false,
   hasTables: false,
   hasDelivery: false,
+  hasInvoicing: false,
 };

@@ -295,6 +295,20 @@
 }
 
 // -----------------------------------------------------------------------
+.form-section-divider {
+  height: 1px;
+  background: $color-border-soft;
+  margin: $space-2 0;
+}
+
+.form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: $color-text-sub;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 // Sizes & Extras sections inside the product dialog
 // -----------------------------------------------------------------------
 .form-section {

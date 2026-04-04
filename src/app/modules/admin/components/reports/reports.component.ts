@@ -36,6 +36,7 @@ export class ReportsComponent implements OnInit {
   readonly loading = signal(false);
   readonly loadingExcel = signal(false);
   readonly loadingPdf = signal(false);
+  readonly loadingFiscalCsv = signal(false);
   readonly selectedPeriod = signal<ReportPeriod>('today');
   readonly customFrom = signal<Date | null>(null);
   readonly customTo = signal<Date | null>(null);
@@ -206,6 +207,28 @@ export class ReportsComponent implements OnInit {
       });
     } finally {
       this.loadingPdf.set(false);
+    }
+  }
+
+  /** Downloads fiscal CSV export for accountant */
+  async onDownloadFiscalCsv(): Promise<void> {
+    this.loadingFiscalCsv.set(true);
+    try {
+      const { from, to } = this.dateRange();
+      await this.reportService.downloadFiscalCsv(this.authService.branchId, from, to);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'CSV fiscal descargado',
+      });
+    } catch (error) {
+      console.error('[ReportsComponent] Fiscal CSV download failed:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo descargar el CSV fiscal',
+      });
+    } finally {
+      this.loadingFiscalCsv.set(false);
     }
   }
 

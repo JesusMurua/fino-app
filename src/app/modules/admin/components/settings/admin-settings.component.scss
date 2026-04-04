@@ -393,7 +393,29 @@
 
   &__input {
     width: 100%;
+
+    &--mono {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
   }
+
+  &__dropdown {
+    width: 100%;
+  }
+
+  &__error {
+    font-size: 13px;
+    color: #DC2626;
+  }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
 }
 
 // -----------------------------------------------------------------------

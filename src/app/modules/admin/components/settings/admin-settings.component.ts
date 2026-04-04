@@ -10,7 +10,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
-import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType } from '../../../../core/models';
+import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType, REGIMEN_FISCAL_OPTIONS, RFC_REGEX, SatCatalogOption } from '../../../../core/models';
 import { BusinessType, PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
 import { OrderSource } from '../../../../core/enums';
@@ -60,7 +60,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Properties
 
   /** Active settings tab */
-  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'branches' | 'billing'>('business');
+  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing'>('business');
 
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
@@ -121,6 +121,14 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly folioCounter = signal(0);
   readonly isSavingFolio = signal(false);
   readonly saveFolioSuccess = signal(false);
+
+  // ---- Fiscal configuration ----
+  fiscalRfc = '';
+  fiscalRazonSocial = '';
+  fiscalRegimen = '';
+  fiscalCodigoPostal = '';
+  readonly isSavingFiscal = signal(false);
+  readonly saveFiscalSuccess = signal(false);
 
   // ---- Billing ----
   readonly showCancelDialog = signal(false);
@@ -299,6 +307,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       this.folioPrefix = cfg.folioPrefix ?? '';
       this.folioFormat = cfg.folioFormat ?? '{PREFIX}-{NUM:4}';
       this.folioCounter.set(cfg.folioCounter ?? 0);
+
+      // Seed fiscal form fields
+      const fiscal = cfg.fiscalConfig;
+      if (fiscal) {
+        this.fiscalRfc = fiscal.rfc;
+        this.fiscalRazonSocial = fiscal.razonSocial;
+        this.fiscalRegimen = fiscal.regimenFiscal;
+        this.fiscalCodigoPostal = fiscal.codigoPostal;
+      }
     });
 
     // Load delivery configs when a branch is selected for editing
@@ -341,7 +358,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Tab Navigation
 
   /** Switches the active settings tab */
-  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'branches' | 'billing'): void {
+  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing'): void {
     // Stop scanner when leaving peripherals tab
     if (this.activeTab() === 'peripherals' && tab !== 'peripherals') {
       this.scannerService.stopListening();
@@ -483,6 +500,60 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       });
     } finally {
       this.isSavingFolio.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Fiscal Config
+
+  /** SAT Regimen Fiscal options for dropdown */
+  readonly regimenFiscalOptions = REGIMEN_FISCAL_OPTIONS;
+
+  /** Whether the current fiscal RFC input passes the SAT regex */
+  readonly isFiscalRfcValid = computed(() =>
+    this.fiscalRfc.length === 0 || RFC_REGEX.test(this.fiscalRfc),
+  );
+
+  /** Whether the fiscal C.P. input is valid (5 digits) */
+  readonly isFiscalCpValid = computed(() =>
+    this.fiscalCodigoPostal.length === 0 || /^\d{5}$/.test(this.fiscalCodigoPostal),
+  );
+
+  /** Saves fiscal config to the business config in Dexie + API */
+  async saveFiscalConfig(): Promise<void> {
+    this.isSavingFiscal.set(true);
+    this.saveFiscalSuccess.set(false);
+
+    const fiscalConfig = {
+      rfc: this.fiscalRfc.trim().toUpperCase(),
+      razonSocial: this.fiscalRazonSocial.trim(),
+      regimenFiscal: this.fiscalRegimen,
+      codigoPostal: this.fiscalCodigoPostal.trim(),
+    };
+
+    this.config.update(c => ({ ...c, fiscalConfig, hasInvoicing: true }));
+    await this.configService.save(this.config());
+
+    try {
+      await firstValueFrom(
+        this.api.post('/branch/fiscal-config', fiscalConfig),
+      );
+      this.saveFiscalSuccess.set(true);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Configuración fiscal guardada',
+        life: 3000,
+      });
+      setTimeout(() => this.saveFiscalSuccess.set(false), 3000);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al guardar la configuración fiscal',
+        life: 3000,
+      });
+    } finally {
+      this.isSavingFiscal.set(false);
     }
   }
 

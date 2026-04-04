@@ -24,6 +24,7 @@ interface BranchConfigResponse {
   hasKitchen?: boolean;
   hasTables?: boolean;
   hasDelivery?: boolean;
+  hasInvoicing?: boolean;
   folioPrefix?: string;
   folioFormat?: string;
   folioCounter?: number;
@@ -60,6 +61,9 @@ export class ConfigService {
 
   /** Whether the current business receives delivery aggregator orders */
   readonly hasDelivery = signal(false);
+
+  /** Whether CFDI invoicing is enabled for this branch */
+  readonly hasInvoicing = signal(false);
 
   /**
    * POS experience variant — undefined until config is loaded.
@@ -109,6 +113,7 @@ export class ConfigService {
     this.hasKitchen.set(config.hasKitchen ?? false);
     this.hasTables.set(config.hasTables ?? false);
     this.hasDelivery.set(config.hasDelivery ?? false);
+    this.hasInvoicing.set(config.hasInvoicing ?? false);
     this.posExperience.set(config.businessTypeCatalog?.posExperience);
 
     // Step 2 — Try to fetch from API in background
@@ -128,6 +133,7 @@ export class ConfigService {
         hasKitchen: remote.hasKitchen ?? false,
         hasTables: remote.hasTables ?? false,
         hasDelivery: remote.hasDelivery ?? false,
+        hasInvoicing: remote.hasInvoicing ?? false,
         businessTypeCatalog: btCatalog,
         folioPrefix: remote.folioPrefix ?? config.folioPrefix,
         folioFormat: remote.folioFormat ?? config.folioFormat,
@@ -160,6 +166,7 @@ export class ConfigService {
     this.hasKitchen.set(normalized.hasKitchen ?? false);
     this.hasTables.set(normalized.hasTables ?? false);
     this.hasDelivery.set(normalized.hasDelivery ?? false);
+    this.hasInvoicing.set(normalized.hasInvoicing ?? false);
     this.posExperience.set(normalized.businessTypeCatalog?.posExperience);
   }
 

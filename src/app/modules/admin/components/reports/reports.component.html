@@ -13,6 +13,10 @@
           <i [class]="loadingPdf() ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
           PDF
         </button>
+        <button type="button" class="btn-export btn-export--fiscal" [disabled]="loadingFiscalCsv()" (click)="onDownloadFiscalCsv()">
+          <i [class]="loadingFiscalCsv() ? 'pi pi-spin pi-spinner' : 'pi pi-file'"></i>
+          Fiscal (CSV)
+        </button>
       </div>
     }
   </div>

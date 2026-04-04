@@ -19,7 +19,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
-import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult } from '../../../../core/models';
+import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, SAT_UNIT_OPTIONS } from '../../../../core/models';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { DiscountService } from '../../../../core/services/discount.service';
@@ -55,6 +55,9 @@ interface ProductForm {
   lowStockThreshold: number;
   sizes: ProductSizeForm[];
   extras: ProductExtraForm[];
+  satProductCode: string;
+  satUnitCode: string;
+  taxRate: number;
 }
 
 /** Shape of the category form used in the create/edit dialog */
@@ -111,6 +114,10 @@ export class AdminProductsComponent implements OnInit {
   form: ProductForm = this.emptyProductForm();
   dialogTabIndex = 0;
   showImageTab = false;
+
+  // ---- SAT catalog options for fiscal dropdowns ----
+  readonly satUnitOptions = SAT_UNIT_OPTIONS;
+  readonly ivaRateOptions = IVA_RATE_OPTIONS;
 
   // ---- Category dialog ----
   catDialogVisible = false;
@@ -245,6 +252,9 @@ export class AdminProductsComponent implements OnInit {
       lowStockThreshold: product.lowStockThreshold ?? 0,
       sizes:  product.sizes.map(s => ({ label: s.label, priceDeltaCents: s.priceDeltaCents })),
       extras: product.extras.map(e => ({ label: e.label, priceCents: e.priceCents })),
+      satProductCode: product.satProductCode ?? '',
+      satUnitCode: product.satUnitCode ?? 'H87',
+      taxRate: product.taxRate ?? 16,
     };
     this.productImages.set(product.images ?? []);
     this.dialogTabIndex = 0;
@@ -283,6 +293,9 @@ export class AdminProductsComponent implements OnInit {
       lowStockThreshold: this.form.trackStock ? this.form.lowStockThreshold : 0,
       sizes:  sizes.map((s, i) => ({ id: i + 1, label: s.label.trim(), priceDeltaCents: s.priceDeltaCents })),
       extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
+      satProductCode: this.form.satProductCode.trim() || undefined,
+      satUnitCode: this.form.satUnitCode || undefined,
+      taxRate: this.form.taxRate,
     };
 
     if (this.editingProduct) {
@@ -755,7 +768,7 @@ export class AdminProductsComponent implements OnInit {
   }
 
   private emptyProductForm(): ProductForm {
-    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [] };
+    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16 };
   }
 
   private emptyCatForm(): CategoryForm {

@@ -68,6 +68,22 @@ export class ReportService {
   }
 
   /**
+   * Downloads fiscal CSV export with SAT-compatible fields for accountants.
+   * Includes: order number, date, RFC, razón social, payment method (SAT code),
+   * subtotal, IVA, total, product SAT codes, and CFDI UUID if invoiced.
+   * @param branchId Branch to query
+   * @param from Start date (inclusive)
+   * @param to End date (inclusive)
+   */
+  async downloadFiscalCsv(branchId: number, from: Date, to: Date): Promise<void> {
+    const url = `${environment.apiUrl}/report/export/fiscal-csv?from=${from.toISOString()}&to=${to.toISOString()}`;
+    const blob = await firstValueFrom(
+      this.http.get(url, { responseType: 'blob' }),
+    );
+    this.triggerDownload(blob, `fiscal-${this.formatDateRange(from, to)}.csv`);
+  }
+
+  /**
    * Returns from/to dates for a given period.
    * @param period Predefined period or 'custom'
    */

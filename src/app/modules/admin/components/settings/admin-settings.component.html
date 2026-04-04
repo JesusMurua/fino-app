@@ -43,6 +43,15 @@
       <button
         type="button"
         class="settings-tab"
+        [class.settings-tab--active]="activeTab() === 'fiscal'"
+        (click)="setTab('fiscal')"
+      >
+        <i class="pi pi-file-edit"></i>
+        Fiscal
+      </button>
+      <button
+        type="button"
+        class="settings-tab"
         [class.settings-tab--active]="activeTab() === 'billing'"
         (click)="setTab('billing')"
       >
@@ -684,6 +693,111 @@
           <div class="settings-card__footer">
             <button type="button" class="btn-primary" (click)="changePin()">
               Actualizar PIN
+            </button>
+          </div>
+        </section>
+
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- TAB: Configuración Fiscal                                         -->
+    <!-- ================================================================ -->
+    @case ('fiscal') {
+      <div class="settings-content">
+
+        <!-- Fiscal data card -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-file-edit"></i></div>
+            <div>
+              <div class="card-title">Datos Fiscales del Emisor</div>
+              <div class="card-subtitle">Información para facturación CFDI (SAT)</div>
+            </div>
+          </div>
+
+          <div class="settings-form">
+            <div class="form-field">
+              <label class="form-field__label" for="fiscal-rfc">RFC</label>
+              <input
+                id="fiscal-rfc"
+                type="text"
+                pInputText
+                [(ngModel)]="fiscalRfc"
+                placeholder="Ej. XAXX010101000"
+                class="form-field__input form-field__input--mono"
+                maxlength="13"
+                style="text-transform: uppercase"
+              />
+              @if (fiscalRfc.length > 0 && !isFiscalRfcValid()) {
+                <small class="form-field__error">RFC inválido — debe ser 12 o 13 caracteres alfanuméricos</small>
+              }
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="fiscal-razon">Razón Social</label>
+              <input
+                id="fiscal-razon"
+                type="text"
+                pInputText
+                [(ngModel)]="fiscalRazonSocial"
+                placeholder="Ej. MI NEGOCIO S.A. DE C.V."
+                class="form-field__input"
+                style="text-transform: uppercase"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-field__label" for="fiscal-regimen">Régimen Fiscal</label>
+                <p-dropdown
+                  inputId="fiscal-regimen"
+                  [(ngModel)]="fiscalRegimen"
+                  [options]="regimenFiscalOptions"
+                  optionValue="clave"
+                  optionLabel="descripcion"
+                  placeholder="Selecciona régimen"
+                  [filter]="true"
+                  filterPlaceholder="Buscar..."
+                  styleClass="form-field__dropdown"
+                />
+              </div>
+
+              <div class="form-field">
+                <label class="form-field__label" for="fiscal-cp">Código Postal</label>
+                <input
+                  id="fiscal-cp"
+                  type="text"
+                  pInputText
+                  [(ngModel)]="fiscalCodigoPostal"
+                  placeholder="Ej. 83000"
+                  class="form-field__input"
+                  maxlength="5"
+                  pattern="\d{5}"
+                />
+                @if (fiscalCodigoPostal.length > 0 && !isFiscalCpValid()) {
+                  <small class="form-field__error">Debe ser 5 dígitos</small>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card__footer">
+            @if (saveFiscalSuccess()) {
+              <span class="settings-card__ok">
+                <i class="pi pi-check-circle"></i> Guardado
+              </span>
+            }
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="isSavingFiscal() || !fiscalRfc || !fiscalRazonSocial || !fiscalRegimen || !fiscalCodigoPostal"
+              (click)="saveFiscalConfig()"
+            >
+              @if (isSavingFiscal()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Guardar datos fiscales
             </button>
           </div>
         </section>

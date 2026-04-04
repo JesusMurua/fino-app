@@ -440,6 +440,48 @@
           </div>
         }
 
+        <!-- Fiscal / SAT metadata -->
+        <div class="form-section-divider"></div>
+        <span class="form-section-title">Datos fiscales (CFDI)</span>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-sat-code">Clave SAT del producto</label>
+          <input
+            id="pf-sat-code"
+            type="text"
+            pInputText
+            [(ngModel)]="form.satProductCode"
+            placeholder="Ej. 90101500 (Alimentos)"
+            class="w-full"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-field__label" for="pf-sat-unit">Unidad SAT</label>
+            <p-dropdown
+              inputId="pf-sat-unit"
+              [(ngModel)]="form.satUnitCode"
+              [options]="satUnitOptions"
+              optionValue="clave"
+              optionLabel="descripcion"
+              placeholder="Selecciona unidad"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
+            <p-dropdown
+              inputId="pf-tax-rate"
+              [(ngModel)]="form.taxRate"
+              [options]="ivaRateOptions"
+              optionValue="value"
+              optionLabel="label"
+              styleClass="w-full"
+            />
+          </div>
+        </div>
+
       </div>
     </p-tabPanel>
 
