@@ -1,5 +1,6 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 
 import { KitchenService } from '../../core/services/kitchen.service';
 import { KitchenOrderCardComponent } from './kitchen-order-card.component';
@@ -14,12 +15,19 @@ import { KitchenOrderCardComponent } from './kitchen-order-card.component';
 export class KitchenDisplayComponent implements OnInit, OnDestroy {
 
   //#region Properties
-  readonly activeOrders = this.kitchenService.activeOrders;
+
+  private readonly kitchenService = inject(KitchenService);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly pendingJobs = this.kitchenService.pendingJobs;
+
+  /** Destination name derived from the first job — shown in the header. */
+  readonly destinationName = computed(() => this.pendingJobs()[0]?.destinationName ?? 'KDS');
 
   /** Current time — updated every second for the header clock and elapsed timers */
   readonly now = signal(new Date());
 
-  /** Set of order IDs currently fading out after being marked done */
+  /** Set of job IDs currently fading out after being marked done */
   readonly fadingOut = signal<Set<string>>(new Set());
 
   /** Whether the device is online — controls offline banner */
@@ -28,17 +36,20 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
   private clockTimerId: ReturnType<typeof setInterval> | null = null;
   private readonly onOnline = () => this.isOnline.set(true);
   private readonly onOffline = () => this.isOnline.set(false);
-  //#endregion
 
-  //#region Constructor
-  constructor(private readonly kitchenService: KitchenService) {}
   //#endregion
 
   //#region Lifecycle
-  async ngOnInit(): Promise<void> {
+
+  ngOnInit(): void {
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
-    await this.kitchenService.start();
+
+    const destinationIdParam = this.route.snapshot.paramMap.get('destinationId');
+    if (destinationIdParam) {
+      this.kitchenService.startPolling(+destinationIdParam);
+    }
+
     this.clockTimerId = setInterval(() => this.now.set(new Date()), 1000);
   }
 
@@ -50,24 +61,26 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
       clearInterval(this.clockTimerId);
     }
   }
+
   //#endregion
 
   //#region Actions
 
   /**
-   * Marks an order as ready with a 3-second fade-out before removal.
+   * Fades the job card out for 3 seconds, then marks it as printed.
+   * @param jobId The print job UUID emitted by the card
    */
-  async onMarkDone(orderId: string): Promise<void> {
-    this.fadingOut.update(s => { s.add(orderId); return new Set(s); });
+  async onMarkDone(jobId: string): Promise<void> {
+    this.fadingOut.update(s => { s.add(jobId); return new Set(s); });
 
     setTimeout(async () => {
-      await this.kitchenService.markAsReady(orderId);
-      this.fadingOut.update(s => { s.delete(orderId); return new Set(s); });
+      await this.kitchenService.markAsPrinted(jobId);
+      this.fadingOut.update(s => { s.delete(jobId); return new Set(s); });
     }, 3000);
   }
 
-  isFading(orderId: string): boolean {
-    return this.fadingOut().has(orderId);
+  isFading(jobId: string): boolean {
+    return this.fadingOut().has(jobId);
   }
 
   //#endregion

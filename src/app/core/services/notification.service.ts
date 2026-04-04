@@ -47,13 +47,13 @@ export class NotificationService {
       });
 
       // Refresh KDS if a kitchen-related push arrives
-      this.kitchenService.refreshOrders();
+      this.kitchenService.refresh();
     });
 
     // User clicked on a notification — navigate and refresh
     this.swPush.notificationClicks.subscribe(({ notification }) => {
       const orderId = notification?.data?.orderId;
-      this.kitchenService.refreshOrders();
+      this.kitchenService.refresh();
       if (orderId) {
         this.router.navigate(['/orders'], { queryParams: { id: orderId } });
       }

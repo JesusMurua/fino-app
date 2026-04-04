@@ -1,85 +1,120 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Order } from '../models';
+import { PrintJobDto } from '../models';
 import { ApiService } from './api.service';
-import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
-/** Polling interval for kitchen order refresh (milliseconds) */
-const KITCHEN_POLL_INTERVAL_MS = 30_000;
+/** Polling interval for KDS print jobs refresh (milliseconds) */
+const KDS_POLL_INTERVAL_MS = 5_000;
 
 /**
- * Manages active kitchen orders for the KDS (Kitchen Display System).
+ * Manages pending print jobs for the KDS (Kitchen Display System).
  *
- * - Loads today's orders from Dexie where kitchenStatus != 'done'
- * - Polls every 10 seconds for new orders
- * - Provides markAsDone() to complete an order from the display
+ * - Fetches jobs from GET /api/print-jobs/pending?destination={id}
+ * - Falls back to Dexie `pendingPrintJobs` when offline
+ * - Polls every 5 seconds via startPolling()
+ * - Provides optimistic updates for markAsInProgress() and markAsPrinted()
  */
 @Injectable({ providedIn: 'root' })
 export class KitchenService implements OnDestroy {
 
   //#region Properties
-  /** Active orders for the kitchen display (not done, today only) */
-  readonly activeOrders = signal<Order[]>([]);
+
+  /** Active print jobs for the KDS display */
+  readonly pendingJobs = signal<PrintJobDto[]>([]);
+
+  /** Destination currently being polled — used by refresh() */
+  private currentDestinationId: number | null = null;
 
   private pollTimerId: ReturnType<typeof setInterval> | null = null;
+
   //#endregion
 
   //#region Constructor & Lifecycle
+
   constructor(
     private readonly api: ApiService,
     private readonly db: DatabaseService,
-    private readonly authService: AuthService,
   ) {}
 
   ngOnDestroy(): void {
-    this.stopPolling();
+    this.stop();
   }
+
   //#endregion
 
   //#region Public Methods
 
   /**
-   * Starts loading orders and polling. Call from the kitchen display component.
+   * Loads jobs immediately and starts the 5-second polling loop.
+   * Call from the KDS component on init when a destinationId is present.
+   * @param destinationId The printer destination to display jobs for
    */
-  async start(): Promise<void> {
-    await this.loadTodayOrders();
-    this.startPolling();
+  startPolling(destinationId: number): void {
+    this.currentDestinationId = destinationId;
+    void this.loadPendingPrintJobs(destinationId);
+    this.pollTimerId = setInterval(
+      () => void this.loadPendingPrintJobs(destinationId),
+      KDS_POLL_INTERVAL_MS,
+    );
   }
 
   /**
-   * Stops polling. Call when leaving the kitchen display.
+   * Stops the polling loop and clears the jobs signal.
+   * Call from the KDS component on destroy.
    */
   stop(): void {
-    this.stopPolling();
+    if (this.pollTimerId !== null) {
+      clearInterval(this.pollTimerId);
+      this.pollTimerId = null;
+    }
+    this.pendingJobs.set([]);
+    this.currentDestinationId = null;
   }
 
   /**
-   * Marks an order as Ready locally and notifies the backend.
-   * The order disappears from the KDS view.
-   * Offline-first: Dexie is always updated; the API call is best-effort.
-   * @param orderId The order UUID to mark as ready
+   * Triggers an immediate reload of jobs for the current destination.
+   * Called by NotificationService when a push notification arrives.
    */
-  async markAsReady(orderId: string): Promise<void> {
-    await this.db.orders.update(orderId, { kitchenStatus: 'Ready' });
-    this.activeOrders.update(orders => orders.filter(o => o.id !== orderId));
-
-    try {
-      await firstValueFrom(
-        this.api.patch(`/orders/${orderId}/kitchen-status`, { status: 'Ready' }),
-      );
-    } catch {
-      console.warn('[KitchenService] API unreachable — order marked locally only');
+  async refresh(): Promise<void> {
+    if (this.currentDestinationId !== null) {
+      await this.loadPendingPrintJobs(this.currentDestinationId);
     }
   }
 
   /**
-   * Reloads today's orders. Exposed publicly so NotificationService
-   * can trigger an immediate refresh when a push arrives.
+   * Updates a job to InProgress status.
+   * Applies an optimistic UI update and syncs to Dexie, then hits the API best-effort.
+   * @param id The print job UUID
    */
-  async refreshOrders(): Promise<void> {
-    await this.loadTodayOrders();
+  async markAsInProgress(id: string): Promise<void> {
+    this.pendingJobs.update(jobs =>
+      jobs.map(j => j.id === id ? { ...j, status: 'InProgress' as const } : j),
+    );
+    await this.db.pendingPrintJobs.update(id, { status: 'InProgress' });
+
+    try {
+      await firstValueFrom(this.api.patch(`/print-jobs/${id}/in-progress`, {}));
+    } catch {
+      console.warn('[KitchenService] API unreachable — job marked InProgress locally only');
+    }
+  }
+
+  /**
+   * Removes a job from the display (optimistic) and notifies the backend.
+   * If offline, the job is deleted from Dexie and the backend sync is best-effort.
+   * @param id The print job UUID
+   */
+  async markAsPrinted(id: string): Promise<void> {
+    this.pendingJobs.update(jobs => jobs.filter(j => j.id !== id));
+    await this.db.pendingPrintJobs.delete(id);
+
+    try {
+      await firstValueFrom(this.api.patch(`/print-jobs/${id}/printed`, {}));
+    } catch {
+      console.warn('[KitchenService] API unreachable — job removed locally only');
+    }
   }
 
   //#endregion
@@ -87,37 +122,33 @@ export class KitchenService implements OnDestroy {
   //#region Private Helpers
 
   /**
-   * Loads today's orders for the active branch that are pending or preparing.
-   * Filters by branchId so only the current branch's orders are shown.
-   * Orders with status Ready or Delivered are not shown in the KDS.
+   * Fetches pending jobs from the API and caches them in Dexie.
+   * On any failure (offline, timeout), falls back to Dexie local data.
+   * @param destinationId The printer destination to query
    */
-  private async loadTodayOrders(): Promise<void> {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const branchId = this.authService.branchId;
-    const kdsStatuses = new Set(['Pending']);
+  private async loadPendingPrintJobs(destinationId: number): Promise<void> {
+    try {
+      const jobs = await firstValueFrom(
+        this.api.get<PrintJobDto[]>(`/print-jobs/pending?destination=${destinationId}`),
+      );
 
-    const allToday = await this.db.orders
-      .where('createdAt')
-      .aboveOrEqual(todayStart)
-      .filter(o => o.branchId === branchId)
-      .toArray();
+      // Refresh the local cache for this destination
+      await this.db.pendingPrintJobs
+        .where('destinationId').equals(destinationId)
+        .delete();
+      if (jobs.length > 0) {
+        await this.db.pendingPrintJobs.bulkPut(jobs);
+      }
 
-    const active = allToday
-      .filter(o => kdsStatuses.has(o.kitchenStatus ?? 'Pending'))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      this.pendingJobs.set(jobs);
+    } catch {
+      // Offline fallback: show locally cached jobs
+      const local = await this.db.pendingPrintJobs
+        .where('destinationId').equals(destinationId)
+        .filter(j => j.status === 'Pending' || j.status === 'InProgress')
+        .toArray();
 
-    this.activeOrders.set(active);
-  }
-
-  private startPolling(): void {
-    this.pollTimerId = setInterval(() => this.loadTodayOrders(), KITCHEN_POLL_INTERVAL_MS);
-  }
-
-  private stopPolling(): void {
-    if (this.pollTimerId !== null) {
-      clearInterval(this.pollTimerId);
-      this.pollTimerId = null;
+      this.pendingJobs.set(local);
     }
   }
 

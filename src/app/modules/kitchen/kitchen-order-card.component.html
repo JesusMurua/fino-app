@@ -3,12 +3,10 @@
   [class.kds-card--fading]="isFading"
   [class.kds-card--overdue]="isOverdue"
 >
-  <!-- Card header: order number + platform + timer -->
+  <!-- Card header: order number + ticket type badge + timer -->
   <div class="kds-card__header">
-    <span class="kds-card__number">#{{ order.orderNumber }}</span>
-    @if (order.orderSource && order.orderSource !== OrderSource.Direct) {
-      <app-platform-chip [source]="order.orderSource" size="sm" />
-    }
+    <span class="kds-card__number">#{{ job.orderNumber }}</span>
+    <span class="kds-card__type-badge">{{ job.ticketType === 'Receipt' ? 'Caja' : 'Cocina' }}</span>
     <span class="kds-card__timer" [class.kds-card__timer--red]="isOverdue">
       @if (isOverdue) {
         <i class="pi pi-exclamation-triangle"></i>
@@ -19,12 +17,12 @@
 
   <!-- Items list -->
   <ul class="kds-card__items">
-    @for (item of order.items; track item.id) {
+    @for (item of parsedItems; track item.id) {
       <li class="kds-card__item">
         <span class="kds-card__qty">{{ item.quantity }}x</span>
-        <span class="kds-card__name">{{ item.product.name }}</span>
-        @if (item.size) {
-          <span class="kds-card__meta">{{ item.size.label }}</span>
+        <span class="kds-card__name">{{ item.productName }}</span>
+        @if (item.sizeLabel) {
+          <span class="kds-card__meta">{{ item.sizeLabel }}</span>
         }
         @if (item.extras.length > 0) {
           <span class="kds-card__meta">+ {{ item.extras.length }} extras</span>

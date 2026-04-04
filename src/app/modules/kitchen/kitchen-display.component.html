@@ -14,19 +14,19 @@
       <div class="kds-header__logo" aria-hidden="true">
         <i class="pi pi-box"></i>
       </div>
-      <span class="kds-header__title">Cocina</span>
+      <span class="kds-header__title">{{ destinationName() }}</span>
     </div>
     <span class="kds-header__clock">{{ now() | date:'HH:mm:ss' }}</span>
   </header>
 
-  <!-- Order grid -->
-  @if (activeOrders().length > 0) {
+  <!-- Job grid -->
+  @if (pendingJobs().length > 0) {
     <div class="kds-grid">
-      @for (order of activeOrders(); track order.id) {
+      @for (job of pendingJobs(); track job.id) {
         <app-kitchen-order-card
-          [order]="order"
+          [job]="job"
           [now]="now()"
-          [isFading]="isFading(order.id)"
+          [isFading]="isFading(job.id)"
           (markDone)="onMarkDone($event)"
         />
       }

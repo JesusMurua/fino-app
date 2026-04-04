@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -19,6 +19,8 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Custo
  *   v14 — Initialize retryCount; rescue 'Failed' → 'Pending'
  *   v15 — Added employeeHashes table for offline PIN authentication
  *   v16 — Added customers table for CRM (phone, name, isActive indexes)
+ *   v17 — Added printerDestinations table (Phase 19)
+ *   v18 — Added pendingPrintJobs table for KDS offline-first (Phase 20c)
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -39,6 +41,7 @@ export class DatabaseService extends Dexie {
   employeeHashes!: Table<EmployeeHash, number>;
   customers!: Table<Customer, number>;
   printerDestinations!: Table<PrinterDestination, number>;
+  pendingPrintJobs!: Table<PrintJobDto, string>;
   //#endregion
 
   //#region Constructor
@@ -135,6 +138,11 @@ export class DatabaseService extends Dexie {
     // Add printerDestinations table for printing destination config (Phase 19)
     this.version(17).stores({
       printerDestinations: '++id, isDefault, isActive',
+    });
+
+    // Add pendingPrintJobs table for KDS offline-first support (Phase 20c)
+    this.version(18).stores({
+      pendingPrintJobs: 'id, destinationId, status',
     });
   }
   //#endregion
