@@ -83,6 +83,15 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
     return this.fadingOut().has(jobId);
   }
 
+  /**
+   * Delegates to the service to mark a job as InProgress.
+   * Triggered by the card's (onStart) output event.
+   * @param jobId The print job UUID emitted by the card
+   */
+  async onMarkInProgress(jobId: string): Promise<void> {
+    await this.kitchenService.markAsInProgress(jobId);
+  }
+
   //#endregion
 
 }

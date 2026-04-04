@@ -1,11 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { NgClass } from '@angular/common';
 
 import { PrintJobDto, PrintJobItem } from '../../core/models';
 
 @Component({
   selector: 'app-kitchen-order-card',
   standalone: true,
-  imports: [],
+  imports: [NgClass],
   templateUrl: './kitchen-order-card.component.html',
   styleUrl: './kitchen-order-card.component.scss',
 })
@@ -22,6 +23,7 @@ export class KitchenOrderCardComponent {
   //#region Outputs
 
   @Output() markDone = new EventEmitter<string>();
+  @Output() onStart = new EventEmitter<string>();
 
   //#endregion
 
@@ -60,6 +62,11 @@ export class KitchenOrderCardComponent {
 
   onDone(): void {
     this.markDone.emit(this.job.id);
+  }
+
+  /** Emits the job ID when the user taps "Preparar" to begin preparation. */
+  onPrepare(): void {
+    this.onStart.emit(this.job.id);
   }
 
   //#endregion

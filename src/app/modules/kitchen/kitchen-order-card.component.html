@@ -1,13 +1,20 @@
+<!-- KDS Order Card -->
 <div
   class="kds-card"
-  [class.kds-card--fading]="isFading"
-  [class.kds-card--overdue]="isOverdue"
+  [ngClass]="{
+    'kds-card--in-progress': job.status === 'InProgress',
+    'kds-card--overdue': isOverdue,
+    'kds-card--fading': isFading
+  }"
 >
-  <!-- Card header: order number + ticket type badge + timer -->
+
+  <!-- Card header: order number + ticket type badge + elapsed timer -->
   <div class="kds-card__header">
-    <span class="kds-card__number">#{{ job.orderNumber }}</span>
-    <span class="kds-card__type-badge">{{ job.ticketType === 'Receipt' ? 'Caja' : 'Cocina' }}</span>
-    <span class="kds-card__timer" [class.kds-card__timer--red]="isOverdue">
+    <div class="flex align-items-center gap-2">
+      <span class="kds-card__number">#{{ job.orderNumber }}</span>
+      <span class="kds-card__type-badge">{{ job.ticketType === 'Receipt' ? 'Caja' : 'Cocina' }}</span>
+    </div>
+    <span class="kds-card__timer" [class.kds-card__timer--overdue]="isOverdue">
       @if (isOverdue) {
         <i class="pi pi-exclamation-triangle"></i>
       }
@@ -15,38 +22,52 @@
     </span>
   </div>
 
-  <!-- Items list -->
+  <!-- Items list: one row per item, extras expanded individually -->
   <ul class="kds-card__items">
     @for (item of parsedItems; track item.id) {
       <li class="kds-card__item">
-        <span class="kds-card__qty">{{ item.quantity }}x</span>
-        <span class="kds-card__name">{{ item.productName }}</span>
-        @if (item.sizeLabel) {
-          <span class="kds-card__meta">{{ item.sizeLabel }}</span>
-        }
-        @if (item.extras.length > 0) {
-          <span class="kds-card__meta">+ {{ item.extras.length }} extras</span>
-        }
+        <span class="kds-card__qty">{{ item.quantity }}×</span>
+        <div class="kds-card__item-body">
+          <span class="kds-card__name">{{ item.productName }}</span>
+          @if (item.sizeLabel) {
+            <span class="kds-card__meta">{{ item.sizeLabel }}</span>
+          }
+          @for (extra of item.extras; track $index) {
+            <span class="kds-card__meta">+ {{ extra }}</span>
+          }
+          @if (item.notes) {
+            <div class="kds-card__note">
+              <i class="pi pi-comment"></i>
+              {{ item.notes }}
+            </div>
+          }
+        </div>
       </li>
-      @if (item.notes) {
-        <li class="kds-card__note">
-          <i class="pi pi-comment"></i>
-          {{ item.notes }}
-        </li>
-      }
     }
   </ul>
 
-  <!-- Done button -->
+  <!-- Action footer -->
   @if (!isFading) {
-    <button
-      type="button"
-      class="kds-card__done"
-      (click)="onDone()"
-    >
-      <i class="pi pi-check"></i>
-      <span>Listo</span>
-    </button>
+    <div class="kds-card__footer">
+      @if (job.status === 'Pending') {
+        <button
+          type="button"
+          class="kds-card__btn kds-card__btn--outline"
+          (click)="onPrepare()"
+        >
+          <i class="pi pi-play"></i>
+          <span>Preparar</span>
+        </button>
+      }
+      <button
+        type="button"
+        class="kds-card__btn kds-card__btn--primary"
+        (click)="onDone()"
+      >
+        <i class="pi pi-check"></i>
+        <span>Listo</span>
+      </button>
+    </div>
   } @else {
     <div class="kds-card__done-label">
       <i class="pi pi-check-circle"></i>
