@@ -364,6 +364,20 @@
           </button>
         }
 
+        <!-- Invoice button (FDD-004) -->
+        @if (canInvoice()) {
+          <button type="button" class="btn-invoice" (click)="onRequestInvoice()">
+            <i class="pi pi-file-edit"></i>
+            Facturar
+          </button>
+        }
+        @if (isInvoiced()) {
+          <div class="btn-invoice btn-invoice--done">
+            <i class="pi pi-check"></i>
+            Factura generada
+          </div>
+        }
+
       }
 
       <!-- Table release (only if this was the last active order on the table) -->
@@ -557,3 +571,13 @@
   (paymentConfirmed)="onProviderPaymentConfirmed($event)"
   (paymentCancelled)="onProviderPaymentCancelled()"
 />
+
+<!-- Customer fiscal data modal (FDD-004) -->
+@if (completedOrder(); as order) {
+  <app-customer-fiscal-modal
+    [(visible)]="showFiscalModal"
+    [orderId]="order.id"
+    [totalCents]="order.totalCents"
+    (invoiceRequested)="onInvoiceRequested($event)"
+  />
+}

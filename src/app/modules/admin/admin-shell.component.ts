@@ -78,6 +78,7 @@ export class AdminShellComponent implements OnInit {
       { path: 'promotions',   icon: 'pi-tag',         label: 'Promociones',     show: this.featureFlags.isRelevantForGiro(FeatureKey.Promotions), locked: !this.featureFlags.canUse(FeatureKey.Promotions), badge: false },
       { path: 'users',        icon: 'pi-users',       label: 'Usuarios',        show: true, locked: false, badge: false },
       { path: 'cash',         icon: 'pi-wallet',      label: 'Caja',            show: true, locked: !this.featureFlags.canUse(FeatureKey.CashRegister), badge: false },
+      { path: 'invoicing',    icon: 'pi-receipt',     label: 'Facturación',     show: this.configService.hasInvoicing(), locked: !this.featureFlags.canUse(FeatureKey.Cfdi), badge: false },
       { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones',   show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Reservations), badge: false },
       { path: 'settings',     icon: 'pi-cog',         label: 'Configuración',   show: true, locked: false, badge: false },
     ];

@@ -938,6 +938,41 @@
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 }
 
+// Invoice button — outlined, secondary style
+.btn-invoice {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-5;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
+  background: transparent;
+  color: $color-text-title;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  i { color: $color-text-sub; }
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+    i { color: $color-primary; }
+  }
+
+  &--done {
+    border-color: $color-primary;
+    background: $color-primary-light;
+    color: $color-primary;
+    cursor: default;
+    font-size: $font-size-label;
+
+    i { color: $color-primary; }
+  }
+}
+
 // Kitchen confirmation dialog
 .kitchen-confirm {
   display: flex;

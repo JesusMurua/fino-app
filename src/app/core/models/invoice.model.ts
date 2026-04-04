@@ -54,6 +54,32 @@ export interface InvoiceResult {
 }
 
 // ---------------------------------------------------------------------------
+// Global Invoice — backoffice panel
+// ---------------------------------------------------------------------------
+
+/** Summary of uninvoiced orders for a date range */
+export interface GlobalInvoiceSummary {
+  /** Number of orders without an individual invoice */
+  uninvoicedCount: number;
+  /** Total cents of uninvoiced orders */
+  uninvoicedTotalCents: number;
+  /** Total cents of orders billed to "Público en General" */
+  publicoGeneralTotalCents: number;
+}
+
+/** A historical global invoice record */
+export interface GlobalInvoiceRecord {
+  id: string;
+  cfdiUuid: string;
+  periodStart: string;
+  periodEnd: string;
+  orderCount: number;
+  totalCents: number;
+  status: 'completed' | 'failed' | 'cancelled';
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
 // Business Fiscal Config — stored in BusinessConfig
 // ---------------------------------------------------------------------------
 

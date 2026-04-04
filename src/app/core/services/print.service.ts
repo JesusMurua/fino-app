@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { Order, getPaymentLabel } from '../models';
 import { DatabaseService } from './database.service';
+import { InvoicingService } from './invoicing.service';
 import { PrinterService, PrintableOrder } from './printer.service';
 import { ConfigService } from './config.service';
 
@@ -18,6 +19,7 @@ import { ConfigService } from './config.service';
 export class PrintService {
 
   private readonly db = inject(DatabaseService);
+  private readonly invoicingService = inject(InvoicingService);
   private readonly printerService = inject(PrinterService);
   private readonly configService = inject(ConfigService);
 
@@ -183,6 +185,7 @@ export class PrintService {
         ${sep}
         <div style="text-align:center;font-size:13px;font-weight:700;color:#15803D;padding:4px 0">Ahorraste: $${(order.totalDiscountCents / 100).toFixed(2)}</div>
         ` : ''}
+        ${this.getAutoFacturaBlock(order)}
         ${sep}
         <div style="text-align:center;font-size:12px;color:#6B7280;margin-top:4px">¡Gracias por su visita!</div>
       </div>
@@ -192,6 +195,26 @@ export class PrintService {
   //#endregion
 
   //#region Private Helpers
+
+  /**
+   * Returns the auto-factura HTML block for the ticket footer.
+   * Only shown when invoicing is enabled and the order is NOT already invoiced.
+   */
+  private getAutoFacturaBlock(order: Order): string {
+    if (!this.configService.hasInvoicing()) return '';
+    if (order.invoiceRequest?.status === 'completed') return '';
+
+    const url = this.invoicingService.getAutoFacturaUrl(order.id);
+    const sep = '<div style="text-align:center;color:#9CA3AF;letter-spacing:-1px">─────────────────────</div>';
+    return `
+      ${sep}
+      <div style="text-align:center;font-size:11px;color:#6B7280;padding:4px 0">
+        <div style="font-weight:600;margin-bottom:2px">Factura tu compra en:</div>
+        <div style="word-break:break-all">${url}</div>
+        <div style="margin-top:2px">Folio: ${order.id.substring(0, 8)}</div>
+      </div>
+    `;
+  }
 
   /**
    * Maps a Dexie Order to the flat PrintableOrder shape the ESC/POS driver expects.

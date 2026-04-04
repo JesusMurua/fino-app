@@ -1,0 +1,240 @@
+@use '../../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Page layout
+// -----------------------------------------------------------------------
+.invoicing-page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  padding: $space-5;
+  max-width: 960px;
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+.invoicing-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+
+  &__left {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+}
+
+:host ::ng-deep .invoicing-calendar {
+  min-width: 260px;
+}
+
+// -----------------------------------------------------------------------
+// Summary cards
+// -----------------------------------------------------------------------
+.invoicing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: $space-4;
+}
+
+.invoicing-card {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-5;
+  background: white;
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    flex-shrink: 0;
+
+    i { font-size: 20px; }
+
+    &--orders {
+      background: #EFF6FF;
+      color: #3B82F6;
+    }
+
+    &--amount {
+      background: $color-primary-light;
+      color: $color-primary;
+    }
+
+    &--general {
+      background: #FFF7ED;
+      color: #D97706;
+    }
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__value {
+    font-size: 22px;
+    font-weight: 800;
+    color: $color-text-title;
+    letter-spacing: -0.02em;
+  }
+
+  &__label {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// CTA
+// -----------------------------------------------------------------------
+.invoicing-cta {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    min-height: 48px;
+    padding: $space-3 $space-6;
+    border: none;
+    border-radius: $radius-button;
+    background: linear-gradient(135deg, $color-primary 0%, #15803D 100%);
+    color: white;
+    font-size: $font-size-base;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.25);
+    transition: all 0.15s;
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 8px 24px rgba(22, 163, 74, 0.35);
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  &__hint {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// History table
+// -----------------------------------------------------------------------
+.invoicing-history {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+}
+
+:host ::ng-deep .invoicing-table {
+  .p-datatable-header {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .p-datatable-thead > tr > th {
+    background: #F9FAFB;
+    color: $color-text-sub;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-color: $color-border-soft;
+  }
+
+  .p-datatable-tbody > tr > td {
+    font-size: $font-size-label;
+    color: $color-text-title;
+    border-color: $color-border-soft;
+    padding: $space-3 $space-4;
+  }
+
+  .p-datatable-tbody > tr:hover {
+    background: #F9FAFB;
+  }
+
+  border-radius: $radius-button;
+  overflow: hidden;
+  border: 1px solid $color-border-soft;
+}
+
+.invoicing-table__uuid {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: $color-text-sub;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// -----------------------------------------------------------------------
+// Status badge
+// -----------------------------------------------------------------------
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &--success {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+
+  &--error {
+    background: #FEF2F2;
+    color: #DC2626;
+  }
+
+  &--cancelled {
+    background: #F3F4F6;
+    color: $color-text-sub;
+  }
+}

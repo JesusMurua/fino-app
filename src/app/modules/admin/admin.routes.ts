@@ -71,6 +71,12 @@ export const adminRoutes: Routes = [
           import('./components/reservations/reservations.component')
             .then(m => m.ReservationsComponent),
       },
+      {
+        path: 'invoicing',
+        loadComponent: () =>
+          import('./components/invoicing/admin-invoicing.component')
+            .then(m => m.AdminInvoicingComponent),
+      },
     ],
   },
 ];

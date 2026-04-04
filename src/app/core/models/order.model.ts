@@ -1,5 +1,6 @@
 import { CartItem } from './cart-item.model';
 import { DeliveryStatus, OrderSource } from '../enums';
+import { InvoiceRequest } from './invoice.model';
 
 /** Supported payment methods */
 export enum PaymentMethod {
@@ -131,6 +132,8 @@ export interface Order {
   tableName?: string;
   /** Cash register session active when the order was created */
   cashRegisterSessionId?: number;
+  /** CFDI invoice request — fiscal data + status */
+  invoiceRequest?: InvoiceRequest;
   /** Origin platform for this order */
   orderSource?: OrderSource;
   /** External order ID from aggregator platform */

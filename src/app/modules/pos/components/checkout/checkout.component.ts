@@ -13,9 +13,12 @@ import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
-import { CartItem, DiscountPreset, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
+import { CartItem, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { ConfigService } from '../../../../core/services/config.service';
+import { InvoicingService } from '../../../../core/services/invoicing.service';
+import { CustomerFiscalModalComponent } from '../../../../shared/components/customer-fiscal-modal/customer-fiscal-modal.component';
 import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
 import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 import { DatabaseService } from '../../../../core/services/database.service';
@@ -42,6 +45,7 @@ type CheckoutStep = 'payment' | 'confirmed';
     RadioButtonModule,
     PricePipe,
     PaymentProcessingDialogComponent,
+    CustomerFiscalModalComponent,
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.scss',
@@ -235,6 +239,23 @@ export class CheckoutComponent implements OnInit {
   /** True when no cash register session is open — blocks payment confirmation */
   readonly sessionBlocked = computed(() => !this.cashRegisterService.hasOpenSession());
 
+  // ---- Invoicing (FDD-004) ----
+  /** Controls visibility of the fiscal data modal */
+  readonly showFiscalModal = signal(false);
+
+  /** True when the "Facturar" button should be visible */
+  readonly canInvoice = computed(() => {
+    const order = this.completedOrder();
+    return order !== null
+      && this.configService.hasInvoicing()
+      && !order.invoiceRequest;
+  });
+
+  /** True when the order has been successfully invoiced */
+  readonly isInvoiced = computed(() =>
+    this.completedOrder()?.invoiceRequest?.status === 'completed',
+  );
+
   /** Returns display label for an order's payments */
   orderPaymentLabel(order: Order): string {
     return getPaymentLabel(order);
@@ -250,6 +271,8 @@ export class CheckoutComponent implements OnInit {
     private readonly cartService: CartService,
     private readonly syncService: SyncService,
     private readonly cashRegisterService: CashRegisterService,
+    private readonly configService: ConfigService,
+    private readonly invoicingService: InvoicingService,
     readonly paymentProviderService: PaymentProviderService,
     private readonly printService: PrintService,
     private readonly discountService: DiscountService,
@@ -707,6 +730,24 @@ export class CheckoutComponent implements OnInit {
   /** Starts a new order — cart is already cleared, navigate back to POS */
   startNewOrder(): void {
     this.router.navigate(['/pos']);
+  }
+
+  //#endregion
+
+  //#region Invoicing (FDD-004)
+
+  /** Opens the fiscal data modal */
+  onRequestInvoice(): void {
+    this.showFiscalModal.set(true);
+  }
+
+  /** Handles successful invoice request from the modal */
+  onInvoiceRequested(req: InvoiceRequest): void {
+    const order = this.completedOrder();
+    if (order) {
+      this.completedOrder.set({ ...order, invoiceRequest: req });
+    }
+    this.showFiscalModal.set(false);
   }
 
   //#endregion

@@ -1,0 +1,128 @@
+<div class="invoicing-page">
+
+  <!-- Header -->
+  <div class="invoicing-header">
+    <div class="invoicing-header__left">
+      <h1 class="invoicing-header__title">Facturación Global</h1>
+      <p class="invoicing-header__subtitle">Genera facturas CFDI para ventas sin facturar</p>
+    </div>
+    <div class="invoicing-header__right">
+      <p-calendar
+        [(ngModel)]="dateRange"
+        selectionMode="range"
+        [readonlyInput]="true"
+        dateFormat="dd/mm/yy"
+        placeholder="Selecciona periodo"
+        [showIcon]="true"
+        [maxDate]="dateRange[1]"
+        styleClass="invoicing-calendar"
+        (onClose)="onDateChange()"
+      />
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="invoicing-cards">
+    <div class="invoicing-card">
+      <div class="invoicing-card__icon invoicing-card__icon--orders">
+        <i class="pi pi-file"></i>
+      </div>
+      <div class="invoicing-card__content">
+        <span class="invoicing-card__value">{{ summary().uninvoicedCount }}</span>
+        <span class="invoicing-card__label">Ventas sin facturar</span>
+      </div>
+    </div>
+
+    <div class="invoicing-card">
+      <div class="invoicing-card__icon invoicing-card__icon--amount">
+        <i class="pi pi-dollar"></i>
+      </div>
+      <div class="invoicing-card__content">
+        <span class="invoicing-card__value">{{ summary().uninvoicedTotalCents | price }}</span>
+        <span class="invoicing-card__label">Monto total sin facturar</span>
+      </div>
+    </div>
+
+    <div class="invoicing-card">
+      <div class="invoicing-card__icon invoicing-card__icon--general">
+        <i class="pi pi-users"></i>
+      </div>
+      <div class="invoicing-card__content">
+        <span class="invoicing-card__value">{{ summary().publicoGeneralTotalCents | price }}</span>
+        <span class="invoicing-card__label">Monto Público en General</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="invoicing-cta">
+    <button
+      type="button"
+      class="invoicing-cta__btn"
+      [disabled]="!hasSummary() || isGenerating() || loading()"
+      (click)="onGenerateGlobal()"
+    >
+      @if (isGenerating()) {
+        <i class="pi pi-spin pi-spinner"></i>
+        Generando...
+      } @else {
+        <i class="pi pi-file-edit"></i>
+        Generar Factura Global
+      }
+    </button>
+    @if (!hasSummary() && !loading()) {
+      <span class="invoicing-cta__hint">No hay ventas sin facturar en este periodo</span>
+    }
+  </div>
+
+  <!-- History table -->
+  <div class="invoicing-history">
+    <h2 class="invoicing-history__title">Historial de facturas globales</h2>
+
+    <p-table
+      [value]="history()"
+      [rows]="10"
+      [paginator]="history().length > 10"
+      [rowHover]="true"
+      [loading]="loading()"
+      styleClass="invoicing-table"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Periodo</th>
+          <th>Órdenes</th>
+          <th>Total</th>
+          <th>CFDI UUID</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" style="text-align:center;padding:24px;color:#6B7280">
+            No hay facturas globales en este periodo
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-record>
+        <tr>
+          <td>
+            {{ record.periodStart | date:'dd/MM/yy' }} — {{ record.periodEnd | date:'dd/MM/yy' }}
+          </td>
+          <td>{{ record.orderCount }}</td>
+          <td>{{ record.totalCents | price }}</td>
+          <td class="invoicing-table__uuid">{{ record.cfdiUuid }}</td>
+          <td>
+            <span class="status-badge" [class]="getStatusClass(record.status)">
+              {{ getStatusLabel(record.status) }}
+            </span>
+          </td>
+          <td>{{ record.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+</div>
