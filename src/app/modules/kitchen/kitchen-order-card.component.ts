@@ -1,12 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { NgClass } from '@angular/common';
+import { ButtonModule } from 'primeng/button';
 
 import { PrintJobDto, PrintJobItem } from '../../core/models';
 
 @Component({
   selector: 'app-kitchen-order-card',
   standalone: true,
-  imports: [NgClass],
+  imports: [NgClass, ButtonModule],
   templateUrl: './kitchen-order-card.component.html',
   styleUrl: './kitchen-order-card.component.scss',
 })

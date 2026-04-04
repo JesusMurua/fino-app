@@ -9,6 +9,6 @@ export const kitchenRoutes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./kitchen-display.component').then(m => m.KitchenDisplayComponent),
+      import('./screens/area-selector/area-selector.component').then(m => m.AreaSelectorComponent),
   },
 ];

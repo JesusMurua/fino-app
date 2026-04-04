@@ -8,6 +8,8 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 
 import { KitchenService } from '../../core/services/kitchen.service';
 import { KitchenOrderCardComponent } from './kitchen-order-card.component';
@@ -15,7 +17,8 @@ import { KitchenOrderCardComponent } from './kitchen-order-card.component';
 @Component({
 	selector: 'app-kitchen-display',
 	standalone: true,
-	imports: [DatePipe, KitchenOrderCardComponent],
+	imports: [DatePipe, KitchenOrderCardComponent, ToastModule],
+	providers: [MessageService],
 	templateUrl: './kitchen-display.component.html',
 	styleUrl: './kitchen-display.component.scss',
 })

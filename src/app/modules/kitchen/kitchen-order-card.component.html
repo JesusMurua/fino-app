@@ -48,25 +48,22 @@
 
   <!-- Action footer -->
   @if (!isFading) {
-    <div class="kds-card__footer">
+    <div class="flex justify-content-end gap-2 px-3 pb-3 mt-3">
       @if (job.status === 'Pending') {
-        <button
-          type="button"
-          class="kds-card__btn kds-card__btn--outline"
-          (click)="onPrepare()"
-        >
-          <i class="pi pi-play"></i>
-          <span>Preparar</span>
-        </button>
+        <p-button
+          label="Start"
+          icon="pi pi-play"
+          (onClick)="onPrepare()"
+        />
       }
-      <button
-        type="button"
-        class="kds-card__btn kds-card__btn--primary"
-        (click)="onDone()"
-      >
-        <i class="pi pi-check"></i>
-        <span>Listo</span>
-      </button>
+      @if (job.status === 'InProgress') {
+        <p-button
+          label="Complete"
+          icon="pi pi-check"
+          severity="success"
+          (onClick)="onDone()"
+        />
+      }
     </div>
   } @else {
     <div class="kds-card__done-label">

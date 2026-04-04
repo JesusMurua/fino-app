@@ -1,5 +1,6 @@
-import { Injectable, OnDestroy, signal } from '@angular/core';
+import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { MessageService } from 'primeng/api';
 
 import { PrintJobDto } from '../models';
 import { ApiService } from './api.service';
@@ -31,6 +32,8 @@ export class KitchenService implements OnDestroy {
     //#endregion
 
     //#region Constructor & Lifecycle
+
+    private readonly messageService = inject(MessageService, { optional: true });
 
     constructor(
         private readonly api: ApiService,
@@ -83,11 +86,13 @@ export class KitchenService implements OnDestroy {
     }
 
     /**
-     * Updates a job to InProgress status.
-     * Applies an optimistic UI update and syncs to Dexie, then hits the API best-effort.
+     * Updates a job to InProgress status with optimistic UI.
+     * Reverts the local state and shows a Toast if the API call fails.
      * @param id The print job UUID
      */
     async markAsInProgress(id: string): Promise<void> {
+        const snapshot = this.pendingJobs();
+
         this.pendingJobs.update((jobs) =>
             jobs.map((j) =>
                 j.id === id ? { ...j, status: 'InProgress' as const } : j,
@@ -96,35 +101,52 @@ export class KitchenService implements OnDestroy {
         await this.db.pendingPrintJobs.update(id, { status: 'InProgress' });
 
         try {
-            await firstValueFrom(this.api.patch(`/print-jobs/${id}/in-progress`, {}));
+            const numericId = parseInt(id, 10);
+            await firstValueFrom(this.api.patch(`/print-jobs/${numericId}/in-progress`, {}));
         } catch {
-            console.warn(
-                '[KitchenService] API unreachable — job marked InProgress locally only',
-            );
+            this.pendingJobs.set(snapshot);
+            await this.db.pendingPrintJobs.update(id, { status: 'Pending' });
+            this.showError('Could not update status — reverted to Pending.');
         }
     }
 
     /**
      * Removes a job from the display (optimistic) and notifies the backend.
-     * If offline, the job is deleted from Dexie and the backend sync is best-effort.
+     * Reverts the local state and shows a Toast if the API call fails.
      * @param id The print job UUID
      */
     async markAsPrinted(id: string): Promise<void> {
+        const snapshot = this.pendingJobs();
+        const removedJob = snapshot.find((j) => j.id === id);
+
         this.pendingJobs.update((jobs) => jobs.filter((j) => j.id !== id));
         await this.db.pendingPrintJobs.delete(id);
 
         try {
-            await firstValueFrom(this.api.patch(`/print-jobs/${id}/printed`, {}));
+            const numericId = parseInt(id, 10);
+            await firstValueFrom(this.api.patch(`/print-jobs/${numericId}/printed`, {}));
         } catch {
-            console.warn(
-                '[KitchenService] API unreachable — job removed locally only',
-            );
+            this.pendingJobs.set(snapshot);
+            if (removedJob) {
+                await this.db.pendingPrintJobs.put(removedJob);
+            }
+            this.showError('Could not complete order — restored to list.');
         }
     }
 
     //#endregion
 
     //#region Private Helpers
+
+    /** Displays an error Toast if MessageService is available */
+    private showError(detail: string): void {
+        this.messageService?.add({
+            severity: 'error',
+            summary: 'Error',
+            detail,
+            life: 4000,
+        });
+    }
 
     /**
      * Fetches pending jobs from the API and caches them in Dexie.
