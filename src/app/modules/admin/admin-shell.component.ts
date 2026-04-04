@@ -75,6 +75,7 @@ export class AdminShellComponent implements OnInit {
       { path: 'reports',      icon: 'pi-chart-line',  label: 'Reportes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.AdvancedReports), badge: false },
       { path: 'tables',       icon: 'pi-table',       label: 'Mesas',           show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Tables), badge: false },
       { path: 'inventory',    icon: 'pi-box',         label: 'Inventario',      show: this.featureFlags.isRelevantForGiro(FeatureKey.Inventory), locked: !this.featureFlags.canUse(FeatureKey.Inventory), badge: true },
+      { path: 'recipes',      icon: 'pi-book',        label: 'Recetas',         show: this.featureFlags.isRelevantForGiro(FeatureKey.Inventory), locked: !this.featureFlags.canUse(FeatureKey.Inventory), badge: false },
       { path: 'promotions',   icon: 'pi-tag',         label: 'Promociones',     show: this.featureFlags.isRelevantForGiro(FeatureKey.Promotions), locked: !this.featureFlags.canUse(FeatureKey.Promotions), badge: false },
       { path: 'customers',    icon: 'pi-id-card',     label: 'Clientes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.ClientsAndCredit), badge: false },
       { path: 'users',        icon: 'pi-users',       label: 'Usuarios',        show: true, locked: false, badge: false },

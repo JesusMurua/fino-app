@@ -45,6 +45,20 @@ export class InventoryConsumptionService {
   }
 
   /**
+   * Updates the quantity per sale for an existing consumption rule
+   * @param id The consumption rule ID
+   * @param quantityPerSale New amount consumed per unit sold
+   */
+  async update(id: number, quantityPerSale: number): Promise<ProductConsumption> {
+    return firstValueFrom(
+      this.http.put<ProductConsumption>(
+        `${this.baseUrl}/inventory/consumption/${id}`,
+        { quantityPerSale },
+      )
+    );
+  }
+
+  /**
    * Deletes a consumption rule
    * @param id The consumption rule ID
    */

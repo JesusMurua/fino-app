@@ -1,0 +1,488 @@
+@use '../../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Page container
+// -----------------------------------------------------------------------
+.admin-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Master-Detail split layout
+// -----------------------------------------------------------------------
+.recipes-layout {
+  display: flex;
+  gap: $space-5;
+  align-items: flex-start;
+  min-height: 500px;
+}
+
+// -----------------------------------------------------------------------
+// Master Panel
+// -----------------------------------------------------------------------
+.recipes-master {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+
+  &__search {
+    padding: $space-3 $space-4;
+    border-bottom: 1px solid #F1F5F9;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Search input
+// -----------------------------------------------------------------------
+.search-wrap {
+  position: relative;
+  display: block;
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $color-text-sub;
+    font-size: 13px;
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    padding-left: 36px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Product item in master list
+// -----------------------------------------------------------------------
+.product-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  border: none;
+  border-bottom: 1px solid #F1F5F9;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+  min-height: 52px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #F8FAFC;
+  }
+
+  &--selected {
+    background: $color-primary-light;
+    border-left: 3px solid $color-primary;
+
+    .product-item__name {
+      color: $color-primary;
+      font-weight: 700;
+    }
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: 500;
+    color: $color-text-title;
+    line-height: 1.3;
+  }
+
+  &__price {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Master empty state
+// -----------------------------------------------------------------------
+.master-empty {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-5 $space-4;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+
+  &__icon {
+    font-size: 18px;
+    opacity: 0.5;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Detail Panel
+// -----------------------------------------------------------------------
+.recipes-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+// -----------------------------------------------------------------------
+// Detail placeholder (no product selected)
+// -----------------------------------------------------------------------
+.detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-4;
+  height: 360px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  color: $color-text-sub;
+
+  &__icon {
+    font-size: 48px;
+    opacity: 0.2;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: $font-size-base;
+    text-align: center;
+    max-width: 260px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Detail content wrapper
+// -----------------------------------------------------------------------
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+}
+
+// -----------------------------------------------------------------------
+// Detail content header (product name + price)
+// -----------------------------------------------------------------------
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-4 $space-5;
+  border-bottom: 1px solid #F1F5F9;
+
+  &__name {
+    margin: 0 0 $space-1 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__price {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Loading skeleton
+// -----------------------------------------------------------------------
+.detail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-4 $space-5;
+
+  &__row {
+    border-radius: 6px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Recipes table overrides
+// -----------------------------------------------------------------------
+.recipes-table {
+  // Padding inside table cells
+  :deep(.p-datatable-tbody > tr > td) {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+}
+
+.recipe-name {
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.recipe-cost {
+  color: $color-text-sub;
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+
+  &__warn {
+    font-size: 13px;
+    color: #D97706;
+    cursor: help;
+  }
+}
+
+.recipe-subtotal {
+  font-weight: 700;
+  color: $color-primary;
+}
+
+.recipe-empty {
+  text-align: center;
+  padding: $space-6 !important;
+}
+
+// -----------------------------------------------------------------------
+// Table footer: cost total row
+// -----------------------------------------------------------------------
+.recipe-footer {
+  background: #F8FAFC;
+
+  &__label {
+    text-align: right;
+    font-weight: 600;
+    font-size: $font-size-base;
+    color: $color-text-title;
+    padding: $space-3 $space-4 !important;
+  }
+
+  &__total {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-primary;
+    padding: $space-3 $space-4 !important;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Inline quantity edit
+// -----------------------------------------------------------------------
+.inline-qty {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+
+  &__spinner {
+    font-size: 16px;
+    color: $color-text-sub;
+  }
+}
+
+.inline-input {
+  max-width: 110px;
+
+  &__field {
+    width: 100%;
+    text-align: right;
+    font-weight: 600;
+    font-size: $font-size-base;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Unit badge (shared with inventory)
+// -----------------------------------------------------------------------
+.unit-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+// -----------------------------------------------------------------------
+// Add ingredient section
+// -----------------------------------------------------------------------
+.add-line-section {
+  padding: $space-4 $space-5;
+  border-top: 1px solid #F1F5F9;
+}
+
+.add-line-form {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  flex-wrap: wrap;
+
+  &__dropdown {
+    min-width: 220px;
+  }
+
+  &__qty {
+    max-width: 130px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Empty state (shared pattern)
+// -----------------------------------------------------------------------
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6 0;
+  color: $color-text-sub;
+
+  &__icon {
+    font-size: 32px;
+    opacity: 0.35;
+  }
+
+  p {
+    margin: 0;
+    font-size: $font-size-base;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Buttons
+// -----------------------------------------------------------------------
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: 1px dashed #D1D5DB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+  }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+
+  &--danger {
+    &:hover { background: #FEF2F2; color: #DC2626; }
+  }
+
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+}
+
+// -----------------------------------------------------------------------
+// Responsive: stack panels on smaller screens
+// -----------------------------------------------------------------------
+@media (max-width: #{$breakpoint-lg}) {
+  .recipes-layout {
+    flex-direction: column;
+  }
+
+  .recipes-master {
+    flex: 0 0 auto;
+    width: 100%;
+
+    &__list {
+      max-height: 280px;
+    }
+  }
+}

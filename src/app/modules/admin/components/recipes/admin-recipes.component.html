@@ -1,0 +1,290 @@
+<div class="admin-recipes">
+
+  <!-- Page header -->
+  <div class="admin-recipes__header">
+    <h1 class="admin-recipes__title">Fichas Técnicas</h1>
+    <p class="admin-recipes__subtitle">
+      Asocia insumos a tus productos para calcular el costo de producción.
+    </p>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- Master-Detail layout                                                    -->
+  <!-- ====================================================================== -->
+  <div class="recipes-layout">
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Master Panel — Product list                                          -->
+    <!-- ------------------------------------------------------------------ -->
+    <aside class="recipes-master">
+
+      <!-- Search input -->
+      <div class="recipes-master__search">
+        <span class="search-wrap">
+          <i class="pi pi-search search-wrap__icon"></i>
+          <input
+            type="text"
+            pInputText
+            placeholder="Buscar producto..."
+            [ngModel]="productSearch()"
+            (ngModelChange)="productSearch.set($event)"
+            class="search-wrap__input"
+          />
+        </span>
+      </div>
+
+      <!-- Product list -->
+      <div class="recipes-master__list">
+
+        @if (filteredProducts().length === 0) {
+          <div class="master-empty">
+            <i class="pi pi-search master-empty__icon"></i>
+            <span>Sin resultados</span>
+          </div>
+        }
+
+        @for (product of filteredProducts(); track product.id) {
+          <button
+            type="button"
+            class="product-item"
+            [class.product-item--selected]="isSelected(product)"
+            (click)="selectProduct(product)"
+          >
+            <span class="product-item__name">{{ product.name }}</span>
+            <span class="product-item__price">
+              ${{ (product.priceCents / 100).toFixed(2) }}
+            </span>
+          </button>
+        }
+
+      </div>
+    </aside>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- Detail Panel — Recipe lines / ingredients                           -->
+    <!-- ------------------------------------------------------------------ -->
+    <section class="recipes-detail">
+
+      <!-- Placeholder: no product selected -->
+      @if (!selectedProduct()) {
+        <div class="detail-placeholder">
+          <i class="pi pi-book detail-placeholder__icon"></i>
+          <p class="detail-placeholder__text">
+            Selecciona un producto para ver o editar su ficha técnica
+          </p>
+        </div>
+      }
+
+      <!-- Recipe content -->
+      @if (selectedProduct(); as product) {
+        <div class="detail-content">
+
+          <!-- Detail header -->
+          <div class="detail-header">
+            <div>
+              <h2 class="detail-header__name">{{ product.name }}</h2>
+              <span class="detail-header__price">
+                Precio de venta: ${{ (product.priceCents / 100).toFixed(2) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Loading skeleton -->
+          @if (isLoadingDetail()) {
+            <div class="detail-skeleton">
+              @for (i of [1, 2, 3]; track i) {
+                <p-skeleton height="48px" styleClass="detail-skeleton__row" />
+              }
+            </div>
+          }
+
+          <!-- Ingredients table -->
+          @if (!isLoadingDetail()) {
+            <!-- Ingredients table Begin -->
+            <p-table
+              [value]="consumptions()"
+              [rowHover]="true"
+              dataKey="id"
+              styleClass="p-datatable-sm recipes-table"
+            >
+              <ng-template pTemplate="header">
+                <tr>
+                  <th style="min-width: 14rem">Insumo</th>
+                  <th style="min-width: 6rem">Unidad</th>
+                  <th style="min-width: 11rem">Cant. por venta</th>
+                  <th style="min-width: 8rem">Costo unit.</th>
+                  <th style="min-width: 8rem">Subtotal</th>
+                  <th style="min-width: 5rem"></th>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="body" let-line>
+                <tr>
+                  <!-- Ingredient name -->
+                  <td class="recipe-name">{{ getItemName(line) }}</td>
+
+                  <!-- Unit badge -->
+                  <td>
+                    <span class="unit-badge">{{ getItemUnit(line) }}</span>
+                  </td>
+
+                  <!-- Inline editable quantity (saved on blur) -->
+                  <td>
+                    <div class="inline-qty">
+                      @if (savingLineId() === line.id) {
+                        <i class="pi pi-spin pi-spinner inline-qty__spinner"></i>
+                      } @else {
+                        <p-inputNumber
+                          [ngModel]="getEditQty(line.id, line.quantityPerSale)"
+                          (ngModelChange)="onQtyChange(line.id, $event)"
+                          (onBlur)="saveLineQty(line)"
+                          [min]="0.001"
+                          [maxFractionDigits]="3"
+                          [minFractionDigits]="1"
+                          styleClass="inline-input"
+                          inputStyleClass="inline-input__field"
+                        />
+                      }
+                    </div>
+                  </td>
+
+                  <!-- Unit cost with zero-cost warning -->
+                  <td class="recipe-cost">
+                    ${{ (getItemCostCents(line) / 100).toFixed(2) }}
+                    @if (getItemCostCents(line) === 0) {
+                      <i
+                        class="pi pi-exclamation-circle recipe-cost__warn"
+                        pTooltip="Insumo sin costo registrado"
+                        tooltipPosition="top"
+                      ></i>
+                    }
+                  </td>
+
+                  <!-- Line subtotal -->
+                  <td class="recipe-subtotal">
+                    ${{ (getLineSubtotalCents(line) / 100).toFixed(2) }}
+                  </td>
+
+                  <!-- Delete action -->
+                  <td>
+                    <button
+                      type="button"
+                      class="btn-icon btn-icon--danger"
+                      aria-label="Quitar insumo de la ficha"
+                      pTooltip="Quitar"
+                      tooltipPosition="left"
+                      [disabled]="savingLineId() !== null"
+                      (click)="confirmDeleteLine(line)"
+                    >
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </ng-template>
+
+              <!-- Empty state -->
+              <ng-template pTemplate="emptymessage">
+                <tr>
+                  <td colspan="6" class="recipe-empty">
+                    <div class="empty-state">
+                      <i class="pi pi-book empty-state__icon"></i>
+                      <p>Sin ingredientes. Agrega el primer insumo.</p>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+
+              <!-- Footer: total cost row (only when lines exist) -->
+              @if (consumptions().length > 0) {
+                <ng-template pTemplate="footer">
+                  <tr class="recipe-footer">
+                    <td colspan="4" class="recipe-footer__label">
+                      Costo total de producción
+                    </td>
+                    <td class="recipe-footer__total">
+                      ${{ (totalCostCents() / 100).toFixed(2) }}
+                    </td>
+                    <td></td>
+                  </tr>
+                </ng-template>
+              }
+
+            </p-table>
+            <!-- Ingredients table End -->
+
+            <!-- Add ingredient section -->
+            <div class="add-line-section">
+
+              @if (!showAddForm()) {
+                <button type="button" class="btn-outline" (click)="openAddForm()">
+                  <i class="pi pi-plus"></i>
+                  Agregar insumo
+                </button>
+              } @else {
+                <!-- Inline add form Begin -->
+                <div class="add-line-form">
+
+                  <p-dropdown
+                    [options]="availableItems()"
+                    optionLabel="label"
+                    optionValue="value"
+                    [ngModel]="newLineItemId()"
+                    (ngModelChange)="newLineItemId.set($event)"
+                    placeholder="Seleccionar insumo..."
+                    [filter]="true"
+                    filterPlaceholder="Buscar..."
+                    [appendTo]="'body'"
+                    styleClass="add-line-form__dropdown"
+                  />
+
+                  <p-inputNumber
+                    [ngModel]="newLineQty()"
+                    (ngModelChange)="newLineQty.set($event)"
+                    [min]="0.001"
+                    [maxFractionDigits]="3"
+                    [minFractionDigits]="1"
+                    placeholder="Cantidad"
+                    styleClass="add-line-form__qty"
+                  />
+
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    [disabled]="!newLineItemId() || newLineQty() <= 0 || isSaving()"
+                    (click)="addLine()"
+                  >
+                    @if (isSaving()) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    } @else {
+                      <i class="pi pi-check"></i>
+                    }
+                    Agregar
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-ghost"
+                    [disabled]="isSaving()"
+                    (click)="cancelAddForm()"
+                  >
+                    Cancelar
+                  </button>
+
+                </div>
+                <!-- Inline add form End -->
+              }
+
+            </div>
+          }
+
+        </div>
+      }
+
+    </section>
+
+  </div>
+
+</div>
+
+<!-- Confirmation dialog for line deletion -->
+<p-confirmDialog />

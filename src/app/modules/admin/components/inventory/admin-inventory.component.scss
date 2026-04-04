@@ -93,6 +93,13 @@
   color: #2563EB;
 }
 
+.stock-cell {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  flex-wrap: wrap;
+}
+
 .stock-value {
   display: inline-flex;
   align-items: center;
@@ -103,8 +110,20 @@
 
   &--low {
     color: #DC2626;
-    i { font-size: 14px; }
   }
+}
+
+.stock-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+
+  &--low   { background: #FEF3C7; color: #D97706; }
+  &--empty { background: #FEE2E2; color: #DC2626; }
 }
 
 .inv-actions {

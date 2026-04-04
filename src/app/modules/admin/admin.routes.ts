@@ -48,6 +48,12 @@ export const adminRoutes: Routes = [
             .then(m => m.AdminInventoryComponent),
       },
       {
+        path: 'recipes',
+        loadComponent: () =>
+          import('./components/recipes/admin-recipes.component')
+            .then(m => m.AdminRecipesComponent),
+      },
+      {
         path: 'promotions',
         loadComponent: () =>
           import('./components/promotions/admin-promotions.component')

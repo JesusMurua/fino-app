@@ -49,16 +49,20 @@
                 <span class="unit-badge">{{ item.unit }}</span>
               </td>
               <td>
-                <span
-                  class="stock-value"
-                  [class.stock-value--low]="isLowStock(item)"
-                  [class.stock-value--ok]="!isLowStock(item)"
-                >
-                  {{ item.currentStock }}
-                  @if (isLowStock(item)) {
-                    <i class="pi pi-exclamation-triangle"></i>
+                <div class="stock-cell">
+                  <span
+                    class="stock-value"
+                    [class.stock-value--low]="isLowStock(item)"
+                    [class.stock-value--ok]="!isLowStock(item)"
+                  >
+                    {{ item.currentStock }} {{ item.unit }}
+                  </span>
+                  @if (item.currentStock === 0) {
+                    <span class="stock-badge stock-badge--empty">Sin stock</span>
+                  } @else if (isLowStock(item)) {
+                    <span class="stock-badge stock-badge--low">Bajo stock</span>
                   }
-                </span>
+                </div>
               </td>
               <td class="inv-threshold">{{ item.lowStockThreshold }}</td>
               <td class="inv-cost">${{ (item.costCents / 100).toFixed(2) }}</td>
