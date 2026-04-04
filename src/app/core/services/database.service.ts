@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -18,6 +18,7 @@ import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Disco
  *   v13 — Added hasKitchen/hasTables flags to config
  *   v14 — Initialize retryCount; rescue 'Failed' → 'Pending'
  *   v15 — Added employeeHashes table for offline PIN authentication
+ *   v16 — Added customers table for CRM (phone, name, isActive indexes)
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -36,6 +37,7 @@ export class DatabaseService extends Dexie {
   inventoryMovements!: Table<InventoryMovement, number>;
   promotions!: Table<Promotion, number>;
   employeeHashes!: Table<EmployeeHash, number>;
+  customers!: Table<Customer, number>;
   //#endregion
 
   //#region Constructor
@@ -122,6 +124,11 @@ export class DatabaseService extends Dexie {
     // Add employeeHashes table for offline PIN authentication
     this.version(15).stores({
       employeeHashes: 'userId, branchId, pinHash',
+    });
+
+    // Add customers table for CRM
+    this.version(16).stores({
+      customers: '++id, branchId, phone, name, isActive',
     });
   }
   //#endregion

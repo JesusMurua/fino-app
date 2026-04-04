@@ -10,6 +10,8 @@ export enum PaymentMethod {
   Other = 'Other',
   Clip = 'Clip',
   MercadoPagoQR = 'MercadoPagoQR',
+  StoreCredit = 'StoreCredit',
+  LoyaltyPoints = 'LoyaltyPoints',
 }
 
 /** Transaction status for provider-backed payments */
@@ -58,10 +60,17 @@ export const PROVIDER_PAYMENT_OPTIONS: PaymentMethodOption[] = [
   { method: PaymentMethod.MercadoPagoQR, label: 'MercadoPago', icon: 'pi-qrcode',      requiresProvider: true },
 ];
 
-/** Lookup map for all payment method labels (including providers) */
+/** Customer-balance payment options — shown only when a customer is attached */
+export const CUSTOMER_PAYMENT_OPTIONS: PaymentMethodOption[] = [
+  { method: PaymentMethod.StoreCredit,  label: 'Crédito',  icon: 'pi-wallet' },
+  { method: PaymentMethod.LoyaltyPoints, label: 'Puntos',  icon: 'pi-star' },
+];
+
+/** Lookup map for all payment method labels (including providers + customer) */
 export const ALL_PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   ...PAYMENT_METHOD_OPTIONS,
   ...PROVIDER_PAYMENT_OPTIONS,
+  ...CUSTOMER_PAYMENT_OPTIONS,
 ];
 
 /**
@@ -132,6 +141,10 @@ export interface Order {
   tableName?: string;
   /** Cash register session active when the order was created */
   cashRegisterSessionId?: number;
+  /** CRM customer linked to this order */
+  customerId?: number;
+  /** Snapshot of the customer name at order creation */
+  customerName?: string;
   /** CFDI invoice request — fiscal data + status */
   invoiceRequest?: InvoiceRequest;
   /** Origin platform for this order */

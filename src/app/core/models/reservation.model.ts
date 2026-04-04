@@ -7,6 +7,8 @@ export interface Reservation {
   branchId: number;
   tableId: number | null;
   tableName: string | null;
+  /** CRM customer linked to this reservation */
+  customerId?: number;
   guestName: string;
   guestPhone: string | null;
   partySize: number;

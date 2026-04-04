@@ -5,6 +5,7 @@ export * from './catalog.model';
 export * from './catalog.constants';
 export * from './device-config.model';
 export * from './category.model';
+export * from './customer.model';
 export * from './product.model';
 export * from './cart-item.model';
 export * from './cash-register.model';

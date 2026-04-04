@@ -1,0 +1,186 @@
+<div class="customers-page">
+
+  <!-- Header -->
+  <div class="customers-header">
+    <div class="customers-header__left">
+      <h1 class="customers-header__title">Clientes</h1>
+      <span class="customers-header__count">{{ filteredCustomers().length }} clientes</span>
+    </div>
+    <div class="customers-header__right">
+      <div class="customers-search">
+        <i class="pi pi-search customers-search__icon"></i>
+        <input
+          type="text"
+          pInputText
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Buscar por nombre o teléfono..."
+          class="customers-search__input"
+        />
+      </div>
+      <button type="button" class="customers-header__btn" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i>
+        Nuevo cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- Data table -->
+  <div class="customers-table-wrapper">
+    <p-table
+      [value]="filteredCustomers()"
+      [rows]="15"
+      [paginator]="filteredCustomers().length > 15"
+      [rowsPerPageOptions]="[15, 30, 50]"
+      [rowHover]="true"
+      [loading]="isLoading()"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords}"
+      styleClass="customers-table"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="name" style="min-width: 180px">
+            Nombre <p-sortIcon field="name" />
+          </th>
+          <th style="min-width: 140px">Teléfono</th>
+          <th style="min-width: 100px">Puntos</th>
+          <th style="min-width: 120px">Crédito</th>
+          <th style="min-width: 100px">Órdenes</th>
+          <th style="min-width: 120px">Última visita</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-customer>
+        <tr>
+          <td>
+            <div class="customer-name-cell">
+              <span class="customer-name-cell__avatar">{{ customer.name.charAt(0) }}</span>
+              <div class="customer-name-cell__info">
+                <span class="customer-name-cell__name">{{ customer.name }}</span>
+                @if (customer.email) {
+                  <span class="customer-name-cell__email">{{ customer.email }}</span>
+                }
+              </div>
+            </div>
+          </td>
+          <td class="customer-phone">{{ formatPhone(customer.phone) }}</td>
+          <td>
+            <span class="points-badge">
+              <i class="pi pi-star"></i>
+              {{ customer.pointsBalance }}
+            </span>
+          </td>
+          <td>{{ customer.creditBalanceCents | price }}</td>
+          <td>{{ customer.totalOrderCount }}</td>
+          <td>
+            @if (customer.lastVisitAt) {
+              {{ customer.lastVisitAt | date:'dd/MM/yy' }}
+            } @else {
+              <span class="text-muted">—</span>
+            }
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="customers-empty">
+            @if (searchQuery()) {
+              <i class="pi pi-search"></i>
+              <span>No se encontraron clientes para "{{ searchQuery() }}"</span>
+            } @else {
+              <i class="pi pi-users"></i>
+              <span>No hay clientes registrados</span>
+            }
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+</div>
+
+<!-- Create customer dialog -->
+<p-dialog
+  header="Nuevo cliente"
+  [(visible)]="showCreateDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '420px' }"
+  styleClass="customer-create-dialog"
+>
+  <div class="customer-form">
+    <div class="customer-form__field">
+      <label for="cust-name">Nombre completo *</label>
+      <input
+        id="cust-name"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.name"
+        placeholder="Ej. Juan Pérez"
+        class="customer-form__input"
+      />
+    </div>
+
+    <div class="customer-form__field">
+      <label for="cust-phone">Teléfono *</label>
+      <input
+        id="cust-phone"
+        type="tel"
+        pInputText
+        [(ngModel)]="createForm.phone"
+        placeholder="Ej. 6671234567"
+        maxlength="10"
+        class="customer-form__input"
+      />
+    </div>
+
+    <div class="customer-form__field">
+      <label for="cust-email">Email (opcional)</label>
+      <input
+        id="cust-email"
+        type="email"
+        pInputText
+        [(ngModel)]="createForm.email"
+        placeholder="cliente@email.com"
+        class="customer-form__input"
+      />
+    </div>
+
+    <div class="customer-form__field">
+      <label for="cust-notes">Notas (opcional)</label>
+      <input
+        id="cust-notes"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.notes"
+        placeholder="Ej. Alergia a mariscos"
+        class="customer-form__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="customer-form__footer">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        (click)="showCreateDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--primary"
+        [disabled]="isSaving() || !createForm.name.trim() || !createForm.phone.trim()"
+        (click)="saveCustomer()"
+      >
+        @if (isSaving()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Crear cliente
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
