@@ -1,0 +1,109 @@
+<!-- Suppliers Table — Virtual Scroll + Skeleton Loading -->
+<p-table
+  [value]="suppliers"
+  [scrollable]="true"
+  scrollHeight="calc(100vh - 320px)"
+  [virtualScroll]="true"
+  [virtualScrollItemSize]="50"
+  [rowHover]="true"
+  [loading]="isLoading"
+  dataKey="id"
+  styleClass="p-datatable-sm"
+>
+
+  <!-- Column headers -->
+  <ng-template pTemplate="header">
+    <tr>
+      <th style="min-width: 14rem">Nombre</th>
+      <th style="min-width: 10rem">Contacto</th>
+      <th style="min-width: 10rem">Teléfono</th>
+      <th style="min-width: 8rem">Estado</th>
+      <th style="min-width: 10rem">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <!-- Data rows -->
+  <ng-template pTemplate="body" let-s>
+    <tr>
+      <td class="text-900 font-medium">{{ s.name }}</td>
+      <td class="text-500">{{ s.contactName || '—' }}</td>
+      <td class="text-500">{{ s.phone || '—' }}</td>
+      <td>
+        <span
+          class="supplier-status-badge"
+          [class.supplier-status-badge--active]="s.isActive"
+          [class.supplier-status-badge--inactive]="!s.isActive"
+        >
+          {{ s.isActive ? 'Activo' : 'Inactivo' }}
+        </span>
+      </td>
+      <td>
+        <div class="flex align-items-center gap-1">
+          <p-button
+            icon="pi pi-pencil"
+            [rounded]="true"
+            [text]="true"
+            aria-label="Editar proveedor"
+            pTooltip="Editar"
+            tooltipPosition="top"
+            (onClick)="edit.emit(s)"
+          />
+          @if (s.isActive) {
+            <p-button
+              icon="pi pi-ban"
+              [rounded]="true"
+              [text]="true"
+              severity="danger"
+              aria-label="Desactivar proveedor"
+              pTooltip="Desactivar"
+              tooltipPosition="top"
+              (onClick)="toggleActive.emit(s)"
+            />
+          } @else {
+            <p-button
+              icon="pi pi-check-circle"
+              [rounded]="true"
+              [text]="true"
+              severity="success"
+              aria-label="Activar proveedor"
+              pTooltip="Activar"
+              tooltipPosition="top"
+              (onClick)="toggleActive.emit(s)"
+            />
+          }
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+  <!-- Skeleton loading rows -->
+  <ng-template pTemplate="loadingbody">
+    @for (_ of skeletonRows; track $index) {
+      <tr>
+        <td><p-skeleton width="70%" height="1.25rem" /></td>
+        <td><p-skeleton width="60%" height="1.25rem" /></td>
+        <td><p-skeleton width="50%" height="1.25rem" /></td>
+        <td><p-skeleton width="4rem" height="1.25rem" borderRadius="16px" /></td>
+        <td>
+          <div class="flex gap-1">
+            <p-skeleton shape="circle" size="2rem" />
+            <p-skeleton shape="circle" size="2rem" />
+          </div>
+        </td>
+      </tr>
+    }
+  </ng-template>
+
+  <!-- Empty state -->
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="5">
+        <div class="flex flex-column align-items-center gap-3 py-6">
+          <i class="pi pi-truck text-4xl text-300"></i>
+          <span class="text-lg text-500">No hay proveedores registrados.</span>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+</p-table>

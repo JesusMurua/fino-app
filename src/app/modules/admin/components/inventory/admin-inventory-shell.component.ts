@@ -4,6 +4,7 @@ import { TabViewModule } from 'primeng/tabview';
 
 import { InventoryItemsTabComponent } from './items/inventory-items-tab.component';
 import { InventoryLedgerTabComponent } from './ledger/inventory-ledger-tab.component';
+import { SuppliersTabComponent } from './suppliers/suppliers-tab.component';
 
 /**
  * Shell component for the Inventory module.
@@ -12,7 +13,7 @@ import { InventoryLedgerTabComponent } from './ledger/inventory-ledger-tab.compo
 @Component({
   selector: 'app-admin-inventory-shell',
   standalone: true,
-  imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent],
+  imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent, SuppliersTabComponent],
   template: `
     <div class="flex flex-column gap-5 p-4">
 
@@ -30,12 +31,9 @@ import { InventoryLedgerTabComponent } from './ledger/inventory-ledger-tab.compo
           <app-inventory-items-tab />
         </p-tabPanel>
 
-        <!-- Tab 1: Proveedores (Phase 3) -->
+        <!-- Tab 1: Proveedores -->
         <p-tabPanel header="Proveedores">
-          <div class="flex flex-column align-items-center gap-3 py-8">
-            <i class="pi pi-truck text-4xl text-300"></i>
-            <span class="text-500 text-lg">Gestión de proveedores — disponible en Fase 3.</span>
-          </div>
+          <app-suppliers-tab />
         </p-tabPanel>
 
         <!-- Tab 2: Recepciones (Phase 4) -->
