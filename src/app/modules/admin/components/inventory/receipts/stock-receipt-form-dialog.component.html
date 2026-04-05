@@ -1,0 +1,245 @@
+<!-- ====================================================================== -->
+<!-- New Stock Receipt Dialog                                               -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Nueva recepción de mercancía"
+  [visible]="visible"
+  (visibleChange)="visibleChange.emit($event)"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [style]="{ width: '90vw', 'max-width': '820px' }"
+  [breakpoints]="{ '768px': '95vw' }"
+>
+  <div class="flex flex-column gap-5">
+
+    <!-- ================================================================ -->
+    <!-- Header fields: Supplier + Notes                                  -->
+    <!-- ================================================================ -->
+    <div class="flex flex-column gap-4 pb-4 border-bottom-1 surface-border">
+      <div class="flex flex-column gap-2">
+        <label class="text-500 text-sm font-medium">Proveedor (opcional)</label>
+        <p-dropdown
+          [options]="supplierOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedSupplierId()"
+          (ngModelChange)="selectedSupplierId.set($event)"
+          placeholder="Seleccionar proveedor..."
+          [showClear]="true"
+          [filter]="true"
+          filterPlaceholder="Buscar..."
+          [appendTo]="'body'"
+        />
+      </div>
+      <div class="flex flex-column gap-2">
+        <label class="text-500 text-sm font-medium">Notas (opcional)</label>
+        <textarea
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event)"
+          pInputTextarea
+          placeholder="Notas sobre esta recepción..."
+          rows="2"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Scanner input + Manual add button                                -->
+    <!-- ================================================================ -->
+    <div class="flex flex-column gap-2">
+      <label class="text-500 text-sm font-medium">Escanear código de barras</label>
+      <div class="flex align-items-center gap-2">
+        <span class="p-input-icon-left flex-grow-1">
+          <i class="pi pi-barcode"></i>
+          <input
+            [ngModel]="scanInput()"
+            (ngModelChange)="scanInput.set($event)"
+            (keyup.enter)="onScanKeyEnter()"
+            type="text"
+            pInputText
+            placeholder="Escanea o escribe un código..."
+            class="w-full"
+            inputmode="none"
+          />
+        </span>
+        <p-button
+          icon="pi pi-search-plus"
+          label="Agregar"
+          severity="secondary"
+          [outlined]="true"
+          pTooltip="Agregar manualmente"
+          tooltipPosition="top"
+          (onClick)="openItemPicker()"
+        />
+      </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Lines table (inline editable)                                    -->
+    <!-- ================================================================ -->
+    @if (lines().length === 0) {
+      <div class="flex flex-column align-items-center gap-3 py-5 surface-ground border-round-xl">
+        <i class="pi pi-box text-4xl text-300"></i>
+        <span class="text-500">Escanea un producto o agrégalo manualmente</span>
+      </div>
+    } @else {
+      <p-table
+        [value]="lines()"
+        [rowHover]="true"
+        dataKey="name"
+        styleClass="p-datatable-sm"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="min-width: 14rem">Nombre</th>
+            <th style="min-width: 7rem">Cantidad</th>
+            <th style="min-width: 9rem">Costo unit. (MXN)</th>
+            <th style="min-width: 7rem">Total</th>
+            <th style="min-width: 4rem"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-line let-i="rowIndex">
+          <tr>
+            <td class="text-900 font-medium">{{ line.name }}</td>
+            <td>
+              <p-inputNumber
+                [(ngModel)]="line.quantity"
+                [min]="0.01"
+                [maxFractionDigits]="2"
+                [style]="{ 'max-width': '100px' }"
+                [inputStyle]="{ 'text-align': 'right', width: '100%' }"
+                (ngModelChange)="onLineChange()"
+              />
+            </td>
+            <td>
+              <p-inputNumber
+                [(ngModel)]="line.costPesos"
+                [min]="0"
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [style]="{ 'max-width': '130px' }"
+                [inputStyle]="{ 'text-align': 'right', width: '100%' }"
+                (ngModelChange)="onLineChange()"
+              />
+            </td>
+            <td class="text-primary font-semibold">
+              ${{ (lineTotalCents(line) / 100).toFixed(2) }}
+            </td>
+            <td>
+              <p-button
+                icon="pi pi-trash"
+                [rounded]="true"
+                [text]="true"
+                severity="danger"
+                aria-label="Eliminar línea"
+                (onClick)="removeLine(i)"
+              />
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+      <!-- Summary row -->
+      <div class="flex justify-content-between align-items-center px-3">
+        <span class="text-500 text-sm">
+          {{ lines().length }} {{ lines().length === 1 ? 'artículo' : 'artículos' }}
+        </span>
+        <div class="flex align-items-center gap-3">
+          <span class="text-500 font-medium">Total:</span>
+          <span class="text-900 text-xl font-bold">
+            ${{ (totalCents() / 100).toFixed(2) }}
+          </span>
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <!-- Footer -->
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="visibleChange.emit(false)"
+      />
+      <p-button
+        [label]="isSaving() ? 'Guardando...' : 'Confirmar recepción'"
+        icon="pi pi-check"
+        [disabled]="lines().length === 0 || isSaving()"
+        [loading]="isSaving()"
+        (onClick)="onConfirm()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Item Picker Sub-Dialog                                                 -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Agregar producto / insumo"
+  [visible]="showItemPicker()"
+  (visibleChange)="showItemPicker.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [draggable]="false"
+  [style]="{ width: '420px' }"
+  [breakpoints]="{ '768px': '95vw' }"
+>
+  <div class="flex flex-column gap-4 pt-2">
+    <div class="flex flex-column gap-2">
+      <label class="text-500 text-sm font-medium">Producto o insumo</label>
+      <p-dropdown
+        [options]="stockItemOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="pickerSelectedItem"
+        placeholder="Seleccionar..."
+        [filter]="true"
+        filterPlaceholder="Buscar..."
+        [appendTo]="'body'"
+      />
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label class="text-500 text-sm font-medium">Cantidad</label>
+      <p-inputNumber
+        [(ngModel)]="pickerQuantity"
+        [min]="0.01"
+        [maxFractionDigits]="2"
+      />
+    </div>
+
+    <div class="flex flex-column gap-2">
+      <label class="text-500 text-sm font-medium">Costo unitario (MXN)</label>
+      <p-inputNumber
+        [(ngModel)]="pickerCostPesos"
+        [min]="0"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="showItemPicker.set(false)"
+      />
+      <p-button
+        label="Agregar"
+        icon="pi pi-plus"
+        [disabled]="!pickerSelectedItem || pickerQuantity <= 0"
+        (onClick)="addFromPicker()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,74 @@
+<!-- Stock Receipts Table — Virtual Scroll + Skeleton Loading -->
+<p-table
+  [value]="receipts"
+  [scrollable]="true"
+  scrollHeight="calc(100vh - 360px)"
+  [virtualScroll]="true"
+  [virtualScrollItemSize]="50"
+  [rowHover]="true"
+  [loading]="isLoading"
+  dataKey="id"
+  styleClass="p-datatable-sm"
+>
+
+  <!-- Column headers -->
+  <ng-template pTemplate="header">
+    <tr>
+      <th style="min-width: 11rem">Fecha</th>
+      <th style="min-width: 10rem">Proveedor</th>
+      <th style="min-width: 6rem">Artículos</th>
+      <th style="min-width: 8rem">Total</th>
+      <th style="min-width: 10rem">Recibido por</th>
+      <th style="min-width: 6rem">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <!-- Data rows -->
+  <ng-template pTemplate="body" let-r>
+    <tr>
+      <td class="text-500">{{ r.receivedAt | date:'dd MMM y, h:mm a' }}</td>
+      <td class="text-900 font-medium">{{ r.supplierName || '—' }}</td>
+      <td class="text-500">{{ r.items?.length || 0 }}</td>
+      <td class="text-primary font-semibold">${{ (r.totalCents / 100).toFixed(2) }}</td>
+      <td class="text-500">{{ r.receivedByName || '—' }}</td>
+      <td>
+        <p-button
+          icon="pi pi-eye"
+          [rounded]="true"
+          [text]="true"
+          aria-label="Ver detalle"
+          pTooltip="Ver detalle"
+          tooltipPosition="left"
+          (onClick)="viewDetail.emit(r)"
+        />
+      </td>
+    </tr>
+  </ng-template>
+
+  <!-- Skeleton loading rows -->
+  <ng-template pTemplate="loadingbody">
+    @for (_ of skeletonRows; track $index) {
+      <tr>
+        <td><p-skeleton width="8rem" height="1.25rem" /></td>
+        <td><p-skeleton width="70%" height="1.25rem" /></td>
+        <td><p-skeleton width="2rem" height="1.25rem" /></td>
+        <td><p-skeleton width="5rem" height="1.25rem" /></td>
+        <td><p-skeleton width="60%" height="1.25rem" /></td>
+        <td><p-skeleton shape="circle" size="2rem" /></td>
+      </tr>
+    }
+  </ng-template>
+
+  <!-- Empty state -->
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="6">
+        <div class="flex flex-column align-items-center gap-3 py-6">
+          <i class="pi pi-inbox text-4xl text-300"></i>
+          <span class="text-lg text-500">No hay recepciones registradas.</span>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+</p-table>

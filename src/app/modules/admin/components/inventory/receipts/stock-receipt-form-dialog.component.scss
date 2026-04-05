@@ -1,0 +1,33 @@
+@use '../../../../../../styles/variables' as *;
+
+// ============================================================================
+// Stock Receipt Form Dialog — Enterprise Theme
+// ============================================================================
+
+:host {
+  display: block;
+}
+
+:host ::ng-deep {
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background: #F9FAFB;
+      color: $color-text-sub;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-color: $color-border-soft;
+    }
+
+    .p-datatable-tbody > tr > td {
+      border-color: $color-border-soft;
+      font-size: $font-size-base;
+      vertical-align: middle;
+    }
+
+    .p-datatable-tbody > tr:hover > td {
+      background: #F8FAFC;
+    }
+  }
+}

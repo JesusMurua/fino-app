@@ -4,6 +4,7 @@ import { TabViewModule } from 'primeng/tabview';
 
 import { InventoryItemsTabComponent } from './items/inventory-items-tab.component';
 import { InventoryLedgerTabComponent } from './ledger/inventory-ledger-tab.component';
+import { StockReceiptsTabComponent } from './receipts/stock-receipts-tab.component';
 import { SuppliersTabComponent } from './suppliers/suppliers-tab.component';
 
 /**
@@ -13,7 +14,7 @@ import { SuppliersTabComponent } from './suppliers/suppliers-tab.component';
 @Component({
   selector: 'app-admin-inventory-shell',
   standalone: true,
-  imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent, SuppliersTabComponent],
+  imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent, StockReceiptsTabComponent, SuppliersTabComponent],
   template: `
     <div class="flex flex-column gap-5 p-4">
 
@@ -36,12 +37,9 @@ import { SuppliersTabComponent } from './suppliers/suppliers-tab.component';
           <app-suppliers-tab />
         </p-tabPanel>
 
-        <!-- Tab 2: Recepciones (Phase 4) -->
+        <!-- Tab 2: Recepciones -->
         <p-tabPanel header="Recepciones">
-          <div class="flex flex-column align-items-center gap-3 py-8">
-            <i class="pi pi-inbox text-4xl text-300"></i>
-            <span class="text-500 text-lg">Recepciones de mercancía — disponible en Fase 4.</span>
-          </div>
+          <app-stock-receipts-tab />
         </p-tabPanel>
 
         <!-- Tab 3: Movimientos (Global Ledger) -->
