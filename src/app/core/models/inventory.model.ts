@@ -31,3 +31,35 @@ export interface ProductConsumption {
   quantityPerSale: number;
   inventoryItem?: InventoryItem;
 }
+
+// ---------------------------------------------------------------------------
+// Ledger
+// ---------------------------------------------------------------------------
+
+/** Transaction type enum returned by the backend as an integer */
+export type LedgerTransactionType = 0 | 1 | 2;
+
+/** A single row in the global inventory ledger — maps to backend InventoryLedgerDto */
+export interface InventoryLedgerDto {
+  id: number;
+  createdAt: string;
+  itemName: string;
+  transactionType: LedgerTransactionType;
+  quantity: number;
+  stockAfterTransaction: number;
+  reason: string | null;
+  createdBy: string | null;
+  orderId: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Pagination
+// ---------------------------------------------------------------------------
+
+/** Generic paginated response matching the backend PageData<T> contract */
+export interface PageData<T> {
+  data: T[];
+  rowsCount: number;
+  totalPages: number;
+  currentPage: number;
+}

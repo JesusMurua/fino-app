@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TabViewModule } from 'primeng/tabview';
 
 import { InventoryItemsTabComponent } from './items/inventory-items-tab.component';
+import { InventoryLedgerTabComponent } from './ledger/inventory-ledger-tab.component';
 
 /**
  * Shell component for the Inventory module.
@@ -11,7 +12,7 @@ import { InventoryItemsTabComponent } from './items/inventory-items-tab.componen
 @Component({
   selector: 'app-admin-inventory-shell',
   standalone: true,
-  imports: [TabViewModule, InventoryItemsTabComponent],
+  imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent],
   template: `
     <div class="flex flex-column gap-5 p-4">
 
@@ -45,6 +46,11 @@ import { InventoryItemsTabComponent } from './items/inventory-items-tab.componen
           </div>
         </p-tabPanel>
 
+        <!-- Tab 3: Movimientos (Global Ledger) -->
+        <p-tabPanel header="Movimientos">
+          <app-inventory-ledger-tab />
+        </p-tabPanel>
+
       </p-tabView>
 
     </div>
@@ -72,7 +78,7 @@ export class AdminInventoryShellComponent implements OnInit {
     const tabParam = this.route.snapshot.queryParamMap.get('tab');
     if (tabParam !== null) {
       const parsed = parseInt(tabParam, 10);
-      if (parsed >= 0 && parsed <= 2) {
+      if (parsed >= 0 && parsed <= 3) {
         this.activeTab.set(parsed);
       }
     }

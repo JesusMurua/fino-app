@@ -2,8 +2,10 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+import { Observable } from 'rxjs';
+
 import { environment } from '../../../environments/environment';
-import { CartItem, InventoryItem, InventoryMovement, ProductConsumption } from '../models';
+import { CartItem, InventoryItem, InventoryLedgerDto, InventoryMovement, PageData, ProductConsumption } from '../models';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
@@ -88,6 +90,22 @@ export class InventoryService {
       return [];
     }
   }
+
+  //#region Ledger
+
+  /**
+   * Fetches a paginated page of the global inventory ledger from the API.
+   * @param page 1-indexed page number
+   * @param pageSize Number of records per page
+   */
+  getLedger(page: number, pageSize: number): Observable<PageData<InventoryLedgerDto>> {
+    return this.http.get<PageData<InventoryLedgerDto>>(
+      `${this.baseUrl}/inventory/ledger`,
+      { params: { page: page.toString(), pageSize: pageSize.toString() } },
+    );
+  }
+
+  //#endregion
 
   //#region CRUD
 
