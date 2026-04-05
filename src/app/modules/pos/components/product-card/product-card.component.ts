@@ -17,4 +17,11 @@ export class ProductCardComponent {
   @Output() selected = new EventEmitter<Product>();
   //#endregion
 
+  /** True when stock is at or below the low-stock threshold */
+  get isLowStock(): boolean {
+    const stock = this.product.currentStock ?? 0;
+    const threshold = this.product.lowStockThreshold ?? 5;
+    return stock > 0 && stock <= threshold;
+  }
+
 }

@@ -1,0 +1,502 @@
+// ---------------------------------------------------------------------------
+// Counter POS — Single-column touch-optimized layout
+// ---------------------------------------------------------------------------
+
+:host {
+  display: block;
+  height: 100dvh;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+// ---------------------------------------------------------------------------
+// Main layout — single column, vertically stacked
+// ---------------------------------------------------------------------------
+
+.counter-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+
+// ---------------------------------------------------------------------------
+// Search — small, secondary to category chips
+// ---------------------------------------------------------------------------
+
+.counter-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    font-size: 14px;
+    color: #9ca3af;
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    height: 40px;
+    padding: 0 36px 0 36px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    background: white;
+    color: #374151;
+    transition: border-color 0.15s;
+
+    &:focus {
+      border-color: #16a34a;
+    }
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+
+  &__clear {
+    position: absolute;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+
+    &:active {
+      background: #f3f4f6;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Category chips — horizontal scroll, 44px height
+// ---------------------------------------------------------------------------
+
+.counter-categories {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.counter-chip {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 20px;
+  border: 2px solid #e5e7eb;
+  border-radius: 22px;
+  background: white;
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &--active {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Product grid — scrollable, touch-friendly cards
+// ---------------------------------------------------------------------------
+
+.counter-products {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  align-content: start;
+  padding-bottom: 8px;
+}
+
+.counter-product-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.1s;
+
+  &:active {
+    transform: scale(0.97);
+    background: #f0fdf4;
+  }
+
+  &__name {
+    font-size: 16px;
+    font-weight: 500;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  &__price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #16a34a;
+    margin-top: 4px;
+  }
+}
+
+.counter-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #9ca3af;
+
+  i {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 16px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Order list
+// ---------------------------------------------------------------------------
+
+.counter-order {
+  flex-shrink: 0;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid #e5e7eb;
+  padding-top: 8px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 4px;
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+  }
+
+  &__clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:active {
+      background: #fef2f2;
+    }
+  }
+
+  &__items {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+.counter-order-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+
+  &__info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  &__name {
+    font-size: 15px;
+    font-weight: 500;
+    color: #111827;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+  }
+
+  &__subtotal {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__qty {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    min-width: 24px;
+    text-align: center;
+  }
+}
+
+.counter-qty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:active {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+}
+
+.counter-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:active {
+    background: #fef2f2;
+  }
+}
+
+.counter-order-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  color: #9ca3af;
+
+  p {
+    font-size: 15px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Footer — Total, Bills, Action Buttons
+// ---------------------------------------------------------------------------
+
+.counter-footer {
+  flex-shrink: 0;
+  padding: 12px 0 16px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.counter-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+
+  span:first-child {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  &__amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+  }
+}
+
+.counter-bills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.counter-bill-btn {
+  height: 56px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.1s;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &--active {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+}
+
+.counter-change {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-radius: 8px;
+
+  span:first-child {
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  &__amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #16a34a;
+  }
+}
+
+// Action buttons — side by side when both shown
+.counter-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.counter-action-btn {
+  flex: 1;
+  height: 72px;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.3px;
+  transition: background 0.15s;
+
+  &:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  &--kitchen {
+    background: #d97706;
+    color: white;
+
+    &:active:not(:disabled) {
+      background: #b45309;
+    }
+  }
+
+  &--cobrar {
+    background: #16a34a;
+    color: white;
+
+    &:active:not(:disabled) {
+      background: #15803d;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Payment Dialog
+// ---------------------------------------------------------------------------
+
+.counter-pay-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 18px;
+
+    strong {
+      font-weight: 700;
+    }
+
+    &--change {
+      padding-top: 12px;
+      border-top: 2px solid #e5e7eb;
+
+      strong {
+        color: #16a34a;
+        font-size: 22px;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}

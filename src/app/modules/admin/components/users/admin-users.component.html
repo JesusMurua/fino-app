@@ -1,0 +1,276 @@
+<div class="admin-users">
+
+  <!-- Header -->
+  <div class="admin-users__header">
+    <div>
+      <h1 class="admin-users__title">Equipo</h1>
+      <p class="admin-users__subtitle">Gestiona los accesos de tu negocio</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="openNewDialog()">
+      <i class="pi pi-plus"></i>
+      Agregar usuario
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-card__value">{{ users().length }}</span>
+      <span class="stat-card__label">Total equipo</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-card__value stat-card__value--green">{{ activeUsers().length }}</span>
+      <span class="stat-card__label">Activos</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-card__value stat-card__value--grey">{{ inactiveUsers().length }}</span>
+      <span class="stat-card__label">Inactivos</span>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="admin-users__loading">
+      <i class="pi pi-spin pi-spinner" style="font-size: 24px"></i>
+      <span>Cargando usuarios...</span>
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && users().length === 0) {
+    <div class="admin-users__empty">
+      <i class="pi pi-users admin-users__empty-icon"></i>
+      <h2 class="admin-users__empty-title">No hay usuarios registrados</h2>
+      <button type="button" class="btn-primary" (click)="openNewDialog()">
+        Agregar primer usuario
+      </button>
+    </div>
+  }
+
+  <!-- User cards -->
+  @if (!loading() && users().length > 0) {
+    <div class="user-cards">
+      @for (user of users(); track user.id) {
+        <div class="user-card" [class.user-card--inactive]="!user.isActive">
+
+          <div class="user-card__left">
+            <div
+              class="user-card__avatar"
+              [style.background]="getRoleColor(user.role)"
+            >
+              {{ getInitial(user.name) }}
+            </div>
+            <div class="user-card__info">
+              <span class="user-card__name">{{ user.name }}</span>
+              <span class="user-card__access">
+                {{ user.hasEmail ? 'Acceso por email' : 'Acceso por PIN' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="user-card__right">
+            <span
+              class="role-badge"
+              [style.background]="getRoleColor(user.roleName) + '1A'"
+              [style.color]="getRoleColor(user.roleName)"
+            >
+              {{ user.roleName }}
+            </span>
+
+            @if (user.isActive) {
+              <span class="status-badge status-badge--active">Activo</span>
+            } @else {
+              <span class="status-badge status-badge--inactive">Inactivo</span>
+            }
+
+            <button
+              type="button"
+              class="btn-icon"
+              aria-label="Editar usuario"
+              (click)="openEditDialog(user)"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+
+            <label class="toggle-wrap">
+              <input
+                type="checkbox"
+                [checked]="user.isActive"
+                (change)="onToggleUser(user)"
+                class="toggle-input"
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+</div>
+
+<!-- Create / Edit dialog -->
+<p-dialog
+  [header]="editingUser() ? 'Editar usuario' : 'Nuevo usuario'"
+  [visible]="showDialog()"
+  (visibleChange)="showDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+>
+  <form [formGroup]="userForm" class="user-form">
+
+    <!-- Name -->
+    <div class="form-field">
+      <label class="form-field__label" for="uf-name">Nombre</label>
+      <input
+        id="uf-name"
+        type="text"
+        pInputText
+        formControlName="name"
+        placeholder="Nombre completo"
+        class="form-field__input"
+      />
+    </div>
+
+    <!-- Role -->
+    <div class="form-field">
+      <label class="form-field__label" for="uf-role">Rol</label>
+      <p-dropdown
+        inputId="uf-role"
+        [options]="roleOptions"
+        optionLabel="label"
+        optionValue="value"
+        formControlName="role"
+        placeholder="Seleccionar rol"
+        styleClass="form-field__input"
+        [appendTo]="'body'"
+      >
+        <ng-template pTemplate="selectedItem" let-item>
+          <span>{{ item.icon }} {{ item.label }}</span>
+        </ng-template>
+        <ng-template pTemplate="item" let-item>
+          <span>{{ item.icon }} {{ item.label }}</span>
+        </ng-template>
+      </p-dropdown>
+    </div>
+
+    <!-- Branch assignment (Owner only, edit mode) -->
+    @if (isOwner() && editingUser() && availableBranches().length > 0) {
+      <div class="form-field">
+        <label class="form-field__label">Sucursales asignadas</label>
+        <p-table
+          [value]="availableBranches()"
+          dataKey="id"
+          styleClass="branch-table"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 3rem"></th>
+              <th>Sucursal</th>
+              <th style="width: 5rem; text-align: center">Principal</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-branch>
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="selectedBranchIds().includes(branch.id)"
+                  (change)="toggleBranch(branch.id)"
+                  class="branch-check"
+                />
+              </td>
+              <td>
+                {{ branch.name }}
+                @if (branch.isMatrix) {
+                  <span class="branch-matrix-badge">Matriz</span>
+                }
+              </td>
+              <td style="text-align: center">
+                <input
+                  type="radio"
+                  name="defaultBranch"
+                  [checked]="defaultBranchId() === branch.id"
+                  [disabled]="!selectedBranchIds().includes(branch.id)"
+                  (change)="setDefaultBranch(branch.id)"
+                  class="branch-radio"
+                />
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+
+    <!-- PIN (for Cashier, Kitchen, Waiter) -->
+    @if (usesPin()) {
+      <div class="form-field">
+        <label class="form-field__label" for="uf-pin">PIN (4 dígitos)</label>
+        <input
+          id="uf-pin"
+          type="password"
+          pInputText
+          formControlName="pin"
+          [placeholder]="editingUser() ? 'Vacío = no cambiar' : '4 dígitos'"
+          maxlength="4"
+          class="form-field__input"
+        />
+      </div>
+    }
+
+    <!-- Email + Password (for Owner, Manager) -->
+    @if (usesEmail()) {
+      <div class="form-field">
+        <label class="form-field__label" for="uf-email">Email</label>
+        <input
+          id="uf-email"
+          type="email"
+          pInputText
+          formControlName="email"
+          placeholder="correo@ejemplo.com"
+          class="form-field__input"
+        />
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="uf-password">Contraseña</label>
+        <input
+          id="uf-password"
+          type="password"
+          pInputText
+          formControlName="password"
+          [placeholder]="editingUser() ? 'Vacío = no cambiar' : 'Mínimo 6 caracteres'"
+          class="form-field__input"
+        />
+      </div>
+    }
+
+    <!-- Active toggle (edit only) -->
+    @if (editingUser()) {
+      <div class="form-field form-field--row">
+        <label class="form-field__label">Activo</label>
+        <label class="toggle-wrap">
+          <input type="checkbox" formControlName="isActive" class="toggle-input" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    }
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="userForm.invalid || savingUser()"
+      (click)="saveUser()"
+    >
+      @if (savingUser()) { <i class="pi pi-spin pi-spinner"></i> }
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>

@@ -1,1 +1,14 @@
+<app-update-banner />
+<p-toast position="top-right" />
 <router-outlet />
+<app-expired-overlay />
+<app-install-banner />
+<ng-http-loader
+  [backdrop]="true"
+  [backgroundColor]="'#16A34A'"
+  [debounceDelay]="200"
+  [minDuration]="300"
+  [opacity]="'0.6'"
+  [backdropBackgroundColor]="'#000000'"
+  [filteredUrlPatterns]="filteredUrls"
+/>

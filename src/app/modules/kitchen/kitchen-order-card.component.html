@@ -1,0 +1,75 @@
+<!-- KDS Order Card -->
+<div
+  class="kds-card"
+  [ngClass]="{
+    'kds-card--in-progress': job.status === 'InProgress',
+    'kds-card--overdue': isOverdue,
+    'kds-card--fading': isFading
+  }"
+>
+
+  <!-- Card header: order number + ticket type badge + elapsed timer -->
+  <div class="kds-card__header">
+    <div class="flex align-items-center gap-2">
+      <span class="kds-card__number">#{{ job.orderNumber }}</span>
+      <span class="kds-card__type-badge">{{ job.ticketType === 'Receipt' ? 'Caja' : 'Cocina' }}</span>
+    </div>
+    <span class="kds-card__timer" [class.kds-card__timer--overdue]="isOverdue">
+      @if (isOverdue) {
+        <i class="pi pi-exclamation-triangle"></i>
+      }
+      {{ elapsedFormatted }}
+    </span>
+  </div>
+
+  <!-- Items list: one row per item, extras expanded individually -->
+  <ul class="kds-card__items">
+    @for (item of parsedItems; track item.id) {
+      <li class="kds-card__item">
+        <span class="kds-card__qty">{{ item.quantity }}×</span>
+        <div class="kds-card__item-body">
+          <span class="kds-card__name">{{ item.productName }}</span>
+          @if (item.sizeLabel) {
+            <span class="kds-card__meta">{{ item.sizeLabel }}</span>
+          }
+          @for (extra of item.extras; track $index) {
+            <span class="kds-card__meta">+ {{ extra }}</span>
+          }
+          @if (item.notes) {
+            <div class="kds-card__note">
+              <i class="pi pi-comment"></i>
+              {{ item.notes }}
+            </div>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  <!-- Action footer -->
+  @if (!isFading) {
+    <div class="flex justify-content-end gap-2 px-3 pb-3 mt-3">
+      @if (job.status === 'Pending') {
+        <p-button
+          label="Start"
+          icon="pi pi-play"
+          (onClick)="onPrepare()"
+        />
+      }
+      @if (job.status === 'InProgress') {
+        <p-button
+          label="Complete"
+          icon="pi pi-check"
+          severity="success"
+          (onClick)="onDone()"
+        />
+      }
+    </div>
+  } @else {
+    <div class="kds-card__done-label">
+      <i class="pi pi-check-circle"></i>
+      <span>Completada</span>
+    </div>
+  }
+
+</div>

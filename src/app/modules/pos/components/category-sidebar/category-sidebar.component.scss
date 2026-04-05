@@ -1,0 +1,114 @@
+@use '../../../../../styles/variables' as *;
+
+// ==========================================================================
+// Category Sidebar — Vertical 90px navigation (Kaja Pro mockup)
+// ==========================================================================
+
+.cat-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: $category-sidebar-width;
+  height: 100%;
+  padding: $space-4 0;
+  gap: $space-1;
+  background: #FFFFFF;
+  border-right: 1px solid $color-border-soft;
+  overflow-y: auto;
+  flex-shrink: 0;
+
+  // Hide scrollbar
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  // -----------------------------------------------------------------------
+  // Brand mark
+  // -----------------------------------------------------------------------
+  &__brand {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, $color-primary 0%, #15803D 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: $space-5;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+    flex-shrink: 0;
+  }
+
+  // -----------------------------------------------------------------------
+  // Category item
+  // -----------------------------------------------------------------------
+  &__item {
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    border-radius: 14px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #94A3B8;
+    font-family: inherit;
+    flex-shrink: 0;
+
+    &:hover {
+      background: $color-bg-page;
+      color: #64748B;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-primary;
+      outline-offset: 2px;
+    }
+
+    &--active {
+      background: $color-primary-light;
+      color: $color-primary;
+
+      &:hover {
+        background: $color-primary-light;
+        color: $color-primary;
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Icon + label
+  // -----------------------------------------------------------------------
+  &__icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  &__label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    text-align: center;
+    line-height: 1.2;
+    max-width: 68px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // -----------------------------------------------------------------------
+  // Spacer
+  // -----------------------------------------------------------------------
+  &__spacer {
+    flex: 1;
+  }
+}

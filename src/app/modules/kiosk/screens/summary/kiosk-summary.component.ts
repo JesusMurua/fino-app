@@ -1,6 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, effect, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
 
 import { CartItem } from '../../../../core/models';
 
@@ -14,14 +13,13 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
   templateUrl: './kiosk-summary.component.html',
   styleUrl: './kiosk-summary.component.scss',
 })
-export class KioskSummaryComponent implements OnInit {
+export class KioskSummaryComponent {
 
   //#region Properties
 
-  readonly items = signal<CartItem[]>([]);
+  readonly items = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
-
-  private cartSub?: Subscription;
+  readonly cartEvaluation = this.cartService.cartEvaluation;
 
   //#endregion
 
@@ -29,23 +27,31 @@ export class KioskSummaryComponent implements OnInit {
   constructor(
     private readonly cartService: CartService,
     private readonly router: Router,
-  ) {}
-  //#endregion
-
-  //#region Lifecycle
-
-  ngOnInit(): void {
-    this.cartSub = this.cartService.cart$.subscribe(items => {
-      this.items.set(items);
-      // If cart becomes empty redirect back to catalog
-      if (items.length === 0) {
+  ) {
+    // Redirect back to catalog when cart becomes empty
+    effect(() => {
+      if (this.cartService.items().length === 0) {
         this.router.navigate(['/kiosk/catalog']);
       }
     });
   }
+  //#endregion
 
-  ngOnDestroy(): void {
-    this.cartSub?.unsubscribe();
+  //#region Cart Item Actions
+
+  /** Decreases item quantity by 1 — removes item if quantity reaches 0 */
+  async decreaseQuantity(item: CartItem): Promise<void> {
+    await this.cartService.updateQuantity(item.id, item.quantity - 1);
+  }
+
+  /** Increases item quantity by 1 */
+  async increaseQuantity(item: CartItem): Promise<void> {
+    await this.cartService.updateQuantity(item.id, item.quantity + 1);
+  }
+
+  /** Removes item from cart entirely */
+  async removeItem(item: CartItem): Promise<void> {
+    await this.cartService.removeItem(item.id);
   }
 
   //#endregion

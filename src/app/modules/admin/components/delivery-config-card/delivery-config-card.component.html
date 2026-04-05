@@ -1,0 +1,163 @@
+<!-- Card header — always visible -->
+<div
+  class="dcc"
+  [class.dcc--configured]="isConfigured()"
+  [class.dcc--unconfigured]="!isConfigured()"
+>
+  <div class="dcc__header" (click)="toggleExpand()">
+    <div class="dcc__header-left">
+      <span
+        class="dcc__letter"
+        [style.background]="meta().bgColor"
+        [style.color]="meta().color"
+      >
+        {{ meta().letter }}
+      </span>
+      <span class="dcc__platform-name">{{ meta().label }}</span>
+    </div>
+    <div class="dcc__header-right">
+      @if (isConfigured()) {
+        <span class="dcc__status" [class.dcc__status--active]="config()!.isActive" [class.dcc__status--inactive]="!config()!.isActive">
+          <span class="dcc__status-dot"></span>
+          {{ config()!.isActive ? 'Activo' : 'Inactivo' }}
+        </span>
+      } @else {
+        <span class="dcc__status dcc__status--none">No configurado</span>
+      }
+      <i class="pi pi-chevron-down dcc__chevron" [class.dcc__chevron--open]="isExpanded()"></i>
+    </div>
+  </div>
+
+  <!-- Expandable body -->
+  @if (isExpanded()) {
+    <div class="dcc__body">
+
+      <!-- Active toggle -->
+      <div class="dcc__field dcc__field--row">
+        <label class="dcc__label">Estado</label>
+        <p-inputSwitch
+          [ngModel]="isActive()"
+          (ngModelChange)="isActive.set($event)"
+        />
+        <span class="dcc__toggle-label">{{ isActive() ? 'Activo' : 'Inactivo' }}</span>
+      </div>
+
+      <!-- Store ID -->
+      <div class="dcc__field">
+        <label class="dcc__label">Store ID</label>
+        <input
+          type="text"
+          pInputText
+          [ngModel]="storeId()"
+          (ngModelChange)="storeId.set($event)"
+          placeholder="ID de tienda en la plataforma"
+          class="dcc__input"
+        />
+      </div>
+
+      <!-- API Key -->
+      <div class="dcc__field">
+        <label class="dcc__label">API Key</label>
+        @if (config()?.hasApiKey && !showApiKey()) {
+          <div class="dcc__secret-row">
+            <span class="dcc__secret-status">
+              <i class="pi pi-check-circle"></i> Configurada
+            </span>
+            <button type="button" class="dcc__change-btn" (click)="showApiKey.set(true)">
+              Cambiar
+            </button>
+          </div>
+        } @else {
+          <div class="dcc__input-row">
+            <input
+              type="password"
+              pInputText
+              [ngModel]="apiKeyInput()"
+              (ngModelChange)="apiKeyInput.set($event)"
+              placeholder="Ingresa tu API Key"
+              class="dcc__input"
+            />
+          </div>
+        }
+      </div>
+
+      <!-- Webhook Secret -->
+      <div class="dcc__field">
+        <label class="dcc__label">Webhook Secret</label>
+        @if (config()?.hasWebhookSecret && !showWebhookSecret()) {
+          <div class="dcc__secret-row">
+            <span class="dcc__secret-status">
+              <i class="pi pi-check-circle"></i> Configurado
+            </span>
+            <button type="button" class="dcc__change-btn" (click)="showWebhookSecret.set(true)">
+              Cambiar
+            </button>
+          </div>
+        } @else {
+          <div class="dcc__input-row">
+            <input
+              type="password"
+              pInputText
+              [ngModel]="webhookSecretInput()"
+              (ngModelChange)="webhookSecretInput.set($event)"
+              placeholder="Ingresa tu Webhook Secret"
+              class="dcc__input"
+            />
+          </div>
+        }
+      </div>
+
+      <!-- Webhook URL -->
+      @if (config()?.webhookUrl) {
+        <div class="dcc__field">
+          <label class="dcc__label">Webhook URL</label>
+          <div class="dcc__webhook-url">
+            <code>{{ config()!.webhookUrl }}</code>
+            <button
+              type="button"
+              class="dcc__copy-btn"
+              pTooltip="Copiar URL"
+              tooltipPosition="top"
+              (click)="copyWebhookUrl()"
+            >
+              @if (copiedFeedback()) {
+                <i class="pi pi-check"></i>
+              } @else {
+                <i class="pi pi-copy"></i>
+              }
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Footer actions -->
+      <div class="dcc__footer">
+        <div>
+          @if (isConfigured()) {
+            @if (showDeleteConfirm()) {
+              <span class="dcc__confirm-text">¿Confirmar?</span>
+              <button type="button" class="dcc__confirm-yes" (click)="emitDelete()">Sí</button>
+              <button type="button" class="dcc__confirm-no" (click)="showDeleteConfirm.set(false)">No</button>
+            } @else {
+              <button type="button" class="dcc__delete-btn" (click)="showDeleteConfirm.set(true)">
+                <i class="pi pi-trash"></i> Eliminar config
+              </button>
+            }
+          }
+        </div>
+        <button
+          type="button"
+          class="dcc__save-btn"
+          [disabled]="saving()"
+          (click)="emitSave()"
+        >
+          @if (saving()) {
+            <i class="pi pi-spin pi-spinner"></i>
+          }
+          {{ isConfigured() ? 'Guardar cambios' : 'Configurar' }}
+        </button>
+      </div>
+
+    </div>
+  }
+</div>

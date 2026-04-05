@@ -1,14 +1,15 @@
-import { Injectable, signal } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, computed, signal } from '@angular/core';
 
-import { CartItem, Product, ProductExtra, ProductSize, calcUnitPriceCents } from '../models';
+import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { DatabaseService } from './database.service';
+import { ProductService } from './product.service';
+import { PromotionService } from './promotion.service';
 
 /**
  * Manages the active order cart.
  *
- * State is held in a BehaviorSubject (reactive) and persisted to IndexedDB
- * so the cart survives page refreshes.
+ * State is held in Angular signals (single source of truth) and persisted
+ * to IndexedDB so the cart survives page refreshes.
  *
  * Pricing rules (CLAUDE.md):
  *   - All monetary values are in cents
@@ -20,23 +21,44 @@ import { DatabaseService } from './database.service';
 export class CartService {
 
   //#region Properties
-  private readonly _cart$ = new BehaviorSubject<CartItem[]>([]);
 
-  /** Observable cart items — subscribe or use async pipe in templates */
-  readonly cart$: Observable<CartItem[]> = this._cart$.asObservable();
+  /** Single source of truth for cart items */
+  readonly items = signal<CartItem[]>([]);
 
-  /**
-   * Total order amount in cents (reactive signal).
-   * Components can read this as a signal for change detection efficiency.
-   */
-  readonly totalCents = signal(0);
+  /** Latest promotion evaluation result (null when cart is empty) */
+  readonly cartEvaluation = signal<PromotionEvaluation | null>(null);
+
+  /** Total order amount in cents — derived from items + promotions */
+  readonly totalCents = computed(() => {
+    const evaluation = this.cartEvaluation();
+    if (!evaluation) return 0;
+    const subtotal = this.items().reduce((sum, i) => sum + i.totalPriceCents, 0);
+    return Math.max(0, subtotal - evaluation.totalDiscountCents);
+  });
 
   /** Number of individual items in the cart (sum of quantities) */
-  readonly itemCount = signal(0);
+  readonly itemCount = computed(() =>
+    this.items().reduce((sum, i) => sum + i.quantity, 0),
+  );
+
+  /**
+   * Emitted when an addItem/updateQuantity is rejected due to insufficient stock.
+   * Components can read this signal to show a toast. Resets after 3 seconds.
+   */
+  readonly stockExceeded = signal<{ productName: string; available: number } | null>(null);
+
+  /** Returns a snapshot of current cart items */
+  getSnapshot(): CartItem[] {
+    return [...this.items()];
+  }
   //#endregion
 
   //#region Constructor & Initialization
-  constructor(private readonly db: DatabaseService) {
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly productService: ProductService,
+    private readonly promotionService: PromotionService,
+  ) {
     this.loadFromDb();
   }
 
@@ -47,8 +69,7 @@ export class CartService {
   private async loadFromDb(): Promise<void> {
     try {
       const items = await this.db.cart.toArray();
-      this._cart$.next(items);
-      this.updateTotals(items);
+      this.reevaluatePromotions(items);
     } catch (error) {
       console.error('[CartService] Failed to load cart from IndexedDB:', error);
     }
@@ -60,6 +81,7 @@ export class CartService {
   /**
    * Adds a product to the cart with the selected size and extras.
    * If an identical configuration already exists, increments its quantity.
+   * Enforces stock limits for trackStock products and applies optimistic deduction.
    * @param product The product to add
    * @param size Selected size variant (optional)
    * @param extras Selected extras (may be empty)
@@ -71,6 +93,16 @@ export class CartService {
     extras: ProductExtra[] = [],
     notes?: string,
   ): Promise<void> {
+    // Stock guard — check available stock for trackStock products
+    if (product.trackStock) {
+      const available = this.productService.getAvailableStock(product.id);
+      const inCart = this.getQuantityInCart(product.id);
+      if (inCart + 1 > available) {
+        this.emitStockExceeded(product.name, Math.max(0, available - inCart));
+        return;
+      }
+    }
+
     const unitPriceCents = calcUnitPriceCents(product, size, extras);
     const existing = this.findMatchingItem(product.id, size?.id, extras.map(e => e.id));
 
@@ -88,15 +120,20 @@ export class CartService {
       unitPriceCents,
       totalPriceCents: unitPriceCents,
       notes,
+      discountCents: 0,
     };
 
-    const updated = [...this._cart$.getValue(), newItem];
+    const updated = [...this.items(), newItem];
     await this.persist(updated);
+
+    // Optimistic local deduction
+    this.productService.deductLocalStock(product.id, 1);
   }
 
   /**
    * Updates the quantity of a cart item.
    * If quantity reaches 0, the item is removed from the cart.
+   * Enforces stock limits and applies optimistic deduction/restoration.
    * @param itemId Cart item UUID
    * @param quantity New quantity (must be >= 0)
    */
@@ -106,21 +143,49 @@ export class CartService {
       return;
     }
 
-    const updated = this._cart$.getValue().map(item =>
+    const currentItem = this.items().find(i => i.id === itemId);
+    if (!currentItem) return;
+
+    const delta = quantity - currentItem.quantity;
+
+    // Stock guard on increase
+    if (delta > 0 && currentItem.product.trackStock) {
+      const available = this.productService.getAvailableStock(currentItem.product.id);
+      if (delta > available) {
+        this.emitStockExceeded(currentItem.product.name, available);
+        return;
+      }
+    }
+
+    const updated = this.items().map(item =>
       item.id === itemId
         ? { ...item, quantity, totalPriceCents: item.unitPriceCents * quantity }
         : item,
     );
     await this.persist(updated);
+
+    // Optimistic stock adjustment
+    if (delta > 0) {
+      this.productService.deductLocalStock(currentItem.product.id, delta);
+    } else if (delta < 0) {
+      this.productService.restoreLocalStock(currentItem.product.id, Math.abs(delta));
+    }
   }
 
   /**
    * Removes a single item from the cart entirely.
+   * Restores optimistic stock deduction.
    * @param itemId Cart item UUID
    */
   async removeItem(itemId: string): Promise<void> {
-    const updated = this._cart$.getValue().filter(item => item.id !== itemId);
+    const removedItem = this.items().find(i => i.id === itemId);
+    const updated = this.items().filter(item => item.id !== itemId);
     await this.persist(updated);
+
+    // Restore stock for the removed item
+    if (removedItem) {
+      this.productService.restoreLocalStock(removedItem.product.id, removedItem.quantity);
+    }
   }
 
   /**
@@ -129,12 +194,32 @@ export class CartService {
    */
   async clearCart(): Promise<void> {
     await this.db.cart.clear();
-    this._cart$.next([]);
-    this.updateTotals([]);
+    this.reevaluatePromotions([]);
   }
   //#endregion
 
   //#region Private Helpers
+
+  /**
+   * Returns the total quantity of a product currently in the cart
+   * across all configurations (sizes/extras).
+   * @param productId Product ID to sum
+   */
+  private getQuantityInCart(productId: number): number {
+    return this.items()
+      .filter(i => i.product.id === productId)
+      .reduce((sum, i) => sum + i.quantity, 0);
+  }
+
+  /**
+   * Emits a stock-exceeded warning and auto-clears it after 3 seconds.
+   * @param productName Display name for the toast
+   * @param available Remaining stock available
+   */
+  private emitStockExceeded(productName: string, available: number): void {
+    this.stockExceeded.set({ productName, available });
+    setTimeout(() => this.stockExceeded.set(null), 3000);
+  }
 
   /**
    * Finds a cart item that matches the same product + size + extras combination.
@@ -146,7 +231,7 @@ export class CartService {
     extraIds: number[],
   ): CartItem | undefined {
     const sortedExtras = [...extraIds].sort();
-    return this._cart$.getValue().find(item => {
+    return this.items().find(item => {
       if (item.product.id !== productId) return false;
       if ((item.size?.id ?? undefined) !== sizeId) return false;
       const itemExtras = item.extras.map(e => e.id).sort();
@@ -166,22 +251,42 @@ export class CartService {
           await this.db.cart.bulkAdd(items);
         }
       });
-      this._cart$.next(items);
-      this.updateTotals(items);
+      this.reevaluatePromotions(items);
     } catch (error) {
       console.error('[CartService] Failed to persist cart to IndexedDB:', error);
     }
   }
 
   /**
-   * Updates the totalCents and itemCount signals after any cart change.
-   * @param items Current cart items
+   * Evaluates promotions against current items, updates discount fields
+   * on each CartItem, and sets the items signal with decorated data.
+   * Called after every cart mutation and on initial load from Dexie.
+   * @param items Raw cart items (without promotion discounts applied)
    */
-  private updateTotals(items: CartItem[]): void {
-    const total = items.reduce((sum, item) => sum + item.totalPriceCents, 0);
-    const count = items.reduce((sum, item) => sum + item.quantity, 0);
-    this.totalCents.set(total);
-    this.itemCount.set(count);
+  private reevaluatePromotions(items: CartItem[]): void {
+    if (items.length === 0) {
+      this.cartEvaluation.set(null);
+      this.items.set([]);
+      return;
+    }
+
+    const subtotalCents = items.reduce((sum, i) => sum + i.totalPriceCents, 0);
+    const evaluation = this.promotionService.evaluateCart(items, subtotalCents);
+    this.cartEvaluation.set(evaluation);
+
+    // Apply discount info to items (in-memory only — not persisted to Dexie)
+    const updatedItems = items.map(item => {
+      const itemDiscount = evaluation.itemDiscounts.get(item.id);
+      return {
+        ...item,
+        discountCents: itemDiscount?.discountCents ?? 0,
+        promotionId: itemDiscount?.promotionId,
+        promotionName: itemDiscount?.promotionName,
+      };
+    });
+
+    // Single atomic update — totalCents and itemCount derive via computed()
+    this.items.set(updatedItems);
   }
   //#endregion
 

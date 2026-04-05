@@ -6,9 +6,7 @@
     <button
       type="button"
       class="btn-ghost"
-      [disabled]="true"
-      pTooltip="Disponible cuando se conecte el servidor"
-      tooltipPosition="left"
+      (click)="showImportDialog.set(true)"
     >
       <i class="pi pi-upload"></i>
       Importar Excel
@@ -66,6 +64,9 @@
               <th pSortableColumn="priceCents" style="min-width: 8rem">
                 Precio <p-sortIcon field="priceCents" />
               </th>
+              <th pSortableColumn="currentStock" style="min-width: 6rem">
+                Stock <p-sortIcon field="currentStock" />
+              </th>
               <th style="min-width: 6rem">Activo</th>
               <th style="min-width: 5rem">Acciones</th>
             </tr>
@@ -76,6 +77,19 @@
               <td class="products-table__name">{{ product.name }}</td>
               <td class="products-table__category">{{ categoryName(product.categoryId) }}</td>
               <td class="products-table__price">{{ product.priceCents | price }}</td>
+              <td>
+                @if (product.trackStock) {
+                  @if (product.currentStock <= 0) {
+                    <span class="stock-badge stock-badge--out">Agotado</span>
+                  } @else if (product.currentStock <= (product.lowStockThreshold ?? 0)) {
+                    <span class="stock-badge stock-badge--low">{{ product.currentStock }}</span>
+                  } @else {
+                    <span class="stock-badge stock-badge--ok">{{ product.currentStock }}</span>
+                  }
+                } @else {
+                  <span class="stock-badge stock-badge--na">—</span>
+                }
+              </td>
               <td>
                 <p-inputSwitch
                   [ngModel]="product.isAvailable"
@@ -91,13 +105,35 @@
                 >
                   <i class="pi pi-pencil"></i>
                 </button>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  aria-label="Configurar insumos"
+                  pTooltip="Configurar insumos"
+                  tooltipPosition="left"
+                  (click)="openConsumptionDialog(product)"
+                >
+                  <i class="pi pi-link"></i>
+                </button>
+                @if (product.trackStock) {
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Ver movimientos de stock"
+                    pTooltip="Ver movimientos"
+                    tooltipPosition="left"
+                    (click)="openMovementDialog(product)"
+                  >
+                    <i class="pi pi-history"></i>
+                  </button>
+                }
               </td>
             </tr>
           </ng-template>
 
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="5" class="products-table__empty">No hay productos registrados.</td>
+              <td colspan="6" class="products-table__empty">No hay productos registrados.</td>
             </tr>
           </ng-template>
 
@@ -187,6 +223,88 @@
 
     </p-tabPanel>
 
+    <!-- ------------------------------------------------------------------ -->
+    <!-- TAB 3 — Descuentos                                                  -->
+    <!-- ------------------------------------------------------------------ -->
+    <p-tabPanel header="Descuentos" leftIcon="pi pi-tag">
+
+      <div class="tab-toolbar">
+        <span></span>
+        <button type="button" class="btn-primary" (click)="openNewDiscountDialog()">
+          <i class="pi pi-plus"></i>
+          Nuevo descuento
+        </button>
+      </div>
+
+      <div class="products-table-wrap">
+        <p-table
+          [value]="discountPresets()"
+          [loading]="loadingDiscounts()"
+          [rowHover]="true"
+          dataKey="id"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 14rem">Nombre</th>
+              <th style="min-width: 6rem">Tipo</th>
+              <th style="min-width: 8rem">Valor</th>
+              <th style="min-width: 6rem">Activo</th>
+              <th style="min-width: 7rem">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-preset>
+            <tr>
+              <td class="products-table__name">{{ preset.name }}</td>
+              <td>
+                @if (preset.type === 'percent') {
+                  <span class="badge badge--percent">%</span>
+                } @else {
+                  <span class="badge badge--fixed">$</span>
+                }
+              </td>
+              <td class="products-table__price">
+                {{ preset.type === 'percent' ? preset.value + '%' : (preset.value | price) }}
+              </td>
+              <td>
+                <p-inputSwitch
+                  [ngModel]="preset.isActive"
+                  (onChange)="toggleDiscountActive(preset)"
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  aria-label="Editar descuento"
+                  (click)="openEditDiscountDialog(preset)"
+                >
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn-icon btn-icon--danger"
+                  aria-label="Eliminar descuento"
+                  (click)="deleteDiscount(preset)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="products-table__empty">No hay descuentos registrados.</td>
+            </tr>
+          </ng-template>
+
+        </p-table>
+      </div>
+
+    </p-tabPanel>
+
   </p-tabView>
 
 </div>
@@ -199,148 +317,362 @@
   [(visible)]="dialogVisible"
   [modal]="true"
   [closable]="true"
-  [style]="{ width: '560px' }"
+  [style]="{ width: '640px' }"
+  [contentStyle]="{ padding: '0', overflow: 'hidden', 'max-height': 'calc(85vh - 120px)' }"
   [draggable]="false"
 >
-  <div class="product-form">
+  <p-tabView styleClass="product-dialog-tabs" [(activeIndex)]="dialogTabIndex">
 
-    <!-- Basic fields -->
-    <div class="form-field">
-      <label class="form-field__label" for="pf-name">Nombre</label>
-      <input
-        id="pf-name"
-        type="text"
-        pInputText
-        [(ngModel)]="form.name"
-        placeholder="Ej. Torta de Milanesa"
-        class="form-field__input"
-      />
-    </div>
+    <!-- ================================================================ -->
+    <!-- TAB 1 — Info básica                                               -->
+    <!-- ================================================================ -->
+    <p-tabPanel header="Info básica">
+      <div class="product-form product-form--scrollable">
 
-    <div class="form-field">
-      <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
-      <p-inputNumber
-        inputId="pf-price"
-        mode="currency"
-        currency="MXN"
-        locale="es-MX"
-        [min]="0"
-        [ngModel]="form.priceCents / 100"
-        (onInput)="onPriceChange($event.value)"
-        styleClass="form-field__input"
-      />
-    </div>
-
-    <div class="form-field">
-      <label class="form-field__label" for="pf-category">Categoría</label>
-      <p-dropdown
-        inputId="pf-category"
-        [options]="categories()"
-        optionLabel="name"
-        optionValue="id"
-        [(ngModel)]="form.categoryId"
-        placeholder="Seleccionar categoría"
-        styleClass="form-field__input"
-        [appendTo]="'body'"
-      />
-    </div>
-
-    <div class="form-field form-field--row">
-      <label class="form-field__label" for="pf-active">Disponible</label>
-      <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
-    </div>
-
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Sizes                                                               -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Tamaños</span>
-        <span class="form-section__hint">Precio = base + cargo extra</span>
-      </div>
-
-      @for (size of form.sizes; track $index) {
-        <div class="variant-row">
+        <div class="form-field">
+          <label class="form-field__label" for="pf-name">Nombre</label>
           <input
+            id="pf-name"
             type="text"
             pInputText
-            [(ngModel)]="size.label"
-            placeholder="Ej. Chico, Grande"
-            class="variant-row__name"
+            [(ngModel)]="form.name"
+            placeholder="Ej. Torta de Milanesa"
+            class="form-field__input"
           />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-barcode">Código de barras</label>
+          <div class="p-inputgroup">
+            <input
+              id="pf-barcode"
+              type="text"
+              pInputText
+              [(ngModel)]="form.barcode"
+              placeholder="Ej. 7501234567890"
+              class="form-field__input"
+            />
+            <button
+              pButton
+              type="button"
+              icon="pi pi-qrcode"
+              class="p-button-outlined"
+              pTooltip="Escanear código"
+              (click)="activateBarcodeScanner()"
+            ></button>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
           <p-inputNumber
+            inputId="pf-price"
             mode="currency"
             currency="MXN"
             locale="es-MX"
             [min]="0"
-            [ngModel]="size.priceDeltaCents / 100"
-            (onInput)="onSizePriceChange($index, $event.value)"
-            styleClass="variant-row__price"
-            placeholder="+$0.00"
+            [ngModel]="form.priceCents / 100"
+            (onInput)="onPriceChange($event.value)"
+            styleClass="form-field__input"
           />
-          <button
-            type="button"
-            class="btn-icon btn-icon--danger"
-            aria-label="Eliminar tamaño"
-            (click)="removeSize($index)"
-          >
-            <i class="pi pi-trash"></i>
-          </button>
         </div>
-      }
 
-      <button type="button" class="btn-add-variant" (click)="addSize()">
-        <i class="pi pi-plus"></i>
-        Agregar tamaño
-      </button>
-    </div>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-category">Categoría</label>
+          <p-dropdown
+            inputId="pf-category"
+            [options]="categories()"
+            optionLabel="name"
+            optionValue="id"
+            [(ngModel)]="form.categoryId"
+            placeholder="Seleccionar categoría"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+          />
+        </div>
 
-    <!-- ------------------------------------------------------------------ -->
-    <!-- Extras                                                              -->
-    <!-- ------------------------------------------------------------------ -->
-    <div class="form-section">
-      <div class="form-section__header">
-        <span class="form-section__title">Extras</span>
-        <span class="form-section__hint">Precio $0 = gratis</span>
-      </div>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-desc">Descripción (opcional)</label>
+          <textarea
+            id="pf-desc"
+            pInputTextarea
+            [(ngModel)]="form.description"
+            [maxlength]="1000"
+            rows="3"
+            placeholder="Describe el producto, ingredientes, etc."
+            class="form-field__input form-field__textarea"
+          ></textarea>
+          <span class="form-hint">{{ form.description.length }} / 1000</span>
+        </div>
 
-      @for (extra of form.extras; track $index) {
-        <div class="variant-row">
+        <div class="form-field form-field--row">
+          <label class="form-field__label" for="pf-active">Disponible</label>
+          <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
+        </div>
+
+        <div class="form-field form-field--row">
+          <label class="form-field__label" for="pf-track-stock">Controlar stock</label>
+          <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
+        </div>
+
+        @if (form.trackStock) {
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-field__label" for="pf-stock">Stock inicial</label>
+              <p-inputNumber
+                inputId="pf-stock"
+                [(ngModel)]="form.currentStock"
+                [min]="0"
+                placeholder="0"
+                styleClass="w-full"
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
+              <p-inputNumber
+                inputId="pf-threshold"
+                [(ngModel)]="form.lowStockThreshold"
+                [min]="0"
+                placeholder="0"
+                styleClass="w-full"
+              />
+            </div>
+          </div>
+        }
+
+        <!-- Fiscal / SAT metadata -->
+        <div class="form-section-divider"></div>
+        <span class="form-section-title">Impresión de cocina</span>
+
+        @if (hasPrinters()) {
+          <div class="form-field">
+            <label class="form-field__label" for="pf-print-dest">Destino de impresión</label>
+            <p-dropdown
+              inputId="pf-print-dest"
+              [options]="printingDestinationOptions()"
+              optionLabel="name"
+              optionValue="id"
+              [(ngModel)]="form.printingDestinationId"
+              placeholder="Sin impresión de cocina"
+              [showClear]="true"
+              styleClass="form-field__input"
+              [appendTo]="'body'"
+            />
+            <span class="form-hint">El ticket de cocina se enviará a este destino al completar la venta.</span>
+          </div>
+        } @else {
+          <p class="form-hint">
+            <i class="pi pi-info-circle"></i>
+            Configura impresoras en <strong>Ajustes → Impresoras</strong> para activar esta función.
+          </p>
+        }
+
+        <!-- Fiscal / SAT metadata -->
+        <div class="form-section-divider"></div>
+        <span class="form-section-title">Datos fiscales (CFDI)</span>
+
+        <div class="form-field">
+          <label class="form-field__label" for="pf-sat-code">Clave SAT del producto</label>
           <input
+            id="pf-sat-code"
             type="text"
             pInputText
-            [(ngModel)]="extra.label"
-            placeholder="Ej. Sin cebolla, Queso extra"
-            class="variant-row__name"
+            [(ngModel)]="form.satProductCode"
+            placeholder="Ej. 90101500 (Alimentos)"
+            class="w-full"
           />
-          <p-inputNumber
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            [ngModel]="extra.priceCents / 100"
-            (onInput)="onExtraPriceChange($index, $event.value)"
-            styleClass="variant-row__price"
-            placeholder="$0.00"
-          />
-          <button
-            type="button"
-            class="btn-icon btn-icon--danger"
-            aria-label="Eliminar extra"
-            (click)="removeExtra($index)"
-          >
-            <i class="pi pi-trash"></i>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-field__label" for="pf-sat-unit">Unidad SAT</label>
+            <p-dropdown
+              inputId="pf-sat-unit"
+              [(ngModel)]="form.satUnitCode"
+              [options]="satUnitOptions"
+              optionValue="clave"
+              optionLabel="descripcion"
+              placeholder="Selecciona unidad"
+              styleClass="w-full"
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
+            <p-dropdown
+              inputId="pf-tax-rate"
+              [(ngModel)]="form.taxRate"
+              [options]="ivaRateOptions"
+              optionValue="value"
+              optionLabel="label"
+              styleClass="w-full"
+            />
+          </div>
+        </div>
+
+      </div>
+    </p-tabPanel>
+
+    <!-- ================================================================ -->
+    <!-- TAB 2 — Imágenes                                                  -->
+    <!-- ================================================================ -->
+    <p-tabPanel>
+      <ng-template pTemplate="header">
+        <span>Imágenes</span>
+        @if (productImages().length > 0) {
+          <span class="tab-badge">{{ productImages().length }}</span>
+        }
+      </ng-template>
+
+      <div class="product-form product-form--scrollable">
+        @if (!showImageTab || !editingProduct) {
+          <div class="tab-empty-state">
+            <i class="pi pi-image tab-empty-state__icon"></i>
+            <p class="tab-empty-state__text">Guarda el producto primero para agregar imágenes.</p>
+          </div>
+        } @else {
+          <p class="form-hint" style="margin-bottom: 8px">Máximo 5 imágenes por producto.</p>
+          <div class="image-grid">
+            @for (img of productImages(); track img.id) {
+              <div class="image-grid__item">
+                <img [src]="img.url" [alt]="'Imagen del producto'" class="image-grid__img" />
+                <button
+                  type="button"
+                  class="image-grid__remove"
+                  aria-label="Eliminar imagen"
+                  (click)="deleteImage(img.id)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+
+            @if (productImages().length < 5) {
+              <label class="image-grid__add">
+                <input
+                  #imgInput
+                  type="file"
+                  accept="image/*"
+                  (change)="onImageSelected($event)"
+                  hidden
+                />
+                @if (uploadingImage()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                  <i class="pi pi-plus"></i>
+                  <span>Agregar</span>
+                }
+              </label>
+            }
+          </div>
+        }
+      </div>
+    </p-tabPanel>
+
+    <!-- ================================================================ -->
+    <!-- TAB 3 — Precios y extras                                          -->
+    <!-- ================================================================ -->
+    <p-tabPanel>
+      <ng-template pTemplate="header">
+        <span>Precios y extras</span>
+        @if (form.sizes.length > 0 || form.extras.length > 0) {
+          <span class="tab-badge">{{ form.sizes.length + form.extras.length }}</span>
+        }
+      </ng-template>
+
+      <div class="product-form product-form--scrollable">
+
+        <p class="form-hint">Los tamaños y extras son opcionales. Solo agrégalos si tu producto los necesita.</p>
+
+        <!-- Sizes -->
+        <div class="form-section">
+          <div class="form-section__header">
+            <span class="form-section__title">Tamaños</span>
+            <span class="form-section__hint">Precio = base + cargo extra</span>
+          </div>
+
+          @for (size of form.sizes; track $index) {
+            <div class="variant-row">
+              <input
+                type="text"
+                pInputText
+                [(ngModel)]="size.label"
+                placeholder="Ej. Chico, Grande"
+                class="variant-row__name"
+              />
+              <p-inputNumber
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [min]="0"
+                [ngModel]="size.priceDeltaCents / 100"
+                (onInput)="onSizePriceChange($index, $event.value)"
+                styleClass="variant-row__price"
+                placeholder="+$0.00"
+              />
+              <button
+                type="button"
+                class="btn-icon btn-icon--danger"
+                aria-label="Eliminar tamaño"
+                (click)="removeSize($index)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          }
+
+          <button type="button" class="btn-add-variant" (click)="addSize()">
+            <i class="pi pi-plus"></i>
+            Agregar tamaño
           </button>
         </div>
-      }
 
-      <button type="button" class="btn-add-variant" (click)="addExtra()">
-        <i class="pi pi-plus"></i>
-        Agregar extra
-      </button>
-    </div>
+        <!-- Extras -->
+        <div class="form-section">
+          <div class="form-section__header">
+            <span class="form-section__title">Extras</span>
+            <span class="form-section__hint">Precio $0 = gratis</span>
+          </div>
 
-  </div>
+          @for (extra of form.extras; track $index) {
+            <div class="variant-row">
+              <input
+                type="text"
+                pInputText
+                [(ngModel)]="extra.label"
+                placeholder="Ej. Sin cebolla, Queso extra"
+                class="variant-row__name"
+              />
+              <p-inputNumber
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [min]="0"
+                [ngModel]="extra.priceCents / 100"
+                (onInput)="onExtraPriceChange($index, $event.value)"
+                styleClass="variant-row__price"
+                placeholder="$0.00"
+              />
+              <button
+                type="button"
+                class="btn-icon btn-icon--danger"
+                aria-label="Eliminar extra"
+                (click)="removeExtra($index)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          }
+
+          <button type="button" class="btn-add-variant" (click)="addExtra()">
+            <i class="pi pi-plus"></i>
+            Agregar extra
+          </button>
+        </div>
+
+      </div>
+    </p-tabPanel>
+
+  </p-tabView>
 
   <ng-template pTemplate="footer">
     <button type="button" class="btn-ghost" (click)="closeDialog()">Cancelar</button>
@@ -412,3 +744,421 @@
     <button type="button" class="btn-primary" (click)="saveCategory()">Guardar</button>
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Discount create / edit dialog                                           -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="editingDiscount ? 'Editar descuento' : 'Nuevo descuento'"
+  [(visible)]="discountDialogVisible"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+>
+  <div class="product-form">
+
+    <div class="form-field">
+      <label class="form-field__label" for="df-name">Nombre</label>
+      <input
+        id="df-name"
+        type="text"
+        pInputText
+        [(ngModel)]="discountForm.name"
+        placeholder="Ej. Empleados, Amigos"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label">Tipo</label>
+      <div class="discount-type-row">
+        <p-radioButton
+          name="discountType"
+          value="percent"
+          [(ngModel)]="discountForm.type"
+          inputId="dt-percent"
+        />
+        <label for="dt-percent">% Porcentaje</label>
+        <p-radioButton
+          name="discountType"
+          value="fixed"
+          [(ngModel)]="discountForm.type"
+          inputId="dt-fixed"
+        />
+        <label for="dt-fixed">$ Monto fijo</label>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="df-value">Valor</label>
+      @if (discountForm.type === 'percent') {
+        <p-inputNumber
+          inputId="df-value"
+          [(ngModel)]="discountForm.value"
+          [min]="1"
+          [max]="100"
+          suffix="%"
+          styleClass="form-field__input"
+        />
+      } @else {
+        <p-inputNumber
+          inputId="df-value"
+          [ngModel]="discountForm.value"
+          (onInput)="onDiscountValueChange($event.value)"
+          [min]="0"
+          mode="currency"
+          currency="MXN"
+          locale="es-MX"
+          styleClass="form-field__input"
+        />
+      }
+    </div>
+
+    <div class="form-field form-field--row">
+      <label class="form-field__label" for="df-active">Activo</label>
+      <p-inputSwitch inputId="df-active" [(ngModel)]="discountForm.isActive" />
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="discountDialogVisible = false">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="!discountForm.name.trim() || discountForm.value <= 0"
+      (click)="saveDiscount()"
+    >
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Import Excel dialog                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Importar productos desde Excel"
+  [visible]="showImportDialog()"
+  (visibleChange)="showImportDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '600px' }"
+  [draggable]="false"
+  (onHide)="resetImport()"
+>
+
+  <!-- STEP 1 — Upload -->
+  @if (importStep() === 'upload') {
+    <div class="import-step">
+
+      <div class="import-template">
+        <span class="import-template__text">
+          <i class="pi pi-info-circle"></i>
+          ¿Primera vez? Descarga la plantilla con el formato correcto.
+        </span>
+        <button type="button" class="btn-link" (click)="onDownloadTemplate()">
+          <i class="pi pi-download"></i>
+          Descargar plantilla
+        </button>
+      </div>
+
+      <hr class="import-divider" />
+
+      <label class="import-dropzone" (click)="fileInput.click()">
+        <input
+          #fileInput
+          type="file"
+          accept=".xlsx"
+          (change)="onFileSelected($event)"
+          hidden
+        />
+        @if (selectedFile()) {
+          <i class="pi pi-check-circle import-dropzone__icon import-dropzone__icon--ok"></i>
+          <span class="import-dropzone__filename">{{ selectedFile()!.name }}</span>
+        } @else {
+          <i class="pi pi-file-excel import-dropzone__icon"></i>
+          <span class="import-dropzone__label">
+            Click para seleccionar archivo .xlsx
+          </span>
+        }
+      </label>
+
+    </div>
+  }
+
+  <!-- STEP 2 — Preview -->
+  @if (importStep() === 'preview') {
+    <div class="import-step">
+
+      <div class="import-summary">
+        <span class="badge badge--success">
+          <i class="pi pi-check"></i>
+          {{ importPreview()!.validRows.length }} productos válidos
+        </span>
+        @if (importPreview()!.hasErrors) {
+          <span class="badge badge--error">
+            <i class="pi pi-exclamation-triangle"></i>
+            {{ importPreview()!.errors.length }} errores
+          </span>
+        }
+      </div>
+
+      @if (importPreview()!.hasErrors) {
+        <div class="import-errors">
+          <p class="import-errors__title">Errores encontrados:</p>
+          <div class="import-errors__list">
+            @for (err of importPreview()!.errors; track $index) {
+              <div class="import-errors__row">
+                <span class="import-errors__cell">Fila {{ err.rowNumber }}</span>
+                <span class="import-errors__cell">{{ err.field }}</span>
+                <span class="import-errors__cell">{{ err.message }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (importPreview()!.validRows.length) {
+        <p-table
+          [value]="importPreview()!.validRows"
+          [scrollable]="true"
+          scrollHeight="260px"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Categoría</th>
+              <th>Disponible</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              <td>{{ row.rowNumber }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.price | currency:'MXN':'symbol':'1.2-2' }}</td>
+              <td>{{ row.categoryName }}</td>
+              <td>
+                <i [class]="row.isAvailable ? 'pi pi-check text-green' : 'pi pi-times text-red'"></i>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+
+    </div>
+  }
+
+  <!-- STEP 3 — Success -->
+  @if (importStep() === 'success') {
+    <div class="import-step import-step--success">
+      <i class="pi pi-check-circle import-success__icon"></i>
+      <h3 class="import-success__title">¡Importación completada!</h3>
+      <p class="import-success__count">
+        {{ importResult()!.importedCount }} productos importados
+      </p>
+      @if (importResult()!.warnings.length) {
+        <div class="import-warnings">
+          @for (w of importResult()!.warnings; track $index) {
+            <p class="import-warnings__item">
+              <i class="pi pi-info-circle"></i>
+              {{ w }}
+            </p>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Single unified footer — PrimeNG only renders the first pTemplate="footer" -->
+  <ng-template pTemplate="footer">
+    @if (importStep() === 'upload') {
+      <p-button
+        label="Cancelar"
+        styleClass="p-button-text"
+        (click)="resetImport()" />
+      <p-button
+        label="Siguiente"
+        icon="pi pi-arrow-right"
+        iconPos="right"
+        [loading]="loadingImport()"
+        [disabled]="!selectedFile() || loadingImport()"
+        (click)="onPreviewImport()" />
+    }
+    @if (importStep() === 'preview') {
+      <p-button
+        label="Volver"
+        icon="pi pi-arrow-left"
+        styleClass="p-button-text"
+        (click)="importStep.set('upload')" />
+      <p-button
+        [label]="'Importar ' + (importPreview()?.validRows?.length || 0) + ' productos'"
+        [loading]="loadingImport()"
+        [disabled]="loadingImport() || !importPreview()?.validRows?.length"
+        styleClass="p-button-success"
+        (click)="onExecuteImport()" />
+    }
+    @if (importStep() === 'success') {
+      <p-button
+        label="Cerrar"
+        (click)="resetImport()" />
+    }
+  </ng-template>
+
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Consumption dialog                                                     -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Insumos — ' + (consumptionProduct()?.name ?? '')"
+  [visible]="showConsumptionDialog()"
+  (visibleChange)="showConsumptionDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '560px' }"
+  [draggable]="false"
+>
+  <!-- Current consumption rules -->
+  <p-table
+    [value]="consumptions()"
+    [loading]="loadingConsumptions()"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Insumo</th>
+        <th>Cant. por venta</th>
+        <th>Unidad</th>
+        <th style="width: 60px"></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-c>
+      <tr>
+        <td class="products-table__name">{{ c.inventoryItem?.name ?? inventoryItemName(c.inventoryItemId) }}</td>
+        <td>{{ c.quantityPerSale }}</td>
+        <td>
+          <span class="consumption-unit">{{ c.inventoryItem?.unit ?? inventoryItemUnit(c.inventoryItemId) }}</span>
+        </td>
+        <td>
+          <button
+            type="button"
+            class="btn-icon btn-icon--danger"
+            aria-label="Eliminar vínculo"
+            (click)="deleteConsumption(c.id)"
+          >
+            <i class="pi pi-times"></i>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="4" class="products-table__empty">
+          Sin insumos vinculados. Agrega uno abajo.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <!-- Add new consumption -->
+  <div class="consumption-add">
+    <p-dropdown
+      [options]="inventoryItems()"
+      optionLabel="name"
+      optionValue="id"
+      [(ngModel)]="selectedInventoryItemId"
+      placeholder="Seleccionar insumo"
+      styleClass="consumption-add__dropdown"
+      [appendTo]="'body'"
+    />
+    <p-inputNumber
+      [(ngModel)]="consumptionQuantity"
+      [min]="0.01"
+      [minFractionDigits]="0"
+      [maxFractionDigits]="2"
+      styleClass="consumption-add__qty"
+      placeholder="Cant."
+    />
+    <button
+      type="button"
+      class="btn-primary btn-primary--sm"
+      [disabled]="!selectedInventoryItemId || consumptionQuantity <= 0"
+      (click)="addConsumption()"
+    >
+      <i class="pi pi-plus"></i>
+      Agregar
+    </button>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showConsumptionDialog.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Product movement history dialog                                        -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Movimientos — ' + (movementProduct()?.name ?? '')"
+  [visible]="showMovementDialog()"
+  (visibleChange)="showMovementDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [draggable]="false"
+>
+  <p-table
+    [value]="productMovements()"
+    [loading]="loadingMovements()"
+    [rowHover]="true"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="min-width: 10rem">Fecha / Hora</th>
+        <th style="min-width: 6rem">Tipo</th>
+        <th style="min-width: 5rem">Cantidad</th>
+        <th style="min-width: 10rem">Motivo</th>
+        <th style="min-width: 5rem">Orden</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-m>
+      <tr>
+        <td>{{ m.createdAt | date:'dd MMM y, h:mm a' }}</td>
+        <td>
+          <span class="movement-badge" [class]="movementTypeSeverity(m.type)">
+            {{ movementTypeLabel(m.type) }}
+          </span>
+        </td>
+        <td class="movement-qty" [class.movement-qty--in]="m.type === 'in'" [class.movement-qty--out]="m.type === 'out'">
+          {{ m.type === 'in' ? '+' : m.type === 'out' ? '-' : '' }}{{ m.quantity }}
+        </td>
+        <td>{{ m.reason || '—' }}</td>
+        <td>
+          @if (m.orderId) {
+            <span class="movement-order-ref">#{{ m.orderId }}</span>
+          } @else {
+            —
+          }
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" class="products-table__empty">Sin movimientos registrados.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showMovementDialog.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- Confirm dialog for delete actions -->
+<p-confirmDialog />

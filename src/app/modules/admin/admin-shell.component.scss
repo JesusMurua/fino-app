@@ -1,33 +1,49 @@
 @use '../../../styles/variables' as *;
 
-.admin-shell {
+// ============================================================================
+// Shell layout — sidebar + main
+// ============================================================================
+
+$sidebar-width: 220px;
+$sidebar-collapsed: 64px;
+$topbar-height: 48px;
+$transition: 0.25s ease;
+
+.shell {
   display: flex;
-  flex-direction: column;
   min-height: 100dvh;
   background: $color-bg-page;
 }
 
-// -----------------------------------------------------------------------
-// Header
-// -----------------------------------------------------------------------
-.admin-header {
+// ============================================================================
+// Sidebar
+// ============================================================================
+
+.sidebar {
   display: flex;
-  align-items: center;
-  gap: $space-4;
-  height: 60px;
-  padding: 0 $space-5;
-  background: white;
-  border-bottom: 1px solid $color-border-soft;
-  flex-shrink: 0;
+  flex-direction: column;
+  width: $sidebar-width;
+  height: 100dvh;
   position: sticky;
   top: 0;
+  background: white;
+  border-right: 1px solid $color-border-soft;
+  flex-shrink: 0;
+  transition: width $transition;
+  overflow: hidden;
   z-index: 10;
 
+  .shell--collapsed & {
+    width: $sidebar-collapsed;
+  }
+
+  // ---- Brand ----
   &__brand {
     display: flex;
     align-items: center;
-    gap: $space-2;
-    min-width: 140px;
+    gap: $space-3;
+    padding: $space-4;
+    min-height: 56px;
   }
 
   &__logo {
@@ -47,73 +63,216 @@
     font-size: 15px;
     font-weight: 700;
     color: $color-text-title;
+    white-space: nowrap;
   }
 
-  &__back {
+  &__divider {
+    height: 1px;
+    background: $color-border-soft;
+    margin: 0 $space-3;
+  }
+
+  // ---- Branch Selector ----
+  &__branch {
+    padding: $space-3;
+  }
+
+  &__branch-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: $space-1;
+  }
+
+  &__branch-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: $color-text-sub;
+    font-size: 16px;
+    cursor: default;
+
+    &:hover { background: #F3F4F6; }
+  }
+
+  // ---- Navigation ----
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: $space-3;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  // ---- Toggle button ----
+  &__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    margin: $space-2 $space-3 $space-3;
+    border: 1px solid $color-border-soft;
+    border-radius: 8px;
+    background: transparent;
+    color: $color-text-sub;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #F3F4F6; }
+  }
+}
+
+// ============================================================================
+// Nav items
+// ============================================================================
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: 10px $space-3;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  color: $color-text-sub;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: #F9FAFB;
+    color: $color-text-title;
+  }
+
+  &--active {
+    background: #F0FDF4;
+    color: $color-primary;
+    font-weight: 600;
+    border-left-color: $color-primary;
+  }
+
+  &--locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+      color: $color-text-sub;
+    }
+  }
+
+  &__icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  &__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: #DC2626;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  // Collapsed state: center icon
+  .shell--collapsed & {
+    justify-content: center;
+    padding: 10px;
+    border-left-width: 0;
+
+    &--active {
+      border-left-width: 0;
+    }
+  }
+}
+
+// ============================================================================
+// Main area
+// ============================================================================
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+// ---- Top bar ----
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: $topbar-height;
+  padding: 0 $space-4;
+  background: white;
+  border-bottom: 1px solid $color-border-soft;
+  flex-shrink: 0;
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+  }
+
+  &__btn {
     display: inline-flex;
     align-items: center;
     gap: $space-2;
-    margin-left: auto;
     padding: $space-2 $space-3;
     border: none;
     border-radius: 8px;
     background: transparent;
     color: $color-text-sub;
-    font-size: $font-size-label;
+    font-size: 13px;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s;
-
-    i { font-size: 12px; }
-
-    &:hover { background: #F3F4F6; }
-    &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
-  }
-}
-
-// -----------------------------------------------------------------------
-// Navigation tabs
-// -----------------------------------------------------------------------
-.admin-nav {
-  display: flex;
-  align-items: center;
-  gap: $space-1;
-  flex: 1;
-  justify-content: center;
-
-  &__tab {
-    display: inline-flex;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-2 $space-4;
-    border-radius: 8px;
-    color: $color-text-sub;
-    font-size: $font-size-label;
-    font-weight: 500;
-    text-decoration: none;
     transition: background 0.15s, color 0.15s;
 
-    i { font-size: 14px; }
+    i { font-size: 13px; }
 
     &:hover { background: #F3F4F6; color: $color-text-title; }
-    &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 
-    &--active {
-      background: $color-primary-light;
-      color: $color-primary;
-      font-weight: 700;
+    &--logout {
+      color: #9CA3AF;
+      &:hover { background: #FEF2F2; color: #DC2626; }
     }
   }
 }
 
-// -----------------------------------------------------------------------
-// Page content
-// -----------------------------------------------------------------------
-.admin-content {
+// ---- Content ----
+.content {
   flex: 1;
   padding: $space-5;
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
+  overflow-y: auto;
 }

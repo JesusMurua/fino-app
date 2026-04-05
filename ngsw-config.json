@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
+  "navigationRequestStrategy": "freshness",
   "assetGroups": [
     {
       "name": "app-shell",
@@ -25,18 +26,6 @@
           "/assets/**",
           "/**.(eot|svg|cur|jpg|jpeg|png|webp|gif|otf|ttf|woff|woff2)"
         ]
-      }
-    }
-  ],
-  "dataGroups": [
-    {
-      "name": "api-freshness",
-      "urls": ["/api/**"],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxSize": 100,
-        "maxAge": "1d",
-        "timeout": "10s"
       }
     }
   ]

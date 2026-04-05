@@ -1,0 +1,250 @@
+<p-toast />
+
+<!-- Retail POS Layout: 3-column grid (Sidebar | Center | Cart) -->
+<div class="retail-layout">
+
+  <!-- LEFT SIDEBAR: Vertical category navigation -->
+  <app-category-sidebar
+    [categories]="categories()"
+    [selectedCategoryId]="selectedCategory()"
+    (categorySelected)="selectCategory($event)"
+  />
+
+  <!-- CENTER STAGE: Header + Search + Dense Product Table -->
+  <div class="retail-center">
+
+    <!-- Transparent header -->
+    <app-pos-header />
+
+    <!-- Search Bar -->
+    <div class="retail-search">
+      <i class="pi pi-search retail-search__icon"></i>
+      <input
+        type="text"
+        placeholder="Buscar producto o escanear código..."
+        class="retail-search__input"
+        [value]="searchTerm()"
+        (input)="onSearchInput($event)"
+      />
+      @if (searchTerm()) {
+        <button
+          type="button"
+          class="retail-search__clear"
+          (click)="clearSearch()"
+          aria-label="Limpiar búsqueda"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Dense Product Table (scrollable) -->
+    <div class="retail-table-wrapper">
+      <table class="retail-table">
+        <thead>
+          <tr>
+            <th class="retail-table__th-name">Producto</th>
+            <th class="retail-table__th-price">Precio</th>
+            <th class="retail-table__th-stock">Stock</th>
+            <th class="retail-table__th-action"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (product of filteredProducts(); track product.id) {
+            <tr
+              class="retail-table__row"
+              [class.retail-table__row--unavailable]="!product.isAvailable"
+            >
+              <td class="retail-table__name">
+                <span class="retail-table__product-name">{{ product.name }}</span>
+                @if (product.barcode) {
+                  <span class="retail-table__barcode">{{ product.barcode }}</span>
+                }
+              </td>
+              <td class="retail-table__price">{{ product.priceCents | price }}</td>
+              <td class="retail-table__stock">
+                @if (!product.isAvailable) {
+                  <span class="retail-table__stock-badge retail-table__stock-badge--out">Agotado</span>
+                } @else if (product.trackStock && (product.currentStock ?? 0) <= (product.lowStockThreshold ?? 5)) {
+                  <span class="retail-table__stock-badge retail-table__stock-badge--low">{{ product.currentStock }}</span>
+                } @else if (product.trackStock) {
+                  <span class="retail-table__stock-val">{{ product.currentStock }}</span>
+                }
+              </td>
+              <td class="retail-table__action">
+                <button
+                  type="button"
+                  class="retail-table__add-btn"
+                  [disabled]="!product.isAvailable"
+                  (click)="addToCart(product)"
+                  aria-label="Agregar al carrito"
+                >
+                  <i class="pi pi-plus"></i>
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            @if (!isLoading()) {
+              <tr>
+                <td colspan="4" class="retail-table__empty">
+                  <i class="pi pi-inbox"></i>
+                  <p>No hay productos</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANE: Cart -->
+  <div class="retail-right-pane">
+
+    <!-- Cart Header -->
+    <div class="retail-cart-header">
+      <h2>Carrito</h2>
+      @if (cartItems().length > 0) {
+        <button
+          type="button"
+          class="retail-cart-header__clear"
+          (click)="clearCart()"
+          aria-label="Vaciar carrito"
+        >
+          <i class="pi pi-trash"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Cart Items -->
+    <div class="retail-cart-items">
+      @for (item of cartItems(); track item.id) {
+        <div class="retail-cart-item">
+          <div class="retail-cart-item__info">
+            <span class="retail-cart-item__name">{{ item.product.name }}</span>
+            <span class="retail-cart-item__subtotal">{{ item.totalPriceCents | price }}</span>
+          </div>
+          <div class="retail-cart-item__controls">
+            <button
+              type="button"
+              class="retail-qty-btn"
+              (click)="updateQuantity(item.id, -1)"
+              aria-label="Disminuir cantidad"
+            >
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="retail-cart-item__qty">{{ item.quantity }}</span>
+            <button
+              type="button"
+              class="retail-qty-btn"
+              (click)="updateQuantity(item.id, 1)"
+              aria-label="Aumentar cantidad"
+            >
+              <i class="pi pi-plus"></i>
+            </button>
+            <button
+              type="button"
+              class="retail-remove-btn"
+              (click)="removeItem(item.id)"
+              aria-label="Eliminar producto"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+      } @empty {
+        <div class="retail-cart-empty">
+          <p>Agrega productos al carrito</p>
+        </div>
+      }
+    </div>
+
+    <!-- Cart Footer: Total + Bills + Cobrar -->
+    <div class="retail-cart-footer">
+      <div class="retail-total">
+        <span>Total</span>
+        <span class="retail-total__amount">{{ cartTotal() | price }}</span>
+      </div>
+
+      <!-- Bill Denomination Buttons -->
+      @if (cartItems().length > 0) {
+        <div class="retail-bills">
+          @for (bill of bills; track bill.cents) {
+            <button
+              type="button"
+              class="retail-bill-btn"
+              [class.retail-bill-btn--active]="amountTendered() === bill.cents"
+              (click)="selectBill(bill.cents)"
+            >
+              {{ bill.label }}
+            </button>
+          }
+        </div>
+
+        @if (amountTendered() > 0) {
+          <div class="retail-change">
+            <span>Cambio:</span>
+            <span class="retail-change__amount">{{ change() | price }}</span>
+          </div>
+        }
+      }
+
+      <!-- COBRAR Button -->
+      <button
+        type="button"
+        class="retail-cobrar-btn"
+        [disabled]="cartItems().length === 0 || isProcessing()"
+        (click)="openPayDialog()"
+      >
+        COBRAR {{ cartTotal() | price }}
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Payment Confirmation Dialog -->
+<p-dialog
+  header="Confirmar cobro"
+  [visible]="showPayDialog()"
+  (visibleChange)="showPayDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', maxWidth: '400px' }"
+  [contentStyle]="{ padding: '1.5rem' }"
+>
+  <div class="retail-pay-dialog">
+    <div class="retail-pay-dialog__row">
+      <span>Total:</span>
+      <strong>{{ cartTotal() | price }}</strong>
+    </div>
+    <div class="retail-pay-dialog__row">
+      <span>Recibido:</span>
+      <strong>{{ amountTendered() | price }}</strong>
+    </div>
+    <div class="retail-pay-dialog__row retail-pay-dialog__row--change">
+      <span>Cambio:</span>
+      <strong>{{ change() | price }}</strong>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="retail-pay-dialog__actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        (onClick)="showPayDialog.set(false)"
+        styleClass="p-button-outlined"
+      />
+      <p-button
+        [label]="isProcessing() ? 'Procesando...' : 'Confirmar'"
+        severity="success"
+        (onClick)="confirmPayment()"
+        [disabled]="amountTendered() < cartTotal() || isProcessing()"
+        [loading]="isProcessing()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>

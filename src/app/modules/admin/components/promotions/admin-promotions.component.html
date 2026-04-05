@@ -1,0 +1,430 @@
+<div class="admin-promos">
+
+  <!-- Header -->
+  <div class="admin-promos__header">
+    <h1 class="admin-promos__title">Promociones</h1>
+    <button type="button" class="btn-primary" (click)="openCreate()">
+      <i class="pi pi-plus"></i>
+      Nueva promoción
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="admin-promos__wrap">
+    <p-table
+      [value]="promotions()"
+      [loading]="isLoading()"
+      [rowHover]="true"
+      dataKey="id"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="min-width: 14rem">Nombre</th>
+          <th style="min-width: 8rem">Aplica a</th>
+          <th style="min-width: 8rem">Descuento</th>
+          <th style="min-width: 10rem">Vigencia</th>
+          <th style="min-width: 8rem">Días</th>
+          <th style="min-width: 5rem">Estado</th>
+          <th style="min-width: 8rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-promo>
+        <tr>
+          <!-- Nombre + type badge -->
+          <td>
+            <div class="promo-name-cell">
+              <span class="promo-name">{{ promo.name }}</span>
+              <span class="type-badge">{{ typeLabel(promo) }}</span>
+            </div>
+          </td>
+
+          <!-- Scope -->
+          <td>
+            <span class="scope-badge">{{ scopeLabel(promo) }}</span>
+          </td>
+
+          <!-- Discount value -->
+          <td class="promo-value">{{ typeLabel(promo) }}</td>
+
+          <!-- Date range -->
+          <td class="promo-dates">{{ dateRangeLabel(promo) }}</td>
+
+          <!-- Days -->
+          <td class="promo-days">{{ daysLabel(promo) }}</td>
+
+          <!-- Active toggle -->
+          <td>
+            <p-inputSwitch
+              [ngModel]="promo.isActive"
+              (onChange)="toggleActive(promo)"
+            />
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="promo-actions">
+              <button
+                type="button"
+                class="btn-icon"
+                aria-label="Editar promoción"
+                (click)="openEdit(promo)"
+              >
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon btn-icon--red"
+                aria-label="Eliminar promoción"
+                (click)="deletePromotion(promo)"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="promo-empty">No hay promociones — crea la primera</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+</div>
+
+<!-- ====================================================================== -->
+<!-- Create / Edit dialog                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="editingPromotion ? 'Editar promoción' : 'Nueva promoción'"
+  [(visible)]="dialogVisible"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [contentStyle]="{ 'max-height': 'calc(85vh - 120px)', overflow: 'auto' }"
+  [draggable]="false"
+>
+  <form [formGroup]="form" class="promo-form">
+
+    <!-- Section 1 — Basic info -->
+    <div class="promo-form__section">
+      <h3 class="promo-form__section-title">Información básica</h3>
+
+      <div class="form-field">
+        <label class="form-field__label" for="pf-name">Nombre *</label>
+        <input
+          formControlName="name"
+          id="pf-name"
+          type="text"
+          pInputText
+          placeholder="Ej. Lunes de antojitos"
+          class="form-field__input"
+          [ngClass]="{'ng-dirty ng-invalid': isInvalidField('name')}"
+        />
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="pf-desc">Descripción</label>
+        <textarea
+          formControlName="description"
+          id="pf-desc"
+          pInputTextarea
+          rows="2"
+          placeholder="Descripción visible al cliente (opcional)"
+          class="form-field__input"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Section 2 — Promotion type -->
+    <div class="promo-form__section">
+      <h3 class="promo-form__section-title">Tipo de promoción</h3>
+
+      <div class="form-field">
+        <label class="form-field__label">Tipo *</label>
+        <p-dropdown
+          formControlName="type"
+          [options]="typeOptions"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="form-field__input"
+          [appendTo]="'body'"
+        />
+      </div>
+
+      <!-- Conditional fields per type -->
+      @if (selectedType === 'Percentage') {
+        <div class="form-field">
+          <label class="form-field__label" for="pf-pct">Porcentaje de descuento</label>
+          <p-inputNumber
+            formControlName="value"
+            inputId="pf-pct"
+            [min]="1"
+            [max]="100"
+            suffix="%"
+            styleClass="form-field__input"
+          />
+        </div>
+      }
+
+      @if (selectedType === 'Fixed') {
+        <div class="form-field">
+          <label class="form-field__label" for="pf-fixed">Monto del descuento (MXN)</label>
+          <p-inputNumber
+            formControlName="value"
+            inputId="pf-fixed"
+            [min]="0"
+            mode="currency"
+            currency="MXN"
+            locale="es-MX"
+            styleClass="form-field__input"
+          />
+        </div>
+      }
+
+      @if (selectedType === 'Bundle') {
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-field__label" for="pf-minqty">Compra (unidades)</label>
+            <p-inputNumber
+              formControlName="minQuantity"
+              inputId="pf-minqty"
+              [min]="2"
+              styleClass="form-field__input"
+            />
+          </div>
+          <div class="form-field">
+            <label class="form-field__label" for="pf-paidqty">Paga (unidades)</label>
+            <p-inputNumber
+              formControlName="paidQuantity"
+              inputId="pf-paidqty"
+              [min]="1"
+              styleClass="form-field__input"
+            />
+          </div>
+        </div>
+      }
+
+      @if (selectedType === 'OrderDiscount') {
+        <div class="form-field">
+          <label class="form-field__label" for="pf-orddisc">Porcentaje en orden</label>
+          <p-inputNumber
+            formControlName="value"
+            inputId="pf-orddisc"
+            [min]="1"
+            [max]="100"
+            suffix="%"
+            styleClass="form-field__input"
+          />
+        </div>
+      }
+
+      @if (selectedType === 'FreeProduct') {
+        <div class="form-field">
+          <label class="form-field__label">Producto gratis</label>
+          <p-dropdown
+            formControlName="freeProductId"
+            [options]="products()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Seleccionar producto"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+            [filter]="true"
+            filterPlaceholder="Buscar producto..."
+          />
+        </div>
+      }
+    </div>
+
+    <!-- Section 3 — Scope -->
+    <div class="promo-form__section">
+      <h3 class="promo-form__section-title">Aplica a</h3>
+
+      <div class="form-field">
+        <p-selectButton
+          formControlName="appliesTo"
+          [options]="scopeOptions"
+          optionLabel="label"
+          optionValue="value"
+        />
+      </div>
+
+      @if (selectedScope === 'Category') {
+        <div class="form-field">
+          <label class="form-field__label">Categoría</label>
+          <p-dropdown
+            formControlName="categoryId"
+            [options]="categories()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Seleccionar categoría"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+          />
+        </div>
+      }
+
+      @if (selectedScope === 'Product') {
+        <div class="form-field">
+          <label class="form-field__label">Producto</label>
+          <p-dropdown
+            formControlName="productId"
+            [options]="products()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Seleccionar producto"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+            [filter]="true"
+            filterPlaceholder="Buscar producto..."
+          />
+        </div>
+      }
+    </div>
+
+    <!-- Section 4 — Validity & limits -->
+    <div class="promo-form__section">
+      <h3 class="promo-form__section-title">Vigencia y límites</h3>
+
+      <div class="form-field">
+        <label class="form-field__label">Días de la semana</label>
+        <div class="day-checks">
+          @for (day of dayBits; track day.value) {
+            <label class="day-check">
+              <p-checkbox
+                [formControlName]="'day' + ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][$index]"
+                [binary]="true"
+              />
+              <span>{{ day.label }}</span>
+            </label>
+          }
+        </div>
+        <span class="form-hint">Sin selección = todos los días</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-field__label" for="pf-start">Fecha inicio</label>
+          <p-calendar
+            formControlName="startsAt"
+            inputId="pf-start"
+            dateFormat="dd/mm/yy"
+            placeholder="Sin límite"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+            [showIcon]="true"
+          />
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-end">Fecha fin</label>
+          <p-calendar
+            formControlName="endsAt"
+            inputId="pf-end"
+            dateFormat="dd/mm/yy"
+            placeholder="Sin límite"
+            styleClass="form-field__input"
+            [appendTo]="'body'"
+            [showIcon]="true"
+          />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="pf-minorder">Mínimo de orden (MXN)</label>
+        <p-inputNumber
+          formControlName="minOrderPesos"
+          inputId="pf-minorder"
+          [min]="0"
+          mode="currency"
+          currency="MXN"
+          locale="es-MX"
+          placeholder="Sin mínimo"
+          styleClass="form-field__input"
+        />
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-field__label" for="pf-maxtotal">Límite total de usos</label>
+          <p-inputNumber
+            formControlName="maxUsesTotal"
+            inputId="pf-maxtotal"
+            [min]="0"
+            placeholder="Sin límite"
+            styleClass="form-field__input"
+          />
+        </div>
+        <div class="form-field">
+          <label class="form-field__label" for="pf-maxday">Límite diario</label>
+          <p-inputNumber
+            formControlName="maxUsesPerDay"
+            inputId="pf-maxday"
+            [min]="0"
+            placeholder="Sin límite"
+            styleClass="form-field__input"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5 — Coupon & stacking -->
+    <div class="promo-form__section">
+      <h3 class="promo-form__section-title">Cupón y combinación</h3>
+
+      <div class="form-field">
+        <label class="form-field__label" for="pf-coupon">Código de cupón</label>
+        <input
+          formControlName="couponCode"
+          id="pf-coupon"
+          type="text"
+          pInputText
+          placeholder="Vacío = se aplica automáticamente"
+          class="form-field__input"
+          style="text-transform: uppercase"
+        />
+        <span class="form-hint">Si se deja vacío, la promoción se aplica automáticamente al cumplir las condiciones.</span>
+      </div>
+
+      <div class="form-field form-field--row">
+        <label class="form-field__label">Combinable</label>
+        <p-inputSwitch formControlName="isStackable" />
+        <span class="form-hint">
+          @if (form.get('isStackable')?.value) {
+            Se combina con otras promociones
+          } @else {
+            No combinable — aplica la mejor
+          }
+        </span>
+      </div>
+    </div>
+
+    <!-- Section 6 — Status -->
+    <div class="promo-form__section">
+      <div class="form-field form-field--row">
+        <label class="form-field__label">Activo</label>
+        <p-inputSwitch formControlName="isActive" />
+      </div>
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="closeDialog()">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="form.invalid"
+      (click)="savePromotion()"
+    >
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Confirm dialog -->
+<p-confirmDialog />

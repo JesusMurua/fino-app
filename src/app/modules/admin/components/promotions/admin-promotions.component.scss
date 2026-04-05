@@ -1,0 +1,207 @@
+@use '../../../../../styles/variables' as *;
+
+.admin-promos {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__wrap {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Table cells
+// -----------------------------------------------------------------------
+.promo-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.promo-name { font-weight: 600; }
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #EFF6FF;
+  color: #2563EB;
+  width: fit-content;
+}
+
+.scope-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #F0FDF4;
+  color: #15803D;
+}
+
+.promo-value { font-weight: 600; color: $color-primary; }
+.promo-dates { font-size: 13px; color: $color-text-sub; }
+.promo-days  { font-size: 13px; color: $color-text-sub; }
+
+.promo-empty {
+  text-align: center;
+  color: $color-text-sub;
+  padding: $space-6 !important;
+}
+
+.promo-actions {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+// -----------------------------------------------------------------------
+// Buttons (same pattern as inventory)
+// -----------------------------------------------------------------------
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+  &--red:hover { background: #FEF2F2; color: #DC2626; }
+}
+
+// -----------------------------------------------------------------------
+// Dialog form
+// -----------------------------------------------------------------------
+.promo-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: $color-text-title;
+    padding-bottom: $space-1;
+    border-bottom: 1px solid $color-border-soft;
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  &__label {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  &--row {
+    flex-direction: row;
+    align-items: center;
+    gap: $space-3;
+  }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-3;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: $color-text-sub;
+}
+
+// -----------------------------------------------------------------------
+// Day checkboxes
+// -----------------------------------------------------------------------
+.day-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+}
+
+.day-check {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: $font-size-base;
+  color: $color-text-title;
+  cursor: pointer;
+}

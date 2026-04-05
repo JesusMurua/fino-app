@@ -12,106 +12,296 @@
         <span>Cancelar</span>
       </button>
       <span class="checkout-header__title">Cobrar orden</span>
+      @if (tableName()) {
+        <span class="checkout-header__table-badge">{{ tableName() }}</span>
+      }
     </header>
+
+    <!-- Customer selector (FDD-005) -->
+    <div class="checkout-customer">
+      <app-customer-selector
+        [(selectedCustomer)]="customerService.selectedCustomer"
+        placeholder="Vincular cliente (nombre o teléfono)..."
+      />
+    </div>
+
+    <!-- Customer balance info (if selected and has balance) -->
+    @if (selectedCustomer(); as customer) {
+      @if (customer.pointsBalance > 0 || customer.creditBalanceCents > 0) {
+        <div class="checkout-customer-balance">
+          @if (customer.pointsBalance > 0) {
+            <span class="balance-pill balance-pill--points">
+              <i class="pi pi-star"></i> {{ customer.pointsBalance }} pts
+            </span>
+          }
+          @if (customer.creditBalanceCents > 0) {
+            <span class="balance-pill balance-pill--credit">
+              <i class="pi pi-wallet"></i> {{ customer.creditBalanceCents | price }} crédito
+            </span>
+          }
+        </div>
+      }
+    }
 
     <div class="checkout-body">
 
       <!-- Order summary -->
       <section class="checkout-summary">
         <ul class="summary-list">
-          @for (item of cartItems; track item.id) {
+          @for (item of cartItems(); track item.id) {
             <li class="summary-item">
               <span class="summary-item__qty">{{ item.quantity }}×</span>
               <span class="summary-item__name">
                 {{ item.product.name }}
                 @if (item.size) { <span class="summary-item__meta">({{ item.size.label }})</span> }
               </span>
-              <span class="summary-item__price">{{ item.totalPriceCents | price }}</span>
+              @if (item.discountCents > 0) {
+                <div class="summary-item__prices">
+                  <span class="price-original">{{ item.totalPriceCents | price }}</span>
+                  <span class="price-discounted">{{ item.totalPriceCents - item.discountCents | price }}</span>
+                  <span class="promo-badge">{{ item.promotionName }}</span>
+                </div>
+              } @else {
+                <span class="summary-item__price">{{ item.totalPriceCents | price }}</span>
+              }
             </li>
           }
         </ul>
       </section>
 
-      <!-- Total -->
+      <!-- Discount toggle / badge -->
+      <div class="discount-toggle">
+        @if (discountCents() > 0) {
+          <div class="discount-badge">
+            <i class="pi pi-tag"></i>
+            <span>{{ discountLabel() }}</span>
+            <button type="button" class="discount-badge__remove" (click)="clearDiscount()" aria-label="Quitar descuento">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        } @else if (!showDiscountSection()) {
+          <button type="button" class="btn-discount-toggle" (click)="showDiscountSection.set(true)">
+            <i class="pi pi-tag"></i>
+            Aplicar descuento
+          </button>
+        }
+      </div>
+
+      <!-- Discount section -->
+      @if (showDiscountSection()) {
+        <section class="discount-section">
+
+          <!-- Preset chips -->
+          @if (presets().length > 0) {
+            <div class="discount-chips">
+              @for (preset of presets(); track preset.id) {
+                <button
+                  type="button"
+                  class="discount-chip"
+                  [class.discount-chip--active]="selectedPreset()?.id === preset.id"
+                  (click)="selectPreset(preset)"
+                >
+                  {{ preset.name }}
+                  <span class="discount-chip__value">
+                    {{ preset.type === 'percent' ? preset.value + '%' : (preset.value | price) }}
+                  </span>
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Custom discount button -->
+          <button
+            type="button"
+            class="discount-chip"
+            [class.discount-chip--active]="isCustomDiscount()"
+            (click)="enableCustomDiscount()"
+          >
+            <i class="pi pi-pencil"></i>
+            Personalizado
+          </button>
+
+          <!-- Custom discount inputs -->
+          @if (isCustomDiscount()) {
+            <div class="custom-discount">
+              <div class="custom-discount__type">
+                <button
+                  type="button"
+                  class="type-btn"
+                  [class.type-btn--active]="customDiscountType() === 'percent'"
+                  (click)="customDiscountType.set('percent')"
+                >
+                  %
+                </button>
+                <button
+                  type="button"
+                  class="type-btn"
+                  [class.type-btn--active]="customDiscountType() === 'fixed'"
+                  (click)="customDiscountType.set('fixed')"
+                >
+                  $
+                </button>
+              </div>
+
+              @if (customDiscountType() === 'percent') {
+                <p-inputNumber
+                  [ngModel]="customDiscountValue()"
+                  (onInput)="onCustomValueChange($event.value)"
+                  [min]="0"
+                  [max]="100"
+                  suffix="%"
+                  styleClass="custom-discount__input"
+                  inputStyleClass="custom-discount__field"
+                  placeholder="0%"
+                />
+              } @else {
+                <p-inputNumber
+                  [ngModel]="customDiscountValue()"
+                  (onInput)="onCustomValueChange($event.value)"
+                  [min]="0"
+                  mode="currency"
+                  currency="MXN"
+                  locale="es-MX"
+                  styleClass="custom-discount__input"
+                  inputStyleClass="custom-discount__field"
+                  placeholder="$0.00"
+                />
+              }
+            </div>
+          }
+
+          <!-- Discount reason -->
+          @if (discountCents() > 0 || isCustomDiscount() || selectedPreset()) {
+            <input
+              type="text"
+              pInputText
+              [ngModel]="discountReason()"
+              (ngModelChange)="discountReason.set($event)"
+              placeholder="Motivo (opcional)"
+              class="discount-reason"
+            />
+          }
+
+        </section>
+      }
+
+      <!-- Price breakdown -->
       <div class="checkout-total">
-        <span class="checkout-total__label">Total a cobrar</span>
-        <span class="checkout-total__amount">{{ totalCents() | price }}</span>
+        @if (promoDiscountCents() > 0 || discountCents() > 0) {
+          <div class="price-row">
+            <span class="price-row__label">Subtotal</span>
+            <span class="price-row__value">{{ rawSubtotalCents() | price }}</span>
+          </div>
+          @if (promoDiscountCents() > 0) {
+            <div class="price-row price-row--discount">
+              <span class="price-row__label">Descuento promoción</span>
+              <span class="price-row__value">-{{ promoDiscountCents() | price }}</span>
+            </div>
+          }
+          @if (discountCents() > 0) {
+            <div class="price-row price-row--discount">
+              <span class="price-row__label">Descuento manual</span>
+              <span class="price-row__value">-{{ discountCents() | price }}</span>
+            </div>
+          }
+          <div class="checkout-total__divider"></div>
+        }
+        <div class="price-row price-row--total">
+          <span class="checkout-total__label">Total a cobrar</span>
+          <span class="checkout-total__amount">{{ totalWithDiscount() | price }}</span>
+        </div>
+        @if (promoDiscountCents() + discountCents() > 0) {
+          <div class="savings-banner">
+            Ahorraste {{ promoDiscountCents() + discountCents() | price }}
+          </div>
+        }
       </div>
 
       <div class="checkout-divider"></div>
 
-      <!-- Payment method cards -->
-      <section class="checkout-methods">
-        <p class="checkout-methods__label">Método de pago</p>
-        <div class="checkout-methods__grid">
+      <!-- Payment section -->
+      <div class="payment-section">
 
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--active]="selectedMethod() === 'cash'"
-            (click)="selectMethod('cash')"
-            aria-label="Pago en efectivo"
-          >
-            <i class="pi pi-wallet method-card__icon"></i>
-            <span class="method-card__name">Efectivo</span>
-          </button>
-
-          <button
-            type="button"
-            class="method-card"
-            [class.method-card--active]="selectedMethod() === 'card'"
-            (click)="selectMethod('card')"
-            aria-label="Pago con tarjeta"
-          >
-            <i class="pi pi-credit-card method-card__icon"></i>
-            <span class="method-card__name">Tarjeta</span>
-          </button>
-
-        </div>
-      </section>
-
-      <!-- Cash calculator — only shown when cash is selected -->
-      @if (selectedMethod() === 'cash') {
-        <section class="checkout-cash">
-          <label class="checkout-cash__label" for="tendered-input">
-            ¿Cuánto paga el cliente?
-          </label>
-
-          <p-inputNumber
-            inputId="tendered-input"
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            [useGrouping]="true"
-            styleClass="tendered-input"
-            inputStyleClass="tendered-input__field"
-            placeholder="$0.00"
-            (onInput)="onTenderedChange($event.value)"
-          />
-
-          @if (tenderedCents() > 0) {
-            <div class="checkout-cash__change">
-              @if (changeCents() > 0) {
-                <span class="checkout-cash__change-label">Cambio a entregar</span>
-                <span class="checkout-cash__change-amount">{{ changeCents() | price }}</span>
-              } @else if (tenderedCents() < totalCents()) {
-                <span class="checkout-cash__change-label checkout-cash__change-label--error">
-                  Faltan {{ (totalCents() - tenderedCents()) | price }}
-                </span>
-              }
-            </div>
+        <div class="payment-section__header">
+          <span class="payment-section__title">Forma de pago</span>
+          @if (remainingCents() > 0 && pendingPayments().length > 0) {
+            <span class="payment-section__remaining">
+              Falta: {{ remainingCents() | price }}
+            </span>
           }
-        </section>
-      }
-
-      <!-- Card note — no terminal yet -->
-      @if (selectedMethod() === 'card') {
-        <div class="checkout-card-note">
-          <i class="pi pi-info-circle"></i>
-          <span>Registra el pago con terminal externa. La integración automática estará disponible pronto.</span>
         </div>
-      }
+
+        <!-- Split + payment buttons -->
+        <div class="payment-section__actions">
+          <button type="button" class="checkout__split-btn" (click)="openSplitDialog()">
+            <i class="pi pi-percentage"></i>
+            Dividir cuenta
+          </button>
+        </div>
+
+        <div class="payment-methods-row">
+          @for (opt of paymentOptions(); track opt.method) {
+            <button
+              type="button"
+              class="payment-method-btn"
+              [class.payment-method-btn--provider]="opt.requiresProvider"
+              (click)="openAddPayment(opt.method)"
+            >
+              <i [class]="'pi ' + opt.icon"></i>
+              {{ opt.label }}
+              @if (opt.requiresProvider) {
+                <span class="payment-method-btn__badge">Terminal</span>
+              }
+            </button>
+          }
+        </div>
+
+        <!-- Pending payments list -->
+        @if (pendingPayments().length > 0) {
+          <div class="pending-payments">
+            @for (p of pendingPayments(); track $index) {
+              <div class="pending-payment-row">
+                <span class="payment-method-label">
+                  {{ getPaymentMethodLabel(p.method) }}
+                </span>
+                @if (p.reference) {
+                  <span class="payment-reference">{{ p.paymentProvider ? '•••' : '' }}{{ p.reference }}</span>
+                }
+                <span class="payment-amount">{{ p.amountCents | price }}</span>
+                <button
+                  type="button"
+                  class="payment-remove"
+                  aria-label="Quitar pago"
+                  (click)="removePayment($index)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Payment summary -->
+        @if (pendingPayments().length > 0) {
+          <div class="payment-summary">
+            <div class="payment-summary__row">
+              <span>Total</span>
+              <span>{{ totalWithDiscount() | price }}</span>
+            </div>
+            <div class="payment-summary__row">
+              <span>Pagado</span>
+              <span>{{ totalPaidCents() | price }}</span>
+            </div>
+            @if (changeCents() > 0) {
+              <div class="payment-summary__row payment-summary__row--change">
+                <span>Vuelto</span>
+                <span class="change-amount">{{ changeCents() | price }}</span>
+              </div>
+            }
+          </div>
+        }
+
+      </div>
 
     </div>
 
@@ -120,13 +310,24 @@
       <button
         type="button"
         class="btn-confirm"
-        [class.btn-confirm--disabled]="!canConfirm()"
-        [disabled]="!canConfirm()"
-        (click)="confirmPayment()"
+        [class.btn-confirm--disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
+        [disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
+        (click)="onConfirmPayment()"
       >
-        <i class="pi pi-check"></i>
-        Confirmar pago
+        @if (isProcessing()) {
+          <i class="pi pi-spinner pi-spin"></i>
+          Procesando...
+        } @else {
+          <i class="pi pi-check"></i>
+          Confirmar pago
+        }
       </button>
+      @if (sessionBlocked()) {
+        <span class="checkout-footer__session-warning">
+          <i class="pi pi-exclamation-triangle"></i>
+          Abre un turno de caja para cobrar
+        </span>
+      }
     </footer>
 
   }
@@ -153,41 +354,256 @@
             <span class="confirmed-row__label">Orden</span>
             <span class="confirmed-row__value">#{{ order.orderNumber }}</span>
           </div>
+          @if (order.totalDiscountCents) {
+            <div class="confirmed-row">
+              <span class="confirmed-row__label">Subtotal</span>
+              <span class="confirmed-row__value">{{ order.subtotalCents | price }}</span>
+            </div>
+            <div class="confirmed-row">
+              <span class="confirmed-row__label">Descuento{{ order.orderPromotionName ? ' (' + order.orderPromotionName + ')' : '' }}</span>
+              <span class="confirmed-row__value" style="color:#16A34A">-{{ order.totalDiscountCents | price }}</span>
+            </div>
+          }
           <div class="confirmed-row">
             <span class="confirmed-row__label">Total</span>
             <span class="confirmed-row__value">{{ order.totalCents | price }}</span>
           </div>
           <div class="confirmed-row">
             <span class="confirmed-row__label">Método</span>
-            <span class="confirmed-row__value">{{ order.paymentMethod === 'cash' ? 'Efectivo' : 'Tarjeta' }}</span>
+            <span class="confirmed-row__value">{{ orderPaymentLabel(order) }}</span>
           </div>
-          @if (order.paymentMethod === 'cash' && order.tenderedCents) {
+          @if (order.changeCents > 0) {
             <div class="confirmed-row confirmed-row--change">
               <span class="confirmed-row__label">Cambio</span>
               <span class="confirmed-row__value confirmed-row__value--change">
-                {{ (order.tenderedCents - order.totalCents) | price }}
+                {{ order.changeCents | price }}
               </span>
             </div>
           }
         </div>
 
         <!-- Ticket fallback -->
-        @if (showTicketFallback) {
+        @if (showTicketFallback()) {
           <button type="button" class="btn-ticket" (click)="viewTicket()">
             <i class="pi pi-print"></i>
             Ver ticket
           </button>
         }
 
+        <!-- Invoice button (FDD-004) -->
+        @if (canInvoice()) {
+          <button type="button" class="btn-invoice" (click)="onRequestInvoice()">
+            <i class="pi pi-file-edit"></i>
+            Facturar
+          </button>
+        }
+        @if (isInvoiced()) {
+          <div class="btn-invoice btn-invoice--done">
+            <i class="pi pi-check"></i>
+            Factura generada
+          </div>
+        }
+
       }
 
-      <!-- New order -->
-      <button type="button" class="btn-new-order" (click)="startNewOrder()">
-        Nueva orden
-      </button>
+      <!-- Table release (only if this was the last active order on the table) -->
+      @if (tableName() && showTableRelease()) {
+        <div class="table-release">
+          <p class="table-release__question">¿Los clientes ya se fueron de {{ tableName() }}?</p>
+          <div class="table-release__buttons">
+            <button type="button" class="table-release__btn table-release__btn--release" (click)="releaseTable()">
+              <i class="pi pi-check"></i>
+              Sí, liberar mesa
+            </button>
+            <button type="button" class="table-release__btn table-release__btn--keep" (click)="keepTable()">
+              No, seguir ocupada
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Back to tables (table mode but other orders remain) -->
+      @if (tableName() && !showTableRelease()) {
+        <button type="button" class="btn-new-order" (click)="keepTable()">
+          Volver a mesas
+        </button>
+      }
+
+      <!-- New order (only shown when no table context) -->
+      @if (!tableName()) {
+        <button type="button" class="btn-new-order" (click)="startNewOrder()">
+          Nueva orden
+        </button>
+      }
 
     </div>
 
   }
 
 </div>
+
+<!-- Add payment dialog -->
+<p-dialog
+  [header]="'Agregar pago — ' + getPaymentMethodLabel(dialogMethod())"
+  [visible]="showPaymentDialog()"
+  (visibleChange)="showPaymentDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="add-payment-form">
+    <div class="add-payment-form__field">
+      <label for="pay-amount">Monto (MXN)</label>
+      <p-inputNumber
+        inputId="pay-amount"
+        [(ngModel)]="dialogAmountPesos"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        [min]="0.01"
+        styleClass="add-payment-form__number"
+        inputStyleClass="add-payment-form__input"
+      />
+    </div>
+
+    @if (showReferenceField()) {
+      <div class="add-payment-form__field">
+        <label for="pay-ref">Referencia (opcional)</label>
+        <input
+          id="pay-ref"
+          type="text"
+          pInputText
+          [(ngModel)]="dialogReference"
+          [placeholder]="dialogMethod() === PaymentMethod.Card ? 'Ej. últimos 4 dígitos' : 'Número de autorización'"
+          class="add-payment-form__ref"
+        />
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="dialog-btn dialog-btn--ghost" (click)="showPaymentDialog.set(false)">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="dialog-btn dialog-btn--primary"
+      [disabled]="dialogAmountPesos <= 0"
+      (click)="confirmAddPayment()"
+    >
+      Agregar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Kitchen confirmation dialog -->
+<p-dialog
+  header="Orden en cocina"
+  [visible]="showKitchenConfirm()"
+  (visibleChange)="showKitchenConfirm.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="kitchen-confirm">
+    <i class="pi pi-exclamation-triangle kitchen-confirm__icon"></i>
+    <p class="kitchen-confirm__text">
+      Esta orden aún está en cocina. ¿Deseas cobrar de todas formas?
+    </p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="kitchen-confirm__footer">
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--cancel" [disabled]="isProcessing()" (click)="showKitchenConfirm.set(false)">
+        Cancelar
+      </button>
+      <button type="button" class="kitchen-confirm__btn kitchen-confirm__btn--confirm" [disabled]="isProcessing()" (click)="confirmPayment()">
+        @if (isProcessing()) {
+          <i class="pi pi-spinner pi-spin"></i>
+          Procesando...
+        } @else {
+          <i class="pi pi-check"></i>
+          Sí, cobrar
+        }
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Split payment dialog -->
+<p-dialog
+  header="Dividir cuenta"
+  [visible]="showSplitDialog()"
+  (visibleChange)="showSplitDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+>
+  <div class="split-dialog">
+    <p class="split-dialog__total">Total: {{ totalWithDiscount() | price }}</p>
+
+    <div class="split-dialog__parts">
+      <span class="split-dialog__label">¿Entre cuántas personas?</span>
+      <div class="split-dialog__numbers">
+        @for (n of [2, 3, 4, 5, 6]; track n) {
+          <button
+            type="button"
+            class="split-dialog__num"
+            [class.split-dialog__num--active]="splitParts() === n"
+            (click)="splitParts.set(n)"
+          >
+            {{ n }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <p class="split-dialog__each">Cada persona paga: {{ splitAmountCents() | price }}</p>
+
+    <div class="split-dialog__progress">
+      <span>Pago {{ splitCurrentPart() }} de {{ splitParts() }}</span>
+      <span class="split-dialog__dots">
+        @for (i of splitPartsArray(); track i) {
+          <span
+            class="split-dialog__dot"
+            [class.split-dialog__dot--active]="i <= splitCurrentPart()"
+          ></span>
+        }
+      </span>
+    </div>
+
+    <div class="payment-methods-row">
+      @for (opt of paymentOptions(); track opt.method) {
+        <button
+          type="button"
+          class="payment-method-btn"
+          (click)="registerSplitPayment(opt.method)"
+        >
+          <i [class]="'pi ' + opt.icon"></i>
+          {{ opt.label }}
+        </button>
+      }
+    </div>
+  </div>
+</p-dialog>
+
+<!-- Payment processing dialog (Clip / MercadoPago) -->
+<app-payment-processing-dialog
+  [(visible)]="showProcessingDialog"
+  [transaction]="paymentProviderService.activeTransaction()"
+  (paymentConfirmed)="onProviderPaymentConfirmed($event)"
+  (paymentCancelled)="onProviderPaymentCancelled()"
+/>
+
+<!-- Customer fiscal data modal (FDD-004) -->
+@if (completedOrder(); as order) {
+  <app-customer-fiscal-modal
+    [(visible)]="showFiscalModal"
+    [orderId]="order.id"
+    [totalCents]="order.totalCents"
+    (invoiceRequested)="onInvoiceRequested($event)"
+  />
+}

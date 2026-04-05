@@ -1,0 +1,125 @@
+<div class="reservations">
+
+  <!-- Header -->
+  <div class="reservations__header">
+    <h1 class="reservations__title">Reservaciones</h1>
+    <button type="button" class="btn-primary" (click)="openCreateForm()">
+      <i class="pi pi-plus"></i> Nueva reservación
+    </button>
+  </div>
+
+  <!-- Tab navigation -->
+  <nav class="reservations__tabs">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.tab-btn--active]="activeTab() === 'calendar'"
+      (click)="activeTab.set('calendar')"
+    >
+      <i class="pi pi-calendar"></i> Calendario
+    </button>
+    <button
+      type="button"
+      class="tab-btn"
+      [class.tab-btn--active]="activeTab() === 'day'"
+      (click)="switchToDay(selectedDate())"
+    >
+      <i class="pi pi-list"></i> Día
+    </button>
+  </nav>
+
+  <!-- ============================================================ -->
+  <!-- CALENDAR VIEW                                                 -->
+  <!-- ============================================================ -->
+  @if (activeTab() === 'calendar') {
+    <div class="calendar-wrap">
+      <full-calendar [options]="calendarOptions()" />
+    </div>
+  }
+
+  <!-- ============================================================ -->
+  <!-- DAY LIST VIEW                                                 -->
+  <!-- ============================================================ -->
+  @if (activeTab() === 'day') {
+
+    <!-- Day navigation -->
+    <div class="day-nav">
+      <button type="button" class="day-nav__btn" (click)="prevDay()">
+        <i class="pi pi-chevron-left"></i>
+      </button>
+      <span class="day-nav__date">{{ selectedDate() | date:'EEEE d MMMM, yyyy':'':'es' }}</span>
+      <button type="button" class="day-nav__btn" (click)="nextDay()">
+        <i class="pi pi-chevron-right"></i>
+      </button>
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading()) {
+      <div class="day-loading">
+        <i class="pi pi-spin pi-spinner" style="font-size: 24px; color: #16A34A"></i>
+      </div>
+    }
+
+    <!-- Reservation cards -->
+    @if (!isLoading() && sortedDayReservations().length > 0) {
+      <div class="day-list">
+        @for (r of sortedDayReservations(); track r.id) {
+          <div class="res-card" [class.res-card--faded]="r.status === 'Cancelled' || r.status === 'NoShow'">
+
+            <div class="res-card__time">{{ formatTime(r.reservationTime) }}</div>
+
+            <div class="res-card__info">
+              <span class="res-card__guest">{{ r.guestName }}</span>
+              <span class="res-card__meta">{{ r.partySize }} personas · {{ r.tableName ?? 'Sin mesa asignada' }}</span>
+              @if (r.notes) {
+                <span class="res-card__notes">{{ r.notes }}</span>
+              }
+            </div>
+
+            <div class="res-card__right">
+              <span
+                class="res-card__badge"
+                [style.background]="getStatusColor(r.status)"
+              >
+                {{ getStatusLabel(r.status) }}
+              </span>
+
+              <div class="res-card__actions">
+                @if (r.status === 'Pending') {
+                  <button type="button" class="btn-action btn-action--edit" (click)="openEditForm(r)"><i class="pi pi-pencil"></i> Editar</button>
+                  <button type="button" class="btn-action btn-action--teal" (click)="onConfirm(r)">Confirmar</button>
+                  <button type="button" class="btn-action btn-action--gray" (click)="onCancel(r)">Cancelar</button>
+                }
+                @if (r.status === 'Confirmed') {
+                  <button type="button" class="btn-action btn-action--edit" (click)="openEditForm(r)"><i class="pi pi-pencil"></i> Editar</button>
+                  <button type="button" class="btn-action btn-action--blue" (click)="onSeat(r)">Sentar</button>
+                  <button type="button" class="btn-action btn-action--gray" (click)="onCancel(r)">Cancelar</button>
+                  <button type="button" class="btn-action btn-action--red" (click)="onNoShow(r)">No show</button>
+                }
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Empty state -->
+    @if (!isLoading() && sortedDayReservations().length === 0) {
+      <div class="day-empty">
+        <i class="pi pi-calendar"></i>
+        <p>No hay reservaciones para este día</p>
+      </div>
+    }
+
+  }
+
+</div>
+
+<!-- Reservation form dialog -->
+<app-reservation-form
+  [visible]="showForm()"
+  [reservation]="editingReservation()"
+  (visibleChange)="showForm.set($event)"
+  (saved)="onFormSaved()"
+/>

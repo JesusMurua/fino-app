@@ -1,0 +1,84 @@
+@use '../../../../styles/variables' as *;
+
+:host {
+  display: inline-flex;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--sm {
+    height: 18px;
+    padding: 0 6px;
+    font-size: 11px;
+    gap: 3px;
+  }
+
+  &__letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+
+    .chip--sm & {
+      width: 12px;
+      height: 12px;
+      font-size: 8px;
+    }
+  }
+
+  &__label {
+    line-height: 1;
+  }
+
+  // Platform variants
+  &--direct {
+    background: $color-primary-light;
+    color: $color-primary;
+
+    i { font-size: 11px; }
+  }
+
+  &--uber {
+    background: $color-uber-eats-bg;
+    color: $color-uber-eats;
+
+    .chip__letter {
+      background: $color-uber-eats;
+      color: #000;
+    }
+  }
+
+  &--rappi {
+    background: $color-rappi-bg;
+    color: $color-rappi;
+
+    .chip__letter {
+      background: $color-rappi;
+      color: #fff;
+    }
+  }
+
+  &--didi {
+    background: $color-didi-food-bg;
+    color: $color-didi-food;
+
+    .chip__letter {
+      background: $color-didi-food;
+      color: #fff;
+    }
+  }
+}

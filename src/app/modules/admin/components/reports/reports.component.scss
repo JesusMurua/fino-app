@@ -1,0 +1,320 @@
+@use '../../../../../styles/variables' as *;
+
+// ============================================================================
+// Reports Page
+// ============================================================================
+
+.reports-page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+.reports-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $space-2;
+  }
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  &--excel {
+    background: #DCFCE7;
+    color: #16A34A;
+    &:hover:not(:disabled) { background: #BBF7D0; }
+  }
+
+  &--pdf {
+    background: #FEF2F2;
+    color: #DC2626;
+    &:hover:not(:disabled) { background: #FECACA; }
+  }
+
+  &--fiscal {
+    background: #EFF6FF;
+    color: #2563EB;
+    &:hover:not(:disabled) { background: #DBEAFE; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Period selector
+// -----------------------------------------------------------------------
+.period-bar {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.period-btns {
+  display: flex;
+  gap: $space-2;
+  flex-wrap: wrap;
+}
+
+.period-btn {
+  padding: $space-2 $space-4;
+  border-radius: 20px;
+  border: 1px solid #E5E7EB;
+  background: white;
+  color: $color-text-title;
+  font-size: $font-size-label;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 40px;
+
+  &:hover:not(.period-btn--active) {
+    border-color: $color-primary;
+    color: $color-primary;
+  }
+
+  &--active {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+  }
+}
+
+.period-custom {
+  display: flex;
+  align-items: flex-end;
+  gap: $space-3;
+  flex-wrap: wrap;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+
+    label {
+      font-size: $font-size-label;
+      font-weight: 500;
+      color: $color-text-sub;
+    }
+  }
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { background: #D1D5DB; cursor: not-allowed; }
+}
+
+// -----------------------------------------------------------------------
+// Loading / Empty states
+// -----------------------------------------------------------------------
+.reports-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-8 0;
+}
+
+.reports-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-8 $space-4;
+  gap: $space-3;
+  text-align: center;
+
+  &__icon {
+    font-size: 64px;
+    color: #D1D5DB;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Metrics grid
+// -----------------------------------------------------------------------
+.metrics-grid {
+  display: grid;
+  gap: $space-4;
+
+  &--4 {
+    grid-template-columns: repeat(4, 1fr);
+
+    @media (max-width: #{$breakpoint-lg}) { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: #{$breakpoint-sm}) { grid-template-columns: 1fr; }
+  }
+
+  &--3 {
+    grid-template-columns: repeat(3, 1fr);
+
+    @media (max-width: #{$breakpoint-sm}) { grid-template-columns: 1fr; }
+  }
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  background: white;
+  border-radius: 12px;
+  padding: $space-4 $space-5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+.metric-label {
+  font-size: $font-size-label;
+  color: $color-text-sub;
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: $color-text-title;
+
+  &.green  { color: $color-primary; }
+  &.red    { color: #DC2626; }
+  &.orange { color: #D97706; }
+  &.blue   { color: #2563EB; }
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+// -----------------------------------------------------------------------
+// Section card
+// -----------------------------------------------------------------------
+.section-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  padding: $space-4 $space-5;
+
+  &__title {
+    margin: 0 0 $space-4;
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__empty {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    text-align: center;
+    padding: $space-4 0;
+  }
+}
+
+.chart-wrap {
+  height: 300px;
+}
+
+// -----------------------------------------------------------------------
+// Table cells
+// -----------------------------------------------------------------------
+.rank-cell {
+  font-weight: 700;
+  color: $color-text-sub;
+  width: 40px;
+}
+
+.name-cell {
+  font-weight: 600;
+}
+
+.num-cell {
+  font-weight: 700;
+  color: $color-text-sub;
+}
+
+.time-cell {
+  color: $color-text-sub;
+  font-size: $font-size-label;
+}
+
+.price-cell {
+  font-weight: 700;
+  text-align: right;
+}
+
+.discount-cell {
+  color: $color-primary;
+  font-weight: 600;
+}
+
+.row-cancelled {
+  background: #FEF2F2;
+}
+
+// -----------------------------------------------------------------------
+// Badges
+// -----------------------------------------------------------------------
+.badge {
+  display: inline-block;
+  padding: 3px $space-2;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+
+  &--cash      { background: #F0FDF4; color: #16A34A; }
+  &--card      { background: #EFF6FF; color: #2563EB; }
+  &--completed { background: #DBEAFE; color: #1D4ED8; }
+  &--cancelled { background: rgba(107, 114, 128, 0.1); color: #6B7280; }
+}

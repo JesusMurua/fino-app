@@ -1,16 +1,34 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { CurrencyPipe, DatePipe } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { Subscription, firstValueFrom } from 'rxjs';
+
+import { environment } from '../../../../../environments/environment';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputSwitchModule } from 'primeng/inputswitch';
+import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TabViewModule } from 'primeng/tabview';
+import { RadioButtonModule } from 'primeng/radiobutton';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 
-import { Category, Product } from '../../../../core/models';
+import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, SAT_UNIT_OPTIONS } from '../../../../core/models';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { ProductService } from '../../../../core/services/product.service';
+import { DiscountService } from '../../../../core/services/discount.service';
+import { InventoryService } from '../../../../core/services/inventory.service';
+import { InventoryConsumptionService } from '../../../../core/services/inventory-consumption.service';
+import { ProductImportService } from '../../../../core/services/product-import.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ScannerService } from '../../../../core/services/scanner.service';
+import { PrinterDestinationService } from '../../../../core/services/printer-destination.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Editable row for a product size inside the form */
@@ -28,11 +46,20 @@ interface ProductExtraForm {
 /** Shape of the product form used in the create/edit dialog */
 interface ProductForm {
   name: string;
+  barcode: string;
+  description: string;
   priceCents: number;
   categoryId: number | null;
   isAvailable: boolean;
+  trackStock: boolean;
+  currentStock: number;
+  lowStockThreshold: number;
   sizes: ProductSizeForm[];
   extras: ProductExtraForm[];
+  satProductCode: string;
+  satUnitCode: string;
+  taxRate: number;
+  printingDestinationId: number | null;
 }
 
 /** Shape of the category form used in the create/edit dialog */
@@ -42,10 +69,21 @@ interface CategoryForm {
   isActive: boolean;
 }
 
+/** Shape of the discount form used in the create/edit dialog */
+interface DiscountForm {
+  name: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  isActive: boolean;
+}
+
 @Component({
   selector: 'app-admin-products',
   standalone: true,
   imports: [
+    ButtonModule,
+    CurrencyPipe,
+    DatePipe,
     FormsModule,
     DialogModule,
     DropdownModule,
@@ -55,10 +93,14 @@ interface CategoryForm {
     TableModule,
     TabViewModule,
     TooltipModule,
+    InputTextareaModule,
     PricePipe,
+    RadioButtonModule,
+    ConfirmDialogModule,
   ],
   templateUrl: './admin-products.component.html',
   styleUrl: './admin-products.component.scss',
+  providers: [ConfirmationService],
 })
 export class AdminProductsComponent implements OnInit {
 
@@ -72,12 +114,67 @@ export class AdminProductsComponent implements OnInit {
   dialogVisible = false;
   editingProduct: Product | null = null;
   form: ProductForm = this.emptyProductForm();
+  dialogTabIndex = 0;
+  showImageTab = false;
+
+  // ---- SAT catalog options for fiscal dropdowns ----
+  readonly satUnitOptions = SAT_UNIT_OPTIONS;
+  readonly ivaRateOptions = IVA_RATE_OPTIONS;
+
+  // ---- Printing destination options ----
+  /** True when at least one active printer destination is configured */
+  readonly hasPrinters = computed(() =>
+    this.printerDestinationService.activeDestinations().length > 0,
+  );
+  /** Dropdown options: null entry (no printing) + all active destinations */
+  readonly printingDestinationOptions = computed(() => [
+    { id: null, name: 'Sin impresión de cocina' },
+    ...this.printerDestinationService.activeDestinations(),
+  ]);
 
   // ---- Category dialog ----
   catDialogVisible = false;
   editingCategory: Category | null = null;
   catForm: CategoryForm = this.emptyCatForm();
   readonly catError = signal('');
+
+  // ---- Discount dialog ----
+  readonly discountPresets = signal<DiscountPreset[]>([]);
+  readonly loadingDiscounts = signal(false);
+  discountDialogVisible = false;
+  editingDiscount: DiscountPreset | null = null;
+  discountForm: DiscountForm = this.emptyDiscountForm();
+
+  // ---- Import dialog ----
+  readonly showImportDialog = signal(false);
+  readonly importStep = signal<'upload' | 'preview' | 'success'>('upload');
+  readonly importPreview = signal<ProductImportPreview | null>(null);
+  readonly importResult = signal<ProductImportResult | null>(null);
+  readonly loadingImport = signal(false);
+  readonly selectedFile = signal<File | null>(null);
+
+  // ---- Consumption dialog ----
+  readonly showConsumptionDialog = signal(false);
+  readonly consumptionProduct = signal<Product | null>(null);
+  readonly consumptions = signal<ProductConsumption[]>([]);
+  readonly inventoryItems = signal<InventoryItem[]>([]);
+  readonly loadingConsumptions = signal(false);
+  selectedInventoryItemId: number | null = null;
+  consumptionQuantity = 1;
+
+  // ---- Product movement history dialog ----
+  readonly showMovementDialog = signal(false);
+  readonly movementProduct = signal<Product | null>(null);
+  readonly productMovements = signal<InventoryMovement[]>([]);
+  readonly loadingMovements = signal(false);
+
+  // ---- Product images (edit mode only) ----
+  readonly productImages = signal<ProductImage[]>([]);
+  readonly uploadingImage = signal(false);
+  static readonly MAX_IMAGES = 5;
+
+  // ---- Barcode scanner ----
+  private scanSubscription?: Subscription;
 
   /** Available PrimeIcons for category selection */
   readonly iconOptions: { label: string; value: string }[] = [
@@ -98,13 +195,34 @@ export class AdminProductsComponent implements OnInit {
   //#endregion
 
   //#region Constructor
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly productService: ProductService,
+    private readonly discountService: DiscountService,
+    private readonly confirmationService: ConfirmationService,
+    private readonly productImportService: ProductImportService,
+    private readonly inventoryService: InventoryService,
+    private readonly consumptionService: InventoryConsumptionService,
+    private readonly http: HttpClient,
+    private readonly authService: AuthService,
+    private readonly scannerService: ScannerService,
+    readonly printerDestinationService: PrinterDestinationService,
+  ) {
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      if (branchId) { this.loadData(); this.loadDiscounts(); }
+    }, { allowSignalWrites: true });
+  }
   //#endregion
 
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    await this.loadData();
+    await Promise.all([
+      this.loadData(),
+      this.loadDiscounts(),
+      this.printerDestinationService.loadFromLocal(),
+    ]);
   }
 
   //#endregion
@@ -129,6 +247,9 @@ export class AdminProductsComponent implements OnInit {
   openCreate(): void {
     this.editingProduct = null;
     this.form = this.emptyProductForm();
+    this.productImages.set([]);
+    this.dialogTabIndex = 0;
+    this.showImageTab = false;
     this.dialogVisible = true;
   }
 
@@ -136,16 +257,32 @@ export class AdminProductsComponent implements OnInit {
     this.editingProduct = product;
     this.form = {
       name: product.name,
+      barcode: product.barcode ?? '',
+      description: product.description ?? '',
       priceCents: product.priceCents,
       categoryId: product.categoryId,
       isAvailable: product.isAvailable,
+      trackStock: product.trackStock ?? false,
+      currentStock: product.currentStock ?? 0,
+      lowStockThreshold: product.lowStockThreshold ?? 0,
       sizes:  product.sizes.map(s => ({ label: s.label, priceDeltaCents: s.priceDeltaCents })),
       extras: product.extras.map(e => ({ label: e.label, priceCents: e.priceCents })),
+      satProductCode: product.satProductCode ?? '',
+      satUnitCode: product.satUnitCode ?? 'H87',
+      taxRate: product.taxRate ?? 16,
+      printingDestinationId: product.printingDestinationId ?? null,
     };
+    this.productImages.set(product.images ?? []);
+    this.dialogTabIndex = 0;
+    this.showImageTab = false;
+    setTimeout(() => this.showImageTab = true, 0);
     this.dialogVisible = true;
   }
 
   closeDialog(): void {
+    this.scanSubscription?.unsubscribe();
+    this.scanSubscription = undefined;
+    this.scannerService.stopListening();
     this.dialogVisible = false;
   }
 
@@ -153,39 +290,93 @@ export class AdminProductsComponent implements OnInit {
 
   //#region Product CRUD
 
+  /** Saves product locally in Dexie and syncs to API (best-effort) */
   async saveProduct(): Promise<void> {
     if (!this.form.name.trim() || !this.form.categoryId) return;
 
     const sizes  = this.form.sizes.filter(s => s.label.trim());
     const extras = this.form.extras.filter(e => e.label.trim());
 
+    const payload = {
+      name: this.form.name.trim(),
+      barcode: this.form.barcode.trim() || undefined,
+      description: this.form.description.trim() || undefined,
+      priceCents: this.form.priceCents,
+      categoryId: this.form.categoryId,
+      isAvailable: this.form.isAvailable,
+      trackStock: this.form.trackStock,
+      currentStock: this.form.trackStock ? this.form.currentStock : 0,
+      lowStockThreshold: this.form.trackStock ? this.form.lowStockThreshold : 0,
+      sizes:  sizes.map((s, i) => ({ id: i + 1, label: s.label.trim(), priceDeltaCents: s.priceDeltaCents })),
+      extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
+      satProductCode: this.form.satProductCode.trim() || undefined,
+      satUnitCode: this.form.satUnitCode || undefined,
+      taxRate: this.form.taxRate,
+      printingDestinationId: this.form.printingDestinationId,
+    };
+
     if (this.editingProduct) {
-      const updated: Product = {
-        ...this.editingProduct,
-        name: this.form.name.trim(),
-        priceCents: this.form.priceCents,
-        categoryId: this.form.categoryId,
-        isAvailable: this.form.isAvailable,
-        sizes:  sizes.map((s, i) => ({ id: i + 1, label: s.label.trim(), priceDeltaCents: s.priceDeltaCents })),
-        extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
-      };
+      const updated: Product = { ...this.editingProduct, ...payload, images: this.productImages() };
       await this.db.products.put(updated);
+
+      // Sync to API (best-effort)
+      try {
+        await firstValueFrom(
+          this.http.put(`${environment.apiUrl}/products/${this.editingProduct.id}`, payload)
+        );
+      } catch (e) { console.warn('API sync failed for product update:', e); }
     } else {
       const maxId = Math.max(0, ...this.products().map(p => p.id));
-      const newProduct: Product = {
-        id: maxId + 1,
-        name: this.form.name.trim(),
-        priceCents: this.form.priceCents,
-        categoryId: this.form.categoryId,
-        isAvailable: this.form.isAvailable,
-        sizes:  sizes.map((s, i) => ({ id: i + 1, label: s.label.trim(), priceDeltaCents: s.priceDeltaCents })),
-        extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
-      };
+      const newProduct: Product = { id: maxId + 1, ...payload };
       await this.db.products.add(newProduct);
+
+      // Sync to API (best-effort) — API may assign a real ID
+      try {
+        await firstValueFrom(
+          this.http.post(`${environment.apiUrl}/products`, { ...payload, branchId: this.authService.branchId })
+        );
+      } catch (e) { console.warn('API sync failed for product create:', e); }
     }
 
     this.dialogVisible = false;
     await this.loadData();
+  }
+
+  /** Handles image file selection and uploads to the API */
+  async onImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length || !this.editingProduct) return;
+    if (this.productImages().length >= AdminProductsComponent.MAX_IMAGES) return;
+
+    this.uploadingImage.set(true);
+    try {
+      const image = await this.productService.uploadProductImage(
+        this.editingProduct.id, input.files[0],
+      );
+      const updatedImages = [...this.productImages(), image];
+      this.productImages.set(updatedImages);
+      // Persist images to Dexie so they load on next dialog open
+      await this.db.products.update(this.editingProduct.id, { images: updatedImages });
+    } catch (e) {
+      console.warn('Image upload failed:', e);
+    } finally {
+      this.uploadingImage.set(false);
+      input.value = '';
+    }
+  }
+
+  /** Deletes a product image from the API */
+  async deleteImage(imageId: number): Promise<void> {
+    if (!this.editingProduct) return;
+    try {
+      await this.productService.deleteProductImage(this.editingProduct.id, imageId);
+      const updatedImages = this.productImages().filter(i => i.id !== imageId);
+      this.productImages.set(updatedImages);
+      // Persist to Dexie so removal is reflected on next dialog open
+      await this.db.products.update(this.editingProduct.id, { images: updatedImages });
+    } catch (e) {
+      console.warn('Image delete failed:', e);
+    }
   }
 
   async toggleActive(product: Product): Promise<void> {
@@ -278,6 +469,287 @@ export class AdminProductsComponent implements OnInit {
 
   //#endregion
 
+  //#region Discount Methods
+
+  /** Loads discount presets for current branch */
+  async loadDiscounts(): Promise<void> {
+    this.loadingDiscounts.set(true);
+    await this.discountService.loadPresets(this.authService.branchId);
+    const presets = await this.discountService.getPresets(this.authService.branchId);
+    this.discountPresets.set(presets);
+    this.loadingDiscounts.set(false);
+  }
+
+  /** Opens dialog to create new discount */
+  openNewDiscountDialog(): void {
+    this.editingDiscount = null;
+    this.discountForm = this.emptyDiscountForm();
+    this.discountDialogVisible = true;
+  }
+
+  /** Opens dialog to edit existing discount */
+  openEditDiscountDialog(preset: DiscountPreset): void {
+    this.editingDiscount = preset;
+    this.discountForm = {
+      name: preset.name,
+      type: preset.type,
+      value: preset.type === 'fixed' ? preset.value / 100 : preset.value,
+      isActive: preset.isActive,
+    };
+    this.discountDialogVisible = true;
+  }
+
+  /** Saves discount (create or update) */
+  async saveDiscount(): Promise<void> {
+    if (!this.discountForm.name.trim()) return;
+
+    const value = this.discountForm.type === 'fixed'
+      ? Math.round(this.discountForm.value * 100)
+      : this.discountForm.value;
+
+    if (this.editingDiscount) {
+      await this.discountService.updatePreset(this.editingDiscount.id, {
+        name: this.discountForm.name.trim(),
+        type: this.discountForm.type,
+        value,
+        isActive: this.discountForm.isActive,
+      });
+    } else {
+      await this.discountService.createPreset({
+        branchId: this.authService.branchId,
+        name: this.discountForm.name.trim(),
+        type: this.discountForm.type,
+        value,
+        isActive: this.discountForm.isActive,
+      });
+    }
+
+    this.discountDialogVisible = false;
+    await this.loadDiscounts();
+  }
+
+  /** Deletes a discount preset with confirmation */
+  deleteDiscount(preset: DiscountPreset): void {
+    this.confirmationService.confirm({
+      message: `¿Eliminar el descuento "${preset.name}"?`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-trash',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        await this.discountService.deletePreset(preset.id);
+        await this.loadDiscounts();
+      },
+    });
+  }
+
+  /** Toggles discount active state */
+  async toggleDiscountActive(preset: DiscountPreset): Promise<void> {
+    await this.discountService.updatePreset(preset.id, { isActive: !preset.isActive });
+    await this.loadDiscounts();
+  }
+
+  /** Handles value change for discount form (pesos → stored value) */
+  onDiscountValueChange(value: number | null): void {
+    this.discountForm.value = value ?? 0;
+  }
+
+  //#endregion
+
+  //#region Import Methods
+
+  /** Downloads Excel template for product import */
+  async onDownloadTemplate(): Promise<void> {
+    try {
+      await this.productImportService.downloadTemplate();
+    } catch {
+      console.error('Error downloading template');
+    }
+  }
+
+  /** Handles file selection from input */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) {
+      this.selectedFile.set(input.files[0]);
+    }
+  }
+
+  /** Sends file to API for preview validation */
+  async onPreviewImport(): Promise<void> {
+    if (!this.selectedFile()) return;
+    this.loadingImport.set(true);
+    try {
+      const result = await this.productImportService.previewImport(
+        this.selectedFile()!, this.authService.branchId
+      );
+      this.importPreview.set(result);
+      this.importStep.set('preview');
+    } catch {
+      console.error('Error previewing import');
+    } finally {
+      this.loadingImport.set(false);
+    }
+  }
+
+  /** Executes import with previewed rows */
+  async onExecuteImport(): Promise<void> {
+    if (!this.importPreview()?.validRows.length) return;
+    this.loadingImport.set(true);
+    try {
+      const result = await this.productImportService.executeImport(
+        this.importPreview()!.validRows, this.authService.branchId
+      );
+      this.importResult.set(result);
+      await this.db.products.clear();
+      await this.db.categories.clear();
+      await this.productService.loadCatalog();
+      await this.loadData();
+      this.importStep.set('success');
+    } catch {
+      console.error('Error executing import');
+    } finally {
+      this.loadingImport.set(false);
+    }
+  }
+
+  /** Resets import dialog to initial state */
+  resetImport(): void {
+    this.importStep.set('upload');
+    this.importPreview.set(null);
+    this.importResult.set(null);
+    this.selectedFile.set(null);
+    this.showImportDialog.set(false);
+  }
+
+  //#endregion
+
+  //#region Consumption Methods
+
+  /** Opens consumption dialog for a product */
+  async openConsumptionDialog(product: Product): Promise<void> {
+    this.consumptionProduct.set(product);
+    this.selectedInventoryItemId = null;
+    this.consumptionQuantity = 1;
+    this.showConsumptionDialog.set(true);
+    await this.loadConsumptions(product.id);
+    this.inventoryItems.set(this.inventoryService.items());
+  }
+
+  /** Loads consumption rules for a product */
+  async loadConsumptions(productId: number): Promise<void> {
+    this.loadingConsumptions.set(true);
+    try {
+      const list = await this.consumptionService.getByProduct(productId);
+      this.consumptions.set(list);
+    } catch {
+      this.consumptions.set([]);
+    } finally {
+      this.loadingConsumptions.set(false);
+    }
+  }
+
+  /** Adds a new consumption rule */
+  async addConsumption(): Promise<void> {
+    const product = this.consumptionProduct();
+    if (!product || !this.selectedInventoryItemId || this.consumptionQuantity <= 0) return;
+
+    await this.consumptionService.create(
+      product.id,
+      this.selectedInventoryItemId,
+      this.consumptionQuantity,
+    );
+    this.selectedInventoryItemId = null;
+    this.consumptionQuantity = 1;
+    await this.loadConsumptions(product.id);
+  }
+
+  /** Deletes a consumption rule */
+  async deleteConsumption(id: number): Promise<void> {
+    const product = this.consumptionProduct();
+    if (!product) return;
+
+    await this.consumptionService.delete(id);
+    await this.loadConsumptions(product.id);
+  }
+
+  /** Returns inventory item name by ID */
+  inventoryItemName(id: number): string {
+    return this.inventoryItems().find(i => i.id === id)?.name ?? '—';
+  }
+
+  /** Returns inventory item unit by ID */
+  inventoryItemUnit(id: number): string {
+    return this.inventoryItems().find(i => i.id === id)?.unit ?? '';
+  }
+
+  //#endregion
+
+  //#region Product Movement History
+
+  /** Opens movement history dialog for a product with trackStock */
+  async openMovementDialog(product: Product): Promise<void> {
+    this.movementProduct.set(product);
+    this.productMovements.set([]);
+    this.showMovementDialog.set(true);
+    this.loadingMovements.set(true);
+    try {
+      const data = await firstValueFrom(
+        this.http.get<InventoryMovement[]>(
+          `${environment.apiUrl}/products/${product.id}/movements`
+        )
+      );
+      this.productMovements.set(data);
+    } catch {
+      this.productMovements.set([]);
+    } finally {
+      this.loadingMovements.set(false);
+    }
+  }
+
+  /** Returns display label for movement type */
+  movementTypeLabel(type: string): string {
+    switch (type) {
+      case 'in':         return 'Entrada';
+      case 'out':        return 'Salida';
+      case 'adjustment': return 'Ajuste';
+      default:           return type;
+    }
+  }
+
+  /** Returns CSS class for movement type badge */
+  movementTypeSeverity(type: string): string {
+    switch (type) {
+      case 'in':         return 'movement-badge--in';
+      case 'out':        return 'movement-badge--out';
+      case 'adjustment': return 'movement-badge--adj';
+      default:           return '';
+    }
+  }
+
+  //#endregion
+
+  //#region Barcode Scanner
+
+  /**
+   * Activates the scanner listener and fills the barcode field
+   * with the first scanned code.
+   */
+  activateBarcodeScanner(): void {
+    // Clean up any previous subscription
+    this.scanSubscription?.unsubscribe();
+
+    this.scannerService.startListening();
+    this.scanSubscription = this.scannerService.onScan().subscribe(code => {
+      this.form.barcode = code;
+      this.scanSubscription?.unsubscribe();
+      this.scanSubscription = undefined;
+      this.scannerService.stopListening();
+    });
+  }
+
+  //#endregion
+
   //#region Helpers
 
   categoryName(id: number): string {
@@ -313,11 +785,15 @@ export class AdminProductsComponent implements OnInit {
   }
 
   private emptyProductForm(): ProductForm {
-    return { name: '', priceCents: 0, categoryId: null, isAvailable: true, sizes: [], extras: [] };
+    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16, printingDestinationId: null };
   }
 
   private emptyCatForm(): CategoryForm {
     return { name: '', icon: 'pi-tag', isActive: true };
+  }
+
+  private emptyDiscountForm(): DiscountForm {
+    return { name: '', type: 'percent', value: 0, isActive: true };
   }
 
   //#endregion

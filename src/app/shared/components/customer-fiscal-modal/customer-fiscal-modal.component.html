@@ -1,0 +1,207 @@
+<p-dialog
+  header="Datos de facturación"
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="status() !== 'submitting'"
+  [style]="{ width: '520px' }"
+  styleClass="fiscal-modal"
+  (onHide)="onClose()"
+>
+
+  <!-- ================================================================ -->
+  <!-- Form state                                                        -->
+  <!-- ================================================================ -->
+  @if (status() === 'form' || status() === 'error') {
+    <div class="fiscal-form">
+
+      <!-- Público en General shortcut -->
+      <button
+        type="button"
+        class="fiscal-form__shortcut"
+        (click)="fillPublicoGeneral()"
+      >
+        <i class="pi pi-user"></i>
+        Público en General
+      </button>
+
+      <!-- RFC -->
+      <div class="fiscal-field">
+        <label class="fiscal-field__label" for="fiscal-rfc">RFC *</label>
+        <input
+          id="fiscal-rfc"
+          type="text"
+          pInputText
+          [ngModel]="rfc()"
+          (ngModelChange)="rfc.set($event)"
+          placeholder="Ej. XAXX010101000"
+          class="fiscal-field__input fiscal-field__input--mono"
+          maxlength="13"
+          style="text-transform: uppercase"
+        />
+        @if (rfc().length > 0 && !rfcValid()) {
+          <small class="fiscal-field__error">
+            <i class="pi pi-exclamation-circle"></i>
+            RFC inválido — debe ser 12 o 13 caracteres
+          </small>
+        }
+      </div>
+
+      <!-- Razón Social -->
+      <div class="fiscal-field">
+        <label class="fiscal-field__label" for="fiscal-razon">Razón Social *</label>
+        <input
+          id="fiscal-razon"
+          type="text"
+          pInputText
+          [ngModel]="razonSocial()"
+          (ngModelChange)="razonSocial.set($event)"
+          placeholder="Ej. MI EMPRESA S.A. DE C.V."
+          class="fiscal-field__input"
+          style="text-transform: uppercase"
+        />
+      </div>
+
+      <!-- Régimen Fiscal + Uso CFDI (2 columns) -->
+      <div class="fiscal-row">
+        <div class="fiscal-field">
+          <label class="fiscal-field__label" for="fiscal-regimen">Régimen Fiscal *</label>
+          <p-dropdown
+            inputId="fiscal-regimen"
+            [ngModel]="regimenFiscal()"
+            (ngModelChange)="regimenFiscal.set($event)"
+            [options]="regimenOptions"
+            optionValue="clave"
+            optionLabel="descripcion"
+            placeholder="Selecciona régimen"
+            [filter]="true"
+            filterPlaceholder="Buscar..."
+            styleClass="fiscal-field__dropdown"
+          />
+        </div>
+
+        <div class="fiscal-field">
+          <label class="fiscal-field__label" for="fiscal-uso">Uso CFDI *</label>
+          <p-dropdown
+            inputId="fiscal-uso"
+            [ngModel]="usoCfdi()"
+            (ngModelChange)="usoCfdi.set($event)"
+            [options]="usoCfdiOptions"
+            optionValue="clave"
+            optionLabel="descripcion"
+            placeholder="Selecciona uso"
+            [filter]="true"
+            filterPlaceholder="Buscar..."
+            styleClass="fiscal-field__dropdown"
+          />
+        </div>
+      </div>
+
+      <!-- Código Postal -->
+      <div class="fiscal-field">
+        <label class="fiscal-field__label" for="fiscal-cp">Código Postal *</label>
+        <input
+          id="fiscal-cp"
+          type="text"
+          pInputText
+          [ngModel]="codigoPostal()"
+          (ngModelChange)="codigoPostal.set($event)"
+          placeholder="Ej. 83000"
+          class="fiscal-field__input"
+          maxlength="5"
+        />
+        @if (codigoPostal().length > 0 && !cpValid()) {
+          <small class="fiscal-field__error">
+            <i class="pi pi-exclamation-circle"></i>
+            Debe ser 5 dígitos
+          </small>
+        }
+      </div>
+
+      <!-- Email -->
+      <div class="fiscal-field">
+        <label class="fiscal-field__label" for="fiscal-email">Email *</label>
+        <input
+          id="fiscal-email"
+          type="email"
+          pInputText
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          placeholder="cliente@email.com"
+          class="fiscal-field__input"
+        />
+        @if (email().length > 0 && !emailValid()) {
+          <small class="fiscal-field__error">
+            <i class="pi pi-exclamation-circle"></i>
+            Email inválido
+          </small>
+        }
+      </div>
+
+      <!-- Error banner -->
+      @if (status() === 'error') {
+        <div class="fiscal-form__error-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          {{ errorMessage() }}
+        </div>
+      }
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="fiscal-footer">
+        <button type="button" class="fiscal-btn fiscal-btn--ghost" (click)="onClose()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="fiscal-btn fiscal-btn--primary"
+          [disabled]="!canSubmit()"
+          (click)="onSubmit()"
+        >
+          <i class="pi pi-file-edit"></i>
+          Solicitar Factura
+        </button>
+      </div>
+    </ng-template>
+  }
+
+  <!-- ================================================================ -->
+  <!-- Submitting state                                                  -->
+  <!-- ================================================================ -->
+  @if (status() === 'submitting') {
+    <div class="fiscal-status">
+      <p-progressSpinner
+        [style]="{ width: '48px', height: '48px' }"
+        strokeWidth="4"
+      />
+      <p class="fiscal-status__title">Generando factura...</p>
+      <p class="fiscal-status__amount">{{ totalCents() | price }}</p>
+    </div>
+  }
+
+  <!-- ================================================================ -->
+  <!-- Success state                                                     -->
+  <!-- ================================================================ -->
+  @if (status() === 'success') {
+    <div class="fiscal-status">
+      <div class="fiscal-status__icon fiscal-status__icon--success">
+        <i class="pi pi-check"></i>
+      </div>
+      <p class="fiscal-status__title">Factura generada</p>
+      @if (cfdiUuid()) {
+        <p class="fiscal-status__uuid">{{ cfdiUuid() }}</p>
+      }
+      <p class="fiscal-status__detail">Se enviará a: {{ email() }}</p>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="fiscal-footer fiscal-footer--center">
+        <button type="button" class="fiscal-btn fiscal-btn--primary" (click)="onClose()">
+          Cerrar
+        </button>
+      </div>
+    </ng-template>
+  }
+
+</p-dialog>

@@ -1,0 +1,100 @@
+<div class="order-row" [class.order-row--delivered]="isDelivered" [class.order-row--cancelled]="isCancelled">
+
+  <!-- Summary row (always visible) -->
+  <button type="button" class="order-row__summary" (click)="toggle()">
+    <span class="order-row__number">#{{ order.orderNumber }}</span>
+    @if (order.orderSource && order.orderSource !== OrderSource.Direct) {
+      <app-platform-chip [source]="order.orderSource" size="sm" />
+    }
+    @if (order.tableName) {
+      <span class="order-row__table-badge">{{ order.tableName }}</span>
+    }
+    <span class="order-row__time">{{ order.createdAt | date:'HH:mm' }}</span>
+    <span
+      class="order-row__badge"
+      [style.color]="status.color"
+      [style.background]="status.bgColor"
+    >
+      {{ status.label }}
+    </span>
+    @if (isCancelled && order.cancellationReason) {
+      <span class="order-row__cancel-reason">{{ order.cancellationReason }}</span>
+    }
+    <span class="order-row__elapsed" [class.order-row__elapsed--red]="isOverdue">
+      @if (isOverdue) {
+        <i class="pi pi-exclamation-triangle"></i>
+      }
+      {{ elapsedFormatted }}
+    </span>
+    <span class="order-row__total">{{ order.totalCents | price }}</span>
+    @if (order.payments?.length > 0) {
+      <span class="order-row__payment">{{ paymentLabel }}</span>
+    } @else if (order.orderSource && order.orderSource !== OrderSource.Direct) {
+      <span class="order-row__payment order-row__payment--platform">Pagado · plataforma</span>
+    } @else {
+      <span class="order-row__payment order-row__payment--unpaid">Sin cobrar</span>
+    }
+    <i class="pi order-row__chevron" [class.pi-chevron-down]="!expanded()" [class.pi-chevron-up]="expanded()"></i>
+  </button>
+
+  <!-- Expanded detail -->
+  @if (expanded()) {
+    <div class="order-row__detail">
+
+      <!-- Items -->
+      <ul class="order-row__items">
+        @for (item of order.items; track item.id) {
+          <li class="order-row__item">
+            <span class="order-row__item-qty">{{ item.quantity }}x</span>
+            <span class="order-row__item-name">{{ item.product.name }}</span>
+            @if (item.size) {
+              <span class="order-row__item-meta">({{ item.size.label }})</span>
+            }
+            @if (item.extras.length > 0) {
+              <span class="order-row__item-meta">+ {{ getExtraLabels(item) }}</span>
+            }
+            <span class="order-row__item-price">{{ item.totalPriceCents | price }}</span>
+          </li>
+          @if (item.notes) {
+            <li class="order-row__note">
+              <i class="pi pi-comment"></i>
+              {{ item.notes }}
+            </li>
+          }
+        }
+      </ul>
+
+      <!-- Actions -->
+      <div class="order-row__actions">
+        <button type="button" class="order-row__action order-row__action--print" (click)="onPrint()">
+          <i class="pi pi-print"></i>
+          <span>Imprimir comanda</span>
+        </button>
+        <button type="button" class="order-row__action order-row__action--print" (click)="onViewTicket()">
+          <i class="pi pi-receipt"></i>
+          <span>Ver ticket</span>
+        </button>
+        @if ((order.payments?.length ?? 0) === 0 && !isCancelled && (!order.orderSource || order.orderSource === OrderSource.Direct)) {
+          <button type="button" class="order-row__action order-row__action--charge" (click)="chargeOrder.emit(order)">
+            <i class="pi pi-credit-card"></i>
+            <span>Cobrar</span>
+          </button>
+        }
+        @if (canDeliver && !isDelivered && !isCancelled) {
+          <button type="button" class="order-row__action order-row__action--deliver" (click)="onDeliver()">
+            <i class="pi pi-check"></i>
+            <span>Marcar entregada</span>
+          </button>
+        }
+        @if (canCancel) {
+          <button type="button" class="order-row__action order-row__action--cancel" (click)="onCancel()">
+            <i class="pi pi-times"></i>
+            <span>Cancelar</span>
+          </button>
+        }
+      </div>
+
+    </div>
+  }
+
+</div>

@@ -21,6 +21,12 @@ export interface CartItem {
   /** Computed: unitPriceCents × quantity, in cents */
   totalPriceCents: number;
   notes?: string;
+  /** Discount applied by promotion engine (default 0) */
+  discountCents: number;
+  /** Promotion that generated the discount */
+  promotionId?: number;
+  /** Display name of the applied promotion */
+  promotionName?: string;
 }
 
 // ---------------------------------------------------------------------------

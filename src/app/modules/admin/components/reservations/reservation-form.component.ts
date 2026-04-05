@@ -1,0 +1,322 @@
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { MessageService } from 'primeng/api';
+import { CalendarModule } from 'primeng/calendar';
+import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+
+import { Customer, Reservation, RestaurantTable } from '../../../../core/models';
+import { AuthService } from '../../../../core/services/auth.service';
+import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
+import { ReservationService } from '../../../../core/services/reservation.service';
+import { TableService } from '../../../../core/services/table.service';
+import { ZoneService } from '../../../../core/services/zone.service';
+
+/** A zone group with its tables for the chip selector */
+interface TableZoneGroup {
+  zoneName: string;
+  tables: { id: number; name: string; capacity?: number }[];
+}
+
+@Component({
+  selector: 'app-reservation-form',
+  standalone: true,
+  imports: [
+    ReactiveFormsModule,
+    CalendarModule,
+    DialogModule,
+    DropdownModule,
+    InputTextModule,
+    InputTextareaModule,
+    CustomerSelectorComponent,
+  ],
+  templateUrl: './reservation-form.component.html',
+  styleUrl: './reservation-form.component.scss',
+})
+export class ReservationFormComponent implements OnChanges {
+
+  //#region Inputs & Outputs
+
+  @Input() visible = false;
+  @Input() reservation: Reservation | null = null;
+  @Output() visibleChange = new EventEmitter<boolean>();
+  @Output() saved = new EventEmitter<void>();
+
+  //#endregion
+
+  //#region Properties
+
+  private readonly fb = inject(FormBuilder);
+  private readonly reservationService = inject(ReservationService);
+  private readonly tableService = inject(TableService);
+  private readonly zoneService = inject(ZoneService);
+  private readonly authService = inject(AuthService);
+  private readonly messageService = inject(MessageService);
+
+  /** Customer linked to this reservation (optional CRM integration) */
+  readonly selectedCustomer = signal<Customer | null>(null);
+
+  readonly tables = signal<RestaurantTable[]>([]);
+  readonly selectedTableId = signal<number | null>(null);
+  readonly noTableAssigned = signal(false);
+  readonly availabilityWarning = signal('');
+  readonly isSaving = signal(false);
+
+  /** Tables grouped by zone for the chip selector */
+  readonly zoneGroups = computed<TableZoneGroup[]>(() => {
+    const tables = this.tables();
+    const zones = this.zoneService.getActiveZones();
+    const zoneMap = new Map<number, string>();
+    zones.forEach(z => zoneMap.set(z.id, z.name));
+
+    const groups = new Map<string, { id: number; name: string; capacity?: number }[]>();
+
+    for (const t of tables) {
+      const zoneName = t.zoneId ? (zoneMap.get(t.zoneId) ?? 'Sin zona') : 'Sin zona';
+      if (!groups.has(zoneName)) groups.set(zoneName, []);
+      groups.get(zoneName)!.push({ id: t.id, name: t.name, capacity: t.capacity });
+    }
+
+    // Follow zone sort order
+    const result: TableZoneGroup[] = [];
+    for (const zone of zones) {
+      const g = groups.get(zone.name);
+      if (g) {
+        result.push({ zoneName: zone.name, tables: g });
+        groups.delete(zone.name);
+      }
+    }
+    // Remaining groups (no zone match)
+    for (const [zoneName, tbls] of groups) {
+      result.push({ zoneName, tables: tbls });
+    }
+
+    return result;
+  });
+
+  readonly durationOptions = [
+    { label: '1 hora', value: 60 },
+    { label: '1.5 horas', value: 90 },
+    { label: '2 horas', value: 120 },
+    { label: '3 horas', value: 180 },
+  ];
+
+  form!: FormGroup;
+
+  //#endregion
+
+  //#region Lifecycle
+
+  constructor() {
+    this.form = this.fb.group({
+      guestName: ['', Validators.required],
+      guestPhone: [''],
+      partySize: [2, [Validators.required, Validators.min(1)]],
+      reservationDate: [null as Date | null, Validators.required],
+      reservationTime: [null as Date | null, Validators.required],
+      durationMinutes: [90, Validators.required],
+      notes: [''],
+    });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['visible'] && this.visible) {
+      this.loadTables();
+      this.availabilityWarning.set('');
+
+      if (this.reservation) {
+        const [h, m] = this.reservation.reservationTime.split(':').map(Number);
+        const timeDate = new Date();
+        timeDate.setHours(h, m, 0, 0);
+
+        this.form.patchValue({
+          guestName: this.reservation.guestName,
+          guestPhone: this.reservation.guestPhone ?? '',
+          partySize: this.reservation.partySize,
+          reservationDate: new Date(this.reservation.reservationDate + 'T00:00:00'),
+          reservationTime: timeDate,
+          durationMinutes: this.reservation.durationMinutes,
+          notes: this.reservation.notes ?? '',
+        });
+        this.selectedTableId.set(this.reservation.tableId);
+        this.noTableAssigned.set(!this.reservation.tableId);
+      } else {
+        this.form.reset({
+          guestName: '',
+          guestPhone: '',
+          partySize: 2,
+          reservationDate: new Date(),
+          reservationTime: null,
+          durationMinutes: 90,
+          notes: '',
+        });
+        this.selectedTableId.set(null);
+        this.noTableAssigned.set(true);
+      }
+    }
+  }
+
+  //#endregion
+
+  //#region Data Loading
+
+  private async loadTables(): Promise<void> {
+    try {
+      // Ensure zones are loaded for grouping
+      if (this.zoneService.getActiveZones().length === 0) {
+        await this.zoneService.loadZones();
+      }
+
+      let tables = await this.tableService.getTables(this.authService.branchId);
+      if (tables.length === 0) {
+        await this.tableService.loadTables(this.authService.branchId);
+        tables = await this.tableService.getTables(this.authService.branchId);
+      }
+      this.tables.set(tables);
+    } catch {
+      this.tables.set([]);
+    }
+  }
+
+  //#endregion
+
+  //#region Table Selection
+
+  /** Selects a table chip */
+  selectTable(tableId: number): void {
+    this.selectedTableId.set(tableId);
+    this.noTableAssigned.set(false);
+    this.checkAvailability();
+  }
+
+  /** Toggles "sin mesa asignada" */
+  toggleNoTable(): void {
+    this.noTableAssigned.set(true);
+    this.selectedTableId.set(null);
+    this.availabilityWarning.set('');
+  }
+
+  /** Custom party size increment/decrement */
+  adjustPartySize(delta: number): void {
+    const current = this.form.get('partySize')!.value ?? 2;
+    const next = Math.max(1, Math.min(50, current + delta));
+    this.form.get('partySize')!.setValue(next);
+  }
+
+  //#endregion
+
+  //#region Availability Check
+
+  async checkAvailability(): Promise<void> {
+    const tableId = this.selectedTableId();
+    const { reservationDate, reservationTime, durationMinutes } = this.form.value;
+    if (!tableId || !reservationDate || !reservationTime) {
+      this.availabilityWarning.set('');
+      return;
+    }
+
+    const dateStr = this.formatDate(reservationDate);
+    const timeStr = this.formatTime(reservationTime);
+    const excludeId = this.reservation?.id;
+
+    try {
+      const result = await firstValueFrom(
+        this.reservationService.checkAvailability(
+          tableId, dateStr, timeStr, durationMinutes, excludeId,
+        ),
+      );
+      this.availabilityWarning.set(
+        result.available ? '' : 'Esta mesa no está disponible en ese horario',
+      );
+    } catch {
+      this.availabilityWarning.set('');
+    }
+  }
+
+  //#endregion
+
+  //#region Customer
+
+  /** Maps a selected customer to the guestName/guestPhone form fields */
+  onCustomerChanged(customer: Customer | null): void {
+    this.selectedCustomer.set(customer);
+    if (customer) {
+      this.form.patchValue({
+        guestName: customer.name,
+        guestPhone: customer.phone,
+      });
+    }
+  }
+
+  //#endregion
+
+  //#region Save
+
+  async onSave(): Promise<void> {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.isSaving.set(true);
+    const v = this.form.value;
+
+    const dto = {
+      tableId: this.noTableAssigned() ? null : (this.selectedTableId() ?? null),
+      customerId: this.selectedCustomer()?.id ?? null,
+      guestName: v.guestName,
+      guestPhone: v.guestPhone || null,
+      partySize: v.partySize,
+      reservationDate: this.formatDate(v.reservationDate),
+      reservationTime: this.formatTime(v.reservationTime),
+      durationMinutes: v.durationMinutes,
+      notes: v.notes || null,
+    };
+
+    try {
+      if (this.reservation) {
+        await firstValueFrom(this.reservationService.update(this.reservation.id, dto));
+        this.messageService.add({ severity: 'success', summary: 'Reservación actualizada', life: 3000 });
+      } else {
+        await firstValueFrom(this.reservationService.create(dto));
+        this.messageService.add({ severity: 'success', summary: 'Reservación creada', life: 3000 });
+      }
+      this.saved.emit();
+    } catch {
+      this.messageService.add({ severity: 'error', summary: 'Error al guardar', life: 3000 });
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Dialog
+
+  onClose(): void {
+    this.visibleChange.emit(false);
+  }
+
+  //#endregion
+
+  //#region Helpers
+
+  private formatDate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private formatTime(date: Date): string {
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}:00`;
+  }
+
+  //#endregion
+
+}

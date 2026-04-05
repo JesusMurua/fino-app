@@ -5,8 +5,9 @@
   flex-direction: column;
   width: $cart-panel-width;
   height: 100%;
-  background: white;
-  border-left: 1px solid $color-border-soft;
+  background: #FFFFFF;
+  border-left: none;
+  box-shadow: -1px 0 0 $color-border-soft;
   flex-shrink: 0;
 
   // -----------------------------------------------------------------------
@@ -16,32 +17,48 @@
     display: flex;
     align-items: center;
     gap: $space-3;
-    padding: $space-4;
+    padding: $space-4 $space-4 $space-3;
   }
 
   &__title {
-    font-size: $font-size-title;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 800;
     color: $color-text-title;
     flex: 1;
+
+    &--adding {
+      color: #D97706;
+      font-size: 15px;
+      font-weight: 700;
+    }
+  }
+
+  &__table-badge {
+    padding: 4px $space-3;
+    border-radius: $radius-pill;
+    font-size: 13px;
+    font-weight: 600;
+    background: $color-primary;
+    color: white;
+    white-space: nowrap;
   }
 
   &__badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 24px;
-    height: 24px;
+    min-width: 26px;
+    height: 26px;
     padding: 0 $space-2;
-    background: $color-primary;
+    background: $color-text-title;
     color: white;
     font-size: 12px;
     font-weight: 700;
-    border-radius: 9999px;
+    border-radius: $radius-pill;
   }
 
   // -----------------------------------------------------------------------
-  // Soft divider
+  // Divider
   // -----------------------------------------------------------------------
   &__divider {
     height: 1px;
@@ -67,7 +84,7 @@
     padding: $space-7 $space-4;
     color: $color-text-sub;
 
-    i { font-size: 3rem; }
+    i { font-size: 3rem; opacity: 0.3; }
     p { margin: 0; font-size: $font-size-base; }
   }
 
@@ -90,14 +107,15 @@
 
   &__total-label {
     font-size: $font-size-base;
-    font-weight: 600;
+    font-weight: 500;
     color: $color-text-sub;
   }
 
   &__total-amount {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: $color-text-title;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -117,13 +135,13 @@
   }
 
   &__name {
-    font-size: $font-size-base;
+    font-size: 15px;
     font-weight: 600;
     color: $color-text-title;
   }
 
   &__meta {
-    font-size: $font-size-label;
+    font-size: 13px;
     color: $color-text-sub;
   }
 
@@ -138,7 +156,7 @@
   }
 
   &__qty {
-    font-size: $font-size-base;
+    font-size: 16px;
     font-weight: 700;
     min-width: 2rem;
     text-align: center;
@@ -152,39 +170,40 @@
   }
 
   &__total {
-    font-size: $font-size-base;
+    font-size: 15px;
     font-weight: 700;
-    color: $color-primary;
+    color: $color-text-title;
+  }
+
+  &__price-group {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    flex-wrap: wrap;
   }
 }
 
 // -----------------------------------------------------------------------
-// Quantity control button
+// Quantity control button — 56px minimum touch target
 // -----------------------------------------------------------------------
 .qty-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  background: white;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #F1F5F9;
   color: $color-text-title;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s;
 
-  i { font-size: 12px; }
+  i { font-size: 14px; }
 
-  &:hover {
-    background: #F9FAFB;
-    border-color: #D1D5DB;
-  }
-
-  &:active {
-    background: #F3F4F6;
-  }
+  &:hover { background: #E2E8F0; }
+  &:active { background: #CBD5E1; }
 
   &:focus-visible {
     outline: 2px solid $color-primary;
@@ -193,39 +212,336 @@
 }
 
 // -----------------------------------------------------------------------
-// Checkout button override
+// Action buttons
 // -----------------------------------------------------------------------
-:host ::ng-deep .btn-checkout {
-  width: 100%;
-  min-height: 52px;
-  border-radius: 10px !important;
-  font-size: 16px !important;
-  font-weight: 700 !important;
-}
 
-// -----------------------------------------------------------------------
-// Cancel order button
-// -----------------------------------------------------------------------
-.btn-cancel {
+// Assign table — outlined secondary button (FDD-001)
+.btn-assign-table {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
   width: 100%;
-  padding: $space-3;
-  border: none;
-  border-radius: 10px;
+  min-height: $touch-target-pos;
+  padding: $space-3 $space-4;
+  border: 2px solid #D1D5DB;
+  border-radius: $radius-button;
   background: transparent;
-  color: #DC2626;
+  color: $color-text-title;
   font-size: $font-size-base;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
+  transition: all 0.15s ease;
+
+  i { font-size: 16px; color: $color-primary; }
+
+  &:hover {
+    border-color: $color-primary;
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+
+  &:active {
+    background: #DCFCE7;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+// Checkout (green gradient) — non-kitchen POS (Kaja Pro)
+:host ::ng-deep .btn-checkout {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 14px !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
+  border-color: $color-primary !important;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
+
+  &:hover {
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4) !important;
+    transform: translateY(-1px);
+  }
+}
+
+// Kitchen (green gradient) — send to kitchen (Kaja Pro)
+:host ::ng-deep .btn-kitchen {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 14px !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
+  border-color: $color-primary !important;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
+
+  &:hover {
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4) !important;
+    transform: translateY(-1px);
+  }
+}
+
+// "Cobrar directo" — outline button below "Enviar a cocina" (Kaja Pro)
+.btn-direct-pay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  min-height: 52px;
+  padding: $space-3 $space-4;
+  border: 2px solid #E2E8F0;
+  border-radius: 14px;
+  background: transparent;
+  color: $color-text-title;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  i { font-size: 18px; color: $color-primary; }
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+    background: $color-primary-light;
+  }
+
+  &:active {
+    background: #DCFCE7;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    &:hover { border-color: #E2E8F0; background: transparent; color: $color-text-title; }
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+}
+
+.btn-cancel-adding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  width: 100%;
+  padding: $space-2;
+  border: none;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover { color: #DC2626; }
+}
+
+// Cancel order
+.btn-cancel {
+  width: 100%;
+  padding: $space-3;
+  border: none;
+  border-radius: $radius-button;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
   text-align: center;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 
   &:hover {
     background: #FEF2F2;
+    color: #DC2626;
   }
 
   &:focus-visible {
     outline: 2px solid #DC2626;
     outline-offset: 2px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Promotion UI
+// -----------------------------------------------------------------------
+.promo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: $radius-pill;
+  font-size: 11px;
+  font-weight: 500;
+  background: $color-primary-light;
+  color: #15803D;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  white-space: nowrap;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: $color-text-sub;
+  font-size: 12px;
+}
+
+.price-discounted {
+  color: #15803D;
+  font-weight: 700;
+  font-size: $font-size-base;
+}
+
+// ---- Order summary breakdown ----
+.cart-panel__summary {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.cart-panel__summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: $color-text-sub;
+}
+
+.discount-summary-row {
+  display: flex;
+  justify-content: space-between;
+  color: #15803D;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.savings-banner {
+  background: $color-primary-light;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  border-radius: 10px;
+  padding: $space-2 $space-3;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #15803D;
+}
+
+// ---- Coupon ----
+.coupon-input-row {
+  display: flex;
+  gap: $space-2;
+
+  &__input {
+    flex: 1;
+    font-size: $font-size-label;
+    height: $touch-target-pos;
+  }
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    padding: 0 $space-4;
+    height: $touch-target-pos;
+    border: 1.5px solid $color-primary;
+    border-radius: 10px;
+    background: transparent;
+    color: $color-primary;
+    font-size: $font-size-label;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+
+    &:hover { background: $color-primary-light; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+
+.coupon-error {
+  font-size: 12px;
+  color: #DC2626;
+}
+
+.coupon-active-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-2 $space-3;
+  background: $color-primary-light;
+  border: 0.5px solid rgba(#16A34A, 0.2);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #15803D;
+
+  i { margin-right: $space-1; font-size: 12px; }
+
+  &__remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(#16A34A, 0.15);
+    color: #15803D;
+    cursor: pointer;
+
+    i { font-size: 12px; margin: 0; }
+    &:hover { background: rgba(#16A34A, 0.3); }
+  }
+}
+
+// ---- Rejected promos ----
+.rejected-toggle {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: $space-1 0;
+
+  i { font-size: 10px; }
+
+  &:hover { color: $color-text-title; }
+}
+
+.rejected-list {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.rejected-promo-item {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-1 0;
+  font-size: 12px;
+  color: $color-text-sub;
+
+  &__name {
+    font-weight: 500;
+  }
+
+  &__reason {
+    margin-left: auto;
+    font-size: 11px;
+    opacity: 0.7;
   }
 }

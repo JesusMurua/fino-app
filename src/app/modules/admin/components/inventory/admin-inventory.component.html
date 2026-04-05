@@ -1,0 +1,958 @@
+<div class="admin-inventory">
+
+  <!-- Header -->
+  <div class="admin-inventory__header">
+    <h1 class="admin-inventory__title">Inventario</h1>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- Tabs: Insumos / Proveedores / Entradas                                 -->
+  <!-- ====================================================================== -->
+  <p-tabView styleClass="inventory-tabs" [activeIndex]="activeTab()" (activeIndexChange)="activeTab.set($event)" (onChange)="onTabChange($event.index)">
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- TAB 1 — Insumos (existing)                                          -->
+    <!-- ------------------------------------------------------------------ -->
+    <p-tabPanel header="Insumos">
+
+      <div class="tab-toolbar">
+        <span></span>
+        <button type="button" class="btn-primary" (click)="openNewItemDialog()">
+          <i class="pi pi-plus"></i>
+          Nuevo insumo
+        </button>
+      </div>
+
+      <div class="admin-inventory__wrap">
+        <p-table
+          [value]="items()"
+          [loading]="isLoading()"
+          [rowHover]="true"
+          dataKey="id"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 14rem">Nombre</th>
+              <th style="min-width: 6rem">Unidad</th>
+              <th style="min-width: 8rem">Stock</th>
+              <th style="min-width: 8rem">Alerta mín.</th>
+              <th style="min-width: 8rem">Costo unit.</th>
+              <th style="min-width: 12rem">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td class="inv-name">{{ item.name }}</td>
+              <td>
+                <span class="unit-badge">{{ item.unit }}</span>
+              </td>
+              <td>
+                <div class="stock-cell">
+                  <span
+                    class="stock-value"
+                    [class.stock-value--low]="isLowStock(item)"
+                    [class.stock-value--ok]="!isLowStock(item)"
+                  >
+                    {{ item.currentStock }} {{ item.unit }}
+                  </span>
+                  @if (item.currentStock === 0) {
+                    <span class="stock-badge stock-badge--empty">Sin stock</span>
+                  } @else if (isLowStock(item)) {
+                    <span class="stock-badge stock-badge--low">Bajo stock</span>
+                  }
+                </div>
+              </td>
+              <td class="inv-threshold">{{ item.lowStockThreshold }}</td>
+              <td class="inv-cost">${{ (item.costCents / 100).toFixed(2) }}</td>
+              <td>
+                <div class="inv-actions">
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--green"
+                    aria-label="Entrada de stock"
+                    pTooltip="Entrada"
+                    tooltipPosition="top"
+                    (click)="openEntryDialog(item)"
+                  >
+                    <i class="pi pi-plus"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--red"
+                    aria-label="Salida de stock"
+                    pTooltip="Salida"
+                    tooltipPosition="top"
+                    (click)="openExitDialog(item)"
+                  >
+                    <i class="pi pi-minus"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Editar insumo"
+                    pTooltip="Editar"
+                    tooltipPosition="top"
+                    (click)="openEditItemDialog(item)"
+                  >
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Ver historial"
+                    pTooltip="Historial"
+                    tooltipPosition="left"
+                    (click)="openHistoryDialog(item)"
+                  >
+                    <i class="pi pi-history"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6" class="inv-empty">No hay insumos registrados.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+    </p-tabPanel>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- TAB 2 — Proveedores                                                 -->
+    <!-- ------------------------------------------------------------------ -->
+    <p-tabPanel header="Proveedores">
+
+      <div class="tab-toolbar">
+        <span class="p-input-icon-left search-wrap">
+          <i class="pi pi-search"></i>
+          <input
+            type="text"
+            pInputText
+            placeholder="Buscar proveedor..."
+            [ngModel]="supplierSearch()"
+            (ngModelChange)="supplierSearch.set($event)"
+            class="search-input"
+          />
+        </span>
+        <button type="button" class="btn-primary" (click)="openNewSupplierDialog()">
+          <i class="pi pi-plus"></i>
+          Nuevo proveedor
+        </button>
+      </div>
+
+      <div class="admin-inventory__wrap">
+        <p-table
+          [value]="filteredSuppliers()"
+          [loading]="suppliersLoading()"
+          [rowHover]="true"
+          dataKey="id"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 14rem">Nombre</th>
+              <th style="min-width: 10rem">Contacto</th>
+              <th style="min-width: 10rem">Teléfono</th>
+              <th style="min-width: 8rem">Estado</th>
+              <th style="min-width: 10rem">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-s>
+            <tr>
+              <td class="inv-name">{{ s.name }}</td>
+              <td>{{ s.contactName || '—' }}</td>
+              <td>{{ s.phone || '—' }}</td>
+              <td>
+                <span
+                  class="status-badge"
+                  [class.status-badge--active]="s.isActive"
+                  [class.status-badge--inactive]="!s.isActive"
+                >
+                  {{ s.isActive ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <div class="inv-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Editar proveedor"
+                    pTooltip="Editar"
+                    tooltipPosition="top"
+                    (click)="openEditSupplierDialog(s)"
+                  >
+                    <i class="pi pi-pencil"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    [class.btn-icon--red]="s.isActive"
+                    [class.btn-icon--green]="!s.isActive"
+                    [attr.aria-label]="s.isActive ? 'Desactivar proveedor' : 'Activar proveedor'"
+                    [pTooltip]="s.isActive ? 'Desactivar' : 'Activar'"
+                    tooltipPosition="top"
+                    (click)="toggleSupplierActive(s)"
+                  >
+                    <i class="pi" [class.pi-ban]="s.isActive" [class.pi-check-circle]="!s.isActive"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5" class="inv-empty">
+                <div class="empty-state">
+                  <i class="pi pi-truck empty-state__icon"></i>
+                  <p>No hay proveedores registrados.</p>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+    </p-tabPanel>
+
+    <!-- ------------------------------------------------------------------ -->
+    <!-- TAB 3 — Entradas de mercancía                                       -->
+    <!-- ------------------------------------------------------------------ -->
+    <p-tabPanel header="Entradas">
+
+      <div class="tab-toolbar">
+        <div class="tab-toolbar__filters">
+          <p-dropdown
+            [options]="supplierOptions()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="receiptSupplierFilter()"
+            (ngModelChange)="receiptSupplierFilter.set($event)"
+            placeholder="Todos los proveedores"
+            [showClear]="true"
+            styleClass="filter-dropdown"
+            [appendTo]="'body'"
+          />
+          <p-calendar
+            [ngModel]="receiptDateRange()"
+            (ngModelChange)="receiptDateRange.set($event)"
+            selectionMode="range"
+            placeholder="Rango de fechas"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            [readonlyInput]="true"
+            styleClass="filter-calendar"
+            [appendTo]="'body'"
+          />
+          <button type="button" class="btn-ghost" (click)="applyReceiptFilters()">
+            <i class="pi pi-filter"></i>
+            Filtrar
+          </button>
+        </div>
+        <button type="button" class="btn-primary" (click)="openNewReceiptDialog()">
+          <i class="pi pi-plus"></i>
+          Nueva entrada
+        </button>
+      </div>
+
+      <div class="admin-inventory__wrap">
+        <p-table
+          [value]="receipts()"
+          [loading]="receiptsLoading()"
+          [rowHover]="true"
+          dataKey="id"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 10rem">Fecha</th>
+              <th style="min-width: 10rem">Proveedor</th>
+              <th style="min-width: 6rem">Items</th>
+              <th style="min-width: 8rem">Total</th>
+              <th style="min-width: 10rem">Recibido por</th>
+              <th style="min-width: 8rem">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-r>
+            <tr>
+              <td>{{ r.receivedAt | date:'dd MMM y, h:mm a' }}</td>
+              <td>{{ r.supplierName || '—' }}</td>
+              <td>{{ r.items?.length || 0 }}</td>
+              <td class="inv-cost">${{ (r.totalCents / 100).toFixed(2) }}</td>
+              <td>{{ r.receivedByName || '—' }}</td>
+              <td>
+                <div class="inv-actions">
+                  <button
+                    type="button"
+                    class="btn-icon"
+                    aria-label="Ver detalle"
+                    pTooltip="Ver detalle"
+                    tooltipPosition="left"
+                    (click)="openReceiptDetail(r)"
+                  >
+                    <i class="pi pi-eye"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6" class="inv-empty">
+                <div class="empty-state">
+                  <i class="pi pi-inbox empty-state__icon"></i>
+                  <p>No hay entradas registradas.</p>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+    </p-tabPanel>
+
+  </p-tabView>
+
+</div>
+
+<!-- ====================================================================== -->
+<!-- Item create / edit dialog                                               -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="editingItem() ? 'Editar insumo' : 'Nuevo insumo'"
+  [visible]="showItemDialog()"
+  (visibleChange)="showItemDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '460px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label" for="if-name">Nombre</label>
+      <input
+        id="if-name"
+        type="text"
+        pInputText
+        [(ngModel)]="form.name"
+        placeholder="Ej. Tortillas de maíz"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-unit">Unidad</label>
+      <p-dropdown
+        inputId="if-unit"
+        [options]="unitOptions"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="form.unit"
+        styleClass="form-field__input"
+        [appendTo]="'body'"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-stock">Stock inicial</label>
+      <p-inputNumber
+        inputId="if-stock"
+        [(ngModel)]="form.currentStock"
+        [min]="0"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-threshold">Alerta mínima</label>
+      <p-inputNumber
+        inputId="if-threshold"
+        [(ngModel)]="form.lowStockThreshold"
+        [min]="0"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="if-cost">Costo unitario (MXN)</label>
+      <p-inputNumber
+        inputId="if-cost"
+        [(ngModel)]="form.costPesos"
+        [min]="0"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        styleClass="form-field__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showItemDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="!form.name.trim()"
+      (click)="saveItem()"
+    >
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Movement dialog (entry / exit)                                          -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="movementType() === 'in' ? 'Entrada de stock' : 'Salida de stock'"
+  [visible]="showMovementDialog()"
+  (visibleChange)="showMovementDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label" for="mf-qty">Cantidad</label>
+      <p-inputNumber
+        inputId="mf-qty"
+        [(ngModel)]="movementForm.quantity"
+        [min]="1"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="mf-reason">Motivo (opcional)</label>
+      <input
+        id="mf-reason"
+        type="text"
+        pInputText
+        [(ngModel)]="movementForm.reason"
+        [placeholder]="movementType() === 'in' ? 'Ej. Compra a proveedor' : 'Ej. Merma, caducidad'"
+        class="form-field__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showMovementDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [class.btn-primary--red]="movementType() === 'out'"
+      [disabled]="movementForm.quantity <= 0"
+      (click)="saveMovement()"
+    >
+      @if (movementType() === 'in') {
+        <i class="pi pi-plus"></i> Registrar entrada
+      } @else {
+        <i class="pi pi-minus"></i> Registrar salida
+      }
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Movement history dialog                                                 -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="'Movimientos — ' + (historyItem()?.name ?? '')"
+  [visible]="showHistoryDialog()"
+  (visibleChange)="showHistoryDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '640px' }"
+  [draggable]="false"
+>
+  <p-table
+    [value]="movements()"
+    [loading]="loadingMovements()"
+    [rowHover]="true"
+    styleClass="p-datatable-sm"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="min-width: 10rem">Fecha / Hora</th>
+        <th style="min-width: 6rem">Tipo</th>
+        <th style="min-width: 5rem">Cantidad</th>
+        <th style="min-width: 10rem">Motivo</th>
+        <th style="min-width: 5rem">Orden</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-m>
+      <tr>
+        <td>{{ m.createdAt | date:'dd MMM y, h:mm a' }}</td>
+        <td>
+          <span class="movement-badge" [class]="movementTypeSeverity(m.type)">
+            {{ movementTypeLabel(m.type) }}
+          </span>
+        </td>
+        <td class="movement-qty" [class.movement-qty--in]="m.type === 'in'" [class.movement-qty--out]="m.type === 'out'">
+          {{ m.type === 'in' ? '+' : m.type === 'out' ? '-' : '' }}{{ m.quantity }}
+        </td>
+        <td>{{ m.reason || '—' }}</td>
+        <td>
+          @if (m.orderId) {
+            <span class="order-ref">#{{ m.orderId }}</span>
+          } @else {
+            —
+          }
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" class="inv-empty">Sin movimientos registrados.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showHistoryDialog.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Quick stock reception dialog (barcode scan)                             -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showQuickStockDialog()"
+  (visibleChange)="showQuickStockDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  header="Recepción rápida de stock"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+  (onHide)="cancelQuickStock()"
+>
+  @if (scannedProduct(); as product) {
+    <div class="quick-stock-content">
+
+      <div class="quick-stock-product">
+        <span class="product-name">{{ product.name }}</span>
+        <span class="product-stock">
+          Stock actual: {{ product.currentStock ?? 0 }} unidades
+        </span>
+      </div>
+
+      <div class="quick-stock-amount">
+        <label>Cantidad a agregar</label>
+        <p-inputNumber
+          [ngModel]="quickStockAmount()"
+          (ngModelChange)="quickStockAmount.set($event)"
+          [min]="1"
+          [max]="9999"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          decrementButtonClass="p-button-outlined"
+          incrementButtonClass="p-button-outlined"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+        />
+      </div>
+
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="cancelQuickStock()">Cancelar</button>
+    <button type="button" class="btn-primary" (click)="confirmQuickStock()">
+      <i class="pi pi-check"></i> Confirmar recepción
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Supplier create / edit dialog                                           -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="editingSupplier() ? 'Editar proveedor' : 'Nuevo proveedor'"
+  [visible]="showSupplierDialog()"
+  (visibleChange)="showSupplierDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '460px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label" for="sf-name">Nombre</label>
+      <input
+        id="sf-name"
+        type="text"
+        pInputText
+        [(ngModel)]="supplierForm.name"
+        placeholder="Ej. Distribuidora García"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="sf-contact">Contacto</label>
+      <input
+        id="sf-contact"
+        type="text"
+        pInputText
+        [(ngModel)]="supplierForm.contactName"
+        placeholder="Nombre del contacto"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="sf-phone">Teléfono</label>
+      <input
+        id="sf-phone"
+        type="tel"
+        pInputText
+        [(ngModel)]="supplierForm.phone"
+        placeholder="Ej. 55 1234 5678"
+        class="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label" for="sf-notes">Notas</label>
+      <textarea
+        id="sf-notes"
+        pInputTextarea
+        [(ngModel)]="supplierForm.notes"
+        placeholder="Notas adicionales..."
+        class="form-field__input"
+        rows="3"
+      ></textarea>
+    </div>
+
+    @if (editingSupplier()) {
+      <div class="form-field form-field--row">
+        <label class="form-field__label" for="sf-active">Activo</label>
+        <p-inputSwitch inputId="sf-active" [(ngModel)]="supplierForm.isActive" />
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showSupplierDialog.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="!supplierForm.name.trim()"
+      (click)="saveSupplier()"
+    >
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Receipt detail dialog                                                   -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Detalle de entrada"
+  [visible]="showReceiptDetail()"
+  (visibleChange)="showReceiptDetail.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '700px' }"
+  [draggable]="false"
+>
+  @if (selectedReceipt(); as receipt) {
+    <div class="receipt-detail">
+      <div class="receipt-detail__header">
+        <div class="receipt-detail__row">
+          <span class="receipt-detail__label">Proveedor:</span>
+          <span>{{ receipt.supplierName || 'Sin proveedor' }}</span>
+        </div>
+        <div class="receipt-detail__row">
+          <span class="receipt-detail__label">Fecha:</span>
+          <span>{{ receipt.receivedAt | date:'dd MMM y, h:mm a' }}</span>
+        </div>
+        <div class="receipt-detail__row">
+          <span class="receipt-detail__label">Recibido por:</span>
+          <span>{{ receipt.receivedByName || '—' }}</span>
+        </div>
+        @if (receipt.notes) {
+          <div class="receipt-detail__row">
+            <span class="receipt-detail__label">Notas:</span>
+            <span>{{ receipt.notes }}</span>
+          </div>
+        }
+      </div>
+
+      <p-table
+        [value]="receipt.items"
+        [rowHover]="true"
+        styleClass="p-datatable-sm"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="min-width: 14rem">Producto / Insumo</th>
+            <th style="min-width: 6rem">Cantidad</th>
+            <th style="min-width: 8rem">Costo unit.</th>
+            <th style="min-width: 8rem">Total</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-item>
+          <tr>
+            <td class="inv-name">{{ item.inventoryItemName || item.productName || '—' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ (item.costCents / 100).toFixed(2) }}</td>
+            <td class="inv-cost">${{ (item.totalCents / 100).toFixed(2) }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+      <div class="receipt-detail__total">
+        <span>Total:</span>
+        <span class="receipt-detail__total-amount">${{ (receipt.totalCents / 100).toFixed(2) }}</span>
+      </div>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showReceiptDetail.set(false)">Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- New stock receipt dialog                                                -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Nueva entrada de mercancía"
+  [visible]="showNewReceipt()"
+  (visibleChange)="showNewReceipt.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '90vw', 'max-width': '800px' }"
+  [draggable]="false"
+>
+  <div class="new-receipt">
+
+    <!-- Header fields -->
+    <div class="new-receipt__header">
+      <div class="form-field">
+        <label class="form-field__label">Proveedor (opcional)</label>
+        <p-dropdown
+          [options]="supplierOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="newReceiptSupplier()"
+          (ngModelChange)="newReceiptSupplier.set($event)"
+          placeholder="Seleccionar proveedor..."
+          [showClear]="true"
+          styleClass="form-field__input"
+          [filter]="true"
+          filterPlaceholder="Buscar..."
+          [appendTo]="'body'"
+        />
+      </div>
+      <div class="form-field">
+        <label class="form-field__label">Notas (opcional)</label>
+        <textarea
+          pInputTextarea
+          [ngModel]="newReceiptNotes()"
+          (ngModelChange)="newReceiptNotes.set($event)"
+          placeholder="Notas sobre esta entrada..."
+          class="form-field__input"
+          rows="2"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Scanner input -->
+    <div class="new-receipt__scanner">
+      <label class="form-field__label">Escanear código de barras</label>
+      <div class="new-receipt__scanner-row">
+        <input
+          #scanField
+          type="text"
+          pInputText
+          [ngModel]="scanInput()"
+          (ngModelChange)="onScanInputChange($event)"
+          placeholder="Escanea o escribe un código..."
+          class="new-receipt__scanner-input"
+          inputmode="none"
+        />
+        <button
+          type="button"
+          class="btn-ghost"
+          pTooltip="Agregar manualmente"
+          tooltipPosition="top"
+          (click)="openItemPicker()"
+        >
+          <i class="pi pi-search-plus"></i>
+          Agregar
+        </button>
+      </div>
+    </div>
+
+    <!-- Items list -->
+    <div class="new-receipt__items">
+      @if (newReceiptItems().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-box empty-state__icon"></i>
+          <p>Escanea un producto o agrégalo manualmente</p>
+        </div>
+      } @else {
+        <p-table
+          [value]="newReceiptItems()"
+          [rowHover]="true"
+          styleClass="p-datatable-sm"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="min-width: 14rem">Nombre</th>
+              <th style="min-width: 7rem">Cantidad</th>
+              <th style="min-width: 8rem">Costo unit.</th>
+              <th style="min-width: 7rem">Total</th>
+              <th style="min-width: 4rem"></th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-line let-i="rowIndex">
+            <tr>
+              <td class="inv-name">{{ line.name }}</td>
+              <td>
+                <p-inputNumber
+                  [(ngModel)]="line.quantity"
+                  [min]="0.01"
+                  [maxFractionDigits]="2"
+                  styleClass="inline-input"
+                  inputStyleClass="inline-input__field"
+                  (ngModelChange)="updateReceiptLine()"
+                />
+              </td>
+              <td>
+                <p-inputNumber
+                  [(ngModel)]="line.costPesos"
+                  [min]="0"
+                  mode="currency"
+                  currency="MXN"
+                  locale="es-MX"
+                  styleClass="inline-input"
+                  inputStyleClass="inline-input__field"
+                  (ngModelChange)="updateReceiptLine()"
+                />
+              </td>
+              <td class="inv-cost">${{ (lineTotalCents(line) / 100).toFixed(2) }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="btn-icon btn-icon--red"
+                  aria-label="Eliminar línea"
+                  (click)="removeReceiptLine(i)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+
+    <!-- Summary -->
+    @if (newReceiptItems().length > 0) {
+      <div class="new-receipt__summary">
+        <span class="new-receipt__summary-count">
+          {{ newReceiptItems().length }} {{ newReceiptItems().length === 1 ? 'item' : 'items' }}
+        </span>
+        <div class="new-receipt__summary-total">
+          <span>Total:</span>
+          <span class="new-receipt__summary-amount">${{ (newReceiptTotal() / 100).toFixed(2) }}</span>
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showNewReceipt.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="newReceiptItems().length === 0 || newReceiptSaving()"
+      (click)="confirmNewReceipt()"
+    >
+      @if (newReceiptSaving()) {
+        <i class="pi pi-spin pi-spinner"></i> Guardando...
+      } @else {
+        <i class="pi pi-check"></i> Confirmar entrada
+      }
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Item picker dialog (manual add)                                         -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Agregar producto / insumo"
+  [visible]="showItemPicker()"
+  (visibleChange)="showItemPicker.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+>
+  <div class="inv-form">
+    <div class="form-field">
+      <label class="form-field__label">Producto o insumo</label>
+      <p-dropdown
+        [options]="stockItemOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [(ngModel)]="pickerSelectedItem"
+        placeholder="Seleccionar..."
+        [filter]="true"
+        filterPlaceholder="Buscar..."
+        styleClass="form-field__input"
+        [appendTo]="'body'"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label">Cantidad</label>
+      <p-inputNumber
+        [(ngModel)]="pickerQuantity"
+        [min]="0.01"
+        [maxFractionDigits]="2"
+        styleClass="form-field__input"
+      />
+    </div>
+
+    <div class="form-field">
+      <label class="form-field__label">Costo unitario (MXN)</label>
+      <p-inputNumber
+        [(ngModel)]="pickerCostPesos"
+        [min]="0"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        styleClass="form-field__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn-ghost" (click)="showItemPicker.set(false)">Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="!pickerSelectedItem || pickerQuantity <= 0"
+      (click)="addFromPicker()"
+    >
+      <i class="pi pi-plus"></i> Agregar
+    </button>
+  </ng-template>
+</p-dialog>

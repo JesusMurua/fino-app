@@ -1,0 +1,761 @@
+<div class="tables-view">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="branch-pill">
+      <span class="branch-pill__dot"></span>
+      {{ topBarLabel() }}
+    </div>
+    <span class="update-timer">
+      Actualizado hace {{ secondsSinceUpdate() }}s
+    </span>
+  </div>
+
+  <!-- KPI strip -->
+  @if (showKpis() && tableStatuses().length > 0) {
+    <div class="kpi-strip">
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--gray"></div>
+        <div class="kpi-card__label">Total mesas</div>
+        <div class="kpi-card__num">{{ kpiTotal() }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--green"></div>
+        <div class="kpi-card__label">Ocupadas</div>
+        <div class="kpi-card__num kpi-card__num--green">{{ kpiOccupied() }}</div>
+        @if (totalInProgressCents() > 0) {
+          <div class="kpi-card__sub kpi-card__sub--green">
+            {{ totalInProgressCents() | price }} en curso
+          </div>
+        }
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--amber"></div>
+        <div class="kpi-card__label">En cocina</div>
+        <div class="kpi-card__num kpi-card__num--amber">{{ kpiInKitchen() }}</div>
+        @if (kpiInKitchen() > 0) {
+          <div class="kpi-card__sub kpi-card__sub--amber">preparando</div>
+        }
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__accent kpi-card__accent--gray"></div>
+        <div class="kpi-card__label">Disponibles</div>
+        <div class="kpi-card__num kpi-card__num--muted">{{ kpiAvailable() }}</div>
+      </div>
+    </div>
+  }
+
+  <!-- Zone nav -->
+  @if (tableStatuses().length > 0) {
+    <div class="zone-nav">
+      <button
+        type="button"
+        class="zone-nav__tab"
+        [class.zone-nav__tab--active]="activeZone() === null"
+        (click)="activeZone.set(null)"
+      >
+        Todo el local
+        <span class="zone-nav__count">{{ tableStatuses().length }}</span>
+      </button>
+      @for (zone of availableZones(); track zone.id) {
+        <button
+          type="button"
+          class="zone-nav__tab"
+          [class.zone-nav__tab--active]="activeZone() === zone.id"
+          (click)="activeZone.set(zone.id)"
+        >
+          {{ zone.name }}
+          <span class="zone-nav__count">{{ getZoneTableCount(zone.id) }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loading() && tableStatuses().length === 0) {
+    <div class="tables-empty">
+      <i class="pi pi-table tables-empty__icon"></i>
+      <h2 class="tables-empty__title">No hay mesas configuradas</h2>
+      <p class="tables-empty__sub">
+        El administrador debe configurar las mesas en el backoffice
+      </p>
+    </div>
+  }
+
+  <!-- Zone sections -->
+  @if (tableStatuses().length > 0) {
+    @for (group of zoneGroups(); track group.name) {
+      <div class="zone-section">
+
+        <!-- Zone header -->
+        <div class="zone-header">
+          <div class="zone-header__icon" [style.background]="getZoneIconConfig(group.type).bg">
+            <i class="pi" [ngClass]="getZoneIconConfig(group.type).icon" style="font-size:14px"></i>
+          </div>
+          <div>
+            <div class="zone-header__title">{{ group.name }}</div>
+            <div class="zone-header__meta">
+              {{ group.tables.length }} mesas · {{ getZoneOccupiedCount(group.id) }} ocupadas
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar seats → circles -->
+        @if (isBarZone(group)) {
+          <div class="bar-grid">
+            @for (dto of group.tables; track dto.tableId) {
+              <button
+                type="button"
+                class="tcard-bar tcard-bar--{{ getStatusClass(dto.displayStatus) }}"
+                (click)="onTableCardClick(dto)"
+              >
+                @if (getStatusClass(dto.displayStatus) !== 'free') {
+                  <div class="tcard-bar__dot"></div>
+                }
+                <span class="tcard-bar__name">{{ dto.tableName }}</span>
+                @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free') {
+                  <span class="tcard-bar__amount">{{ dto.orderTotalCents | price }}</span>
+                }
+              </button>
+            }
+          </div>
+        } @else {
+          <!-- Regular tables → cards -->
+          <div class="tables-grid">
+            @for (dto of group.tables; track dto.tableId) {
+              <button
+                type="button"
+                class="tcard tcard--{{ getStatusClass(dto.displayStatus) }}"
+                (click)="onTableCardClick(dto)"
+              >
+                <div class="tcard__header">
+                  <span class="tcard__name">{{ dto.tableName }}</span>
+                </div>
+
+                <div class="tcard__body">
+                  @if (dto.guestName && getStatusClass(dto.displayStatus) !== 'free' && getStatusClass(dto.displayStatus) !== 'reserved') {
+                    <span class="tcard__guest">{{ dto.guestName }}</span>
+                  }
+                  @if (getStatusClass(dto.displayStatus) === 'reserved' && dto.reservationTime) {
+                    <div class="tcard__reservation">
+                      <div class="tcard__res-dot"></div>
+                      <div class="tcard__res-text">
+                        @if (dto.guestName) { {{ dto.guestName }} · }
+                        {{ dto.reservationTime }}
+                        @if (dto.partySize) { · {{ dto.partySize }} personas }
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="tcard__footer">
+                  <span class="tcard__pill">{{ getStatusLabel(dto.displayStatus) }}</span>
+                  @if ((dto.orderTotalCents ?? 0) > 0 && getStatusClass(dto.displayStatus) !== 'free' && getStatusClass(dto.displayStatus) !== 'reserved') {
+                    <span class="tcard__amount">{{ dto.orderTotalCents | price }}</span>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        }
+
+      </div>
+    }
+
+    <!-- Legend -->
+    <div class="floor-legend">
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--free"></span> Disponible
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--order"></span> Con orden
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--kitchen"></span> En cocina
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--ready"></span> Listo
+      </div>
+      <div class="floor-legend__item">
+        <span class="floor-legend__swatch floor-legend__swatch--waiting"></span> Pidió cuenta
+      </div>
+      @if (kpiReserved() > 0) {
+        <div class="floor-legend__item">
+          <span class="floor-legend__swatch floor-legend__swatch--reserved"></span> Reservada
+        </div>
+      }
+    </div>
+  }
+
+</div>
+
+<!-- Reserved table dialog -->
+<p-dialog
+  [visible]="showReservedDialog()"
+  (visibleChange)="showReservedDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '380px' }"
+  [draggable]="false"
+  header="Reservación"
+>
+  @if (selectedReservation(); as r) {
+    <div class="reserved-info">
+      <div class="reserved-info__row">
+        <i class="pi pi-user"></i>
+        <span class="reserved-info__label">{{ r.guestName }}</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-users"></i>
+        <span>{{ r.partySize }} personas</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-clock"></i>
+        <span>{{ r.reservationTime.substring(0, 5) }} · {{ r.durationMinutes }} min</span>
+      </div>
+      <div class="reserved-info__row">
+        <i class="pi pi-table"></i>
+        <span>{{ r.tableName ?? 'Sin mesa asignada' }}</span>
+      </div>
+      @if (r.guestPhone) {
+        <div class="reserved-info__row">
+          <i class="pi pi-phone"></i>
+          <span>{{ r.guestPhone }}</span>
+        </div>
+      }
+      @if (r.notes) {
+        <div class="reserved-info__row">
+          <i class="pi pi-comment"></i>
+          <span class="reserved-info__notes">{{ r.notes }}</span>
+        </div>
+      }
+    </div>
+  }
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="showReservedDialog.set(false)">Cerrar</button>
+    <button
+      type="button"
+      class="td-btn td-btn--green"
+      [disabled]="seatingBusy()"
+      (click)="seatReservation()"
+    >
+      @if (seatingBusy()) {
+        <i class="pi pi-spin pi-spinner"></i>
+      } @else {
+        <i class="pi pi-check"></i>
+      }
+      Sentar
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- Occupied table dialog (preserved intact) -->
+<p-dialog
+  [visible]="showTableDialog()"
+  (visibleChange)="showTableDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '560px' }"
+  [draggable]="false"
+>
+  <!-- Custom header with order count badge -->
+  <ng-template pTemplate="header">
+    <span class="td-header">
+      <span class="td-header__title">{{ selectedTable()?.name }}</span>
+      @if (tableOrders().length > 0) {
+        <span class="td-header__badge">{{ tableOrders().length }} orden{{ tableOrders().length > 1 ? 'es' : '' }}</span>
+      }
+    </span>
+  </ng-template>
+
+  <!-- Loading state -->
+  @if (loadingOrders()) {
+    <div class="td-loading">
+      <i class="pi pi-spin pi-spinner" style="font-size: 24px; color: #16A34A"></i>
+    </div>
+  }
+
+  <!-- Orders list -->
+  @if (!loadingOrders() && tableOrders().length > 0) {
+    <div class="td-orders">
+      @for (order of tableOrders(); track order.id) {
+        <div class="td-order-card">
+          <div class="td-order-card__top">
+            <span class="td-order-card__number">Orden #{{ order.orderNumber }}</span>
+            <span class="td-order-card__total">{{ order.totalCents | price }}</span>
+          </div>
+
+          <div class="td-order-card__items">
+            @for (item of order.items; track item.productName) {
+              <span class="td-order-card__item">{{ item.quantity }}x {{ item.productName }}</span>
+            }
+          </div>
+
+          <div class="td-order-card__badges">
+            @if (order.kitchenStatus === 'Pending' || !order.kitchenStatus) {
+              <span class="td-badge td-badge--pending">En cocina</span>
+            } @else if (order.kitchenStatus === 'Ready') {
+              <span class="td-badge td-badge--ready">Listo</span>
+            } @else if (order.kitchenStatus === 'Delivered') {
+              <span class="td-badge td-badge--ready">Entregada</span>
+            }
+          </div>
+
+          <div class="td-order-card__actions">
+            <button type="button" class="td-btn td-btn--outline" (click)="addItemsToOrder(order)">
+              <i class="pi pi-plus"></i> Agregar items
+            </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openMoveFlow(order)">
+              <i class="pi pi-arrows-h"></i> Mover items
+            </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openMergeFlow(order)">
+              <i class="pi pi-link"></i> Unir con mesa
+            </button>
+            <button type="button" class="td-btn td-btn--outline" (click)="openSplitFlow(order)">
+              <i class="pi pi-percentage"></i> Dividir cuenta
+            </button>
+            <button type="button" class="td-btn td-btn--green" (click)="chargeOrder(order)">
+              <i class="pi pi-credit-card"></i> Cobrar
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (!loadingOrders() && tableOrders().length === 0) {
+    <div class="td-empty">
+      <i class="pi pi-inbox td-empty__icon"></i>
+      <p class="td-empty__text">No hay órdenes activas</p>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--green" (click)="newOrderForTable()">
+      <i class="pi pi-plus"></i> Nueva orden
+    </button>
+    @if (tableOrders().length === 0) {
+      <button type="button" class="td-btn td-btn--red-outline" (click)="releaseTable()">
+        <i class="pi pi-check-circle"></i> Liberar mesa
+      </button>
+    }
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Move items dialog                                                       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showMoveDialog()"
+  (visibleChange)="showMoveDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+  (onHide)="cancelMove()"
+>
+  <ng-template pTemplate="header">
+    <span class="td-header">
+      <span class="td-header__title">
+        @if (moveStep() === 1) {
+          ¿A qué mesa mover los items?
+        } @else {
+          Selecciona los items a mover
+        }
+      </span>
+    </span>
+  </ng-template>
+
+  <!-- Step 1 — Select target table -->
+  @if (moveStep() === 1) {
+    @if (occupiedTargetTables().length > 0) {
+      <div class="move-target-grid">
+        @for (table of occupiedTargetTables(); track table.tableId) {
+          <button
+            type="button"
+            class="move-target-card"
+            (click)="selectMoveTarget(table)"
+          >
+            <span class="move-target-card__name">{{ table.tableName }}</span>
+            @if (table.orderTotalCents) {
+              <span class="move-target-card__total">{{ table.orderTotalCents | price }}</span>
+            }
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="td-empty">
+        <i class="pi pi-inbox td-empty__icon"></i>
+        <p class="td-empty__text">No hay otras mesas con órdenes activas</p>
+      </div>
+    }
+  }
+
+  <!-- Step 2 — Select items -->
+  @if (moveStep() === 2) {
+    <div class="move-breadcrumb">
+      <button type="button" class="move-breadcrumb__back" (click)="moveStep.set(1)">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <span>{{ moveSourceTableName() }}</span>
+      <i class="pi pi-arrow-right"></i>
+      <span>{{ moveTargetTable()?.tableName }}</span>
+    </div>
+
+    <!-- Select all -->
+    <label class="move-select-all">
+      <input
+        type="checkbox"
+        [checked]="moveAllSelected()"
+        (change)="toggleAllMoveItems()"
+      />
+      <span>Seleccionar todos</span>
+    </label>
+
+    <!-- Item list -->
+    <div class="move-item-list">
+      @for (item of moveOrderItems(); track item.id) {
+        <label class="move-item-row">
+          <input
+            type="checkbox"
+            [checked]="moveSelectedIds().has(item.id)"
+            (change)="toggleMoveItem(item.id)"
+          />
+          <span class="move-item-row__name">{{ item.productName }}</span>
+          <span class="move-item-row__qty">×{{ item.quantity }}</span>
+        </label>
+      }
+    </div>
+
+    <div class="move-footer-summary">
+      {{ moveSelectedCount() }} item{{ moveSelectedCount() !== 1 ? 's' : '' }} seleccionado{{ moveSelectedCount() !== 1 ? 's' : '' }}
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelMove()">
+      Cancelar
+    </button>
+    @if (moveStep() === 2) {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        [disabled]="moveSelectedCount() === 0 || moveBusy()"
+        (click)="confirmMoveItems()"
+      >
+        @if (moveBusy()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        } @else {
+          <i class="pi pi-arrows-h"></i>
+        }
+        Mover {{ moveSelectedCount() }} item{{ moveSelectedCount() !== 1 ? 's' : '' }}
+      </button>
+    }
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Merge tables dialog                                                     -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showMergeDialog()"
+  (visibleChange)="showMergeDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+  header="Unir con otra mesa"
+  (onHide)="cancelMerge()"
+>
+  <p class="merge-subtitle">
+    Todos los items de la mesa seleccionada pasarán a {{ mergeTargetTableName() }}
+  </p>
+
+  @if (occupiedTargetTables().length > 0) {
+    <div class="move-target-grid">
+      @for (table of occupiedTargetTables(); track table.tableId) {
+        <button
+          type="button"
+          class="move-target-card"
+          [class.move-target-card--selected]="mergeSourceTable()?.tableId === table.tableId"
+          (click)="mergeSourceTable.set(table)"
+        >
+          @if (mergeSourceTable()?.tableId === table.tableId) {
+            <i class="pi pi-check merge-check"></i>
+          }
+          <span class="move-target-card__name">{{ table.tableName }}</span>
+          @if (table.orderTotalCents) {
+            <span class="move-target-card__total">{{ table.orderTotalCents | price }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    @if (mergeSourceTable(); as source) {
+      <div class="merge-confirmation">
+        <strong>{{ source.tableName }}</strong> + <strong>{{ mergeTargetTableName() }}</strong> → <strong>{{ mergeTargetTableName() }}</strong>
+        <br />
+        <span>{{ source.tableName }} quedará libre después de unir</span>
+      </div>
+    }
+  } @else {
+    <div class="td-empty">
+      <i class="pi pi-inbox td-empty__icon"></i>
+      <p class="td-empty__text">No hay otras mesas con órdenes activas</p>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelMerge()">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="td-btn td-btn--green"
+      [disabled]="!mergeSourceTable() || mergeBusy()"
+      (click)="confirmMerge()"
+    >
+      @if (mergeBusy()) {
+        <i class="pi pi-spinner pi-spin"></i>
+      } @else {
+        <i class="pi pi-link"></i>
+      }
+      Unir mesas
+    </button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Split bill dialog                                                       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="showSplitDialog()"
+  (visibleChange)="showSplitDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '500px' }"
+  [draggable]="false"
+  header="Dividir cuenta"
+  (onHide)="cancelSplit()"
+>
+
+  <!-- VIEW: choice -->
+  @if (splitMode() === 'choice') {
+    <div class="split-mode-cards">
+      <button type="button" class="split-mode-card" (click)="setSplitMode('equal')">
+        <i class="pi pi-equals split-mode-card__icon"></i>
+        <span class="split-mode-card__title">En partes iguales</span>
+        <span class="split-mode-card__desc">Divide el total entre N personas</span>
+      </button>
+      <button type="button" class="split-mode-card" (click)="setSplitMode('items')">
+        <i class="pi pi-list split-mode-card__icon"></i>
+        <span class="split-mode-card__title">Por items</span>
+        <span class="split-mode-card__desc">Cada quien paga lo que pidió</span>
+      </button>
+    </div>
+  }
+
+  <!-- VIEW: equal -->
+  @if (splitMode() === 'equal') {
+    <button type="button" class="split-back" (click)="setSplitMode('choice')">
+      <i class="pi pi-arrow-left"></i> Cambiar modo
+    </button>
+
+    <div class="split-total-display">
+      Total de la orden: <strong>{{ splitOrderTotal() | price }}</strong>
+    </div>
+
+    @if (splitEqualPaymentStep() === 0) {
+      <!-- Parts selector -->
+      <p class="split-label">¿Entre cuántas personas?</p>
+      <div class="split-parts-row">
+        @for (n of [2,3,4,5,6]; track n) {
+          <button
+            type="button"
+            class="split-parts-btn"
+            [class.split-parts-btn--active]="splitPartsCount() === n"
+            (click)="splitPartsCount.set(n)"
+          >
+            {{ n }}
+          </button>
+        }
+      </div>
+
+      <div class="split-preview">
+        Cada persona paga: {{ splitEqualAmount() | price }}
+      </div>
+    }
+
+    @if (splitEqualPaymentStep() > 0) {
+      <!-- Sequential payment flow -->
+      <div class="split-payment-header">
+        Pago {{ splitEqualPaymentStep() }} de {{ splitPartsCount() }}
+        — {{ splitEqualAmount() | price }}
+      </div>
+
+      <div class="split-progress-dots">
+        @for (n of [].constructor(splitPartsCount()); track $index) {
+          <span
+            class="split-dot"
+            [class.split-dot--done]="$index < splitEqualPaymentStep() - 1"
+            [class.split-dot--active]="$index === splitEqualPaymentStep() - 1"
+          ></span>
+        }
+      </div>
+
+      <div class="payment-methods-row">
+        @for (opt of paymentMethodOptions; track opt.method) {
+          <button
+            type="button"
+            class="payment-method-btn"
+            [disabled]="splitBusy()"
+            (click)="registerEqualPayment(opt.method)"
+          >
+            <i [class]="'pi ' + opt.icon"></i>
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+    }
+  }
+
+  <!-- VIEW: items -->
+  @if (splitMode() === 'items') {
+    <button type="button" class="split-back" (click)="setSplitMode('choice')">
+      <i class="pi pi-arrow-left"></i> Cambiar modo
+    </button>
+
+    <div class="split-items-layout">
+      <!-- Left: unassigned items -->
+      <div class="split-unassigned">
+        <p class="split-col-title">Sin asignar ({{ splitItemsUnassigned().length }})</p>
+        @for (item of splitItemsUnassigned(); track item.id) {
+          <div class="split-item-chip">
+            <span class="split-item-chip__name">{{ item.productName }} ×{{ item.quantity }}</span>
+            <div class="split-item-chip__actions">
+              @for (group of splitGroups(); track group.id) {
+                <button
+                  type="button"
+                  class="split-assign-btn"
+                  (click)="assignItemToGroup(item.id, group.id)"
+                >
+                  {{ group.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        @if (splitItemsUnassigned().length === 0) {
+          <p class="split-all-assigned">Todos los items asignados</p>
+        }
+      </div>
+
+      <!-- Right: groups -->
+      <div class="split-groups">
+        <p class="split-col-title">Grupos ({{ splitGroups().length }})</p>
+        @for (group of splitGroups(); track group.id) {
+          <div class="split-group-card">
+            <div class="split-group-card__header">
+              <input
+                type="text"
+                class="split-group-card__label"
+                [value]="group.label"
+                (input)="updateGroupLabel(group.id, $any($event.target).value)"
+              />
+              @if (splitGroups().length > 2) {
+                <button
+                  type="button"
+                  class="split-group-card__remove"
+                  (click)="removeSplitGroup(group.id)"
+                >
+                  <i class="pi pi-times"></i>
+                </button>
+              }
+            </div>
+            @for (itemId of group.itemIds; track itemId) {
+              <div class="split-group-item">
+                <span>{{ splitItemName(itemId) }}</span>
+                <button type="button" class="split-group-item__remove" (click)="removeItemFromGroup(itemId)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+            @if (group.itemIds.length === 0) {
+              <span class="split-group-empty">Sin items</span>
+            }
+          </div>
+        }
+        <button type="button" class="split-add-group" (click)="addSplitGroup()">
+          <i class="pi pi-plus"></i> Agregar persona
+        </button>
+      </div>
+    </div>
+
+    @if (splitItemsUnassigned().length > 0) {
+      <div class="split-warning">
+        Faltan {{ splitItemsUnassigned().length }} item{{ splitItemsUnassigned().length > 1 ? 's' : '' }} por asignar
+      </div>
+    }
+  }
+
+  <!-- Footer -->
+  <ng-template pTemplate="footer">
+    <button type="button" class="td-btn td-btn--outline" (click)="cancelSplit()">
+      Cancelar
+    </button>
+
+    @if (splitMode() === 'equal' && splitEqualPaymentStep() === 0) {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        (click)="startEqualPayments()"
+      >
+        Dividir en {{ splitPartsCount() }} partes
+      </button>
+    }
+
+    @if (splitMode() === 'items') {
+      <button
+        type="button"
+        class="td-btn td-btn--green"
+        [disabled]="!splitCanConfirmItems() || splitBusy()"
+        (click)="confirmItemsSplit()"
+      >
+        @if (splitBusy()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        }
+        Dividir
+      </button>
+    }
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Table release dialog                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Mesa lista"
+  [visible]="showReleaseDialog()"
+  (visibleChange)="showReleaseDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+>
+  <p class="release-dialog__text">
+    ¿Los clientes de <strong>{{ releaseTableName() }}</strong> ya se fueron?
+  </p>
+
+  <ng-template pTemplate="footer">
+    <div class="release-dialog__footer">
+      <button type="button" class="td-btn td-btn--outline" (click)="cancelReleaseTable()">
+        No, siguen aquí
+      </button>
+      <button type="button" class="td-btn td-btn--green" (click)="confirmReleaseTable()">
+        <i class="pi pi-check"></i>
+        Sí, liberar mesa
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

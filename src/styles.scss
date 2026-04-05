@@ -157,3 +157,146 @@ textarea.p-inputtextarea:enabled:focus {
 .pos-price--total {
   color: $color-price-total;
 }
+
+// -----------------------------------------------------------------------------
+// Print styles — Kitchen comanda (80mm thermal printer)
+// -----------------------------------------------------------------------------
+@media print {
+  // Hide everything except the comanda area
+  body > *:not(#print-comanda-area) {
+    display: none !important;
+  }
+
+  #print-comanda-area {
+    display: block !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 2mm;
+  }
+
+  .print-comanda {
+    width: 72mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    color: #000;
+    line-height: 1.4;
+
+    &__separator {
+      text-align: center;
+      letter-spacing: -1px;
+    }
+
+    &__title {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    &__order {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    &__time {
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    &__item {
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    &__meta {
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    &__notes {
+      font-size: 13px;
+      font-weight: 700;
+    }
+  }
+}
+
+// =============================================================================
+// Shared payment method buttons (used in checkout + tables split)
+// =============================================================================
+.payment-methods-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.payment-method-btn {
+  flex: 1;
+  min-width: 80px;
+  min-height: 48px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #374151;
+  transition: all 0.15s;
+
+  i { font-size: 18px; color: $color-text-sub; }
+
+  &:hover {
+    border-color: $color-primary;
+    color: $color-primary;
+    background: $color-primary-light;
+    i { color: $color-primary; }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // Provider-backed method (Clip, MercadoPago) — accent left border
+  &--provider {
+    position: relative;
+    border-left: 3px solid #3B82F6;
+  }
+
+  &__badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-size: 9px;
+    font-weight: 600;
+    background: #EFF6FF;
+    color: #3B82F6;
+    line-height: 1.4;
+  }
+}
+
+// =============================================================================
+// PrimeNG Dialog — close button override (green accent removal)
+// =============================================================================
+.p-dialog-header-close {
+  background: transparent !important;
+  border: none !important;
+  color: #6B7280 !important;
+
+  &:hover {
+    background: #F3F4F6 !important;
+    color: #374151 !important;
+  }
+}

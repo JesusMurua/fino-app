@@ -1,11 +1,42 @@
 <div class="dashboard">
 
-  <h1 class="dashboard__title">Dashboard — Hoy</h1>
+  <!-- BI Toolbar: title + date range picker + CSV export -->
+  <div class="charts-toolbar">
+    <h1 class="dashboard__title">Dashboard</h1>
+    <div class="charts-toolbar__controls">
+      <p-calendar
+        [ngModel]="selectedDateRange()"
+        (ngModelChange)="onDateRangeChange($event)"
+        selectionMode="range"
+        [readonlyInput]="true"
+        [maxDate]="today"
+        dateFormat="dd/mm/yy"
+        [showIcon]="true"
+        placeholder="Inicio – Fin"
+        styleClass="charts-toolbar__calendar"
+      />
+      <p-button
+        label="Exportar Detalle (CSV)"
+        icon="pi pi-download"
+        severity="secondary"
+        [loading]="isExportingCsv()"
+        [disabled]="isLoadingCharts()"
+        (click)="onExportDetailedCsv()"
+      />
+    </div>
+  </div>
 
   @if (isLoading()) {
     <div class="dashboard__loading">
       <i class="pi pi-spin pi-spinner"></i>
       <span>Cargando datos...</span>
+    </div>
+  }
+
+  @if (isOffline()) {
+    <div class="dashboard__offline">
+      <i class="pi pi-wifi"></i>
+      <span>Sin conexión — datos no disponibles</span>
     </div>
   }
 
@@ -16,26 +47,24 @@
 
       <div class="kpi-card">
         <span class="kpi-card__label">Total del día</span>
-        <span class="kpi-card__value kpi-card__value--primary">{{ d.totalCents | price }}</span>
+        <span class="kpi-card__value kpi-card__value--primary">{{ d.sales.totalCents | price }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Órdenes</span>
-        <span class="kpi-card__value">{{ d.orderCount }}</span>
+        <span class="kpi-card__value">{{ d.sales.completedOrders }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Ticket promedio</span>
-        <span class="kpi-card__value">{{ d.averageTicketCents | price }}</span>
+        <span class="kpi-card__value">{{ d.sales.averageTicketCents | price }}</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-card__label">Método más usado</span>
         <span class="kpi-card__value">
-          @if (d.topMethod === 'cash') {
-            <span class="badge badge--cash">Efectivo</span>
-          } @else if (d.topMethod === 'card') {
-            <span class="badge badge--card">Tarjeta</span>
+          @if (d.sales.topPaymentMethod) {
+            <span class="badge badge--cash">{{ catalogService.getPaymentMethodName(d.sales.topPaymentMethod) }}</span>
           } @else {
             <span class="kpi-card__empty">—</span>
           }
@@ -47,21 +76,124 @@
     <!-- Corte de caja -->
     <section class="section-card">
       <h2 class="section-card__title">Corte de caja</h2>
+      <p class="section-card__subtitle">Solo órdenes completadas</p>
       <div class="cutoff-grid">
         <div class="cutoff-row">
           <span class="badge badge--cash">Efectivo</span>
-          <span class="cutoff-row__amount">{{ d.cashCents | price }}</span>
+          <span class="cutoff-row__amount">{{ d.sales.cashCents | price }}</span>
         </div>
         <div class="cutoff-row">
           <span class="badge badge--card">Tarjeta</span>
-          <span class="cutoff-row__amount">{{ d.cardCents | price }}</span>
+          <span class="cutoff-row__amount">{{ d.sales.cardCents | price }}</span>
         </div>
+        @if (d.sales.transferCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--transfer">Transferencia</span>
+            <span class="cutoff-row__amount">{{ d.sales.transferCents | price }}</span>
+          </div>
+        }
+        @if (d.sales.otherCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--other">Otro</span>
+            <span class="cutoff-row__amount">{{ d.sales.otherCents | price }}</span>
+          </div>
+        }
         <div class="cutoff-row cutoff-row--total">
           <span class="cutoff-row__label">Total</span>
-          <span class="cutoff-row__amount cutoff-row__amount--total">{{ d.totalCents | price }}</span>
+          <span class="cutoff-row__amount cutoff-row__amount--total">{{ d.sales.totalCents | price }}</span>
         </div>
       </div>
     </section>
+
+    <!-- Cancelaciones del día -->
+    @if (d.orders.cancelledCount > 0) {
+      <section class="section-card">
+        <h2 class="section-card__title section-card__title--danger">Cancelaciones del día</h2>
+
+        <div class="orders-table-wrap">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Productos</th>
+                <th>Motivo</th>
+                <th>Hora</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of cancelledOrders(); track order.orderNumber) {
+                <tr>
+                  <td class="orders-table__num">#{{ order.orderNumber }}</td>
+                  <td class="orders-table__items">{{ order.itemCount }} artículo(s)</td>
+                  <td class="orders-table__cancel-reason-cell">{{ order.cancellationReason ?? 'Sin motivo' }}</td>
+                  <td class="orders-table__time">{{ formatTime(order.createdAt) }}</td>
+                  <td class="orders-table__total">{{ order.totalCents | price }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="orders-table__total-row">
+                <td colspan="4"><strong>Total cancelado</strong> · {{ d.orders.cancelledCount }} {{ d.orders.cancelledCount === 1 ? 'orden' : 'órdenes' }}</td>
+                <td class="orders-table__total orders-table__total--danger">{{ d.orders.cancelledTotalCents | price }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <p class="section-card__note">No afectan el corte de caja</p>
+      </section>
+    }
+
+    <!-- Restaurant: Table occupancy + kitchen orders -->
+    @if (posExperience() === 'Restaurant') {
+      <section class="section-card">
+        <h2 class="section-card__title">Ocupación de mesas</h2>
+        <p class="section-card__subtitle">Porcentaje de mesas ocupadas hoy</p>
+        <div class="kpi-grid kpi-grid--inline">
+          <div class="kpi-card">
+            <span class="kpi-card__label">Ocupación actual</span>
+            <span class="kpi-card__value">{{ d.tables?.occupancyPercent ?? 0 }}%</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-card__label">Órdenes activas</span>
+            <span class="kpi-card__value">{{ d.tables?.activeOrders ?? 0 }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Counter: Active kitchen orders -->
+    @if (posExperience() === 'Counter') {
+      <section class="section-card">
+        <h2 class="section-card__title">Órdenes en cocina</h2>
+        <div class="kpi-grid kpi-grid--inline">
+          <div class="kpi-card">
+            <span class="kpi-card__label">En preparación</span>
+            <span class="kpi-card__value">{{ d.tables?.activeOrders ?? 0 }}</span>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Retail: Low stock alerts -->
+    @if (posExperience() === 'Retail') {
+      <section class="section-card">
+        <h2 class="section-card__title">Alertas de inventario</h2>
+        @if ((d.lowStockItems ?? []).length === 0) {
+          <p class="section-card__empty">Sin alertas de stock bajo</p>
+        } @else {
+          <ol class="top-list">
+            @for (item of d.lowStockItems ?? []; track item.name) {
+              <li class="top-item">
+                <span class="top-item__name">{{ item.name }}</span>
+                <span class="top-item__count top-item__count--danger">{{ item.currentStock }} en stock</span>
+              </li>
+            }
+          </ol>
+        }
+      </section>
+    }
 
     <div class="dashboard__columns">
 
@@ -76,7 +208,7 @@
               <li class="top-item" [class.top-item--first]="rank === 0">
                 <span class="top-item__rank">{{ rank + 1 }}</span>
                 <span class="top-item__name">{{ item.name }}</span>
-                <span class="top-item__count">{{ item.count }} pza</span>
+                <span class="top-item__count">{{ item.quantity }} pza</span>
               </li>
             }
           </ol>
@@ -86,7 +218,7 @@
       <!-- Órdenes del día -->
       <section class="section-card section-card--wide">
         <h2 class="section-card__title">Órdenes del día</h2>
-        @if (d.orders.length === 0) {
+        @if (d.recentOrders.length === 0) {
           <p class="section-card__empty">No hay órdenes hoy.</p>
         } @else {
           <div class="orders-table-wrap">
@@ -96,20 +228,33 @@
                   <th>#</th>
                   <th>Productos</th>
                   <th>Método</th>
+                  <th>Estado</th>
                   <th>Hora</th>
                   <th>Total</th>
                 </tr>
               </thead>
               <tbody>
-                @for (order of d.orders; track order.id) {
-                  <tr>
+                @for (order of d.recentOrders; track order.orderNumber) {
+                  <tr [class.orders-table__row--cancelled]="order.cancelledAt">
                     <td class="orders-table__num">#{{ order.orderNumber }}</td>
-                    <td class="orders-table__items">{{ order.items.length }} artículo(s)</td>
+                    <td class="orders-table__items">{{ order.itemCount }} artículo(s)</td>
                     <td>
-                      @if (order.paymentMethod === 'cash') {
-                        <span class="badge badge--cash">Efectivo</span>
-                      } @else {
-                        <span class="badge badge--card">Tarjeta</span>
+                      <span class="badge badge--cash">{{ getPaymentLabel(order) }}</span>
+                    </td>
+                    <td>
+                      @if (order.cancelledAt) {
+                        <span class="badge badge--cancelled">Cancelada</span>
+                        @if (order.cancellationReason) {
+                          <span class="orders-table__cancel-reason">{{ order.cancellationReason }}</span>
+                        }
+                      } @else if (getStatusLabel(order) === 'Nueva') {
+                        <span class="badge badge--new">Nueva</span>
+                      } @else if (getStatusLabel(order) === 'En cocina') {
+                        <span class="badge badge--cooking">En cocina</span>
+                      } @else if (getStatusLabel(order) === 'Listo') {
+                        <span class="badge badge--ready">Listo</span>
+                      } @else if (getStatusLabel(order) === 'Entregado') {
+                        <span class="badge badge--delivered">Entregado</span>
                       }
                     </td>
                     <td class="orders-table__time">{{ formatTime(order.createdAt) }}</td>
@@ -125,5 +270,107 @@
     </div>
 
   }
+
+  <!-- BI Charts Section (independent from daily summary, has its own loading state) -->
+  <section class="charts-section">
+
+    <div class="charts-section__heading">
+      <h2 class="charts-section__title">Análisis del período</h2>
+      <span class="charts-section__period">
+        {{ dateFrom() | date:'dd MMM' }} – {{ dateTo() | date:'dd MMM, yyyy' }}
+      </span>
+    </div>
+
+    @if (chartError()) {
+      <p-message
+        severity="error"
+        [text]="chartError()!"
+        styleClass="charts-section__error"
+      />
+      <div class="charts-section__retry">
+        <p-button
+          label="Reintentar"
+          icon="pi pi-refresh"
+          severity="secondary"
+          (click)="loadChartData()"
+        />
+      </div>
+    }
+
+    <!-- Row 1: Line Chart — full width -->
+    <div class="chart-card">
+      <div class="chart-card__header">
+        <h3 class="chart-card__title">Ventas en el tiempo</h3>
+      </div>
+      <div class="chart-card__body chart-card__body--line">
+        @if (isLoadingCharts()) {
+          <p-skeleton width="100%" height="100%" borderRadius="8px" />
+        } @else if (!chartData()?.salesOverTime?.length) {
+          <div class="chart-card__empty">
+            <i class="pi pi-chart-line"></i>
+            <span>Sin ventas en este período</span>
+          </div>
+        } @else {
+          <p-chart
+            type="line"
+            [data]="salesLineData()"
+            [options]="salesLineOptions"
+          />
+        }
+      </div>
+    </div>
+
+    <!-- Row 2: Bar + Doughnut side by side -->
+    <div class="charts-row">
+
+      <!-- Bar Chart: Top Productos -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">Top productos</h3>
+        </div>
+        <div class="chart-card__body chart-card__body--bar">
+          @if (isLoadingCharts()) {
+            <p-skeleton width="100%" height="100%" borderRadius="8px" />
+          } @else if (!chartData()?.topProducts?.length) {
+            <div class="chart-card__empty">
+              <i class="pi pi-list"></i>
+              <span>Sin datos en este período</span>
+            </div>
+          } @else {
+            <p-chart
+              type="bar"
+              [data]="topProductsData()"
+              [options]="topProductsOptions"
+            />
+          }
+        </div>
+      </div>
+
+      <!-- Doughnut Chart: Métodos de pago -->
+      <div class="chart-card">
+        <div class="chart-card__header">
+          <h3 class="chart-card__title">Métodos de pago</h3>
+        </div>
+        <div class="chart-card__body chart-card__body--doughnut">
+          @if (isLoadingCharts()) {
+            <p-skeleton width="100%" height="100%" borderRadius="8px" />
+          } @else if (!chartData()?.paymentMethods?.length) {
+            <div class="chart-card__empty">
+              <i class="pi pi-credit-card"></i>
+              <span>Sin datos en este período</span>
+            </div>
+          } @else {
+            <p-chart
+              type="doughnut"
+              [data]="paymentDoughnutData()"
+              [options]="paymentDoughnutOptions"
+            />
+          }
+        </div>
+      </div>
+
+    </div>
+
+  </section>
 
 </div>

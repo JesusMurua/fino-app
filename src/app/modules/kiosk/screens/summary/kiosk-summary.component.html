@@ -1,60 +1,138 @@
-<div class="kiosk-summary">
+<div class="ks">
 
   <!-- Header -->
-  <header class="kiosk-summary__header">
+  <header class="ks__header">
     <button
       type="button"
-      class="kiosk-summary__back"
+      class="ks__back-btn"
       aria-label="Agregar más productos"
       (click)="goBack()"
     >
       <i class="pi pi-arrow-left"></i>
     </button>
-    <h1 class="kiosk-summary__title">Tu orden</h1>
+    <h1 class="ks__title">Tu orden</h1>
+    <span class="ks__item-count">{{ items().length }} items</span>
   </header>
 
   <!-- Items list -->
-  <main class="kiosk-summary__body">
-    <ul class="kiosk-summary__list">
+  <main class="ks__body">
+    <ul class="ks__list">
       @for (item of items(); track item.id) {
-        <li class="kiosk-summary__item">
-          <span class="kiosk-summary__qty">{{ item.quantity }}×</span>
-          <div class="kiosk-summary__item-info">
-            <span class="kiosk-summary__item-name">{{ item.product.name }}</span>
-            @if (item.size) {
-              <span class="kiosk-summary__item-meta">{{ item.size.label }}</span>
-            }
-            @if (item.extras.length > 0) {
-              <span class="kiosk-summary__item-meta">
-                + {{ extrasLabel(item) }}
-              </span>
+        <li class="ks__item">
+          <!-- Product thumbnail -->
+          <div class="ks__item-thumb">
+            @if (item.product.imageUrl || item.product.images?.[0]?.url) {
+              <img
+                [src]="item.product.imageUrl || item.product.images![0].url"
+                [alt]="item.product.name"
+              />
+            } @else {
+              <i class="pi pi-shopping-bag"></i>
             }
           </div>
-          <span class="kiosk-summary__item-price">{{ item.totalPriceCents | price }}</span>
+
+          <!-- Product info -->
+          <div class="ks__item-info">
+            <span class="ks__item-name">{{ item.product.name }}</span>
+            @if (item.size) {
+              <span class="ks__item-meta">{{ item.size.label }}</span>
+            }
+            @if (item.extras.length > 0) {
+              <span class="ks__item-meta">+ {{ extrasLabel(item) }}</span>
+            }
+          </div>
+
+          <!-- Quantity controls -->
+          <div class="ks__qty-controls">
+            <button
+              type="button"
+              class="ks__qty-btn"
+              aria-label="Disminuir cantidad"
+              (click)="decreaseQuantity(item)"
+            >
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="ks__qty">{{ item.quantity }}</span>
+            <button
+              type="button"
+              class="ks__qty-btn"
+              aria-label="Aumentar cantidad"
+              (click)="increaseQuantity(item)"
+            >
+              <i class="pi pi-plus"></i>
+            </button>
+          </div>
+
+          <!-- Price -->
+          @if (item.discountCents > 0) {
+            <div class="ks__item-price-group">
+              <span class="ks__price-original">{{ item.totalPriceCents | price }}</span>
+              <span class="ks__price-discounted">{{ item.totalPriceCents - item.discountCents | price }}</span>
+            </div>
+          } @else {
+            <span class="ks__item-price">{{ item.totalPriceCents | price }}</span>
+          }
+
+          <!-- Remove -->
+          <button
+            type="button"
+            class="ks__remove-btn"
+            aria-label="Eliminar producto"
+            (click)="removeItem(item)"
+          >
+            <i class="pi pi-trash"></i>
+          </button>
         </li>
       }
     </ul>
 
-    <!-- Total -->
-    <div class="kiosk-summary__total">
-      <span class="kiosk-summary__total-label">Total</span>
-      <span class="kiosk-summary__total-amount">{{ totalCents() | price }}</span>
-    </div>
+    <!-- Total section -->
+    @if (cartEvaluation(); as eval) {
+      @if (eval.totalDiscountCents > 0) {
+        <div class="ks__summary-card">
+          <div class="ks__summary-row">
+            <span>Subtotal</span>
+            <span>{{ (totalCents() + eval.totalDiscountCents) | price }}</span>
+          </div>
+          <div class="ks__summary-row ks__summary-row--discount">
+            <span>Descuentos</span>
+            <span>-{{ eval.totalDiscountCents | price }}</span>
+          </div>
+          <div class="ks__summary-divider"></div>
+          <div class="ks__total-row ks__total-row--inline">
+            <span class="ks__total-label">Total</span>
+            <span class="ks__total-amount">{{ totalCents() | price }}</span>
+          </div>
+          <div class="ks__savings-banner">
+            Ahorraste {{ eval.totalSavedCents | price }}
+          </div>
+        </div>
+      } @else {
+        <div class="ks__total-row">
+          <span class="ks__total-label">Total</span>
+          <span class="ks__total-amount">{{ totalCents() | price }}</span>
+        </div>
+      }
+    } @else {
+      <div class="ks__total-row">
+        <span class="ks__total-label">Total</span>
+        <span class="ks__total-amount">{{ totalCents() | price }}</span>
+      </div>
+    }
   </main>
 
-  <!-- Footer actions -->
-  <footer class="kiosk-summary__footer">
+  <!-- Sticky footer -->
+  <footer class="ks__footer">
     <button
       type="button"
-      class="kiosk-summary__btn-cancel"
+      class="ks__btn-cancel"
       (click)="cancelOrder()"
     >
-      <i class="pi pi-times"></i>
       Cancelar
     </button>
     <button
       type="button"
-      class="kiosk-summary__btn-confirm"
+      class="ks__btn-confirm"
       (click)="confirmOrder()"
     >
       <i class="pi pi-check"></i>

@@ -1,16 +1,26 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, Category, CartItem, Order, Product } from '../models';
+import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
  * Single source of truth for all offline-first storage.
  * Schema version must be incremented whenever stores or indexes change.
  *
- * Version history:
- *   v1 — products, categories, cart, orders
- *   v2 — added config (business settings + PIN)
+ * Version history (consolidated — no production data before v9):
+ *   v9  — Base: all tables with full indexes (products, categories, cart,
+ *          orders, config, discountPresets, cashSessions, cashMovements,
+ *          restaurantTables, inventoryItems, inventoryMovements)
+ *   v10 — Added branchId index to orders; migrate businessId → branchId
+ *   v11 — Added promotions table; migrated discount fields on orders
+ *   v12 — Migrated syncStatus/kitchenStatus from lowercase to PascalCase
+ *   v13 — Added hasKitchen/hasTables flags to config
+ *   v14 — Initialize retryCount; rescue 'Failed' → 'Pending'
+ *   v15 — Added employeeHashes table for offline PIN authentication
+ *   v16 — Added customers table for CRM (phone, name, isActive indexes)
+ *   v17 — Added printerDestinations table (Phase 19)
+ *   v18 — Added pendingPrintJobs table for KDS offline-first (Phase 20c)
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -21,26 +31,118 @@ export class DatabaseService extends Dexie {
   cart!: Table<CartItem, string>;
   orders!: Table<Order, string>;
   config!: Table<AppConfig, string>;
+  discountPresets!: Table<DiscountPreset, number>;
+  cashSessions!: Table<CashRegisterSession, number>;
+  cashMovements!: Table<CashMovement, number>;
+  restaurantTables!: Table<RestaurantTable, number>;
+  inventoryItems!: Table<InventoryItem & { syncStatus?: string }, number>;
+  inventoryMovements!: Table<InventoryMovement, number>;
+  promotions!: Table<Promotion, number>;
+  employeeHashes!: Table<EmployeeHash, number>;
+  customers!: Table<Customer, number>;
+  printerDestinations!: Table<PrinterDestination, number>;
+  pendingPrintJobs!: Table<PrintJobDto, string>;
   //#endregion
 
   //#region Constructor
   constructor() {
     super('pos-tactil-db');
 
-    this.version(1).stores({
-      // Only indexed fields are listed here — all other fields are stored automatically
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt',
+    // ── Base schema (consolidated from v1–v9, no production users) ──
+    this.version(9).stores({
+      products:            'id, categoryId, isAvailable',
+      categories:          'id, sortOrder',
+      cart:                'id',
+      orders:              'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus',
+      config:              'id',
+      discountPresets:     '++id, branchId, isActive',
+      cashSessions:        '++id, branchId, status, openedAt',
+      cashMovements:       '++id, sessionId, createdAt',
+      restaurantTables:    '++id, branchId, status, isActive',
+      inventoryItems:      'id, branchId, isActive, currentStock',
+      inventoryMovements:  'id, inventoryItemId, type, createdAt',
     });
 
-    this.version(2).stores({
-      products:   'id, categoryId, isAvailable',
-      categories: 'id, sortOrder',
-      cart:       'id',
-      orders:     'id, syncStatus, createdAt',
-      config:     'id',
+    // Add branchId index to orders; migrate legacy businessId
+    this.version(10).stores({
+      orders:              'id, syncStatus, createdAt, kitchenStatus, deliveryStatus, cancellationStatus, branchId',
+    }).upgrade(async tx => {
+      const table = tx.table('orders');
+      const orders = await table.toArray();
+      for (const order of orders) {
+        if ((order as any).businessId && !order.branchId) {
+          await table.update(order.id, {
+            branchId: (order as any).businessId,
+          });
+        }
+      }
+    });
+
+    // Add promotions table; migrate discount fields on orders
+    this.version(11).stores({
+      promotions:          'id, branchId, type, isActive',
+    }).upgrade(tx => {
+      return tx.table('orders').toCollection().modify((order: any) => {
+        delete order.discountCents;
+        delete order.discountLabel;
+        delete order.discountReason;
+        order.orderDiscountCents = 0;
+        order.totalDiscountCents = 0;
+      });
+    });
+
+    // Migrate syncStatus and kitchenStatus from lowercase to PascalCase
+    this.version(12).stores({}).upgrade(tx => {
+      const statusMap: Record<string, string> = {
+        'pending': 'Pending', 'synced': 'Synced', 'failed': 'Failed',
+      };
+      const kitchenMap: Record<string, string> = {
+        'new': 'Pending', 'done': 'Delivered',
+      };
+      return tx.table('orders').toCollection().modify((order: any) => {
+        if (statusMap[order.syncStatus]) {
+          order.syncStatus = statusMap[order.syncStatus];
+        }
+        if (order.kitchenStatus && kitchenMap[order.kitchenStatus]) {
+          order.kitchenStatus = kitchenMap[order.kitchenStatus];
+        }
+      });
+    });
+
+    // Add hasKitchen/hasTables to business config
+    this.version(13).stores({}).upgrade(tx => {
+      return tx.table('config').toCollection().modify((cfg: any) => {
+        if (cfg.hasKitchen === undefined) cfg.hasKitchen = true;
+        if (cfg.hasTables === undefined) cfg.hasTables = true;
+      });
+    });
+
+    // Initialize retryCount on existing orders; rescue 'Failed' → 'Pending'
+    this.version(14).stores({}).upgrade(tx => {
+      return tx.table('orders').toCollection().modify((order: any) => {
+        if (order.retryCount === undefined) order.retryCount = 0;
+        if (order.syncStatus === 'Failed') order.syncStatus = 'Pending';
+      });
+    });
+
+    // Add employeeHashes table for offline PIN authentication
+    this.version(15).stores({
+      employeeHashes: 'userId, branchId, pinHash',
+    });
+
+    // Add customers table for CRM
+    this.version(16).stores({
+      customers: '++id, branchId, phone, name, isActive',
+    });
+
+    // Add printerDestinations table for printing destination config (Phase 19)
+    this.version(17).stores({
+      printerDestinations: '++id, isDefault, isActive',
+    });
+
+    // Add pendingPrintJobs table for KDS offline-first support (Phase 20c)
+    this.version(18).stores({
+      pendingPrintJobs: 'id, destinationId, status',
     });
   }
   //#endregion

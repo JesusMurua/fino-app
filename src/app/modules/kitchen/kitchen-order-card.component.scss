@@ -1,0 +1,210 @@
+@use '../../../styles/variables' as *;
+
+// ============================================================================
+// KDS Order Card — Light Enterprise Theme
+// ============================================================================
+
+.kds-card {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+
+  &--in-progress {
+    background: #F8FAFC;
+    border-left: 4px solid $color-primary;
+  }
+
+  // overdue takes visual priority over in-progress (declared after)
+  &--overdue {
+    border-left: 4px solid #EF4444;
+  }
+
+  &--fading {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 2.5s ease, transform 2.5s ease;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Card header
+// -----------------------------------------------------------------------
+
+.kds-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  background: #F9FAFB;
+  border-bottom: 1px solid $color-border-soft;
+}
+
+.kds-card__number {
+  font-size: 20px;
+  font-weight: 700;
+  color: $color-text-title;
+}
+
+.kds-card__type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px $space-2;
+  border-radius: $radius-pill;
+  background: #F1F5F9;
+  font-size: 11px;
+  font-weight: 600;
+  color: $color-text-sub;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kds-card__timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #D97706; // amber — default elapsed color
+
+  &--overdue {
+    color: #EF4444;
+
+    i { font-size: 13px; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Items list
+// -----------------------------------------------------------------------
+
+.kds-card__items {
+  list-style: none;
+  margin: 0;
+  padding: $space-3 $space-4;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  flex: 1;
+}
+
+.kds-card__item {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+}
+
+.kds-card__qty {
+  font-size: $font-size-base;
+  font-weight: 700;
+  color: $color-primary;
+  min-width: 28px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.kds-card__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kds-card__name {
+  font-size: $font-size-base;
+  font-weight: 700;
+  color: $color-text-title; // text-900
+}
+
+.kds-card__meta {
+  font-size: 13px;
+  color: $color-text-sub; // text-500
+}
+
+.kds-card__note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: $space-1;
+  padding: 4px $space-2;
+  background: #FFFBEB;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #92400E;
+
+  i {
+    font-size: 11px;
+    color: #D97706;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Footer: action buttons
+// -----------------------------------------------------------------------
+
+.kds-card__footer {
+  display: flex;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  border-top: 1px solid $color-border-soft;
+}
+
+.kds-card__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  flex: 1;
+  height: 48px;
+  border-radius: 8px;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  i { font-size: 14px; }
+
+  &--outline {
+    background: transparent;
+    border: 1.5px solid #D1D5DB;
+    color: $color-text-sub;
+
+    &:hover {
+      background: #F9FAFB;
+      border-color: #9CA3AF;
+    }
+
+    &:active { background: #F3F4F6; }
+  }
+
+  &--primary {
+    background: $color-primary;
+    border: none;
+    color: white;
+
+    &:hover { background: #15803D; }
+    &:active { background: #166534; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Completed state label
+// -----------------------------------------------------------------------
+
+.kds-card__done-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  background: rgba($color-primary, 0.08);
+  color: $color-primary;
+  font-size: $font-size-base;
+  font-weight: 600;
+
+  i { font-size: 18px; }
+}

@@ -1,0 +1,118 @@
+@use '../../../styles/variables' as *;
+
+// ============================================================================
+// KDS — Kitchen Display System (Light Enterprise Theme)
+// ============================================================================
+
+.kds {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: $color-bg-page; // #F8FAFC — premium off-white
+  color: $color-text-title;
+}
+
+// -----------------------------------------------------------------------
+// Offline banner
+// -----------------------------------------------------------------------
+
+.kds-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  background: #FEF3C7;
+  color: #92400E;
+  padding: $space-2 $space-4;
+  font-size: 12px;
+  text-align: center;
+  border-bottom: 1px solid #FDE68A;
+
+  i { font-size: 14px; }
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+
+.kds-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-5;
+  background: white;
+  border-bottom: 1px solid $color-border-soft;
+  box-shadow: $shadow-panel;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: $color-primary-light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    i {
+      font-size: 18px;
+      color: $color-primary;
+    }
+  }
+
+  &__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__clock {
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Grid
+// -----------------------------------------------------------------------
+
+.kds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $space-4;
+  padding: $space-4;
+  flex: 1;
+  align-content: start;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+
+.kds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: $space-3;
+
+  i {
+    font-size: 48px;
+    color: $color-primary;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 18px;
+    color: $color-text-sub;
+  }
+}

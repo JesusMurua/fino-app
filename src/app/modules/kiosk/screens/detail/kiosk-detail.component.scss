@@ -1,124 +1,243 @@
 @use '../../../../../styles/variables' as *;
 
 // ============================================================================
-// Kiosk detail page — full screen, scrollable form, sticky footer
+// Kiosk detail — two-column layout (food delivery style)
 // ============================================================================
-.kiosk-detail {
-  display: flex;
-  flex-direction: column;
+.kd {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   min-height: 100dvh;
   background: $color-bg-page;
+
+  @media (max-width: $breakpoint-md) {
+    grid-template-columns: 1fr;
+  }
 }
 
 // -----------------------------------------------------------------------
-// Header
+// LEFT COLUMN — Image (sticky)
 // -----------------------------------------------------------------------
-.kiosk-detail__header {
-  display: flex;
-  align-items: center;
-  gap: $space-4;
-  padding: $space-4 $space-5;
-  background: white;
-  border-bottom: 1px solid $color-border-soft;
-  flex-shrink: 0;
-}
-
-.kiosk-detail__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 80px;
-  min-height: 80px;
-  border: 2px solid #E5E7EB;
-  border-radius: 16px;
-  background: transparent;
-  color: $color-text-sub;
-  cursor: pointer;
-  transition: background 0.15s;
-  flex-shrink: 0;
-
-  i { font-size: 22px; }
-
-  &:hover { background: #F3F4F6; }
-  &:active { transform: scale(0.95); }
-}
-
-.kiosk-detail__info {
+.kd__left {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  background: $color-primary-light;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  overflow: hidden;
+
+  @media (max-width: $breakpoint-md) {
+    position: relative;
+    height: 320px;
+  }
 }
 
-.kiosk-detail__name {
+.kd__main-img {
+  flex: 1;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+  min-height: 0;
+}
+
+.kd__placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  i {
+    font-size: 64px;
+    color: $color-primary;
+    opacity: 0.3;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Back button — overlay circle
+// -----------------------------------------------------------------------
+.kd__back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  i { font-size: 20px; }
+
+  &:hover { background: rgba(0, 0, 0, 0.7); }
+  &:active { transform: scale(0.93); }
+}
+
+// -----------------------------------------------------------------------
+// Thumbnails
+// -----------------------------------------------------------------------
+.kd__thumbs {
+  display: flex;
+  gap: $space-2;
+  padding: $space-3;
+  background: rgba(0, 0, 0, 0.03);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.kd__thumb {
+  width: 72px;
+  height: 72px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  background: none;
+  transition: border-color 0.15s;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &--active {
+    border-color: $color-primary;
+  }
+}
+
+// -----------------------------------------------------------------------
+// RIGHT COLUMN — Scrollable product info + form
+// -----------------------------------------------------------------------
+.kd__right {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow-y: auto;
+  background: white;
+
+  @media (max-width: $breakpoint-md) {
+    height: auto;
+    min-height: 0;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Product info
+// -----------------------------------------------------------------------
+.kd__info {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-6 $space-6 $space-4;
+
+  @media (max-width: $breakpoint-md) {
+    padding: $space-5;
+  }
+}
+
+.kd__name {
   margin: 0;
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: 28px;
   font-weight: 700;
   color: $color-text-title;
+
+  @media (max-width: $breakpoint-md) {
+    font-size: 24px;
+  }
 }
 
-.kiosk-detail__base-price {
-  font-size: 17px;
+.kd__description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
   color: $color-text-sub;
+}
+
+.kd__base-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: $color-primary;
 }
 
 // -----------------------------------------------------------------------
 // Divider
 // -----------------------------------------------------------------------
-.kiosk-detail__divider {
+.kd__divider {
   height: 1px;
   background: $color-border-soft;
+  margin: 0 $space-6;
   flex-shrink: 0;
+
+  @media (max-width: $breakpoint-md) {
+    margin: 0 $space-5;
+  }
 }
 
 // -----------------------------------------------------------------------
-// Scrollable form
+// Form
 // -----------------------------------------------------------------------
-.kiosk-detail__form {
+.kd__form {
   flex: 1;
-  overflow-y: auto;
-  padding: $space-5;
   display: flex;
   flex-direction: column;
   gap: $space-5;
+  padding: $space-5 $space-6;
+
+  @media (max-width: $breakpoint-md) {
+    padding: $space-5;
+  }
 }
 
-.kiosk-detail__section {
+.kd__section {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
+  gap: $space-3;
 }
 
-.kiosk-detail__section-title {
+.kd__section-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: $color-text-title;
 }
 
-.kiosk-detail__optional {
-  font-size: 15px;
+.kd__optional {
+  font-size: 14px;
   font-weight: 400;
   color: $color-text-sub;
 }
 
 // -----------------------------------------------------------------------
-// Sizes
+// Sizes — horizontal cards
 // -----------------------------------------------------------------------
-.kiosk-sizes {
+.kd__sizes {
   display: flex;
-  flex-direction: column;
   gap: $space-3;
+  flex-wrap: wrap;
 }
 
-.kiosk-size-option {
+.kd__size-card {
   display: flex;
   align-items: center;
-  gap: $space-4;
-  padding: $space-4;
-  min-height: 80px;
-  background: white;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  min-height: 56px;
+  background: $color-bg-page;
   border: 2px solid #E5E7EB;
-  border-radius: 16px;
+  border-radius: 12px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 
@@ -128,39 +247,38 @@
     border-color: $color-primary;
     background: $color-primary-light;
   }
+}
 
-  &__label {
-    flex: 1;
-    font-size: 19px;
-    font-weight: 600;
-    color: $color-text-title;
-  }
+.kd__size-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: $color-text-title;
+}
 
-  &__delta {
-    font-size: 17px;
-    font-weight: 700;
-    color: $color-primary;
-  }
+.kd__size-delta {
+  font-size: 14px;
+  font-weight: 700;
+  color: $color-primary;
 }
 
 // -----------------------------------------------------------------------
-// Extras
+// Extras — pill style
 // -----------------------------------------------------------------------
-.kiosk-extras {
+.kd__extras {
   display: flex;
   flex-direction: column;
   gap: $space-3;
 }
 
-.kiosk-extra-option {
+.kd__extra-pill {
   display: flex;
   align-items: center;
-  gap: $space-4;
-  padding: $space-4;
-  min-height: 80px;
-  background: white;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  min-height: 56px;
+  background: $color-bg-page;
   border: 2px solid #E5E7EB;
-  border-radius: 16px;
+  border-radius: 12px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 
@@ -170,30 +288,30 @@
     border-color: $color-primary;
     background: $color-primary-light;
   }
+}
 
-  &__label {
-    flex: 1;
-    font-size: 19px;
-    font-weight: 600;
-    color: $color-text-title;
-  }
+.kd__extra-label {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: $color-text-title;
+}
 
-  &__price {
-    font-size: 17px;
-    font-weight: 700;
-    color: $color-primary;
+.kd__extra-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: $color-primary;
 
-    &--free { color: $color-text-sub; font-weight: 400; }
-  }
+  &--free { color: $color-text-sub; font-weight: 400; }
 }
 
 // -----------------------------------------------------------------------
-// Notes textarea
+// Notes
 // -----------------------------------------------------------------------
-.kiosk-detail__notes {
+.kd__notes {
   width: 100%;
-  font-size: 18px;
-  padding: $space-4;
+  font-size: 16px;
+  padding: $space-3 $space-4;
   border-radius: 12px;
   font-family: inherit;
   resize: none;
@@ -202,54 +320,82 @@
 // -----------------------------------------------------------------------
 // Sticky footer
 // -----------------------------------------------------------------------
-.kiosk-detail__footer {
+.kd__footer {
   display: flex;
   align-items: center;
   gap: $space-4;
-  padding: $space-4 $space-5;
+  padding: $space-4 $space-6;
   background: white;
   border-top: 1px solid $color-border-soft;
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+
+  @media (max-width: $breakpoint-md) {
+    padding: $space-4 $space-5;
+  }
 }
 
-.kiosk-detail__preview {
+.kd__total-block {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.kiosk-detail__total-label {
-  font-size: $font-size-label;
+.kd__total-label {
+  font-size: 13px;
   color: $color-text-sub;
 }
 
-.kiosk-detail__total {
-  font-size: 28px;
+.kd__total-amount {
+  font-size: 24px;
   font-weight: 700;
   color: $color-text-title;
 }
 
-.kiosk-detail__add-btn {
+.kd__add-btn {
   flex: 1;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: $space-3;
-  min-height: 80px;
+  height: 56px;
   border: none;
   border-radius: 16px;
   background: $color-primary;
   color: white;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 22px; }
+  i { font-size: 18px; }
 
   &:hover  { background: #15803D; }
   &:active { background: #166534; transform: scale(0.98); }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
+}
+
+// -----------------------------------------------------------------------
+// Lightbox overlay
+// -----------------------------------------------------------------------
+.kd__lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.kd__lightbox-img {
+  max-width: 95vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: default;
 }

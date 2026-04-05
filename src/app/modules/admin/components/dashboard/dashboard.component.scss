@@ -22,6 +22,21 @@
     i { font-size: 20px; }
   }
 
+  &__offline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    background: #FEF3C7;
+    color: #92400E;
+    border-radius: 8px;
+    border: 1px solid #FDE68A;
+    font-size: 13px;
+
+    i { font-size: 16px; }
+  }
+
   &__columns {
     display: grid;
     grid-template-columns: 280px 1fr;
@@ -96,6 +111,8 @@
     font-size: $font-size-base;
     font-weight: 700;
     color: $color-text-title;
+
+    &--danger { color: #DC2626; }
   }
 
   &__empty {
@@ -104,6 +121,19 @@
     color: $color-text-sub;
     text-align: center;
     padding: $space-4 0;
+  }
+
+  &__subtitle {
+    margin: -$space-3 0 $space-3;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__note {
+    margin: $space-3 0 0;
+    font-size: $font-size-label;
+    color: #9CA3AF;
+    font-style: italic;
   }
 }
 
@@ -125,6 +155,31 @@
   &--card {
     background: #EFF6FF;
     color: #2563EB;
+  }
+
+  &--cancelled {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6B7280;
+  }
+
+  &--new {
+    background: #DBEAFE;
+    color: #1D4ED8;
+  }
+
+  &--cooking {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  &--ready {
+    background: #DCFCE7;
+    color: #16A34A;
+  }
+
+  &--delivered {
+    background: #F3F4F6;
+    color: #6B7280;
   }
 }
 
@@ -168,6 +223,57 @@
     border-bottom: none;
     padding-top: $space-3;
     margin-top: $space-1;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Cancellations
+// -----------------------------------------------------------------------
+.cancellation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.cancellation-row {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 0;
+  border-bottom: 1px solid $color-border-soft;
+
+  &:last-child { border-bottom: none; }
+
+  &__reason {
+    flex: 1;
+    font-size: $font-size-base;
+    color: $color-text-title;
+  }
+
+  &__count {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    min-width: 72px;
+    text-align: right;
+  }
+
+  &__amount {
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text-title;
+    min-width: 80px;
+    text-align: right;
+
+    &--danger { color: #DC2626; }
+  }
+
+  &--total {
+    border-top: 2px solid $color-border-soft;
+    border-bottom: none;
+    padding-top: $space-3;
+    margin-top: $space-1;
+
+    .cancellation-row__reason { font-weight: 700; }
   }
 }
 
@@ -259,4 +365,162 @@
   &__items  { color: $color-text-sub; }
   &__time   { color: $color-text-sub; font-size: $font-size-label; }
   &__total  { font-weight: 700; text-align: right; }
+
+  &__row--cancelled {
+    opacity: 0.6;
+  }
+
+  &__cancel-reason {
+    display: block;
+    font-size: 11px;
+    color: #9CA3AF;
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  &__cancel-reason-cell {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    font-style: italic;
+  }
+
+  &__total-row td {
+    border-top: 2px solid $color-border-soft;
+    border-bottom: none;
+    padding-top: $space-3;
+    color: $color-text-title;
+  }
+
+  &__total--danger {
+    color: #DC2626 !important;
+  }
+}
+
+// -----------------------------------------------------------------------
+// BI Charts Toolbar
+// -----------------------------------------------------------------------
+.charts-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $space-4;
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    flex-wrap: wrap;
+  }
+
+  &__calendar {
+    min-width: 240px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// BI Charts Section
+// -----------------------------------------------------------------------
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__heading {
+    display: flex;
+    align-items: baseline;
+    gap: $space-3;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__period {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__error {
+    width: 100%;
+  }
+
+  &__retry {
+    display: flex;
+    justify-content: center;
+    margin-top: -$space-2;
+  }
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-5;
+
+  @media (max-width: #{$breakpoint-lg}) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Chart Card
+// -----------------------------------------------------------------------
+.chart-card {
+  background: white;
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
+  padding: $space-5 $space-6;
+
+  &__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__body {
+    position: relative;
+
+    &--line    { height: 300px; }
+    &--bar     { height: 280px; }
+    &--doughnut { height: 280px; }
+
+    // Make p-chart fill its container
+    p-chart,
+    p-chart > canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+
+  &__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    color: $color-text-sub;
+
+    i {
+      font-size: 32px;
+      opacity: 0.4;
+    }
+
+    span {
+      font-size: $font-size-label;
+    }
+  }
 }

@@ -1,0 +1,248 @@
+@use '../../../styles/variables' as *;
+
+// ============================================================================
+// Orders List Page
+// ============================================================================
+
+.orders-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: $color-bg-page;
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-3 $space-4;
+  background: white;
+  border-bottom: 1px solid $color-border-soft;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 10px;
+    background: $color-bg-page;
+    color: $color-text-sub;
+    font-size: 16px;
+    cursor: pointer;
+
+    &:hover { background: #E5E7EB; }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: 0 $space-3;
+    height: 40px;
+    border: 1px solid #D1D5DB;
+    border-radius: 10px;
+    background: white;
+
+    i { color: #9CA3AF; font-size: 14px; }
+
+    input {
+      border: none;
+      outline: none;
+      font-size: $font-size-base;
+      font-family: inherit;
+      width: 140px;
+      background: transparent;
+
+      &::placeholder { color: #9CA3AF; }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Filter tabs
+// -----------------------------------------------------------------------
+.orders-filters {
+  display: flex;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  background: white;
+  border-bottom: 1px solid $color-border-soft;
+  overflow-x: auto;
+}
+
+.orders-filter {
+  padding: $space-2 $space-4;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  background: white;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  &:hover { border-color: #D1D5DB; background: $color-bg-page; }
+
+  &--active {
+    background: $color-text-title;
+    color: white;
+    border-color: $color-text-title;
+
+    &:hover { background: $color-text-title; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Order list
+// -----------------------------------------------------------------------
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: $space-4;
+  flex: 1;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+.orders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-8 0;
+  gap: $space-3;
+
+  i {
+    font-size: 40px;
+    color: #D1D5DB;
+  }
+
+  p {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+
+// -----------------------------------------------------------------------
+// Cancel Dialog
+// -----------------------------------------------------------------------
+.cancel-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__label {
+    margin: 0;
+    font-size: $font-size-base;
+    font-weight: 500;
+    color: $color-text-title;
+  }
+
+  &__reasons {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+  }
+
+  &__reason {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+
+    label {
+      font-size: $font-size-base;
+      color: $color-text-title;
+      cursor: pointer;
+    }
+  }
+
+  &__notes {
+    width: 100%;
+    font-size: $font-size-base;
+    font-family: inherit;
+    resize: vertical;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: $space-3;
+  }
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $space-2 $space-5;
+    min-height: 44px;
+    border: none;
+    border-radius: 10px;
+    font-size: $font-size-base;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &--secondary {
+      background: $color-bg-page;
+      color: $color-text-sub;
+      &:hover { background: #E5E7EB; }
+    }
+
+    &--danger {
+      background: #DC2626;
+      color: white;
+      &:hover { background: #B91C1C; }
+      &:disabled { background: #D1D5DB; cursor: not-allowed; }
+    }
+
+    &--print {
+      background: #16A34A;
+      color: white;
+      gap: $space-2;
+      i { font-size: 14px; }
+      &:hover { background: #15803D; }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Print styles
+// -----------------------------------------------------------------------
+@media print {
+  .orders-header,
+  .orders-filters {
+    display: none;
+  }
+
+  .orders-page {
+    background: white;
+    min-height: auto;
+  }
+}

@@ -1,0 +1,220 @@
+@use '../../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Dialog overrides
+// -----------------------------------------------------------------------
+:host ::ng-deep .payment-processing-dialog {
+  .p-dialog-header {
+    padding: $space-4 $space-5;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  .p-dialog-content {
+    padding: 0;
+  }
+
+  .p-dialog-footer {
+    padding: $space-3 $space-5 $space-4;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+// -----------------------------------------------------------------------
+// Body
+// -----------------------------------------------------------------------
+.ppd__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6 $space-5;
+  text-align: center;
+}
+
+// -----------------------------------------------------------------------
+// Status icons
+// -----------------------------------------------------------------------
+.ppd__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+
+  i { font-size: 28px; }
+
+  &--processing {
+    background: #EFF6FF;
+    color: #3B82F6;
+  }
+
+  &--success {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+
+  &--error {
+    background: #FEF2F2;
+    color: #DC2626;
+  }
+
+  &--warning {
+    background: #FFF7ED;
+    color: #D97706;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------
+.ppd__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: $color-text-title;
+}
+
+.ppd__amount {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: $color-text-title;
+  letter-spacing: -0.02em;
+}
+
+.ppd__hint {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  margin: 0;
+  font-size: $font-size-label;
+  color: $color-text-sub;
+}
+
+.ppd__hint-spinner {
+  font-size: 14px;
+}
+
+.ppd__detail {
+  margin: 0;
+  font-size: $font-size-label;
+  font-weight: 500;
+  color: $color-text-sub;
+
+  &--muted {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Clip reference input
+// -----------------------------------------------------------------------
+.ppd__field {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  margin-top: $space-2;
+}
+
+.ppd__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: $color-text-sub;
+  text-align: left;
+}
+
+.ppd__input {
+  height: $touch-target-pos;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.1em;
+  border-radius: $radius-button !important;
+}
+
+// -----------------------------------------------------------------------
+// QR code
+// -----------------------------------------------------------------------
+.ppd__qr-wrapper {
+  padding: $space-4;
+  background: white;
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
+}
+
+.ppd__qr-img {
+  width: 200px;
+  height: 200px;
+  display: block;
+}
+
+// -----------------------------------------------------------------------
+// Progress bar
+// -----------------------------------------------------------------------
+:host ::ng-deep .ppd__progress {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 4px;
+
+  .p-progressbar-value {
+    background: #3B82F6;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Footer
+// -----------------------------------------------------------------------
+.ppd__footer {
+  display: flex;
+  gap: $space-3;
+  justify-content: flex-end;
+
+  &--center {
+    justify-content: center;
+  }
+}
+
+.ppd__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  min-height: 48px;
+  padding: $space-3 $space-5;
+  border-radius: $radius-button;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &--primary {
+    background: $color-primary;
+    color: white;
+    border: none;
+
+    &:hover { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $color-text-sub;
+    border: 1px solid #E5E7EB;
+
+    &:hover {
+      border-color: $color-text-sub;
+      color: $color-text-title;
+    }
+  }
+}

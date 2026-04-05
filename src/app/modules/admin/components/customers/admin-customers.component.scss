@@ -1,0 +1,299 @@
+@use '../../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Page layout
+// -----------------------------------------------------------------------
+.customers-page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  padding: $space-5;
+}
+
+// -----------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------
+.customers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  flex-wrap: wrap;
+
+  &__left {
+    display: flex;
+    align-items: baseline;
+    gap: $space-3;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__count {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    min-height: 40px;
+    padding: $space-2 $space-4;
+    border: none;
+    border-radius: $radius-button;
+    background: $color-primary;
+    color: white;
+    font-size: $font-size-label;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #15803D; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Search
+// -----------------------------------------------------------------------
+.customers-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    font-size: 14px;
+    color: $color-text-sub;
+    pointer-events: none;
+  }
+
+  &__input {
+    padding-left: 36px;
+    min-width: 240px;
+    min-height: 40px;
+    border-radius: $radius-button !important;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Table
+// -----------------------------------------------------------------------
+.customers-table-wrapper {
+  background: white;
+  border-radius: $radius-card;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+:host ::ng-deep .customers-table {
+  .p-datatable-thead > tr > th {
+    background: #F9FAFB;
+    color: $color-text-sub;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-color: $color-border-soft;
+  }
+
+  .p-datatable-tbody > tr > td {
+    font-size: $font-size-label;
+    color: $color-text-title;
+    border-color: $color-border-soft;
+    padding: $space-3 $space-4;
+  }
+
+  .p-datatable-tbody > tr:hover {
+    background: #F9FAFB;
+  }
+
+  .p-paginator {
+    border: none;
+    padding: $space-3;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Name cell (avatar + name + email)
+// -----------------------------------------------------------------------
+.customer-name-cell {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: $color-primary-light;
+    color: $color-primary;
+    font-size: $font-size-label;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  &__name {
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__email {
+    font-size: 12px;
+    color: $color-text-sub;
+  }
+}
+
+.customer-phone {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+
+// -----------------------------------------------------------------------
+// Points badge
+// -----------------------------------------------------------------------
+.points-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #FFF7ED;
+  color: #D97706;
+  font-size: 13px;
+  font-weight: 600;
+
+  i { font-size: 12px; }
+}
+
+.text-muted {
+  color: $color-text-sub;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+.customers-empty {
+  text-align: center;
+  padding: $space-7 !important;
+  color: $color-text-sub;
+
+  i {
+    display: block;
+    font-size: 2rem;
+    margin-bottom: $space-2;
+    opacity: 0.3;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Create dialog
+// -----------------------------------------------------------------------
+:host ::ng-deep .customer-create-dialog {
+  .p-dialog-header {
+    padding: $space-4 $space-5;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  .p-dialog-content {
+    padding: $space-4 $space-5;
+  }
+
+  .p-dialog-footer {
+    padding: $space-3 $space-5 $space-4;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.customer-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $color-text-title;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    min-height: $touch-target-pos;
+    border-radius: $radius-button !important;
+  }
+
+  &__footer {
+    display: flex;
+    gap: $space-3;
+    justify-content: flex-end;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 44px;
+    padding: $space-3 $space-5;
+    border-radius: $radius-button;
+    font-size: $font-size-base;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &--primary {
+      background: $color-primary;
+      color: white;
+      border: none;
+
+      &:hover { background: #15803D; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    &--ghost {
+      background: transparent;
+      color: $color-text-sub;
+      border: 1px solid #E5E7EB;
+
+      &:hover {
+        border-color: $color-text-sub;
+        color: $color-text-title;
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+@if (pwaService.updateAvailable()) {
+  <div class="update-banner">
+    <span class="update-banner__text">Nueva versión disponible</span>
+    <button class="update-banner__btn" (click)="pwaService.applyUpdate()">
+      Actualizar ahora
+    </button>
+  </div>
+}

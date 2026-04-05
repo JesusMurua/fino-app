@@ -1,0 +1,113 @@
+<!-- Selected customer chip -->
+@if (selectedCustomer(); as customer) {
+  <div class="cs-chip" [class.cs-chip--compact]="compact()">
+    <span class="cs-chip__avatar">{{ customer.name.charAt(0) }}</span>
+    <span class="cs-chip__name">{{ customer.name }}</span>
+    @if (!compact()) {
+      @if (customer.pointsBalance > 0) {
+        <span class="cs-chip__badge cs-chip__badge--points">
+          <i class="pi pi-star"></i> {{ customer.pointsBalance }}
+        </span>
+      }
+      @if (customer.creditBalanceCents > 0) {
+        <span class="cs-chip__badge cs-chip__badge--credit">
+          {{ customer.creditBalanceCents | price }}
+        </span>
+      }
+    }
+    <button type="button" class="cs-chip__remove" aria-label="Quitar cliente" (click)="clear()">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+} @else {
+  <!-- Search input -->
+  <div class="cs-search" [class.cs-search--compact]="compact()">
+    <div class="cs-search__input-wrap">
+      <i class="pi pi-search cs-search__icon"></i>
+      <input
+        type="text"
+        pInputText
+        [ngModel]="query()"
+        (ngModelChange)="onQueryChange($event)"
+        [placeholder]="placeholder()"
+        class="cs-search__input"
+        (focus)="query().length >= 2 && showDropdown.set(results().length > 0)"
+        (blur)="onBlur()"
+      />
+    </div>
+    <button type="button" class="cs-search__add" aria-label="Nuevo cliente" (click)="openCreate()">
+      <i class="pi pi-plus"></i>
+    </button>
+
+    <!-- Dropdown results -->
+    @if (showDropdown()) {
+      <div class="cs-dropdown">
+        @for (c of results(); track c.id) {
+          <button type="button" class="cs-dropdown__item" (mousedown)="selectResult(c)">
+            <span class="cs-dropdown__avatar">{{ c.name.charAt(0) }}</span>
+            <div class="cs-dropdown__info">
+              <span class="cs-dropdown__name">{{ c.name }}</span>
+              <span class="cs-dropdown__phone">{{ formatPhone(c.phone) }}</span>
+            </div>
+            @if (c.pointsBalance > 0) {
+              <span class="cs-dropdown__pts"><i class="pi pi-star"></i> {{ c.pointsBalance }}</span>
+            }
+          </button>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- Quick-create dialog -->
+<p-dialog
+  header="Nuevo cliente"
+  [(visible)]="showCreateDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '360px' }"
+  styleClass="cs-create-dialog"
+>
+  <div class="cs-create-form">
+    <div class="cs-create-form__field">
+      <label for="cs-name">Nombre *</label>
+      <input
+        id="cs-name"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.name"
+        placeholder="Juan Pérez"
+        class="cs-create-form__input"
+      />
+    </div>
+    <div class="cs-create-form__field">
+      <label for="cs-phone">Teléfono *</label>
+      <input
+        id="cs-phone"
+        type="tel"
+        pInputText
+        [(ngModel)]="createForm.phone"
+        placeholder="6671234567"
+        maxlength="10"
+        class="cs-create-form__input"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="cs-create-form__footer">
+      <button type="button" class="cs-btn cs-btn--ghost" (click)="showCreateDialog.set(false)">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="cs-btn cs-btn--primary"
+        [disabled]="isSavingNew() || !createForm.name.trim() || !createForm.phone.trim()"
+        (click)="saveNewCustomer()"
+      >
+        @if (isSavingNew()) { <i class="pi pi-spin pi-spinner"></i> }
+        Crear y seleccionar
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

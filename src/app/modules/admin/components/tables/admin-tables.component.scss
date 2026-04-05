@@ -1,0 +1,659 @@
+@use '../../../../../styles/variables' as *;
+
+.admin-tables {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #E5E7EB;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Tab buttons (underline style)
+// -----------------------------------------------------------------------
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  i { font-size: 14px; }
+
+  &:hover { color: $color-text-title; }
+
+  &--active {
+    color: $color-primary;
+    border-bottom-color: $color-primary;
+    font-weight: 600;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Static floor map
+// -----------------------------------------------------------------------
+.floor-map {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__zone-label {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: 11px;
+    font-weight: 500;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 0.5px solid #E5E7EB;
+    margin-bottom: $space-3;
+    padding-bottom: 6px;
+  }
+
+  &__zone-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &--salon    { background: $color-primary; }
+    &--barseats { background: #2563EB; }
+    &--other    { background: #D97706; }
+  }
+
+  &__zone-count {
+    font-size: 10px;
+    padding: 1px 6px;
+    background: #F3F4F6;
+    border-radius: 99px;
+    color: $color-text-sub;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  &__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    &--bar {
+      .floor-map__card {
+        width: 72px;
+        height: 72px;
+        min-width: 72px;
+        min-height: 72px;
+        border-radius: 50%;
+        padding: $space-1;
+      }
+    }
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 80px;
+    height: 80px;
+    min-width: 80px;
+    min-height: 80px;
+    padding: $space-2;
+    border-radius: 8px;
+    border: 0.5px solid #D1D5DB;
+    background: white;
+    cursor: default;
+
+    &--inactive {
+      opacity: 0.4;
+    }
+  }
+
+  &__card-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: $color-text-title;
+    line-height: 1;
+    text-align: center;
+  }
+
+  &__card-capacity {
+    font-size: 10px;
+    color: $color-text-sub;
+    line-height: 1;
+  }
+
+  &__card-badge {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 99px;
+    background: #F3F4F6;
+    color: $color-text-sub;
+    margin-top: 1px;
+    line-height: 1.3;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: $space-2;
+  }
+
+  &__config-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: transparent;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+
+    i { font-size: 12px; }
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.floor-map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: 80px $space-4;
+  text-align: center;
+  color: $color-text-sub;
+
+  i { font-size: 48px; opacity: 0.2; }
+  p { margin: 0; font-size: $font-size-base; }
+  small { font-size: 12px; opacity: 0.7; margin-bottom: $space-2; }
+}
+
+// -----------------------------------------------------------------------
+// Branch context banner
+// -----------------------------------------------------------------------
+.branch-context-banner {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: 10px $space-4;
+  background: #F9FAFB;
+  border-radius: 8px;
+  font-size: 13px;
+  color: $color-text-sub;
+
+  i { font-size: 14px; }
+  strong { color: $color-text-title; font-weight: 500; }
+
+  .branch-hint {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Plan gate — upgrade banner
+// -----------------------------------------------------------------------
+.zones-upgrade-banner {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-4 $space-5;
+  background: #FEF3C7;
+  border-radius: 12px;
+  border: 1px solid #FDE68A;
+
+  > i { font-size: 20px; color: #D97706; flex-shrink: 0; }
+
+  &__text {
+    flex: 1;
+
+    strong { display: block; font-size: 14px; color: #92400E; }
+    p { margin: 4px 0 0; font-size: 13px; color: #A16207; }
+  }
+
+  &__cta {
+    display: inline-flex;
+    align-items: center;
+    padding: $space-2 $space-3;
+    border: 1px solid #D97706;
+    border-radius: 8px;
+    background: transparent;
+    color: #D97706;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover { background: rgba(#D97706, 0.08); }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Kanban board
+// -----------------------------------------------------------------------
+.zones-kanban {
+  display: flex;
+  gap: $space-4;
+  overflow-x: auto;
+  padding-bottom: $space-4;
+  align-items: flex-start;
+  min-height: 400px;
+}
+
+.zone-column {
+  min-width: 220px;
+  max-width: 260px;
+  background: #F9FAFB;
+  border-radius: 12px;
+  padding: $space-3;
+  flex-shrink: 0;
+
+  &--unzoned {
+    border: 1px dashed #D1D5DB;
+    background: transparent;
+  }
+
+  &--add {
+    min-width: 180px;
+    cursor: pointer;
+    border: 2px dashed #D1D5DB;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 120px;
+    color: $color-text-sub;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: 12px;
+    transition: border-color 0.15s, color 0.15s;
+
+    i { font-size: 20px; }
+
+    &:hover { border-color: $color-primary; color: $color-primary; }
+  }
+
+  &--add-form {
+    min-width: 220px;
+    border: 1.5px solid $color-primary;
+    padding: $space-3;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+  }
+}
+
+.zone-column__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $space-3;
+  padding-bottom: $space-2;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.zone-column__info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zone-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--salon    { background: $color-primary; }
+  &--barseats { background: #2563EB; }
+  &--other    { background: #D97706; }
+}
+
+.zone-column__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.zone-column__count {
+  font-size: 11px;
+  padding: 1px 6px;
+  background: white;
+  border-radius: 99px;
+  color: $color-text-sub;
+}
+
+.zone-column__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.zone-column__tables {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+// -----------------------------------------------------------------------
+// Table config card
+// -----------------------------------------------------------------------
+.table-config-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: $space-2 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &--inactive { opacity: 0.5; }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-title;
+  }
+
+  &__capacity {
+    font-size: 11px;
+    color: $color-text-sub;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Small buttons
+// -----------------------------------------------------------------------
+.btn-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: $color-text-sub;
+  font-size: 12px;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+  &--danger:hover { color: #DC2626; background: #FEF2F2; }
+}
+
+.btn-add-table {
+  width: 100%;
+  padding: $space-2;
+  border: 1px dashed #D1D5DB;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  color: $color-text-sub;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+
+  &:hover { border-color: $color-primary; color: $color-primary; }
+}
+
+.btn-primary-sm {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px $space-3;
+  min-height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: $color-primary;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost-sm {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px $space-3;
+  min-height: 32px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+}
+
+// -----------------------------------------------------------------------
+// Zone add form (inline in kanban)
+// -----------------------------------------------------------------------
+.zone-add-input {
+  width: 100%;
+  font-size: 13px;
+}
+
+.zone-type-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.zone-type-btn {
+  flex: 1;
+  padding: 4px $space-2;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: white;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+  &:hover { border-color: $color-primary; }
+
+  &--active {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+  }
+}
+
+.zone-add-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-2;
+}
+
+// -----------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------
+.zones-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: 60px $space-5;
+  text-align: center;
+  color: $color-text-sub;
+
+  i { font-size: 48px; opacity: 0.2; }
+  p { margin: 0; font-size: $font-size-base; }
+  small { font-size: 12px; opacity: 0.7; }
+}
+
+// -----------------------------------------------------------------------
+// Flat table list (free plan — no zones)
+// -----------------------------------------------------------------------
+.flat-tables {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Buttons (shared)
+// -----------------------------------------------------------------------
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+}
+
+// -----------------------------------------------------------------------
+// Form (table dialog + zone edit dialog)
+// -----------------------------------------------------------------------
+.table-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-2 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  &--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__label {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  &__error {
+    font-size: 12px;
+    color: #DC2626;
+  }
+}
+
+.dialog-error {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #DC2626;
+
+  i { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+}

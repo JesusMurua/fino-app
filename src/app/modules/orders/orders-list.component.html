@@ -1,0 +1,168 @@
+<p-toast />
+
+<div class="orders-page">
+
+  <!-- Header -->
+  <header class="orders-header">
+    <div class="orders-header__left">
+      <button type="button" class="orders-header__back" (click)="goBack()" aria-label="Volver al POS">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <h1 class="orders-header__title">Órdenes activas</h1>
+    </div>
+
+    <!-- Search -->
+    <div class="orders-header__search">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Buscar #orden"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)"
+      />
+    </div>
+  </header>
+
+  <!-- Filter tabs -->
+  <nav class="orders-filters" aria-label="Filtrar por estado">
+    @for (f of filters; track f.key) {
+      <button
+        type="button"
+        class="orders-filter"
+        [class.orders-filter--active]="activeFilter() === f.key"
+        (click)="setFilter(f.key)"
+      >
+        {{ f.label }}
+      </button>
+    }
+  </nav>
+
+  <!-- Order list -->
+  <div class="orders-list">
+    @for (order of filteredOrders(); track order.id) {
+      <app-order-row
+        [order]="order"
+        [now]="now()"
+        [status]="getStatus(order)"
+        [canDeliver]="canDeliver"
+        [canCancel]="canDeliver && canCancel(order)"
+        [isDelivered]="isDelivered(order)"
+        [isCancelled]="!!order.cancelledAt"
+        (markDelivered)="onMarkDelivered($event)"
+        (cancelOrder)="openCancelDialog(order)"
+        (viewTicket)="onViewTicket($event)"
+        (chargeOrder)="onChargeOrder($event)"
+        (printError)="onPrintError($event)"
+      />
+    } @empty {
+      <div class="orders-empty">
+        <i class="pi pi-inbox"></i>
+        <p>No hay órdenes para este filtro</p>
+      </div>
+    }
+  </div>
+
+</div>
+
+<!-- Cancel Order Dialog -->
+<p-dialog
+  [header]="'Cancelar Orden #' + cancellingOrder()?.orderNumber"
+  [(visible)]="showCancelDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+>
+  <div class="cancel-dialog">
+
+    <p class="cancel-dialog__label">Motivo de cancelación:</p>
+
+    <div class="cancel-dialog__reasons">
+      @for (reason of cancellationReasons; track reason) {
+        <div class="cancel-dialog__reason">
+          <p-radioButton
+            [name]="'cancelReason'"
+            [value]="reason"
+            [ngModel]="selectedReason()"
+            (ngModelChange)="selectedReason.set($event)"
+            [inputId]="'reason-' + $index"
+          />
+          <label [for]="'reason-' + $index">{{ reason }}</label>
+        </div>
+      }
+    </div>
+
+    <textarea
+      pInputTextarea
+      [ngModel]="cancelNotes()"
+      (ngModelChange)="cancelNotes.set($event)"
+      placeholder="Nota adicional..."
+      [rows]="3"
+      class="cancel-dialog__notes"
+    ></textarea>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="cancel-dialog__footer">
+      <button
+        type="button"
+        class="cancel-dialog__btn cancel-dialog__btn--secondary"
+        (click)="showCancelDialog.set(false)"
+      >
+        Regresar
+      </button>
+      <button
+        type="button"
+        class="cancel-dialog__btn cancel-dialog__btn--danger"
+        [disabled]="!selectedReason()"
+        (click)="confirmCancel()"
+      >
+        Cancelar orden
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Ticket Preview Dialog -->
+<p-dialog
+  [header]="'Ticket #' + ticketOrder()?.orderNumber"
+  [(visible)]="showTicketDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '360px' }"
+  [draggable]="false"
+>
+  <div [innerHTML]="ticketHtmlContent()"></div>
+
+  <ng-template pTemplate="footer">
+    <div class="cancel-dialog__footer">
+      <button
+        type="button"
+        class="cancel-dialog__btn cancel-dialog__btn--secondary"
+        (click)="showTicketDialog.set(false)"
+      >
+        Cerrar
+      </button>
+      @if (hasThermalPrinter()) {
+        <button
+          type="button"
+          class="cancel-dialog__btn cancel-dialog__btn--thermal"
+          (click)="onReprintThermal()"
+        >
+          <i class="pi pi-print"></i>
+          Reimprimir ticket
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="cancel-dialog__btn cancel-dialog__btn--print"
+          (click)="onPrintTicket()"
+        >
+          <i class="pi pi-print"></i>
+          Imprimir
+        </button>
+      }
+    </div>
+  </ng-template>
+</p-dialog>

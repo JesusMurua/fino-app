@@ -1,0 +1,297 @@
+@use '../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Selected customer chip
+// -----------------------------------------------------------------------
+.cs-chip {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: $color-primary-light;
+  border: 1px solid rgba($color-primary, 0.2);
+  border-radius: $radius-button;
+
+  &--compact {
+    padding: $space-1 $space-2;
+    gap: $space-1;
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: $color-primary;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: #15803D;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+
+    i { font-size: 10px; }
+
+    &--points {
+      background: #FFF7ED;
+      color: #D97706;
+    }
+
+    &--credit {
+      background: #EFF6FF;
+      color: #3B82F6;
+    }
+  }
+
+  &__remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #15803D;
+    cursor: pointer;
+    font-family: inherit;
+
+    i { font-size: 12px; }
+    &:hover { background: rgba($color-primary, 0.15); }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Search input + dropdown
+// -----------------------------------------------------------------------
+.cs-search {
+  position: relative;
+  display: flex;
+  gap: $space-2;
+
+  &--compact {
+    .cs-search__input { min-height: 36px; font-size: 13px; }
+    .cs-search__add { width: 36px; height: 36px; }
+  }
+
+  &__input-wrap {
+    position: relative;
+    flex: 1;
+  }
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: $color-text-sub;
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    padding-left: 36px !important;
+    min-height: 40px;
+    border-radius: $radius-button !important;
+  }
+
+  &__add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #E5E7EB;
+    border-radius: $radius-button;
+    background: white;
+    color: $color-text-sub;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: inherit;
+    transition: all 0.15s;
+
+    i { font-size: 14px; }
+
+    &:hover {
+      border-color: $color-primary;
+      color: $color-primary;
+      background: $color-primary-light;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Dropdown results
+// -----------------------------------------------------------------------
+.cs-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: $radius-button;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-height: 280px;
+  overflow-y: auto;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    width: 100%;
+    padding: $space-2 $space-3;
+    border: none;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.1s;
+
+    &:hover { background: #F9FAFB; }
+    &:not(:last-child) { border-bottom: 1px solid $color-border-soft; }
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: $color-primary-light;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    text-align: left;
+  }
+
+  &__name {
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__phone {
+    font-size: 12px;
+    color: $color-text-sub;
+  }
+
+  &__pts {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: #FFF7ED;
+    color: #D97706;
+    font-size: 11px;
+    font-weight: 600;
+
+    i { font-size: 10px; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Quick-create dialog
+// -----------------------------------------------------------------------
+:host ::ng-deep .cs-create-dialog {
+  .p-dialog-header {
+    padding: $space-4;
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+  .p-dialog-content { padding: $space-4; }
+  .p-dialog-footer { padding: $space-3 $space-4 $space-4; border-top: 1px solid $color-border-soft; }
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cs-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $color-text-title;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    min-height: 40px;
+    border-radius: $radius-button !important;
+  }
+
+  &__footer {
+    display: flex;
+    gap: $space-3;
+    justify-content: flex-end;
+  }
+}
+
+.cs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  min-height: 40px;
+  padding: $space-2 $space-4;
+  border-radius: $radius-button;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &--primary {
+    background: $color-primary;
+    color: white;
+    border: none;
+    &:hover { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $color-text-sub;
+    border: 1px solid #E5E7EB;
+    &:hover { border-color: $color-text-sub; color: $color-text-title; }
+  }
+}

@@ -1,0 +1,50 @@
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px;
+  background: #16A34A;
+  color: #fff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 12px 12px 0 0;
+
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  &__text {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  &__btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &--install {
+      background: #fff;
+      color: #16A34A;
+    }
+
+    &--dismiss {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: underline;
+    }
+  }
+}

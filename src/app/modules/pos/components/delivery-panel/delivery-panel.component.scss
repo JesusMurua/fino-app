@@ -1,0 +1,212 @@
+@use '../../../../../styles/variables' as *;
+
+// =========================================================================
+// Light theme (default)
+// =========================================================================
+:host {
+  --dlv-panel-bg:        #FFFFFF;
+  --dlv-panel-header-bg: #F9FAFB;
+  --dlv-panel-border:    #E5E7EB;
+  --dlv-panel-tabs-bg:   #F9FAFB;
+  --dlv-tab-active:      #16A34A;
+  --dlv-tab-inactive:    #6B7280;
+  --dlv-tab-count-bg:    #E5E7EB;
+  --dlv-tab-count-color: #374151;
+  --dlv-tab-count-active-bg:    #DCFCE7;
+  --dlv-tab-count-active-color: #16A34A;
+  --dlv-empty-color:     #9CA3AF;
+}
+
+// =========================================================================
+// Dark theme
+// =========================================================================
+:host-context(.theme-dark) {
+  --dlv-panel-bg:        #111827;
+  --dlv-panel-header-bg: #0F172A;
+  --dlv-panel-border:    #1E293B;
+  --dlv-panel-tabs-bg:   #0F172A;
+  --dlv-tab-active:      #16A34A;
+  --dlv-tab-inactive:    #6B7280;
+  --dlv-tab-count-bg:    #1E293B;
+  --dlv-tab-count-color: #9CA3AF;
+  --dlv-tab-count-active-bg:    #14532D;
+  --dlv-tab-count-active-color: #86EFAC;
+  --dlv-empty-color:     #6B7280;
+}
+
+// =========================================================================
+// PrimeNG sidebar overrides
+// =========================================================================
+:host ::ng-deep .p-sidebar.delivery-sidebar {
+  background: var(--dlv-panel-bg) !important;
+  border-left: 0.5px solid var(--dlv-panel-border);
+}
+
+:host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-header {
+  padding: 0;
+  background: var(--dlv-panel-header-bg);
+}
+
+:host ::ng-deep .p-sidebar.delivery-sidebar .p-sidebar-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dlv-panel-bg);
+}
+
+// =========================================================================
+// Panel layout
+// =========================================================================
+.dlv-panel {
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: $space-4 $space-5;
+    background: var(--dlv-panel-header-bg);
+    border-bottom: 0.5px solid var(--dlv-panel-border);
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--dlv-tab-active);
+  }
+
+  &__icon {
+    font-size: 18px;
+  }
+
+  &__urgent-badge {
+    background: #EF4444;
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    animation: dlv-pulse 1.5s infinite;
+  }
+
+  &__close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0.5px solid var(--dlv-panel-border);
+    color: var(--dlv-tab-inactive);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: background 0.15s;
+
+    &:hover { background: var(--dlv-panel-border); }
+  }
+
+  // Tabs
+  &__tabs {
+    display: flex;
+    background: var(--dlv-panel-tabs-bg);
+    border-bottom: 0.5px solid var(--dlv-panel-border);
+    padding: 0 $space-4;
+    gap: 4px;
+  }
+
+  &__tab {
+    flex: 1;
+    padding: 10px $space-3;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--dlv-tab-inactive);
+    font-size: 13px;
+    font-weight: 400;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    &--active {
+      color: var(--dlv-tab-active);
+      border-bottom-color: var(--dlv-tab-active);
+      font-weight: 500;
+    }
+  }
+
+  &__tab-badge {
+    background: var(--dlv-tab-count-bg);
+    color: var(--dlv-tab-count-color);
+    border-radius: 20px;
+    padding: 1px 7px;
+    font-size: 11px;
+
+    .dlv-panel__tab--active & {
+      background: var(--dlv-tab-count-active-bg);
+      color: var(--dlv-tab-count-active-color);
+    }
+  }
+
+  // Content
+  &__content {
+    padding: $space-3;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    overflow-y: auto;
+    flex: 1;
+    background: var(--dlv-panel-bg);
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $space-7;
+    color: var(--dlv-empty-color);
+    font-size: 24px;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: $space-7 $space-5;
+    color: var(--dlv-empty-color);
+
+    i {
+      font-size: 36px;
+      display: block;
+      margin-bottom: $space-3;
+    }
+
+    p {
+      margin: 0;
+      font-size: 13px;
+    }
+  }
+}
+
+// Responsive: full-width on mobile
+@media (max-width: $breakpoint-md) {
+  :host ::ng-deep .p-sidebar.delivery-sidebar {
+    width: 100vw !important;
+  }
+}
+
+@keyframes dlv-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}

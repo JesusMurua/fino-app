@@ -1,0 +1,346 @@
+@use '../../../../../styles/variables' as *;
+
+.admin-users {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 4px 0 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-3;
+    padding: $space-6;
+    color: $color-text-sub;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px $space-4;
+    text-align: center;
+  }
+
+  &__empty-icon {
+    font-size: 64px;
+    color: #D1D5DB;
+    margin-bottom: $space-4;
+  }
+
+  &__empty-title {
+    margin: 0 0 $space-4;
+    font-size: 20px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Stats
+// -----------------------------------------------------------------------
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-4;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: $space-4;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+
+  &__value {
+    font-size: 28px;
+    font-weight: 700;
+    color: $color-text-title;
+
+    &--green { color: $color-primary; }
+    &--grey { color: #9CA3AF; }
+  }
+
+  &__label {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// User cards
+// -----------------------------------------------------------------------
+.user-cards {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  padding: $space-4;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  transition: opacity 0.2s;
+
+  &--inactive { opacity: 0.55; }
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__access {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Badges
+// -----------------------------------------------------------------------
+.role-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &--active {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  &--inactive {
+    background: #F3F4F6;
+    color: #6B7280;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Buttons
+// -----------------------------------------------------------------------
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-2 $space-4;
+  min-height: 44px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  cursor: pointer;
+
+  &:hover { background: #F3F4F6; color: $color-text-title; }
+}
+
+// -----------------------------------------------------------------------
+// Toggle switch (custom, no PrimeNG dependency)
+// -----------------------------------------------------------------------
+.toggle-wrap {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+
+  &:checked + .toggle-slider {
+    background: $color-primary;
+
+    &::before { transform: translateX(20px); }
+  }
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #D1D5DB;
+  border-radius: 12px;
+  transition: background 0.2s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Form
+// -----------------------------------------------------------------------
+.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-2 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  &--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__label {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__input {
+    width: 100%;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Branch assignment table
+// -----------------------------------------------------------------------
+.branch-table {
+  font-size: $font-size-label;
+}
+
+.branch-check,
+.branch-radio {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: $color-primary;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+}
+
+.branch-matrix-badge {
+  display: inline-block;
+  margin-left: $space-2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: $color-primary;
+  background: #F0FDF4;
+  vertical-align: middle;
+}

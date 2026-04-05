@@ -1,0 +1,43 @@
+<p-toast />
+<div class="kds">
+
+  <!-- Offline banner -->
+  @if (!isOnline()) {
+    <div class="kds-offline-banner">
+      <i class="pi pi-wifi"></i>
+      Sin conexión — mostrando solo órdenes de este dispositivo
+    </div>
+  }
+
+  <!-- Header -->
+  <header class="kds-header">
+    <div class="kds-header__brand">
+      <div class="kds-header__logo" aria-hidden="true">
+        <i class="pi pi-box"></i>
+      </div>
+      <span class="kds-header__title">{{ destinationName() }}</span>
+    </div>
+    <span class="kds-header__clock">{{ now() | date:'HH:mm:ss' }}</span>
+  </header>
+
+  <!-- Job grid -->
+  @if (pendingJobs().length > 0) {
+    <div class="kds-grid">
+      @for (job of pendingJobs(); track job.id) {
+        <app-kitchen-order-card
+          [job]="job"
+          [now]="now()"
+          [isFading]="isFading(job.id)"
+          (markDone)="onMarkDone($event)"
+          (onStart)="onMarkInProgress($event)"
+        />
+      }
+    </div>
+  } @else {
+    <div class="kds-empty">
+      <i class="pi pi-check-circle"></i>
+      <p>Sin órdenes pendientes</p>
+    </div>
+  }
+
+</div>

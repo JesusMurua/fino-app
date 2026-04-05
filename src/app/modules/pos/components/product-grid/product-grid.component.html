@@ -1,53 +1,33 @@
-<!-- POS Main Layout: [Header] | [Category bar] | [Product grid] [Cart panel] -->
+<p-toast />
+
+<!-- POS Layout: 3-column grid (Sidebar | Center | Cart) -->
 <div class="pos-layout">
 
-  <!-- Top app bar -->
-  <app-pos-header />
+  <!-- LEFT SIDEBAR: Vertical category navigation -->
+  <app-category-sidebar
+    [categories]="categories()"
+    [selectedCategoryId]="selectedCategoryId()"
+    (categorySelected)="selectCategory($event)"
+  />
 
-  <!-- Category Filter Bar -->
-  <nav class="pos-category-bar" aria-label="Categorías">
-    <button
-      type="button"
-      class="cat-pill"
-      [class.cat-pill--active]="selectedCategoryId() === null"
-      (click)="selectCategory(null)"
-    >
-      <i class="pi pi-list"></i>
-      <span>Todos</span>
-    </button>
+  <!-- CENTER STAGE: Header + Products -->
+  <div class="pos-center">
 
-    @for (cat of categories(); track cat.id) {
-      <button
-        type="button"
-        class="cat-pill"
-        [class.cat-pill--active]="selectedCategoryId() === cat.id"
-        (click)="selectCategory(cat.id)"
-      >
-        @if (cat.icon) {
-          <i class="pi {{ cat.icon }}"></i>
-        }
-        <span>{{ cat.name }}</span>
-      </button>
-    }
-  </nav>
+    <!-- Transparent header -->
+    <app-pos-header />
 
-  <!-- Main Content Area -->
-  <div class="pos-content">
-
-    <!-- Product Grid -->
+    <!-- Product Grid (scrollable) -->
     <main class="pos-products" aria-label="Productos">
 
-      @if (isLoading()) {
-        <div class="pos-loading">
-          <p-progressSpinner strokeWidth="4" aria-label="Cargando productos" />
-        </div>
-      }
-
       @for (product of filteredProducts(); track product.id) {
-        <app-product-card
-          [product]="product"
-          (selected)="onProductSelected($event)"
-        />
+        @defer (on viewport) {
+          <app-product-card
+            [product]="product"
+            (selected)="onProductSelected($event)"
+          />
+        } @placeholder {
+          <div class="product-card-placeholder"></div>
+        }
       } @empty {
         @if (!isLoading()) {
           <div class="pos-empty">
@@ -59,9 +39,16 @@
 
     </main>
 
-    <!-- Cart Panel Sidebar -->
-    <app-cart-panel />
-
   </div>
+
+  <!-- RIGHT PANE: Cart Panel -->
+  <div class="pos-right-pane">
+    <app-cart-panel />
+  </div>
+
+  <!-- Delivery panel (global overlay, only when hasDelivery) -->
+  @if (configService.hasDelivery()) {
+    <app-delivery-panel />
+  }
 
 </div>

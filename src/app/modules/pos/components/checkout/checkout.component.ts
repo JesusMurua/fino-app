@@ -1,16 +1,36 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { InputTextModule } from 'primeng/inputtext';
+import { RadioButtonModule } from 'primeng/radiobutton';
 
+import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, Order, PaymentMethod } from '../../../../core/models';
+import { MessageService } from 'primeng/api';
+
+import { CartItem, Customer, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { ConfigService } from '../../../../core/services/config.service';
+import { CustomerService } from '../../../../core/services/customer.service';
+import { InvoicingService } from '../../../../core/services/invoicing.service';
+import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
+import { CustomerFiscalModalComponent } from '../../../../shared/components/customer-fiscal-modal/customer-fiscal-modal.component';
+import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
+import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
+import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { TableService } from '../../../../core/services/table.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { PromotionService } from '../../../../core/services/promotion.service';
 
 /** Internal step of the checkout flow */
 type CheckoutStep = 'payment' | 'confirmed';
@@ -19,11 +39,16 @@ type CheckoutStep = 'payment' | 'confirmed';
   selector: 'app-checkout',
   standalone: true,
   imports: [
-    AsyncPipe,
     FormsModule,
     ButtonModule,
+    DialogModule,
     InputNumberModule,
+    InputTextModule,
+    RadioButtonModule,
     PricePipe,
+    PaymentProcessingDialogComponent,
+    CustomerFiscalModalComponent,
+    CustomerSelectorComponent,
   ],
   templateUrl: './checkout.component.html',
   styleUrl: './checkout.component.scss',
@@ -32,105 +57,449 @@ export class CheckoutComponent implements OnInit {
 
   //#region Properties
 
+  /** Guards against double-tap on the confirm payment button */
+  readonly isProcessing = signal(false);
+
   /** Current checkout step */
   readonly step = signal<CheckoutStep>('payment');
 
-  /** Selected payment method — null until the user picks one */
-  readonly selectedMethod = signal<PaymentMethod | null>(null);
+  // ---- Multi-payment state ----
+  readonly pendingPayments = signal<OrderPayment[]>([]);
+  readonly showPaymentDialog = signal(false);
+  readonly dialogMethod = signal<PaymentMethod>(PaymentMethod.Cash);
+  dialogAmountPesos = 0;
+  dialogReference = '';
 
-  /**
-   * Amount tendered by the customer in cents.
-   * Bound via InputNumber (displayed in pesos, converted to cents on change).
-   */
-  readonly tenderedCents = signal<number>(0);
+  /** Available payment methods (base + providers + customer balance methods) */
+  readonly paymentOptions = computed(() => {
+    const base = this.paymentProviderService.getAvailableOptions();
+    const customer = this.customerService.selectedCustomer();
+    if (!customer) return base;
+
+    const extras: PaymentMethodOption[] = [];
+    if (customer.creditBalanceCents > 0) {
+      extras.push(CUSTOMER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.StoreCredit)!);
+    }
+    if (customer.pointsBalance > 0) {
+      extras.push(CUSTOMER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.LoyaltyPoints)!);
+    }
+    return [...base, ...extras];
+  });
+
+  /** Controls visibility of the PaymentProcessingDialog */
+  readonly showProcessingDialog = signal(false);
 
   /** The completed order, available after confirmPayment() succeeds */
   readonly completedOrder = signal<Order | null>(null);
 
+  /** Whether the kitchen confirmation dialog is visible */
+  readonly showKitchenConfirm = signal(false);
+
+  /** Whether to show the table release prompt (false if other active orders remain) */
+  readonly showTableRelease = signal(false);
+
   /** Snapshot of cart items taken at mount — cart is cleared after confirm */
-  cartItems: CartItem[] = [];
+  readonly cartItems = signal<CartItem[]>([]);
 
   /** Whether the printer fallback "Ver ticket" button should be shown */
-  readonly showTicketFallback = !this.printService.hasThermalPrinter();
+  readonly showTicketFallback = computed(() => !this.printService.hasThermalPrinter());
+
+  /** Timestamp of component init — used to debounce empty-cart redirect */
+  private readonly initTime = Date.now();
+
+  // ---- Discount state ----
+
+  /** Available discount presets from API/Dexie */
+  readonly presets = signal<DiscountPreset[]>([]);
+
+  /** Currently selected preset (null = none) */
+  readonly selectedPreset = signal<DiscountPreset | null>(null);
+
+  /** Whether custom discount mode is active */
+  readonly isCustomDiscount = signal(false);
+
+  /** Custom discount type when in custom mode */
+  readonly customDiscountType = signal<'percent' | 'fixed'>('percent');
+
+  /** Custom discount value (percent 0–100 or fixed amount in cents) */
+  readonly customDiscountValue = signal(0);
+
+  /** Optional reason for applying the discount */
+  readonly discountReason = signal('');
+
+  /** Whether the discount section is expanded */
+  readonly showDiscountSection = signal(false);
+
+  // ---- Table context (from /tables navigation state) ----
+  readonly tableId = signal<number | null>(null);
+  readonly tableName = signal<string | null>(null);
+
+  // ---- Existing order context (charging a table order from /orders) ----
+  /** When set, checkout updates an existing order instead of creating a new one */
+  readonly existingOrderId = signal<string | null>(null);
 
   // -----------------------------------------------------------------------
   // Derived state
   // -----------------------------------------------------------------------
 
-  /** Change to give back to the customer in cents (cash payments only) */
-  readonly changeCents = computed(() => {
-    if (this.selectedMethod() !== 'cash') return 0;
-    return Math.max(0, this.tenderedCents() - this.totalCents());
+  /** Promotion evaluation from cart service */
+  readonly cartEvaluation = this.cartService.cartEvaluation;
+
+  /** Promotion discount in cents (from auto promos) */
+  readonly promoDiscountCents = computed(() =>
+    this.cartEvaluation()?.totalDiscountCents ?? 0
+  );
+
+  /** Raw subtotal before any discounts (promo + manual) */
+  readonly rawSubtotalCents = computed(() => {
+    if (this.existingOrderId()) return this.existingTotalCents();
+    return this.cartService.totalCents() + this.promoDiscountCents();
   });
 
-  /**
-   * True when the operator can confirm the payment:
-   *   - Total must be greater than zero (cart must have items)
-   *   - A method must be selected
-   *   - For cash: tendered amount must cover the total
-   *   - For card: no extra validation needed at this stage
-   */
+  /** Subtotal after promo discounts, before manual discount */
+  readonly existingTotalCents = signal(0);
+  readonly subtotalCents = computed(() =>
+    this.existingOrderId() ? this.existingTotalCents() : this.cartService.totalCents()
+  );
+
+  /** Discount amount in cents */
+  readonly discountCents = computed(() => {
+    const preset = this.selectedPreset();
+    if (preset) {
+      return this.discountService.calculateDiscount(preset, this.subtotalCents());
+    }
+    if (this.isCustomDiscount() && this.customDiscountValue() > 0) {
+      const rawValue = this.customDiscountValue();
+      // Phase 4: Safe float→cents conversion using toFixed to avoid IEEE 754 drift.
+      // E.g. 0.15 * 100 could yield 14.999... — toFixed(0) rounds correctly.
+      const fakePreset = {
+        type: this.customDiscountType(),
+        value: this.customDiscountType() === 'fixed'
+          ? Number((rawValue * 100).toFixed(0))
+          : rawValue,
+      } as DiscountPreset;
+      return this.discountService.calculateDiscount(fakePreset, this.subtotalCents());
+    }
+    return 0;
+  });
+
+  /** Final total after discount */
+  readonly totalWithDiscount = computed(() =>
+    Math.max(0, this.subtotalCents() - this.discountCents()),
+  );
+
+  /** Display label for the applied discount */
+  readonly discountLabel = computed(() => {
+    const preset = this.selectedPreset();
+    if (preset) return preset.name;
+    if (this.isCustomDiscount() && this.customDiscountValue() > 0) {
+      return this.customDiscountType() === 'percent'
+        ? `${this.customDiscountValue()}% personalizado`
+        : 'Descuento monto fijo';
+    }
+    return '';
+  });
+
+  /** Sum of all pending payment amounts in cents */
+  readonly totalPaidCents = computed(() =>
+    this.pendingPayments().reduce((s, p) => s + p.amountCents, 0),
+  );
+
+  /** Amount still needed to cover the order total */
+  readonly remainingCents = computed(() =>
+    Math.max(0, this.totalWithDiscount() - this.totalPaidCents()),
+  );
+
+  /** Change to give back to the customer in cents */
+  readonly changeCents = computed(() =>
+    Math.max(0, this.totalPaidCents() - this.totalWithDiscount()),
+  );
+
+  /** True when total paid covers the order total */
   readonly canConfirm = computed(() => {
-    if (this.totalCents() === 0) return false;
-    const method = this.selectedMethod();
-    if (!method) return false;
-    if (method === 'cash') return this.tenderedCents() >= this.totalCents();
-    return true; // card — terminal integration handled externally
+    if (this.totalWithDiscount() === 0) return false;
+    return this.totalPaidCents() >= this.totalWithDiscount();
   });
-
-  /** Total from cart service (reactive signal) */
-  readonly totalCents = this.cartService.totalCents;
 
   /** Item count from cart service */
   readonly itemCount = this.cartService.itemCount;
 
+  // ---- Split payment ----
+  readonly showSplitDialog = signal(false);
+  readonly splitParts = signal(2);
+  readonly splitCurrentPart = signal(1);
+
+  /** Per-part amount using floor so parts never exceed the total */
+  readonly splitBaseAmountCents = computed(() =>
+    Math.floor(this.totalWithDiscount() / this.splitParts()),
+  );
+
+  /** Amount for the current part — last part absorbs the remainder */
+  readonly splitAmountCents = computed(() => {
+    const total = this.totalWithDiscount();
+    const parts = this.splitParts();
+    const base = Math.floor(total / parts);
+    if (this.splitCurrentPart() >= parts) {
+      return total - base * (parts - 1);
+    }
+    return base;
+  });
+
+  readonly splitPartsArray = computed(() =>
+    Array.from({ length: this.splitParts() }, (_, i) => i + 1),
+  );
+
+  /** Expose for template */
+  readonly PaymentMethod = PaymentMethod;
+
+  /** True when no cash register session is open — blocks payment confirmation */
+  readonly sessionBlocked = computed(() => !this.cashRegisterService.hasOpenSession());
+
+  // ---- Invoicing (FDD-004) ----
+  /** Controls visibility of the fiscal data modal */
+  readonly showFiscalModal = signal(false);
+
+  /** True when the "Facturar" button should be visible */
+  readonly canInvoice = computed(() => {
+    const order = this.completedOrder();
+    return order !== null
+      && this.configService.hasInvoicing()
+      && !order.invoiceRequest;
+  });
+
+  /** True when the order has been successfully invoiced */
+  readonly isInvoiced = computed(() =>
+    this.completedOrder()?.invoiceRequest?.status === 'completed',
+  );
+
+  // ---- Customer (FDD-005) ----
+  /** Selected customer from the CustomerSelectorComponent */
+  readonly selectedCustomer = this.customerService.selectedCustomer;
+
+  /** Returns display label for an order's payments */
+  orderPaymentLabel(order: Order): string {
+    return getPaymentLabel(order);
+  }
+
   //#endregion
 
   //#region Constructor
+
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private readonly cartService: CartService,
-    private readonly db: DatabaseService,
     private readonly syncService: SyncService,
+    private readonly cashRegisterService: CashRegisterService,
+    private readonly configService: ConfigService,
+    readonly customerService: CustomerService,
+    private readonly invoicingService: InvoicingService,
+    readonly paymentProviderService: PaymentProviderService,
     private readonly printService: PrintService,
+    private readonly discountService: DiscountService,
+    private readonly tableService: TableService,
+    private readonly productService: ProductService,
+    private readonly promotionService: PromotionService,
+    private readonly db: DatabaseService,
+    private readonly http: HttpClient,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
-  ) {}
-  //#endregion
-
-  //#region Lifecycle
-
-  ngOnInit(): void {
-    // Subscribe to cart updates — also handles the empty-cart redirect.
-    // Using the subscription (instead of a synchronous check) ensures we wait
-    // for CartService.loadFromDb() to resolve before deciding to redirect.
-    this.cartService.cart$.subscribe(items => {
+    private readonly authService: AuthService,
+    private readonly messageService: MessageService,
+  ) {
+    // Phase 2: Replace orphaned cart$.subscribe() with an effect
+    effect(() => {
+      const items = this.cartService.items();
       if (this.step() !== 'payment') return;
-
-      this.cartItems = items;
-
-      // Redirect if cart is definitively empty (after DB load)
-      if (items.length === 0) {
+      if (!this.existingOrderId()) {
+        this.cartItems.set(items);
+      }
+      if (items.length === 0 && !this.existingOrderId() && (Date.now() - this.initTime) > 1000) {
         this.router.navigate(['/pos']);
       }
     });
   }
+  //#endregion
+
+  //#region Lifecycle
+
+  async ngOnInit(): Promise<void> {
+    // Read table context from sessionStorage
+    const activeTable = sessionStorage.getItem('activeTable');
+    if (activeTable) {
+      const { tableId, tableName } = JSON.parse(activeTable);
+      this.tableId.set(tableId);
+      this.tableName.set(tableName ?? null);
+    }
+
+    // Check if charging an existing table order
+    const orderId = this.route.snapshot.queryParamMap.get('orderId');
+    if (orderId) {
+      await this.loadExistingOrder(orderId);
+    }
+
+    // Load discount presets
+    await this.discountService.loadPresets(this.authService.branchId);
+    const presets = await this.discountService.getPresets(this.authService.branchId);
+    this.presets.set(presets);
+  }
 
   //#endregion
 
-  //#region Payment Methods
+  //#region Multi-Payment Methods
 
-  /** Selects a payment method and resets tendered amount */
-  selectMethod(method: PaymentMethod): void {
-    this.selectedMethod.set(method);
-    this.tenderedCents.set(0);
+  /**
+   * Opens the appropriate payment dialog for a given method.
+   * Provider-backed methods (Clip, MercadoPago) open the processing dialog.
+   * Standard methods open the simple amount/reference dialog.
+   * @param method The payment method to add
+   */
+  openAddPayment(method: PaymentMethod): void {
+    if (this.paymentProviderService.requiresProcessing(method)) {
+      this.startProviderPayment(method);
+      return;
+    }
+    this.dialogMethod.set(method);
+
+    // Cap credit/points amounts to available balance
+    const remaining = this.remainingCents();
+    const customer = this.customerService.selectedCustomer();
+    if (method === PaymentMethod.StoreCredit && customer) {
+      this.dialogAmountPesos = Math.min(remaining, customer.creditBalanceCents) / 100;
+    } else if (method === PaymentMethod.LoyaltyPoints && customer) {
+      this.dialogAmountPesos = Math.min(remaining, customer.pointsBalance * 100) / 100;
+    } else {
+      this.dialogAmountPesos = remaining / 100;
+    }
+
+    this.dialogReference = '';
+    this.showPaymentDialog.set(true);
   }
 
   /**
-   * Called by the InputNumber when the tendered amount changes.
-   * The InputNumber binds in pesos — this converts to cents.
-   * @param pesos Value in pesos from the input (may be null when cleared)
+   * Adds the dialog payment to pendingPayments and closes the dialog.
    */
-  onTenderedChange(pesos: number | null): void {
-    this.tenderedCents.set(Math.round((pesos ?? 0) * 100));
+  confirmAddPayment(): void {
+    const amountCents = Math.round(this.dialogAmountPesos * 100);
+    if (amountCents <= 0) return;
+
+    const payment: OrderPayment = {
+      method: this.dialogMethod(),
+      amountCents,
+      reference: this.dialogReference.trim() || undefined,
+    };
+
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showPaymentDialog.set(false);
+  }
+
+  /**
+   * Removes a payment from pendingPayments by index.
+   * @param index The index of the payment to remove
+   */
+  removePayment(index: number): void {
+    this.pendingPayments.update(arr => arr.filter((_, i) => i !== index));
+  }
+
+  /** Returns display label for a payment method (including providers) */
+  getPaymentMethodLabel(method: PaymentMethod): string {
+    return ALL_PAYMENT_METHOD_OPTIONS.find(o => o.method === method)?.label ?? method;
+  }
+
+  /** Whether the reference field should show for a method */
+  showReferenceField(): boolean {
+    const m = this.dialogMethod();
+    return m === PaymentMethod.Card || m === PaymentMethod.Transfer;
+  }
+
+  //#endregion
+
+  //#region Provider Payment Methods
+
+  /**
+   * Starts a provider-backed payment transaction.
+   * Opens the processing dialog and initiates the provider flow.
+   */
+  private async startProviderPayment(method: PaymentMethod): Promise<void> {
+    const amountCents = this.remainingCents();
+    if (amountCents <= 0) return;
+
+    this.showProcessingDialog.set(true);
+    await this.paymentProviderService.startTransaction(method, amountCents);
+  }
+
+  /** Handles a confirmed payment from the processing dialog */
+  onProviderPaymentConfirmed(payment: OrderPayment): void {
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showProcessingDialog.set(false);
+  }
+
+  /** Handles cancellation from the processing dialog */
+  onProviderPaymentCancelled(): void {
+    this.showProcessingDialog.set(false);
+  }
+
+  //#endregion
+
+  //#region Split Payment
+
+  openSplitDialog(): void {
+    this.splitParts.set(2);
+    this.splitCurrentPart.set(1);
+    this.showSplitDialog.set(true);
+  }
+
+  registerSplitPayment(method: PaymentMethod): void {
+    const payment: OrderPayment = {
+      method,
+      amountCents: this.splitAmountCents(),
+    };
+    this.pendingPayments.update(arr => [...arr, payment]);
+
+    if (this.splitCurrentPart() >= this.splitParts()) {
+      this.showSplitDialog.set(false);
+    } else {
+      this.splitCurrentPart.update(n => n + 1);
+    }
+  }
+
+  //#endregion
+
+  //#region Discount Methods
+
+  /** Selects a preset discount — toggles off if already selected */
+  selectPreset(preset: DiscountPreset): void {
+    if (this.selectedPreset()?.id === preset.id) {
+      this.selectedPreset.set(null);
+    } else {
+      this.selectedPreset.set(preset);
+      this.isCustomDiscount.set(false);
+      this.customDiscountValue.set(0);
+    }
+  }
+
+  /** Activates custom discount mode and clears preset */
+  enableCustomDiscount(): void {
+    this.isCustomDiscount.set(true);
+    this.selectedPreset.set(null);
+  }
+
+  /** Removes all discounts */
+  clearDiscount(): void {
+    this.selectedPreset.set(null);
+    this.isCustomDiscount.set(false);
+    this.customDiscountValue.set(0);
+    this.discountReason.set('');
+    this.showDiscountSection.set(false);
+  }
+
+  /** Called by the custom discount InputNumber */
+  onCustomValueChange(value: number | null): void {
+    if (this.customDiscountType() === 'fixed') {
+      this.customDiscountValue.set(value ?? 0);
+    } else {
+      this.customDiscountValue.set(value ?? 0);
+    }
   }
 
   //#endregion
@@ -138,51 +507,259 @@ export class CheckoutComponent implements OnInit {
   //#region Checkout Flow
 
   /**
+   * Loads an existing order from Dexie (or API fallback) for payment.
+   * Pre-fills cart items and table context.
+   */
+  private async loadExistingOrder(orderId: string): Promise<void> {
+    let order = await this.db.orders.get(orderId);
+
+    if (!order) {
+      order = await this.loadOrderFromApi(orderId);
+      if (order) {
+        await this.db.orders.put(order);
+      }
+    }
+
+    if (!order) return;
+
+    // Block re-payment of fully paid orders; allow partial payment completion
+    if (order.payments && order.payments.length > 0) {
+      const totalPaid = order.payments.reduce((sum, p) => sum + p.amountCents, 0);
+      if (totalPaid >= order.totalCents) {
+        this.completedOrder.set(order);
+        this.step.set('confirmed');
+        return;
+      }
+      this.pendingPayments.set(order.payments);
+    }
+
+    this.existingOrderId.set(order.id);
+    this.cartItems.set(order.items as CartItem[]);
+    this.existingTotalCents.set(order.totalCents);
+    this.tableId.set(order.tableId ?? null);
+    this.tableName.set(order.tableName ?? null);
+
+    // Set table context in sessionStorage for releaseTable/keepTable
+    if (order.tableId && order.tableName) {
+      sessionStorage.setItem('activeTable', JSON.stringify({
+        tableId: order.tableId,
+        tableName: order.tableName,
+      }));
+    }
+  }
+
+  /** Fetches an order from the API and maps it to the local Order shape */
+  private async loadOrderFromApi(orderId: string): Promise<Order | undefined> {
+    try {
+      const dto = await firstValueFrom(
+        this.http.get<any>(`${environment.apiUrl}/orders/${orderId}`),
+      );
+      if (!dto) return undefined;
+      return this.syncService.mapPullDto(dto);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Checks kitchen status before confirming payment.
+   * If order is still in kitchen, shows a confirmation dialog first.
+   * Guarded against double-tap via isProcessing signal.
+   */
+  async onConfirmPayment(): Promise<void> {
+    if (!this.requireOpenSession()) return;
+    if (this.isProcessing() || !this.canConfirm()) return;
+
+    // Check if existing order is still in kitchen
+    if (this.existingOrderId()) {
+      const existing = await this.db.orders.get(this.existingOrderId()!);
+      const ks = existing?.kitchenStatus;
+      if (ks === 'Pending') {
+        this.showKitchenConfirm.set(true);
+        return;
+      }
+    }
+
+    await this.confirmPayment();
+  }
+
+  /**
    * Confirms the payment and completes the order.
-   * Order: save to IndexedDB → print ticket → advance to confirmed step → clear cart.
-   *
-   * IMPORTANT: step is set to 'confirmed' BEFORE clearCart() so the cart$
-   * subscription guard (which checks step === 'payment') does not fire a
-   * redirect when the cart becomes empty after clearing.
+   * Order: save to IndexedDB → print ticket → advance to confirmed step → teardown.
+   * Locked by isProcessing to prevent duplicate orders from button-mashing.
    */
   async confirmPayment(): Promise<void> {
-    if (!this.canConfirm()) return;
+    this.showKitchenConfirm.set(false);
+    if (this.isProcessing() || !this.canConfirm()) return;
 
-    const method = this.selectedMethod()!;
-    const orderNumber = (await this.db.orders.count()) + 1;
+    this.isProcessing.set(true);
+    try {
+      const payments = this.pendingPayments();
+      const discount = this.discountCents();
+      const paidCents = payments.reduce((s, p) => s + p.amountCents, 0);
+      let order: Order;
 
-    const order: Order = {
-      id: crypto.randomUUID(),
-      orderNumber,
-      items: this.cartItems,
-      totalCents: this.totalCents(),
-      paymentMethod: method,
-      tenderedCents: method === 'cash' ? this.tenderedCents() : undefined,
-      paymentProvider: null,
-      createdAt: new Date(),
-      syncStatus: 'pending',
-      businessId: 1,
-    };
+      if (this.existingOrderId()) {
+        // Charging an existing table order — update it
+        const existing = await this.db.orders.get(this.existingOrderId()!);
+        if (!existing) return;
 
-    // 1. Save to IndexedDB — always first (offline-first)
-    await this.syncService.saveOrder(order);
+        const finalTotal = discount > 0 ? Math.max(0, existing.totalCents - discount) : existing.totalCents;
 
-    // 2. Print or save ticket text as fallback
-    await this.printService.printTicket(order);
+        order = {
+          ...existing,
+          payments,
+          paidCents,
+          changeCents: Math.max(0, paidCents - finalTotal),
+          subtotalCents: existing.totalCents,
+          orderDiscountCents: discount > 0 ? discount : undefined,
+          totalDiscountCents: discount > 0 ? discount : undefined,
+          orderPromotionName: this.discountLabel() || undefined,
+          totalCents: finalTotal,
+          syncStatus: 'Pending',
+          cashRegisterSessionId: existing.cashRegisterSessionId ?? this.cashRegisterService.activeSession()?.id,
+        };
 
-    // 3. Advance to confirmation screen BEFORE clearing the cart.
-    //    This prevents the cart$ subscription from triggering a redirect
-    //    when cart becomes empty in the next step.
-    this.completedOrder.set(order);
-    this.step.set('confirmed');
+        await this.db.orders.put(order);
+        await this.syncService.syncPendingOrders();
+      } else {
+        // Normal new order flow
+        const orderNumber = this.syncService.consumeOrderNumber();
 
-    // 4. Clear the cart (safe now — step is already 'confirmed')
+        order = {
+          id: crypto.randomUUID(),
+          orderNumber,
+          items: this.cartItems(),
+          subtotalCents: this.subtotalCents(),
+          orderDiscountCents: discount > 0 ? discount : undefined,
+          totalDiscountCents: discount > 0 ? discount : undefined,
+          orderPromotionName: this.discountLabel() || undefined,
+          totalCents: this.totalWithDiscount(),
+          payments,
+          paidCents,
+          changeCents: this.changeCents(),
+          paymentProvider: this.derivePaymentProvider(payments),
+          createdAt: new Date(),
+          syncStatus: 'Pending',
+          branchId: this.authService.branchId,
+          cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
+          customerId: this.customerService.selectedCustomer()?.id,
+          customerName: this.customerService.selectedCustomer()?.name,
+          tableId: this.tableId() ?? undefined,
+          tableName: this.tableName() ?? undefined,
+        };
+
+        await this.syncService.saveOrder(order);
+      }
+
+      // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
+      // No frontend deduction needed — optimistic local stock was already adjusted by CartService.
+
+      try {
+        await this.printService.printTicket(order);
+      } catch {
+        // Print failed — order is saved, show fallback ticket button.
+        // showTicketFallback is already true when no printer or print fails.
+        console.warn('[Checkout] Print failed — ticket available via "Ver ticket"');
+      }
+
+      this.completedOrder.set(order);
+      this.step.set('confirmed');
+
+      // Phase 3: Full state teardown — clears cart, coupons, and session context
+      await this.resetCheckoutState();
+
+      // Check if table has remaining active orders before showing release prompt
+      if (order.tableId) {
+        try {
+          const remaining = await this.tableService.getActiveOrdersByTable(order.tableId);
+          this.showTableRelease.set(remaining.length === 0);
+        } catch {
+          this.showTableRelease.set(true); // Fallback: show prompt if check fails
+        }
+      }
+    } finally {
+      this.isProcessing.set(false);
+    }
+  }
+
+  /**
+   * Phase 3: Complete teardown of transient state after a successful order.
+   * Clears cart, active coupons, and session-scoped context so nothing
+   * leaks into the next customer's order.
+   */
+  private async resetCheckoutState(): Promise<void> {
     await this.cartService.clearCart();
+    this.promotionService.clearCoupon();
+    this.customerService.clearSelection();
+    sessionStorage.removeItem('addingToOrder');
+    // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
+    // NOT removed here so the table release prompt still works on the confirmed step.
+  }
+
+  /**
+   * Checks for an active cash register session.
+   * Shows a warning toast and returns false when no session is open.
+   */
+  private requireOpenSession(): boolean {
+    if (this.cashRegisterService.hasOpenSession()) return true;
+
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Apertura de caja requerida',
+      detail: 'Debes abrir un turno de caja para procesar órdenes.',
+      life: 5000,
+    });
+    return false;
+  }
+
+  /**
+   * Derives the order-level paymentProvider from the payments array.
+   * Returns the single provider if all payments use the same one,
+   * 'mixed' if multiple providers are used, or null if none.
+   */
+  private derivePaymentProvider(payments: OrderPayment[]): string | null {
+    const providers = [...new Set(payments.map(p => p.paymentProvider).filter(Boolean))];
+    if (providers.length === 0) return null;
+    if (providers.length === 1) return providers[0]!;
+    return 'mixed';
   }
 
   /** Navigates back to the POS grid without completing the order */
   cancel(): void {
     this.router.navigate(['/pos']);
+  }
+
+  /** Releases the table — awaits full HTTP response before navigating */
+  async releaseTable(): Promise<void> {
+    const raw = sessionStorage.getItem('activeTable');
+    sessionStorage.removeItem('activeTable');
+
+    if (raw) {
+      const { tableId } = JSON.parse(raw);
+      if (tableId) {
+        const token = localStorage.getItem('pos_auth_token');
+        try {
+          await firstValueFrom(
+            this.http.patch(
+              `${environment.apiUrl}/table/${tableId}/status`,
+              { status: 'available' },
+              { headers: { Authorization: `Bearer ${token}` } },
+            )
+          );
+        } catch (e) {
+          console.error('Error liberando mesa:', e);
+        }
+      }
+    }
+
+    this.router.navigate(['/tables']);
+  }
+
+  /** Keeps the table occupied and navigates back to tables */
+  keepTable(): void {
+    sessionStorage.removeItem('activeTable');
+    this.router.navigate(['/tables']);
   }
 
   /** Starts a new order — cart is already cleared, navigate back to POS */
@@ -192,16 +769,48 @@ export class CheckoutComponent implements OnInit {
 
   //#endregion
 
+  //#region Invoicing (FDD-004)
+
+  /** Opens the fiscal data modal */
+  onRequestInvoice(): void {
+    this.showFiscalModal.set(true);
+  }
+
+  /** Handles successful invoice request from the modal */
+  onInvoiceRequested(req: InvoiceRequest): void {
+    const order = this.completedOrder();
+    if (order) {
+      this.completedOrder.set({ ...order, invoiceRequest: req });
+    }
+    this.showFiscalModal.set(false);
+  }
+
+  //#endregion
+
   //#region Ticket
 
-  /** Opens the saved ticket text in a browser print dialog as fallback */
+  /** Opens a styled ticket preview in a new window and triggers print */
   viewTicket(): void {
     const order = this.completedOrder();
-    if (!order?.ticketText) return;
+    if (!order) return;
 
+    const html = this.printService.getTicketHtml(order);
     const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(`<pre style="font-family:monospace;font-size:14px;padding:16px">${order.ticketText}</pre>`);
+    win.document.write(`
+      <html>
+        <head>
+          <title>Ticket #${order.orderNumber}</title>
+          <style>
+            body { margin: 0; padding: 0; background: white; }
+            @media print {
+              @page { size: 80mm auto; margin: 2mm; }
+            }
+          </style>
+        </head>
+        <body>${html}</body>
+      </html>
+    `);
     win.document.close();
     win.print();
   }

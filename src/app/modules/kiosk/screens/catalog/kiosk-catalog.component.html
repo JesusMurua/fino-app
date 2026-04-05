@@ -1,6 +1,6 @@
 <div class="kiosk-catalog">
 
-  <!-- Category pills -->
+  <!-- Category pills — horizontal scroll -->
   <nav class="kiosk-catalog__cats" aria-label="Categorías">
     <button
       type="button"
@@ -34,17 +34,42 @@
     }
 
     @for (product of filteredProducts(); track product.id) {
-      <button
-        type="button"
-        class="kiosk-card"
-        (click)="onProductTapped(product)"
-      >
-        <div class="kiosk-card__icon-box">
-          <i class="pi pi-box"></i>
+      <div class="kiosk-card" (click)="onProductTapped(product)">
+        <!-- Image area (65% top) -->
+        <div class="kiosk-card__image-area">
+          @if (productImageUrl(product)) {
+            <img
+              [src]="productImageUrl(product)"
+              [alt]="product.name"
+              class="kiosk-card__img"
+              loading="lazy"
+            />
+          } @else {
+            <div class="kiosk-card__placeholder">
+              <i class="pi pi-shopping-bag"></i>
+            </div>
+          }
         </div>
-        <span class="kiosk-card__name">{{ product.name }}</span>
-        <span class="kiosk-card__price">{{ product.priceCents | price }}</span>
-      </button>
+
+        <!-- Info area (35% bottom) -->
+        <div class="kiosk-card__info">
+          <span class="kiosk-card__name">{{ product.name }}</span>
+          @if (product.description) {
+            <span class="kiosk-card__desc">{{ product.description }}</span>
+          }
+          <span class="kiosk-card__price">{{ product.priceCents | price }}</span>
+        </div>
+
+        <!-- Quick add button -->
+        <button
+          type="button"
+          class="kiosk-card__add-btn"
+          aria-label="Agregar"
+          (click)="$event.stopPropagation(); onProductTapped(product)"
+        >
+          <i class="pi pi-plus"></i>
+        </button>
+      </div>
     }
 
     @empty {
@@ -54,20 +79,15 @@
     }
   </main>
 
-  <!-- Bottom bar: cancel + FAB cart -->
-  <footer class="kiosk-catalog__footer">
-    <button type="button" class="kiosk-btn-cancel" (click)="cancelOrder()">
-      <i class="pi pi-times"></i>
-      Cancelar
-    </button>
-
-    @if (cartItemCount() > 0) {
-      <button type="button" class="kiosk-btn-cart" (click)="goToSummary()">
-        <span class="kiosk-btn-cart__badge">{{ cartItemCount() }}</span>
-        <i class="pi pi-shopping-cart"></i>
-        Ver orden
+  <!-- Floating bottom bar: "Ver orden" -->
+  @if (cartItemCount() > 0) {
+    <div class="kiosk-catalog__bottom-bar">
+      <button type="button" class="kiosk-catalog__order-btn" (click)="goToSummary()">
+        <span class="kiosk-catalog__order-count">{{ cartItemCount() }} items</span>
+        <span class="kiosk-catalog__order-label">Ver orden</span>
+        <span class="kiosk-catalog__order-total">{{ cartTotalCents() | price }}</span>
       </button>
-    }
-  </footer>
+    </div>
+  }
 
 </div>

@@ -45,6 +45,15 @@ export class KioskDetailComponent implements OnInit {
 
   /** Live price preview updated as form values change */
   readonly previewPriceCents = signal(0);
+
+  /** All available image URLs for the carousel (merged imageUrl + images[]) */
+  readonly allImageUrls = signal<string[]>([]);
+
+  /** Currently displayed image index in the carousel */
+  readonly activeImageIndex = signal(0);
+
+  /** Whether the lightbox overlay is open */
+  readonly lightboxOpen = signal(false);
   //#endregion
 
   //#region Constructor
@@ -73,8 +82,58 @@ export class KioskDetailComponent implements OnInit {
     }
 
     this.product.set(product);
+    this.buildImageUrls(product);
     this.buildForm(product);
     this.updatePreview();
+  }
+
+  //#endregion
+
+  //#region Image Carousel
+
+  /** Builds a merged list of image URLs from imageUrl and images[] */
+  private buildImageUrls(product: Product): void {
+    const urls: string[] = [];
+    if (product.images?.length) {
+      urls.push(...product.images
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(i => i.url));
+    } else if (product.imageUrl) {
+      urls.push(product.imageUrl);
+    }
+    this.allImageUrls.set(urls);
+    this.activeImageIndex.set(0);
+  }
+
+  /** Navigates to the previous image */
+  prevImage(): void {
+    const total = this.allImageUrls().length;
+    if (total <= 1) return;
+    this.activeImageIndex.update(i => (i - 1 + total) % total);
+  }
+
+  /** Navigates to the next image */
+  nextImage(): void {
+    const total = this.allImageUrls().length;
+    if (total <= 1) return;
+    this.activeImageIndex.update(i => (i + 1) % total);
+  }
+
+  /** Jumps to a specific image by index */
+  goToImage(index: number): void {
+    this.activeImageIndex.set(index);
+  }
+
+  /** Opens the full-screen lightbox */
+  openLightbox(): void {
+    if (this.allImageUrls().length > 0) {
+      this.lightboxOpen.set(true);
+    }
+  }
+
+  /** Closes the full-screen lightbox */
+  closeLightbox(): void {
+    this.lightboxOpen.set(false);
   }
 
   //#endregion

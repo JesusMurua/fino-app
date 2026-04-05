@@ -6,13 +6,38 @@
  * it lives in DeviceConfig (localStorage) because each device can operate
  * in a different mode simultaneously (e.g. one tablet as kiosk, one as cashier).
  */
+import { BusinessTypeCatalog } from './catalog.model';
+import { BusinessFiscalConfig } from './invoice.model';
+
 export interface BusinessConfig {
   businessName: string;
   locationName: string;
+  /** Whether this business has a kitchen (KDS, kitchen orders) */
+  hasKitchen: boolean;
+  /** Whether this business uses table management */
+  hasTables: boolean;
+  /** Whether this business receives delivery aggregator orders */
+  hasDelivery: boolean;
+  /** Whether CFDI invoicing is enabled for this branch (requires Pro plan) */
+  hasInvoicing: boolean;
+  /** Cached business type catalog entry — provides posExperience at startup */
+  businessTypeCatalog?: BusinessTypeCatalog;
+  /** Folio prefix for ticket numbering (e.g. "HMO") */
+  folioPrefix?: string;
+  /** Folio format template (e.g. "{PREFIX}-{NUM:4}") */
+  folioFormat?: string;
+  /** Current folio counter value */
+  folioCounter?: number;
+  /** Fiscal data for the business as CFDI issuer */
+  fiscalConfig?: BusinessFiscalConfig;
 }
 
 /** Default business config used before the owner sets up the back office */
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
-  businessName: 'Mi Negocio',
-  locationName: 'Sucursal Principal',
+  businessName: '',
+  locationName: '',
+  hasKitchen: false,
+  hasTables: false,
+  hasDelivery: false,
+  hasInvoicing: false,
 };

@@ -1,0 +1,134 @@
+<!-- Inventory Items Table — Virtual Scroll + Skeleton Loading -->
+<p-table
+  [value]="items"
+  [scrollable]="true"
+  scrollHeight="calc(100vh - 280px)"
+  [virtualScroll]="true"
+  [virtualScrollItemSize]="50"
+  [rowHover]="true"
+  [loading]="isLoading"
+  dataKey="id"
+  styleClass="p-datatable-sm"
+>
+
+  <!-- Column headers -->
+  <ng-template pTemplate="header">
+    <tr>
+      <th style="min-width: 14rem">Nombre</th>
+      <th style="min-width: 6rem">Unidad</th>
+      <th style="min-width: 8rem">Stock</th>
+      <th style="min-width: 7rem">Alerta mín.</th>
+      <th style="min-width: 8rem">Costo unit.</th>
+      <th style="min-width: 12rem">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <!-- Data rows -->
+  <ng-template pTemplate="body" let-item>
+    <tr>
+      <td class="inv-name text-900 font-medium">{{ item.name }}</td>
+      <td>
+        <span class="inv-unit-badge">{{ item.unit }}</span>
+      </td>
+      <td>
+        <div class="flex align-items-center gap-2">
+          <span
+            class="font-semibold"
+            [class.text-green-600]="item.currentStock > item.lowStockThreshold"
+            [class.text-red-600]="item.currentStock <= item.lowStockThreshold"
+          >
+            {{ item.currentStock }} {{ item.unit }}
+          </span>
+          @if (item.currentStock === 0) {
+            <span class="inv-stock-badge inv-stock-badge--empty">Sin stock</span>
+          } @else if (item.currentStock <= item.lowStockThreshold) {
+            <span class="inv-stock-badge inv-stock-badge--low">Bajo stock</span>
+          }
+        </div>
+      </td>
+      <td class="text-500">{{ item.lowStockThreshold }}</td>
+      <td class="text-primary font-semibold">${{ (item.costCents / 100).toFixed(2) }}</td>
+      <td>
+        <div class="flex align-items-center gap-1">
+          <p-button
+            icon="pi pi-plus"
+            [rounded]="true"
+            [text]="true"
+            severity="success"
+            aria-label="Entrada de stock"
+            pTooltip="Entrada"
+            tooltipPosition="top"
+            (onClick)="addStock.emit(item)"
+          />
+          <p-button
+            icon="pi pi-minus"
+            [rounded]="true"
+            [text]="true"
+            severity="danger"
+            aria-label="Salida de stock"
+            pTooltip="Salida"
+            tooltipPosition="top"
+            (onClick)="removeStock.emit(item)"
+          />
+          <p-button
+            icon="pi pi-pencil"
+            [rounded]="true"
+            [text]="true"
+            aria-label="Editar artículo"
+            pTooltip="Editar"
+            tooltipPosition="top"
+            (onClick)="edit.emit(item)"
+          />
+          <p-button
+            icon="pi pi-history"
+            [rounded]="true"
+            [text]="true"
+            aria-label="Ver historial"
+            pTooltip="Historial"
+            tooltipPosition="left"
+            (onClick)="viewHistory.emit(item)"
+          />
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+  <!-- Skeleton loading rows -->
+  <ng-template pTemplate="loadingbody">
+    @for (_ of skeletonRows; track $index) {
+      <tr>
+        <td><p-skeleton width="70%" height="1.25rem" /></td>
+        <td><p-skeleton width="3rem" height="1.25rem" borderRadius="6px" /></td>
+        <td>
+          <div class="flex align-items-center gap-2">
+            <p-skeleton width="4rem" height="1.25rem" />
+            <p-skeleton width="5rem" height="1.25rem" borderRadius="16px" />
+          </div>
+        </td>
+        <td><p-skeleton width="2.5rem" height="1.25rem" /></td>
+        <td><p-skeleton width="4rem" height="1.25rem" /></td>
+        <td>
+          <div class="flex gap-1">
+            <p-skeleton shape="circle" size="2rem" />
+            <p-skeleton shape="circle" size="2rem" />
+            <p-skeleton shape="circle" size="2rem" />
+            <p-skeleton shape="circle" size="2rem" />
+          </div>
+        </td>
+      </tr>
+    }
+  </ng-template>
+
+  <!-- Empty state -->
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td colspan="6">
+        <div class="flex flex-column align-items-center gap-3 py-6">
+          <i class="pi pi-box text-4xl text-300"></i>
+          <span class="text-lg text-500">No hay artículos registrados.</span>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+</p-table>

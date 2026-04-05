@@ -1,11 +1,11 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 
 import { CartItem, Order } from '../../../../core/models';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { KioskDataService } from '../../../../core/services/kiosk-data.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Seconds before auto-reset to the welcome screen */
@@ -35,6 +35,8 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Constructor
+  private readonly kioskDataService = inject(KioskDataService);
+
   constructor(
     private readonly cartService: CartService,
     private readonly configService: ConfigService,
@@ -46,8 +48,8 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // ── Step 1: Snapshot cart synchronously (BehaviorSubject emits immediately) ──
-    const snapshot = await firstValueFrom(this.cartService.cart$);
+    // ── Step 1: Snapshot cart from signal ──
+    const snapshot = this.cartService.getSnapshot();
 
     if (snapshot.length === 0) {
       this.router.navigate(['/kiosk/welcome']);
@@ -58,9 +60,10 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
     const total = snapshot.reduce((sum, item) => sum + item.totalPriceCents, 0);
 
     // ── Step 3: Async operations (DB reads + config) ──
-    const [orderCount, config] = await Promise.all([
+    const deviceConfig = this.configService.deviceConfig$.getValue();
+    const [orderCount, branchConfig] = await Promise.all([
       this.db.orders.count(),
-      this.configService.load(),
+      this.kioskDataService.loadConfig(deviceConfig.branchId),
     ]);
     const num = orderCount + 1;
 
@@ -70,11 +73,13 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       orderNumber:   num,
       items:         snapshot,
       totalCents:    total,
-      paymentMethod: 'cash', // kiosk: customer pays at counter
+      payments: [],  // kiosk: customer pays at counter after pickup
+      paidCents: 0,
+      changeCents: 0,
       paymentProvider: null,
-      syncStatus:    'pending',
+      syncStatus:    'Pending',
       createdAt:     new Date(),
-      businessId:    1, // local-only until backend is connected
+      branchId:      deviceConfig.branchId,
     };
     await this.db.orders.add(order);
 
@@ -85,7 +90,7 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
     this.completedItems = snapshot;
     this.orderNumber.set(num);
     this.totalCents.set(total);
-    this.businessName.set(config.businessName);
+    this.businessName.set(branchConfig.businessName);
 
     // ── Step 7: Start auto-reset countdown ──
     this.startCountdown();

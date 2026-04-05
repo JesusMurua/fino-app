@@ -1,0 +1,39 @@
+<nav class="cat-sidebar" aria-label="Categorías">
+
+  <!-- Brand mark -->
+  <div class="cat-sidebar__brand">K</div>
+
+  <!-- "All" button -->
+  <button
+    type="button"
+    class="cat-sidebar__item"
+    [class.cat-sidebar__item--active]="selectedCategoryId === null"
+    (click)="categorySelected.emit(null)"
+  >
+    <span class="cat-sidebar__icon"><i class="pi pi-list"></i></span>
+    <span class="cat-sidebar__label">Todos</span>
+  </button>
+
+  <!-- Dynamic categories -->
+  @for (cat of categories; track cat.id) {
+    <button
+      type="button"
+      class="cat-sidebar__item"
+      [class.cat-sidebar__item--active]="selectedCategoryId === cat.id"
+      (click)="categorySelected.emit(cat.id)"
+    >
+      <span class="cat-sidebar__icon">
+        @if (cat.icon) {
+          <i class="pi {{ cat.icon }}"></i>
+        } @else {
+          <i class="pi pi-tag"></i>
+        }
+      </span>
+      <span class="cat-sidebar__label">{{ cat.name }}</span>
+    </button>
+  }
+
+  <!-- Spacer -->
+  <div class="cat-sidebar__spacer"></div>
+
+</nav>

@@ -19,4 +19,28 @@ export const posRoutes: Routes = [
       import('./components/checkout/checkout.component')
         .then(m => m.CheckoutComponent),
   },
+  {
+    path: 'retail',
+    loadComponent: () =>
+      import('./components/retail-pos/retail-pos.component')
+        .then(m => m.RetailPosComponent),
+  },
+  {
+    path: 'counter',
+    loadComponent: () =>
+      import('./components/counter-pos/counter-pos.component')
+        .then(m => m.CounterPosComponent),
+  },
+  {
+    path: 'quick',
+    loadComponent: () =>
+      import('./components/quick-pos/quick-pos.component')
+        .then(m => m.QuickPosComponent),
+  },
+  {
+    path: 'error-config',
+    loadComponent: () =>
+      import('./components/error-config/error-config.component')
+        .then(m => m.ErrorConfigComponent),
+  },
 ];

@@ -1,0 +1,261 @@
+@use '../../../styles/variables' as *;
+
+// ============================================================================
+// Order Row — expandable list item
+// ============================================================================
+
+.order-row {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: $space-2;
+  overflow: hidden;
+  transition: opacity 0.3s;
+
+  &--delivered {
+    opacity: 0.6;
+  }
+
+  &--cancelled {
+    opacity: 0.6;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Summary row (clickable)
+// -----------------------------------------------------------------------
+.order-row__summary {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  width: 100%;
+  padding: $space-3 $space-4;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover { background: $color-bg-page; }
+}
+
+.order-row__number {
+  font-size: 18px;
+  font-weight: 700;
+  color: $color-text-title;
+  min-width: 48px;
+}
+
+.order-row__time {
+  font-size: $font-size-label;
+  color: $color-text-sub;
+  min-width: 44px;
+}
+
+.order-row__table-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  white-space: nowrap;
+}
+
+.order-row__badge {
+  display: inline-flex;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.order-row__elapsed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #D97706;
+  min-width: 48px;
+
+  &--red {
+    color: #EF4444;
+    i { font-size: 12px; }
+  }
+}
+
+.order-row__total {
+  font-size: $font-size-base;
+  font-weight: 700;
+  color: $color-text-title;
+  margin-left: auto;
+  min-width: 72px;
+  text-align: right;
+}
+
+.order-row__payment {
+  font-size: $font-size-label;
+  color: $color-text-sub;
+  min-width: 64px;
+
+  &--unpaid {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    background: #F3F4F6;
+    color: #6B7280;
+  }
+
+  &--platform {
+    color: $color-primary;
+    font-weight: 500;
+  }
+}
+
+.order-row__chevron {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+// -----------------------------------------------------------------------
+// Expanded detail
+// -----------------------------------------------------------------------
+.order-row__detail {
+  padding: 0 $space-4 $space-4;
+  border-top: 1px solid $color-border-soft;
+}
+
+.order-row__items {
+  list-style: none;
+  margin: $space-3 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.order-row__item {
+  display: flex;
+  align-items: baseline;
+  gap: $space-2;
+  font-size: $font-size-base;
+  color: $color-text-title;
+}
+
+.order-row__item-qty {
+  font-weight: 700;
+  min-width: 28px;
+}
+
+.order-row__item-name {
+  font-weight: 500;
+}
+
+.order-row__item-meta {
+  font-size: $font-size-label;
+  color: $color-text-sub;
+}
+
+.order-row__item-price {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: $font-size-label;
+  color: $color-text-sub;
+}
+
+.order-row__note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px $space-3;
+  margin-left: 28px;
+  background: rgba(#D97706, 0.08);
+  border-radius: 6px;
+  font-size: $font-size-label;
+  color: #92400E;
+
+  i { font-size: 12px; color: #D97706; }
+}
+
+// -----------------------------------------------------------------------
+// Actions
+// -----------------------------------------------------------------------
+.order-row__actions {
+  display: flex;
+  gap: $space-3;
+  padding-top: $space-3;
+  border-top: 1px solid $color-border-soft;
+}
+
+.order-row__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  border: none;
+  border-radius: 8px;
+  font-size: $font-size-label;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  i { font-size: 14px; }
+
+  &--print {
+    background: $color-bg-page;
+    color: $color-text-sub;
+    &:hover { background: #E5E7EB; }
+  }
+
+  &--charge {
+    background: #2563EB;
+    color: white;
+    &:hover { background: #1D4ED8; }
+  }
+
+  &--deliver {
+    background: $color-primary;
+    color: white;
+    &:hover { background: #15803D; }
+  }
+
+  &--cancel {
+    background: rgba(#DC2626, 0.08);
+    color: #DC2626;
+    &:hover { background: rgba(#DC2626, 0.16); }
+  }
+}
+
+.order-row__cancel-reason {
+  font-size: $font-size-label;
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+// -----------------------------------------------------------------------
+// Print styles — show only expanded order detail
+// -----------------------------------------------------------------------
+@media print {
+  .order-row {
+    opacity: 1 !important;
+    box-shadow: none;
+    border: 1px solid #E5E7EB;
+    break-inside: avoid;
+  }
+
+  .order-row__summary {
+    pointer-events: none;
+  }
+
+  .order-row__chevron,
+  .order-row__actions {
+    display: none;
+  }
+}

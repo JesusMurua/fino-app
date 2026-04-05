@@ -1,11 +1,5 @@
 <div class="pin-page">
 
-  <!-- Back to POS -->
-  <button type="button" class="pin-back" (click)="goToPOS()" aria-label="Volver al POS">
-    <i class="pi pi-arrow-left"></i>
-    <span>Volver al POS</span>
-  </button>
-
   <div class="pin-card">
 
     <!-- Title -->
@@ -13,52 +7,90 @@
       <div class="pin-header__logo" aria-hidden="true">
         <i class="pi pi-lock"></i>
       </div>
-      <h1 class="pin-header__title">Acceso administrativo</h1>
-      <p class="pin-header__subtitle">Ingresa tu PIN de 4 dígitos</p>
+      <h1 class="pin-header__title">Ingresa tu PIN</h1>
+      <p class="pin-header__subtitle">PIN de 4 dígitos para acceder</p>
     </div>
 
-    <!-- Dots display -->
-    <div
-      class="pin-dots"
-      [class.pin-dots--error]="hasError()"
-      aria-label="PIN ingresado"
-      aria-live="polite"
-    >
-      @for (i of [0, 1, 2, 3]; track i) {
-        <span class="pin-dot" [class.pin-dot--filled]="digits().length > i"></span>
-      }
-    </div>
-
-    @if (hasError()) {
-      <p class="pin-error">PIN incorrecto. Intenta de nuevo.</p>
+    <!-- Offline indicator -->
+    @if (isDeviceOffline()) {
+      <div class="pin-offline-badge" role="status">
+        <i class="pi pi-wifi"></i>
+        <span>Sin conexión — modo offline</span>
+      </div>
     }
 
-    <!-- Numpad 3×4 -->
-    <div class="pin-numpad" role="group" aria-label="Teclado numérico">
-      @for (key of keys; track $index) {
-        @if (key === null) {
-          <span class="pin-key pin-key--empty"></span>
-        } @else if (key === 'del') {
-          <button
-            type="button"
-            class="pin-key pin-key--del"
-            aria-label="Borrar último dígito"
-            (click)="removeDigit()"
-          >
-            <i class="pi pi-delete-left"></i>
-          </button>
-        } @else {
-          <button
-            type="button"
-            class="pin-key"
-            [attr.aria-label]="'Dígito ' + key"
-            (click)="addDigit(key)"
-          >
-            {{ key }}
-          </button>
+    <!-- Permanent lockout -->
+    @if (isPermanentLock()) {
+      <div class="pin-lockout" role="alert">
+        <i class="pi pi-ban"></i>
+        <p class="pin-lockout__title">Dispositivo bloqueado</p>
+        <p class="pin-lockout__text">Demasiados intentos fallidos. Reinicia la app para desbloquear.</p>
+      </div>
+    } @else if (isLockedOut()) {
+      <!-- Temporary lockout countdown -->
+      <div class="pin-lockout" role="alert">
+        <i class="pi pi-clock"></i>
+        <p class="pin-lockout__title">Espera {{ lockoutSeconds() }}s</p>
+        <p class="pin-lockout__text">Demasiados intentos. Intenta de nuevo en un momento.</p>
+      </div>
+    } @else {
+
+      <!-- Dots display -->
+      <div
+        class="pin-dots"
+        [class.pin-dots--error]="hasError()"
+        aria-label="PIN ingresado"
+        aria-live="polite"
+      >
+        @for (i of [0, 1, 2, 3]; track i) {
+          <span class="pin-dot" [class.pin-dot--filled]="digits().length > i"></span>
         }
+      </div>
+
+      @if (hasError()) {
+        <p class="pin-error">PIN incorrecto. Intenta de nuevo.</p>
       }
-    </div>
+
+      <!-- Numpad 3x4 -->
+      <div class="pin-numpad" role="group" aria-label="Teclado numérico">
+        @for (key of keys; track $index) {
+          @if (key === null) {
+            <span class="pin-key pin-key--empty"></span>
+          } @else if (key === 'del') {
+            <button
+              type="button"
+              class="pin-key pin-key--del"
+              aria-label="Borrar último dígito"
+              [disabled]="isLoading()"
+              (click)="removeDigit()"
+            >
+              <i class="pi pi-delete-left"></i>
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="pin-key"
+              [attr.aria-label]="'Dígito ' + key"
+              [disabled]="isLoading()"
+              (click)="addDigit(key)"
+            >
+              {{ key }}
+            </button>
+          }
+        }
+      </div>
+
+      <!-- Attempt counter (subtle, shown after first failure) -->
+      @if (failedAttempts() > 0 && !hasError()) {
+        <p class="pin-attempts">{{ failedAttempts() }} {{ failedAttempts() === 1 ? 'intento fallido' : 'intentos fallidos' }}</p>
+      }
+
+    }
+
+    <!-- Owner login link -->
+    <a routerLink="/login" class="pin-owner-link">
+      ¿Eres el dueño? Iniciar sesión
+    </a>
 
   </div>
 

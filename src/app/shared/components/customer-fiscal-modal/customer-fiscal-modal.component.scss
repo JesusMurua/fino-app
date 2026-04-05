@@ -1,0 +1,227 @@
+@use '../../../../styles/variables' as *;
+
+// -----------------------------------------------------------------------
+// Dialog overrides
+// -----------------------------------------------------------------------
+:host ::ng-deep .fiscal-modal {
+  .p-dialog-header {
+    padding: $space-4 $space-5;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  .p-dialog-content {
+    padding: $space-4 $space-5;
+  }
+
+  .p-dialog-footer {
+    padding: $space-3 $space-5 $space-4;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+// -----------------------------------------------------------------------
+// Form layout
+// -----------------------------------------------------------------------
+.fiscal-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.fiscal-form__shortcut {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  align-self: flex-start;
+  padding: $space-2 $space-4;
+  border: 1px solid #E5E7EB;
+  border-radius: $radius-button;
+  background: #F9FAFB;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  i { font-size: 14px; }
+
+  &:hover {
+    border-color: $color-primary;
+    background: $color-primary-light;
+    color: $color-primary;
+  }
+}
+
+.fiscal-form__error-banner {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: $radius-button;
+  color: #DC2626;
+  font-size: 13px;
+  font-weight: 500;
+
+  i { font-size: 16px; }
+}
+
+// -----------------------------------------------------------------------
+// Fields
+// -----------------------------------------------------------------------
+.fiscal-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  &__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__input {
+    width: 100%;
+    min-height: $touch-target-pos;
+    border-radius: $radius-button !important;
+
+    &--mono {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+  }
+
+  &__dropdown {
+    width: 100%;
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: $space-1;
+    font-size: 12px;
+    color: #DC2626;
+
+    i { font-size: 12px; }
+  }
+}
+
+.fiscal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-3;
+}
+
+// -----------------------------------------------------------------------
+// Status states (submitting, success)
+// -----------------------------------------------------------------------
+.fiscal-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-6 $space-4;
+  text-align: center;
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+
+    i { font-size: 28px; }
+
+    &--success {
+      background: $color-primary-light;
+      color: $color-primary;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__amount {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: $color-text-title;
+  }
+
+  &__uuid {
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    color: $color-text-sub;
+    word-break: break-all;
+  }
+
+  &__detail {
+    margin: 0;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Footer
+// -----------------------------------------------------------------------
+.fiscal-footer {
+  display: flex;
+  gap: $space-3;
+  justify-content: flex-end;
+
+  &--center {
+    justify-content: center;
+  }
+}
+
+.fiscal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  min-height: 48px;
+  padding: $space-3 $space-5;
+  border-radius: $radius-button;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &--primary {
+    background: $color-primary;
+    color: white;
+    border: none;
+
+    &:hover { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $color-text-sub;
+    border: 1px solid #E5E7EB;
+
+    &:hover {
+      border-color: $color-text-sub;
+      color: $color-text-title;
+    }
+  }
+}

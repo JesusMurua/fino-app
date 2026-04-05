@@ -1,0 +1,209 @@
+<p-dialog
+  [visible]="visible"
+  (visibleChange)="onClose()"
+  [modal]="true"
+  [closable]="true"
+  [showHeader]="false"
+  [style]="{ width: '540px', 'border-radius': '16px' }"
+  [contentStyle]="{ padding: '0', overflow: 'visible' }"
+  [draggable]="false"
+  styleClass="rf-dialog"
+>
+
+  <form [formGroup]="form" class="rf">
+
+    <!-- ============================================================ -->
+    <!-- Header                                                        -->
+    <!-- ============================================================ -->
+    <div class="rf__header">
+      <div>
+        <h2 class="rf__title">{{ reservation ? 'Editar reservación' : 'Nueva reservación' }}</h2>
+        <p class="rf__subtitle">Completa los datos para agendar</p>
+      </div>
+      <button type="button" class="rf__close" (click)="onClose()" aria-label="Cerrar">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Section: Cliente                                               -->
+    <!-- ============================================================ -->
+    <div class="rf__section">
+      <!-- Customer selector (FDD-005) -->
+      <div class="rf__customer-selector">
+        <app-customer-selector
+          [selectedCustomer]="selectedCustomer()"
+          (selectedCustomerChange)="selectedCustomer.set($event)"
+          (customerChanged)="onCustomerChanged($event)"
+          placeholder="Buscar cliente existente..."
+        />
+      </div>
+
+      <div class="rf__row">
+        <div class="rf__field rf__field--grow">
+          <label class="rf__label">Nombre</label>
+          <input
+            formControlName="guestName"
+            type="text"
+            pInputText
+            placeholder="Juan Pérez"
+            class="rf__input"
+          />
+          @if (form.get('guestName')?.touched && form.get('guestName')?.hasError('required')) {
+            <small class="rf__error">Obligatorio</small>
+          }
+        </div>
+        <div class="rf__field">
+          <label class="rf__label">Teléfono</label>
+          <input
+            formControlName="guestPhone"
+            type="tel"
+            pInputText
+            placeholder="55 1234 5678"
+            class="rf__input"
+          />
+        </div>
+        <div class="rf__field rf__field--party">
+          <label class="rf__label">Personas</label>
+          <div class="rf__stepper">
+            <button type="button" class="rf__stepper-btn" (click)="adjustPartySize(-1)" [disabled]="form.get('partySize')!.value <= 1">
+              <i class="pi pi-minus"></i>
+            </button>
+            <span class="rf__stepper-val">{{ form.get('partySize')!.value }}</span>
+            <button type="button" class="rf__stepper-btn" (click)="adjustPartySize(1)" [disabled]="form.get('partySize')!.value >= 50">
+              <i class="pi pi-plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Section: Cuándo                                               -->
+    <!-- ============================================================ -->
+    <div class="rf__section">
+      <span class="rf__section-tag">Cuándo</span>
+      <div class="rf__row">
+        <div class="rf__field">
+          <label class="rf__label">Fecha</label>
+          <p-calendar
+            formControlName="reservationDate"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            styleClass="rf__input"
+            [appendTo]="'body'"
+            (onSelect)="checkAvailability()"
+          />
+        </div>
+        <div class="rf__field">
+          <label class="rf__label">Hora</label>
+          <p-calendar
+            formControlName="reservationTime"
+            [timeOnly]="true"
+            [hourFormat]="'24'"
+            [showIcon]="true"
+            styleClass="rf__input"
+            [appendTo]="'body'"
+            (onSelect)="checkAvailability()"
+          />
+        </div>
+        <div class="rf__field">
+          <label class="rf__label">Duración</label>
+          <p-dropdown
+            formControlName="durationMinutes"
+            [options]="durationOptions"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="rf__input"
+            (onChange)="checkAvailability()"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Section: Mesa (chip selector)                                 -->
+    <!-- ============================================================ -->
+    <div class="rf__section">
+      <span class="rf__section-tag">Mesa</span>
+
+      @if (zoneGroups().length === 0) {
+        <p class="rf__empty-tables">No hay mesas configuradas</p>
+      } @else {
+        <div class="rf__zones">
+          @for (group of zoneGroups(); track group.zoneName) {
+            <div class="rf__zone">
+              <span class="rf__zone-name">{{ group.zoneName }}</span>
+              <div class="rf__chips">
+                @for (table of group.tables; track table.id) {
+                  <button
+                    type="button"
+                    class="rf__chip"
+                    [class.rf__chip--selected]="selectedTableId() === table.id && !noTableAssigned()"
+                    (click)="selectTable(table.id)"
+                  >
+                    <span class="rf__chip-name">{{ table.name }}</span>
+                    @if (table.capacity) {
+                      <span class="rf__chip-cap">{{ table.capacity }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <label class="rf__no-table">
+          <input
+            type="checkbox"
+            [checked]="noTableAssigned()"
+            (change)="toggleNoTable()"
+          />
+          <span>Sin mesa asignada</span>
+        </label>
+      }
+
+      @if (availabilityWarning()) {
+        <div class="rf__warn">
+          <i class="pi pi-exclamation-triangle"></i>
+          {{ availabilityWarning() }}
+        </div>
+      }
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Section: Notas                                                -->
+    <!-- ============================================================ -->
+    <div class="rf__section rf__section--last">
+      <label class="rf__label">Notas</label>
+      <textarea
+        formControlName="notes"
+        pInputTextarea
+        rows="2"
+        placeholder="Cumpleaños, alergias, silla alta..."
+        class="rf__input rf__textarea"
+      ></textarea>
+    </div>
+
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="rf__footer">
+      <button type="button" class="rf__btn rf__btn--ghost" (click)="onClose()">Cancelar</button>
+      <button
+        type="button"
+        class="rf__btn rf__btn--primary"
+        [disabled]="isSaving()"
+        (click)="onSave()"
+      >
+        @if (isSaving()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-check"></i>
+        }
+        {{ reservation ? 'Actualizar' : 'Crear reservación' }}
+      </button>
+    </div>
+  </ng-template>
+
+</p-dialog>

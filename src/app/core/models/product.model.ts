@@ -20,18 +20,49 @@ export interface ProductExtra {
 }
 
 /**
+ * An image associated with a product, stored in the backend.
+ */
+export interface ProductImage {
+  id: number;
+  productId: number;
+  url: string;
+  sortOrder: number;
+}
+
+/**
  * A product shown in the catalog grid.
  * All monetary values are stored in cents to avoid floating-point errors.
  */
 export interface Product {
   id: number;
   name: string;
+  /** Optional product description (ingredients, details, etc.) */
+  description?: string;
+  /** Optional barcode (EAN-13, UPC-A, etc.) */
+  barcode?: string;
   /** Base price in cents (e.g. 4500 = $45.00 MXN) */
   priceCents: number;
   categoryId: number;
+  /** Legacy single image URL — kept for backward compatibility */
   imageUrl?: string;
+  /** Multiple product images ordered by sortOrder */
+  images?: ProductImage[];
   isAvailable: boolean;
   isPopular?: boolean;
+  /** Whether this product tracks its own stock (useful for retail/abarrotes) */
+  trackStock?: boolean;
+  /** Current stock level (only meaningful when trackStock is true) */
+  currentStock?: number;
+  /** Alert threshold — stock at or below this triggers low-stock warning */
+  lowStockThreshold?: number;
   sizes: ProductSize[];
   extras: ProductExtra[];
+  /** SAT product/service code (c_ClaveProdServ) for CFDI invoicing */
+  satProductCode?: string;
+  /** SAT unit code (c_ClaveUnidad) for CFDI invoicing (e.g. "H87" = Pieza) */
+  satUnitCode?: string;
+  /** IVA tax rate as integer percentage (e.g. 16, 8, 0). Default: 16 */
+  taxRate?: number;
+  /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
+  printingDestinationId?: number | null;
 }

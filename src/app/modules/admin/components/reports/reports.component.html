@@ -1,0 +1,222 @@
+<div class="reports-page">
+
+  <!-- Header -->
+  <div class="reports-header">
+    <h1 class="reports-header__title">Reportes</h1>
+    @if (hasData()) {
+      <div class="reports-header__actions">
+        <button type="button" class="btn-export btn-export--excel" [disabled]="loadingExcel()" (click)="onDownloadExcel()">
+          <i [class]="loadingExcel() ? 'pi pi-spin pi-spinner' : 'pi pi-file-excel'"></i>
+          Excel
+        </button>
+        <button type="button" class="btn-export btn-export--pdf" [disabled]="loadingPdf()" (click)="onDownloadPdf()">
+          <i [class]="loadingPdf() ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
+          PDF
+        </button>
+        <button type="button" class="btn-export btn-export--fiscal" [disabled]="loadingFiscalCsv()" (click)="onDownloadFiscalCsv()">
+          <i [class]="loadingFiscalCsv() ? 'pi pi-spin pi-spinner' : 'pi pi-file'"></i>
+          Fiscal (CSV)
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Period selector -->
+  <div class="period-bar">
+    <div class="period-btns">
+      @for (p of periods; track p.key) {
+        <button
+          type="button"
+          class="period-btn"
+          [class.period-btn--active]="selectedPeriod() === p.key"
+          (click)="selectPeriod(p.key)"
+        >
+          {{ p.label }}
+        </button>
+      }
+    </div>
+
+    @if (selectedPeriod() === 'custom') {
+      <div class="period-custom">
+        <div class="period-custom__field">
+          <label>Desde:</label>
+          <p-calendar
+            [(ngModel)]="customFromDate"
+            (ngModelChange)="onCustomFromChange($event)"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            [iconDisplay]="'input'"
+          />
+        </div>
+        <div class="period-custom__field">
+          <label>Hasta:</label>
+          <p-calendar
+            [(ngModel)]="customToDate"
+            (ngModelChange)="onCustomToChange($event)"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            [iconDisplay]="'input'"
+          />
+        </div>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!customFromDate || !customToDate"
+          (click)="loadReport()"
+        >
+          Buscar
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Empty state -->
+  @if (!loading() && !hasData()) {
+    <div class="reports-empty">
+      <i class="pi pi-chart-bar reports-empty__icon"></i>
+      <h2 class="reports-empty__title">Sin datos para este período</h2>
+      <p class="reports-empty__text">Selecciona otro rango de fechas</p>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (!loading() && hasData() && summary(); as s) {
+
+    <!-- Metric cards row 1 -->
+    <section class="metrics-grid metrics-grid--4">
+      <div class="metric-card">
+        <span class="metric-label">Total ventas</span>
+        <span class="metric-value green">{{ s.totalCents | price }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Órdenes</span>
+        <span class="metric-value">{{ s.completedOrders }}</span>
+        <span class="metric-sub">completadas</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Ticket promedio</span>
+        <span class="metric-value">{{ s.averageTicketCents | price }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Descuentos</span>
+        <span class="metric-value" [class.orange]="s.discountCents > 0">{{ s.discountCents | price }}</span>
+      </div>
+    </section>
+
+    <!-- Metric cards row 2 -->
+    <section class="metrics-grid metrics-grid--3">
+      <div class="metric-card">
+        <span class="metric-label">Efectivo</span>
+        <span class="metric-value green">{{ s.cashCents | price }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Tarjeta</span>
+        <span class="metric-value blue">{{ s.cardCents | price }}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Canceladas</span>
+        <span class="metric-value" [class.red]="s.cancelledOrders > 0">{{ s.cancelledOrders }}</span>
+      </div>
+    </section>
+
+    <!-- Chart -->
+    @if (chartData()) {
+      <section class="section-card">
+        <h2 class="section-card__title">Ventas por día</h2>
+        <div class="chart-wrap">
+          <p-chart type="bar" [data]="chartData()!" [options]="chartOptions" height="300px" />
+        </div>
+      </section>
+    }
+
+    <!-- Tabs: Top productos / Detalle -->
+    <section class="section-card">
+      <p-tabView [(activeIndex)]="activeTab">
+
+        <!-- Tab 1: Top productos -->
+        <p-tabPanel header="Top productos">
+          @if (s.topProducts.length === 0) {
+            <p class="section-card__empty">Sin ventas en este período</p>
+          } @else {
+            <p-table [value]="s.topProducts" [rowHover]="true" styleClass="p-datatable-sm">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th style="width: 3rem">#</th>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Total vendido</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-item let-i="rowIndex">
+                <tr>
+                  <td class="rank-cell">{{ i + 1 }}</td>
+                  <td class="name-cell">{{ item.name }}</td>
+                  <td>{{ item.quantity }} pza</td>
+                  <td class="price-cell">{{ item.totalCents | price }}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </p-tabPanel>
+
+        <!-- Tab 2: Detalle de órdenes -->
+        <p-tabPanel header="Detalle de órdenes">
+          @if (s.orders.length === 0) {
+            <p class="section-card__empty">Sin órdenes en este período</p>
+          } @else {
+            <p-table
+              [value]="s.orders"
+              [rows]="20"
+              [paginator]="true"
+              [rowsPerPageOptions]="[20, 50, 100]"
+              [showCurrentPageReport]="true"
+              currentPageReportTemplate="{first}–{last} de {totalRecords}"
+              [rowHover]="true"
+              styleClass="p-datatable-sm"
+            >
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>#</th>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                  <th>Artículos</th>
+                  <th>Método</th>
+                  <th>Descuento</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-order>
+                <tr [class.row-cancelled]="order.cancellationReason">
+                  <td class="num-cell">#{{ order.orderNumber }}</td>
+                  <td>{{ order.createdAt | date:'dd/MM/yy' }}</td>
+                  <td class="time-cell">{{ formatTime(order.createdAt) }}</td>
+                  <td>{{ order.itemCount }}</td>
+                  <td>
+                    <span class="badge badge--cash">{{ order.paymentMethod || 'Sin cobrar' }}</span>
+                  </td>
+                  <td>
+                    @if (order.discountCents && order.discountCents > 0) {
+                      <span class="discount-cell">-{{ order.discountCents | price }}</span>
+                    }
+                  </td>
+                  <td class="price-cell">{{ order.totalCents | price }}</td>
+                  <td>
+                    @if (order.cancellationReason) {
+                      <span class="badge badge--cancelled">Cancelada</span>
+                    } @else {
+                      <span class="badge badge--completed">Completada</span>
+                    }
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </p-tabPanel>
+
+      </p-tabView>
+    </section>
+
+  }
+
+</div>

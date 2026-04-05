@@ -9,6 +9,7 @@
 // Touch UX — Non-negotiable minimums (CLAUDE.md)
 // -----------------------------------------------------------------------------
 $touch-target-min:    64px;   // Minimum tap area for all interactive elements
+$touch-target-pos:    48px;   // POS minimum for buttons, pills, inputs (3rem)
 $product-card-min:   140px;   // Minimum product card size (width and height)
 
 // -----------------------------------------------------------------------------
@@ -35,9 +36,10 @@ $space-8:  64px;
 // -----------------------------------------------------------------------------
 // Layout
 // -----------------------------------------------------------------------------
-$cart-panel-width:      340px;  // Sidebar cart width on desktop
-$category-bar-height:    64px;  // Category filter bar height (= touch target)
-$header-height:          60px;  // Top app bar height
+$cart-panel-width:          340px;  // Sidebar cart width on desktop
+$category-sidebar-width:     90px;  // Vertical category nav width
+$category-bar-height:        64px;  // Category filter bar height (= touch target)
+$header-height:              60px;  // Top app bar height
 
 // -----------------------------------------------------------------------------
 // POS Color overrides
@@ -50,8 +52,31 @@ $color-out-of-stock:   #9e9e9e;  // Grey — unavailable products
 $color-badge-bg:       #16A34A;  // Cart item count badge
 $color-text-title:     #111827;  // Dark — headings
 $color-text-sub:       #6B7280;  // Grey — secondary labels
-$color-bg-page:        #F9FAFB;  // Light grey — page background
-$color-border-soft:    #F3F4F6;  // Very light — separators
+$color-bg-page:        #F8FAFC;  // Premium off-white — page background
+$color-border-soft:    #F1F5F9;  // Very light slate — separators
+
+// Premium UI tokens
+$shadow-card:          0 4px 20px rgba(0, 0, 0, 0.04);   // Extremely soft
+$shadow-card-hover:    0 8px 30px rgba(0, 0, 0, 0.08);   // Lift on hover
+$shadow-card-deep:     0 20px 40px rgba(0, 0, 0, 0.04);  // Mockup deep shadow
+$shadow-card-deep-hover: 0 24px 48px rgba(0, 0, 0, 0.08); // Mockup deep hover
+$shadow-panel:         0 1px 3px rgba(0, 0, 0, 0.04);    // Subtle sidebar
+$radius-card:          16px;
+$radius-button:        12px;
+$radius-pill:          9999px;
+
+// -----------------------------------------------------------------------------
+// Delivery platforms
+// -----------------------------------------------------------------------------
+$color-uber-eats:      #06C167;
+$color-uber-eats-bg:   #000000;
+$color-rappi:          #FF441B;
+$color-rappi-bg:       #FFF1EE;
+$color-didi-food:      #FF6B00;
+$color-didi-food-bg:   #FFF4EE;
+$color-delivery-panel: #111827;
+$color-delivery-card:  #1F2937;
+$color-delivery-badge: #374151;
 
 // -----------------------------------------------------------------------------
 // Breakpoints (align with PrimeFlex)
