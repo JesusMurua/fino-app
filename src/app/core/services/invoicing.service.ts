@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -29,6 +30,7 @@ export class InvoicingService {
 
   //#region Properties
   private readonly api = inject(ApiService);
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly db = inject(DatabaseService);
 
@@ -170,6 +172,31 @@ export class InvoicingService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Gets a download URL for an invoice file (PDF or XML).
+   * @param invoiceId UUID of the invoice
+   * @param format File format to download
+   */
+  async getDownloadUrl(invoiceId: string, format: 'pdf' | 'xml'): Promise<string> {
+    return firstValueFrom(
+      this.api.get<string>(`/invoicing/${invoiceId}/download/${format}`),
+    );
+  }
+
+  /**
+   * Cancels a CFDI invoice in SAT.
+   * Uses HttpClient directly because ApiService.delete() does not support a request body.
+   * @param invoiceId UUID of the invoice to cancel
+   * @param motive SAT cancellation motive code (01-04)
+   */
+  async cancelInvoice(invoiceId: string, motive: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete(`${environment.apiUrl}/invoicing/${invoiceId}`, {
+        body: { motive },
+      }),
+    );
   }
 
   /**

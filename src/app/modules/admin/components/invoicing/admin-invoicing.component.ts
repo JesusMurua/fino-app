@@ -1,11 +1,15 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { ButtonModule } from 'primeng/button';
 import { CalendarModule } from 'primeng/calendar';
+import { DialogModule } from 'primeng/dialog';
+import { DropdownModule } from 'primeng/dropdown';
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
-import { GlobalInvoiceRecord, GlobalInvoiceSummary } from '../../../../core/models';
+import { GlobalInvoiceRecord, GlobalInvoiceSummary, SAT_CANCEL_MOTIVOS } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InvoicingService } from '../../../../core/services/invoicing.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
@@ -13,7 +17,17 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
 @Component({
   selector: 'app-admin-invoicing',
   standalone: true,
-  imports: [DatePipe, FormsModule, CalendarModule, TableModule, PricePipe],
+  imports: [
+    DatePipe,
+    FormsModule,
+    ButtonModule,
+    CalendarModule,
+    DialogModule,
+    DropdownModule,
+    TableModule,
+    TooltipModule,
+    PricePipe,
+  ],
   templateUrl: './admin-invoicing.component.html',
   styleUrl: './admin-invoicing.component.scss',
 })
@@ -45,6 +59,18 @@ export class AdminInvoicingComponent implements OnInit {
 
   /** Whether the summary has data */
   readonly hasSummary = computed(() => this.summary().uninvoicedCount > 0);
+
+  //#endregion
+
+  //#region Cancel Dialog
+
+  /** SAT cancellation motive options for the dropdown */
+  readonly cancelMotivos = SAT_CANCEL_MOTIVOS;
+
+  readonly showCancelDialog = signal(false);
+  readonly cancelTarget = signal<GlobalInvoiceRecord | null>(null);
+  readonly cancelMotive = signal('02');
+  readonly isCancelling = signal(false);
 
   //#endregion
 
@@ -128,6 +154,71 @@ export class AdminInvoicingComponent implements OnInit {
       case 'failed':    return 'status-badge--error';
       case 'cancelled': return 'status-badge--cancelled';
       default:          return '';
+    }
+  }
+
+  //#endregion
+
+  //#region Download Methods
+
+  /** Downloads a PDF or XML file for an invoice */
+  async onDownload(invoiceId: string, format: 'pdf' | 'xml'): Promise<void> {
+    try {
+      const url = await this.invoicingService.getDownloadUrl(invoiceId, format);
+      window.open(url, '_blank');
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: `No se pudo descargar el archivo ${format.toUpperCase()}`,
+        life: 4000,
+      });
+    }
+  }
+
+  //#endregion
+
+  //#region Cancel Methods
+
+  /** Opens the cancel confirmation dialog for an invoice */
+  openCancelDialog(record: GlobalInvoiceRecord): void {
+    this.cancelTarget.set(record);
+    this.cancelMotive.set('02');
+    this.showCancelDialog.set(false);
+    this.showCancelDialog.set(true);
+  }
+
+  /** Closes the cancel dialog and resets state */
+  closeCancelDialog(): void {
+    this.showCancelDialog.set(false);
+    this.cancelTarget.set(null);
+  }
+
+  /** Confirms cancellation and reloads data */
+  async confirmCancel(): Promise<void> {
+    const target = this.cancelTarget();
+    if (!target || this.isCancelling()) return;
+
+    this.isCancelling.set(true);
+    try {
+      await this.invoicingService.cancelInvoice(target.id, this.cancelMotive());
+      this.closeCancelDialog();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Factura cancelada',
+        detail: `CFDI ${target.cfdiUuid} cancelado en SAT`,
+        life: 5000,
+      });
+      await this.loadData();
+    } catch (error: any) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al cancelar',
+        detail: error?.error?.message ?? 'No se pudo cancelar la factura',
+        life: 5000,
+      });
+    } finally {
+      this.isCancelling.set(false);
     }
   }
 

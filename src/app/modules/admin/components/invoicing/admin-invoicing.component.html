@@ -95,12 +95,13 @@
           <th>CFDI UUID</th>
           <th>Estado</th>
           <th>Fecha</th>
+          <th style="min-width: 160px">Acciones</th>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6" style="text-align:center;padding:24px;color:#6B7280">
+          <td colspan="7" style="text-align:center;padding:24px;color:#6B7280">
             No hay facturas globales en este periodo
           </td>
         </tr>
@@ -120,9 +121,99 @@
             </span>
           </td>
           <td>{{ record.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+          <td>
+            @if (record.status === 'completed') {
+              <div class="action-buttons">
+                <p-button
+                  icon="pi pi-file-pdf"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="secondary"
+                  pTooltip="Descargar PDF"
+                  (onClick)="onDownload(record.id, 'pdf')"
+                />
+                <p-button
+                  icon="pi pi-code"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="secondary"
+                  pTooltip="Descargar XML"
+                  (onClick)="onDownload(record.id, 'xml')"
+                />
+                <p-button
+                  icon="pi pi-times"
+                  [rounded]="true"
+                  [text]="true"
+                  severity="danger"
+                  pTooltip="Cancelar factura"
+                  (onClick)="openCancelDialog(record)"
+                />
+              </div>
+            }
+          </td>
         </tr>
       </ng-template>
     </p-table>
   </div>
 
 </div>
+
+<!-- Cancel invoice dialog -->
+<p-dialog
+  header="Cancelar factura"
+  [(visible)]="showCancelDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '440px' }"
+  styleClass="cancel-invoice-dialog"
+>
+  @if (cancelTarget(); as target) {
+    <div class="cancel-form">
+      <div class="cancel-form__uuid">
+        <span class="cancel-form__label">CFDI a cancelar:</span>
+        <span class="cancel-form__value">{{ target.cfdiUuid }}</span>
+      </div>
+
+      <div class="cancel-form__field">
+        <label for="cancel-motive">Motivo de cancelación (SAT)</label>
+        <p-dropdown
+          inputId="cancel-motive"
+          [options]="cancelMotivos"
+          [(ngModel)]="cancelMotive"
+          optionValue="code"
+          optionLabel="label"
+          [style]="{ width: '100%' }"
+          styleClass="cancel-form__dropdown"
+        />
+      </div>
+
+      <div class="cancel-form__warning">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Esta acción es irreversible y se reflejará ante el SAT.</span>
+      </div>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <div class="cancel-form__footer">
+      <button
+        type="button"
+        class="cancel-form__btn cancel-form__btn--ghost"
+        (click)="closeCancelDialog()"
+      >
+        Cerrar
+      </button>
+      <button
+        type="button"
+        class="cancel-form__btn cancel-form__btn--danger"
+        [disabled]="isCancelling()"
+        (click)="confirmCancel()"
+      >
+        @if (isCancelling()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Cancelar factura
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
