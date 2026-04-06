@@ -17,6 +17,14 @@
 
   <div class="cart-panel__divider"></div>
 
+  <!-- Customer selector (FDD-005) -->
+  <div class="cart-panel__customer">
+    <app-customer-selector
+      [(selectedCustomer)]="customerService.selectedCustomer"
+      [compact]="true"
+    />
+  </div>
+
   <!-- Item list -->
   <div class="cart-panel__items">
     @if (cartItems(); as items) {
