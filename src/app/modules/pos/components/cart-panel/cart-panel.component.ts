@@ -13,17 +13,19 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { CustomerService } from '../../../../core/services/customer.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { OrderContextService } from '../../../../core/services/order-context.service';
 import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableAssignmentService } from '../../../../core/services/table-assignment.service';
+import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe, TableSelectorDialogComponent],
+  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
@@ -73,6 +75,7 @@ export class CartPanelComponent implements OnInit {
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
     private readonly cashRegisterService: CashRegisterService,
+    readonly customerService: CustomerService,
     private readonly db: DatabaseService,
     private readonly promotionService: PromotionService,
     private readonly orderContextService: OrderContextService,
@@ -180,6 +183,8 @@ export class CartPanelComponent implements OnInit {
       kitchenStatus: 'Pending',
       tableId: tableId ?? undefined,
       tableName: tableName ?? undefined,
+      customerId: this.customerService.selectedCustomer()?.id,
+      customerName: this.customerService.selectedCustomer()?.name,
       createdAt: new Date(),
       branchId: this.authService.branchId,
       cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
