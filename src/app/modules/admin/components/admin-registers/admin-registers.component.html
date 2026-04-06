@@ -1,0 +1,188 @@
+<div class="admin-registers">
+
+  <!-- Header -->
+  <div class="admin-registers__header">
+    <h1 class="admin-registers__title">Cajas Físicas</h1>
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="openCreateDialog()"
+    >
+      <i class="pi pi-plus"></i>
+      Nueva caja
+    </button>
+  </div>
+
+  <!-- Device UUID info strip -->
+  <div class="admin-registers__device-info">
+    <i class="pi pi-desktop"></i>
+    <span>UUID de este dispositivo:</span>
+    <code class="admin-registers__uuid">{{ truncateUuid(currentDeviceUuid) }}</code>
+    @if (linkedToThisDevice(); as linked) {
+      <span class="admin-registers__linked-badge">
+        <i class="pi pi-link"></i>
+        Vinculado a "{{ linked.name }}"
+      </span>
+    } @else {
+      <span class="admin-registers__unlinked-badge">
+        <i class="pi pi-exclamation-circle"></i>
+        Sin vincular
+      </span>
+    }
+  </div>
+
+  <!-- Loading skeleton -->
+  @if (isLoading()) {
+    <div class="admin-registers__loading">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="skeleton-row"></div>
+      }
+    </div>
+  } @else if (registers().length === 0) {
+
+    <!-- Empty state -->
+    <div class="admin-registers__empty">
+      <i class="pi pi-desktop admin-registers__empty-icon"></i>
+      <p class="admin-registers__empty-title">No hay cajas registradoras</p>
+      <p class="admin-registers__empty-sub">Crea una caja física para vincularla a este dispositivo.</p>
+      <button type="button" class="btn-primary" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i>
+        Crear primera caja
+      </button>
+    </div>
+
+  } @else {
+
+    <!-- Registers table -->
+    <div class="admin-registers__table-wrap">
+      <table class="admin-registers__table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Dispositivo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (reg of registers(); track reg.id) {
+            <tr [class.admin-registers__row--linked]="isLinkedToThisDevice(reg)">
+              <td>{{ reg.id }}</td>
+              <td class="admin-registers__name-cell">
+                {{ reg.name }}
+                @if (isLinkedToThisDevice(reg)) {
+                  <span class="admin-registers__this-device-tag">Este dispositivo</span>
+                }
+              </td>
+              <td>
+                @if (reg.isActive) {
+                  <span class="status-badge status-badge--active">Activa</span>
+                } @else {
+                  <span class="status-badge status-badge--inactive">Inactiva</span>
+                }
+              </td>
+              <td>
+                <code
+                  class="admin-registers__uuid"
+                  [pTooltip]="reg.deviceUuid ?? 'Sin vincular'"
+                  tooltipPosition="top"
+                >{{ truncateUuid(reg.deviceUuid) }}</code>
+              </td>
+              <td class="admin-registers__actions">
+                <button
+                  type="button"
+                  class="btn-icon"
+                  pTooltip="Editar"
+                  tooltipPosition="top"
+                  (click)="openEditDialog(reg)"
+                >
+                  <i class="pi pi-pencil"></i>
+                </button>
+
+                @if (isLinkedToThisDevice(reg)) {
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--danger"
+                    pTooltip="Desvincular este dispositivo"
+                    tooltipPosition="top"
+                    (click)="unlinkDevice(reg)"
+                  >
+                    <i class="pi pi-link"></i>
+                  </button>
+                } @else if (!reg.deviceUuid) {
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--primary"
+                    pTooltip="Vincular este dispositivo"
+                    tooltipPosition="top"
+                    (click)="linkDevice(reg)"
+                  >
+                    <i class="pi pi-link"></i>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Create / Edit dialog -->
+<p-dialog
+  [header]="editingRegister() ? 'Editar caja' : 'Nueva caja'"
+  [visible]="showDialog()"
+  (visibleChange)="showDialog.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '400px' }"
+  [draggable]="false"
+>
+  <div class="register-form">
+    <div class="register-form__field">
+      <label for="registerName">Nombre</label>
+      <input
+        [(ngModel)]="form.name"
+        id="registerName"
+        type="text"
+        pInputText
+        placeholder="Ej: Caja 1"
+        class="register-form__input"
+        [class.ng-dirty]="nameError()"
+        [class.ng-invalid]="nameError()"
+      />
+      @if (nameError()) {
+        <small class="register-form__error">{{ nameError() }}</small>
+      }
+    </div>
+
+    <div class="register-form__field register-form__field--switch">
+      <label for="registerActive">Activa</label>
+      <p-inputSwitch
+        [(ngModel)]="form.isActive"
+        inputId="registerActive"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      class="btn-ghost"
+      (click)="showDialog.set(false)"
+    >Cancelar</button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="isSaving()"
+      (click)="saveRegister()"
+    >
+      @if (isSaving()) {
+        <i class="pi pi-spin pi-spinner"></i>
+      }
+      Guardar
+    </button>
+  </ng-template>
+</p-dialog>

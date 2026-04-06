@@ -855,4 +855,34 @@
 
     i { font-size: 18px; }
   }
+
+  &__register-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    border-radius: 20px;
+    background: #F0FDF4;
+    color: $color-primary;
+    font-size: $font-size-base;
+    font-weight: 600;
+
+    i { font-size: 16px; }
+  }
+
+  &__register-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    border-radius: 12px;
+    background: #FEF2F2;
+    color: #DC2626;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    line-height: 1.4;
+
+    i { font-size: 18px; flex-shrink: 0; }
+  }
 }

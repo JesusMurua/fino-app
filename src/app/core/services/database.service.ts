@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -42,6 +42,7 @@ export class DatabaseService extends Dexie {
   customers!: Table<Customer, number>;
   printerDestinations!: Table<PrinterDestination, number>;
   pendingPrintJobs!: Table<PrintJobDto, string>;
+  cashRegisters!: Table<CashRegister, number>;
   //#endregion
 
   //#region Constructor
@@ -143,6 +144,11 @@ export class DatabaseService extends Dexie {
     // Add pendingPrintJobs table for KDS offline-first support (Phase 20c)
     this.version(18).stores({
       pendingPrintJobs: 'id, destinationId, status',
+    });
+
+    // Add cashRegisters table for multi-till support (Phase: multi-till)
+    this.version(19).stores({
+      cashRegisters: 'id, branchId, isActive, deviceUuid',
     });
   }
   //#endregion

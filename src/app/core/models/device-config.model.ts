@@ -37,6 +37,10 @@ export interface DeviceConfig {
   bluetoothDeviceId?: string;
   /** Saved Bluetooth device display name */
   bluetoothDeviceName?: string;
+  /** ID of the physical cash register linked to this device */
+  linkedRegisterId?: number;
+  /** Display name of the linked cash register (cached) */
+  linkedRegisterName?: string;
 }
 
 /** localStorage key used to persist DeviceConfig */
