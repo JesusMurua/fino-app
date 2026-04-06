@@ -754,3 +754,105 @@
     }
   }
 }
+
+// =========================================================================
+// Full-screen session blocker overlay (FDD-002)
+// =========================================================================
+.session-blocker {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-5;
+    width: 100%;
+    max-width: 400px;
+    margin: $space-4;
+    padding: $space-7 $space-6;
+    background: white;
+    border-radius: $radius-card;
+    box-shadow: $shadow-card-deep;
+    text-align: center;
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #FEF3C7;
+    color: #D97706;
+
+    i { font-size: 32px; }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 800;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    max-width: 280px;
+  }
+
+  &__field {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    text-align: left;
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $color-text-title;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    min-height: $touch-target-pos;
+    border-radius: $radius-button !important;
+    font-size: $font-size-base;
+    text-align: center;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    width: 100%;
+    min-height: 52px;
+    padding: $space-3 $space-5;
+    border: none;
+    border-radius: $radius-button;
+    background: $color-primary;
+    color: white;
+    font-size: $font-size-base;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    i { font-size: 18px; }
+  }
+}
