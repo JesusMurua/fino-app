@@ -238,3 +238,134 @@
     color: $color-text-sub;
   }
 }
+
+// -----------------------------------------------------------------------
+// Action buttons in table rows
+// -----------------------------------------------------------------------
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+// -----------------------------------------------------------------------
+// Cancel invoice dialog
+// -----------------------------------------------------------------------
+:host ::ng-deep .cancel-invoice-dialog {
+  .p-dialog-header {
+    padding: $space-4 $space-5;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  .p-dialog-content {
+    padding: $space-4 $space-5;
+  }
+
+  .p-dialog-footer {
+    padding: $space-3 $space-5 $space-4;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.cancel-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__uuid {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+    padding: $space-3 $space-4;
+    background: #F9FAFB;
+    border-radius: $radius-button;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  &__value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    color: $color-text-title;
+    word-break: break-all;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $color-text-title;
+    }
+  }
+
+  &__warning {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    background: #FEF3C7;
+    border: 1px solid #FDE68A;
+    border-radius: $radius-button;
+    font-size: 13px;
+    color: #92400E;
+
+    i { font-size: 16px; }
+  }
+
+  &__footer {
+    display: flex;
+    gap: $space-3;
+    justify-content: flex-end;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 44px;
+    padding: $space-3 $space-5;
+    border-radius: $radius-button;
+    font-size: $font-size-base;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &--ghost {
+      background: transparent;
+      color: $color-text-sub;
+      border: 1px solid #E5E7EB;
+
+      &:hover {
+        border-color: $color-text-sub;
+        color: $color-text-title;
+      }
+    }
+
+    &--danger {
+      background: #DC2626;
+      color: white;
+      border: none;
+
+      &:hover:not(:disabled) { background: #B91C1C; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+}
