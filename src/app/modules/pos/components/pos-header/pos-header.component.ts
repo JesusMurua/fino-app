@@ -543,6 +543,44 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   //#endregion
 
+  //#region Session Blocker (FDD-002)
+
+  /** Controls the full-screen session blocker overlay */
+  readonly showSessionBlocker = computed(() => !this.cashRegisterService.hasOpenSession());
+
+  /** Opening amount for the new session (in pesos) */
+  readonly sessionAmountPesos = signal(0);
+
+  /** True while the session is being opened */
+  readonly isOpeningSession = signal(false);
+
+  /** Opens a new cash register session and dismisses the blocker */
+  async openSessionFromBlocker(): Promise<void> {
+    if (this.isOpeningSession()) return;
+
+    this.isOpeningSession.set(true);
+    try {
+      const amountCents = Math.round(this.sessionAmountPesos() * 100);
+      const user = this.authService.currentUser();
+      await this.cashRegisterService.openSession(this.authService.branchId, {
+        initialAmountCents: amountCents,
+        openedBy: user?.name ?? 'Cajero',
+      });
+      this.sessionAmountPesos.set(0);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al abrir turno',
+        detail: 'No se pudo abrir la caja. Verifica tu conexión.',
+        life: 5000,
+      });
+    } finally {
+      this.isOpeningSession.set(false);
+    }
+  }
+
+  //#endregion
+
   //#region Sync Center Methods
 
   /** Opens the Sync Center modal and loads permanently failed orders from Dexie */

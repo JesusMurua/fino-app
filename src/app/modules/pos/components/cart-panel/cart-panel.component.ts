@@ -243,20 +243,9 @@ export class CartPanelComponent implements OnInit {
     this.orderContextService.clearActiveOrder();
   }
 
-  /**
-   * Checks for an active cash register session.
-   * Shows a warning toast and returns false when no session is open.
-   */
+  /** Delegates to the centralized session guard in CashRegisterService */
   private requireOpenSession(): boolean {
-    if (this.cashRegisterService.hasOpenSession()) return true;
-
-    this.messageService.add({
-      severity: 'warn',
-      summary: 'Apertura de caja requerida',
-      detail: 'Debes abrir un turno de caja para procesar órdenes.',
-      life: 5000,
-    });
-    return false;
+    return this.cashRegisterService.requireOpenSession();
   }
   //#endregion
 

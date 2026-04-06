@@ -546,5 +546,50 @@
   </ng-template>
 </p-dialog>
 
+<!-- ====================================================================== -->
+<!-- Full-screen session blocker (FDD-002)                                 -->
+<!-- ====================================================================== -->
+@if (showSessionBlocker()) {
+  <div class="session-blocker">
+    <div class="session-blocker__card">
+      <div class="session-blocker__icon">
+        <i class="pi pi-lock"></i>
+      </div>
+      <h2 class="session-blocker__title">Caja Cerrada</h2>
+      <p class="session-blocker__subtitle">Abre un turno de caja para comenzar a cobrar</p>
+
+      <div class="session-blocker__field">
+        <label for="session-amount">Monto inicial en caja (MXN)</label>
+        <p-inputNumber
+          inputId="session-amount"
+          [ngModel]="sessionAmountPesos()"
+          (ngModelChange)="sessionAmountPesos.set($event)"
+          mode="currency"
+          currency="MXN"
+          locale="es-MX"
+          [min]="0"
+          [style]="{ width: '100%' }"
+          inputStyleClass="session-blocker__input"
+        />
+      </div>
+
+      <button
+        type="button"
+        class="session-blocker__btn"
+        [disabled]="isOpeningSession()"
+        (click)="openSessionFromBlocker()"
+      >
+        @if (isOpeningSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+          Abriendo...
+        } @else {
+          <i class="pi pi-lock-open"></i>
+          Abrir Turno
+        }
+      </button>
+    </div>
+  </div>
+}
+
 <!-- Confirm dialog for discard action -->
 <p-confirmDialog />

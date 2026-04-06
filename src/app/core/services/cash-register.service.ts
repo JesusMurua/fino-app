@@ -1,5 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { MessageService } from 'primeng/api';
 
 import {
   AddMovementRequest,
@@ -11,6 +12,9 @@ import {
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 
+/** Polling interval to check if the session is still open (3 minutes) */
+const SESSION_POLL_MS = 180_000;
+
 /**
  * Manages cash register sessions and movements.
  *
@@ -18,13 +22,17 @@ import { DatabaseService } from './database.service';
  * If the API is unreachable, the local cache is used as fallback.
  */
 @Injectable({ providedIn: 'root' })
-export class CashRegisterService {
+export class CashRegisterService implements OnDestroy {
 
   //#region State
+
+  private readonly messageService = inject(MessageService);
 
   private readonly _activeSession = signal<CashRegisterSession | null>(null);
   readonly activeSession = this._activeSession.asReadonly();
   readonly hasOpenSession = computed(() => this._activeSession() !== null);
+
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   //#endregion
 
@@ -33,18 +41,40 @@ export class CashRegisterService {
     private readonly api: ApiService,
     private readonly db: DatabaseService,
   ) {}
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
   //#endregion
 
   //#region Public Methods
 
   /**
-   * Loads the active cash session and updates the signal.
+   * Loads the active cash session and starts background polling.
    * Call on login to make hasOpenSession available in POS header.
    * @param branchId Branch to query
    */
   async loadActiveSession(branchId: number): Promise<void> {
     const session = await this.getOpenSession(branchId);
     this._activeSession.set(session);
+    this.startPolling(branchId);
+  }
+
+  /**
+   * Reusable guard — checks for an open session and shows a toast if not.
+   * Call from any component that needs to block actions without a session.
+   * @returns true if a session is open; false otherwise (toast shown)
+   */
+  requireOpenSession(): boolean {
+    if (this.hasOpenSession()) return true;
+
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Apertura de caja requerida',
+      detail: 'Debes abrir un turno de caja para procesar órdenes.',
+      life: 5000,
+    });
+    return false;
   }
 
   /**
@@ -153,6 +183,36 @@ export class CashRegisterService {
       currency: 'MXN',
       minimumFractionDigits: 2,
     });
+  }
+
+  //#endregion
+
+  //#region Session Polling
+
+  /**
+   * Starts polling the backend every 3 minutes to detect remote session closure.
+   * If the backend reports no open session, the signal is cleared immediately.
+   */
+  private startPolling(branchId: number): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(async () => {
+      try {
+        const session = await firstValueFrom(
+          this.api.get<CashRegisterSession | null>('/cashregister/session'),
+        );
+        this._activeSession.set(session ?? null);
+      } catch {
+        // Offline — keep current state, do not clear
+      }
+    }, SESSION_POLL_MS);
+  }
+
+  /** Stops the polling interval */
+  private stopPolling(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
   }
 
   //#endregion
