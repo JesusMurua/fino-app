@@ -5,12 +5,22 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { RadioButtonModule } from 'primeng/radiobutton';
+import { SidebarModule } from 'primeng/sidebar';
 import { TableModule } from 'primeng/table';
 import { MessageService } from 'primeng/api';
 
 import { CreateCustomerRequest, Customer } from '../../../../core/models';
 import { CustomerService } from '../../../../core/services/customer.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
+
+/** Lightweight order row returned by the customer orders endpoint */
+interface CustomerOrderRow {
+  orderNumber: number;
+  createdAt: string;
+  totalCents: number;
+  paymentMethod: string;
+}
 
 @Component({
   selector: 'app-admin-customers',
@@ -22,6 +32,8 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
     DialogModule,
     InputTextModule,
     InputNumberModule,
+    RadioButtonModule,
+    SidebarModule,
     TableModule,
     PricePipe,
   ],
@@ -57,6 +69,26 @@ export class AdminCustomersComponent implements OnInit {
   readonly showCreateDialog = signal(false);
   readonly isSaving = signal(false);
   createForm: CreateCustomerRequest = this.emptyCreateForm();
+
+  //#endregion
+
+  //#region Profile Drawer
+
+  readonly drawerCustomer = signal<Customer | null>(null);
+  readonly showDrawer = signal(false);
+  readonly customerOrders = signal<CustomerOrderRow[]>([]);
+  readonly isLoadingOrders = signal(false);
+
+  //#endregion
+
+  //#region Adjust Dialogs
+
+  readonly showAdjustPointsDialog = signal(false);
+  readonly showAdjustCreditDialog = signal(false);
+  readonly adjustType = signal<'add' | 'subtract'>('add');
+  readonly adjustAmount = signal<number>(0);
+  readonly adjustReason = signal('');
+  readonly isAdjusting = signal(false);
 
   //#endregion
 
@@ -97,6 +129,116 @@ export class AdminCustomersComponent implements OnInit {
       });
     } finally {
       this.isSaving.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Profile Drawer Methods
+
+  /** Opens the profile drawer for the clicked customer row */
+  async onRowClick(customer: Customer): Promise<void> {
+    this.drawerCustomer.set(customer);
+    this.showDrawer.set(true);
+    this.customerOrders.set([]);
+    this.isLoadingOrders.set(true);
+
+    try {
+      const orders = await this.customerService.getCustomerOrders(customer.id);
+      this.customerOrders.set(orders);
+    } finally {
+      this.isLoadingOrders.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Adjust Points
+
+  /** Opens the adjust points dialog */
+  openAdjustPoints(): void {
+    this.adjustType.set('add');
+    this.adjustAmount.set(0);
+    this.adjustReason.set('');
+    this.showAdjustPointsDialog.set(true);
+  }
+
+  /** Confirms the points adjustment and refreshes state */
+  async confirmAdjustPoints(): Promise<void> {
+    const customer = this.drawerCustomer();
+    if (!customer || this.adjustAmount() <= 0 || !this.adjustReason().trim()) return;
+
+    const delta = this.adjustType() === 'add' ? this.adjustAmount() : -this.adjustAmount();
+
+    this.isAdjusting.set(true);
+    try {
+      await this.customerService.adjustPoints(customer.id, delta, this.adjustReason().trim());
+      this.showAdjustPointsDialog.set(false);
+
+      // Refresh drawer customer from the updated signal
+      const updated = this.customers().find(c => c.id === customer.id);
+      if (updated) this.drawerCustomer.set(updated);
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Puntos actualizados',
+        life: 3000,
+      });
+    } catch (error: any) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: error?.error?.message ?? 'No se pudieron ajustar los puntos',
+        life: 4000,
+      });
+    } finally {
+      this.isAdjusting.set(false);
+    }
+  }
+
+  //#endregion
+
+  //#region Adjust Credit
+
+  /** Opens the adjust credit dialog */
+  openAdjustCredit(): void {
+    this.adjustType.set('add');
+    this.adjustAmount.set(0);
+    this.adjustReason.set('');
+    this.showAdjustCreditDialog.set(true);
+  }
+
+  /** Confirms the credit adjustment (amount in pesos → cents) and refreshes state */
+  async confirmAdjustCredit(): Promise<void> {
+    const customer = this.drawerCustomer();
+    if (!customer || this.adjustAmount() <= 0 || !this.adjustReason().trim()) return;
+
+    const deltaCents = this.adjustType() === 'add'
+      ? Math.round(this.adjustAmount() * 100)
+      : -Math.round(this.adjustAmount() * 100);
+
+    this.isAdjusting.set(true);
+    try {
+      await this.customerService.adjustCredit(customer.id, deltaCents, this.adjustReason().trim());
+      this.showAdjustCreditDialog.set(false);
+
+      const updated = this.customers().find(c => c.id === customer.id);
+      if (updated) this.drawerCustomer.set(updated);
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Crédito actualizado',
+        life: 3000,
+      });
+    } catch (error: any) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: error?.error?.message ?? 'No se pudo ajustar el crédito',
+        life: 4000,
+      });
+    } finally {
+      this.isAdjusting.set(false);
     }
   }
 
