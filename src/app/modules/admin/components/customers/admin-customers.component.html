@@ -52,7 +52,7 @@
       </ng-template>
 
       <ng-template pTemplate="body" let-customer>
-        <tr>
+        <tr class="cursor-pointer" (click)="onRowClick(customer)">
           <td>
             <div class="customer-name-cell">
               <span class="customer-name-cell__avatar">{{ customer.name.charAt(0) }}</span>
@@ -180,6 +180,297 @@
           <i class="pi pi-spin pi-spinner"></i>
         }
         Crear cliente
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Profile Drawer -->
+<p-sidebar
+  [(visible)]="showDrawer"
+  position="right"
+  [style]="{ width: '420px' }"
+  styleClass="customer-drawer"
+>
+  @if (drawerCustomer(); as c) {
+
+    <!-- Drawer header -->
+    <div class="drawer-header">
+      <span class="drawer-header__avatar">{{ c.name.charAt(0) }}</span>
+      <div class="drawer-header__info">
+        <h2 class="drawer-header__name">{{ c.name }}</h2>
+        <span class="drawer-header__phone">
+          <i class="pi pi-phone"></i> {{ formatPhone(c.phone) }}
+        </span>
+        @if (c.email) {
+          <span class="drawer-header__email">
+            <i class="pi pi-envelope"></i> {{ c.email }}
+          </span>
+        }
+      </div>
+    </div>
+
+    <!-- Balance cards -->
+    <div class="drawer-balances">
+      <div class="balance-card balance-card--points">
+        <div class="balance-card__top">
+          <span class="balance-card__label">Puntos de lealtad</span>
+          <button type="button" class="balance-card__action" (click)="openAdjustPoints()">
+            Ajustar
+          </button>
+        </div>
+        <span class="balance-card__value">
+          <i class="pi pi-star"></i>
+          {{ c.pointsBalance }}
+        </span>
+      </div>
+
+      <div class="balance-card balance-card--credit">
+        <div class="balance-card__top">
+          <span class="balance-card__label">Crédito de tienda</span>
+          <button type="button" class="balance-card__action" (click)="openAdjustCredit()">
+            Ajustar
+          </button>
+        </div>
+        <span class="balance-card__value">
+          <i class="pi pi-wallet"></i>
+          {{ c.creditBalanceCents | price }}
+        </span>
+        @if (c.creditLimitCents > 0) {
+          <span class="balance-card__limit">Límite: {{ c.creditLimitCents | price }}</span>
+        }
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="drawer-stats">
+      <div class="drawer-stat">
+        <span class="drawer-stat__value">{{ c.totalOrderCount }}</span>
+        <span class="drawer-stat__label">Órdenes</span>
+      </div>
+      <div class="drawer-stat">
+        <span class="drawer-stat__value">{{ c.totalSpentCents | price }}</span>
+        <span class="drawer-stat__label">Total gastado</span>
+      </div>
+      <div class="drawer-stat">
+        <span class="drawer-stat__value">
+          @if (c.lastVisitAt) {
+            {{ c.lastVisitAt | date:'dd/MM/yy' }}
+          } @else {
+            —
+          }
+        </span>
+        <span class="drawer-stat__label">Última visita</span>
+      </div>
+    </div>
+
+    <!-- Fiscal data -->
+    @if (c.rfc) {
+      <div class="drawer-section">
+        <h3 class="drawer-section__title">Datos fiscales</h3>
+        <span class="drawer-section__rfc">RFC: {{ c.rfc }}</span>
+      </div>
+    }
+
+    <!-- Notes -->
+    @if (c.notes) {
+      <div class="drawer-section">
+        <h3 class="drawer-section__title">Notas</h3>
+        <p class="drawer-section__notes">{{ c.notes }}</p>
+      </div>
+    }
+
+    <!-- Order history -->
+    <div class="drawer-section">
+      <h3 class="drawer-section__title">Historial de órdenes</h3>
+
+      @if (isLoadingOrders()) {
+        <div class="drawer-orders-loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando...</span>
+        </div>
+      } @else if (customerOrders().length === 0) {
+        <p class="drawer-section__empty">Sin órdenes registradas</p>
+      } @else {
+        <div class="drawer-orders">
+          @for (order of customerOrders(); track order.orderNumber) {
+            <div class="drawer-order-row">
+              <span class="drawer-order-row__num">#{{ order.orderNumber }}</span>
+              <span class="drawer-order-row__date">{{ order.createdAt | date:'dd/MM/yy' }}</span>
+              <span class="drawer-order-row__total">{{ order.totalCents | price }}</span>
+              <span class="drawer-order-row__method">{{ order.paymentMethod }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+  }
+</p-sidebar>
+
+<!-- Adjust Points Dialog -->
+<p-dialog
+  header="Ajustar puntos"
+  [(visible)]="showAdjustPointsDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '400px' }"
+  styleClass="adjust-dialog"
+>
+  @if (drawerCustomer(); as c) {
+    <div class="adjust-form">
+      <div class="adjust-form__current">
+        Saldo actual: <strong>{{ c.pointsBalance }} puntos</strong>
+      </div>
+
+      <div class="adjust-form__type">
+        <p-radioButton
+          name="pointsType"
+          value="add"
+          [(ngModel)]="adjustType"
+          inputId="pts-add"
+          label="Agregar"
+        />
+        <p-radioButton
+          name="pointsType"
+          value="subtract"
+          [(ngModel)]="adjustType"
+          inputId="pts-sub"
+          label="Restar"
+        />
+      </div>
+
+      <div class="adjust-form__field">
+        <label for="pts-amount">Cantidad</label>
+        <p-inputNumber
+          inputId="pts-amount"
+          [(ngModel)]="adjustAmount"
+          [min]="1"
+          [showButtons]="true"
+          [style]="{ width: '100%' }"
+          inputStyleClass="adjust-form__input"
+        />
+      </div>
+
+      <div class="adjust-form__field">
+        <label for="pts-reason">Motivo *</label>
+        <input
+          id="pts-reason"
+          type="text"
+          pInputText
+          [(ngModel)]="adjustReason"
+          placeholder="Ej. Bonificación por queja"
+          class="adjust-form__input"
+        />
+      </div>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <div class="customer-form__footer">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        (click)="showAdjustPointsDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--primary"
+        [disabled]="isAdjusting() || adjustAmount() <= 0 || !adjustReason().trim()"
+        (click)="confirmAdjustPoints()"
+      >
+        @if (isAdjusting()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Confirmar ajuste
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Adjust Credit Dialog -->
+<p-dialog
+  header="Ajustar crédito"
+  [(visible)]="showAdjustCreditDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '400px' }"
+  styleClass="adjust-dialog"
+>
+  @if (drawerCustomer(); as c) {
+    <div class="adjust-form">
+      <div class="adjust-form__current">
+        Saldo actual: <strong>{{ c.creditBalanceCents | price }}</strong>
+      </div>
+
+      <div class="adjust-form__type">
+        <p-radioButton
+          name="creditType"
+          value="add"
+          [(ngModel)]="adjustType"
+          inputId="cred-add"
+          label="Abonar"
+        />
+        <p-radioButton
+          name="creditType"
+          value="subtract"
+          [(ngModel)]="adjustType"
+          inputId="cred-sub"
+          label="Restar"
+        />
+      </div>
+
+      <div class="adjust-form__field">
+        <label for="cred-amount">Monto (MXN)</label>
+        <p-inputNumber
+          inputId="cred-amount"
+          [(ngModel)]="adjustAmount"
+          [min]="0.01"
+          [minFractionDigits]="2"
+          [maxFractionDigits]="2"
+          mode="currency"
+          currency="MXN"
+          locale="es-MX"
+          [style]="{ width: '100%' }"
+          inputStyleClass="adjust-form__input"
+        />
+      </div>
+
+      <div class="adjust-form__field">
+        <label for="cred-reason">Motivo *</label>
+        <input
+          id="cred-reason"
+          type="text"
+          pInputText
+          [(ngModel)]="adjustReason"
+          placeholder="Ej. Recarga de crédito"
+          class="adjust-form__input"
+        />
+      </div>
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <div class="customer-form__footer">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        (click)="showAdjustCreditDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--primary"
+        [disabled]="isAdjusting() || adjustAmount() <= 0 || !adjustReason().trim()"
+        (click)="confirmAdjustCredit()"
+      >
+        @if (isAdjusting()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Confirmar ajuste
       </button>
     </div>
   </ng-template>

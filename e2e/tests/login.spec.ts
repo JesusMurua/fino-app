@@ -1,12 +1,10 @@
 import { test } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
-import { seedDeviceConfig } from '../fixtures/device-config';
 
 test.describe('Login — Smoke Tests', () => {
   let loginPage: LoginPage;
 
   test.beforeEach(async ({ page }) => {
-    await seedDeviceConfig(page);
     loginPage = new LoginPage(page);
     await loginPage.navigate();
   });

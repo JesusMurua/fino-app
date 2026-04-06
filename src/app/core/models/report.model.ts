@@ -125,6 +125,18 @@ export interface DashboardOrderRow {
   payments: { method: string; amountCents: number }[];
 }
 
+/** Table occupancy snapshot for restaurant/counter experiences */
+export interface DashboardTableStatus {
+  occupancyPercent: number;
+  activeOrders: number;
+}
+
+/** Low-stock product alert for retail experience */
+export interface DashboardLowStockItem {
+  name: string;
+  currentStock: number;
+}
+
 /** Full dashboard summary from GET /api/dashboard/summary */
 export interface DashboardSummary {
   date: string;
@@ -132,4 +144,6 @@ export interface DashboardSummary {
   orders: DashboardCancellations;
   topProducts: DashboardTopProduct[];
   recentOrders: DashboardOrderRow[];
+  tables?: DashboardTableStatus;
+  lowStockItems?: DashboardLowStockItem[];
 }
