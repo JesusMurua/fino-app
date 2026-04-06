@@ -5,12 +5,14 @@ import { MessageService } from 'primeng/api';
 import {
   AddMovementRequest,
   CashMovement,
+  CashRegister,
   CashRegisterSession,
   CloseSessionRequest,
   OpenSessionRequest,
 } from '../models';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
+import { DeviceService } from './device.service';
 
 /** Polling interval to check if the session is still open (3 minutes) */
 const SESSION_POLL_MS = 180_000;
@@ -32,6 +34,9 @@ export class CashRegisterService implements OnDestroy {
   readonly activeSession = this._activeSession.asReadonly();
   readonly hasOpenSession = computed(() => this._activeSession() !== null);
 
+  private readonly _linkedRegister = signal<CashRegister | null>(null);
+  readonly linkedRegister = this._linkedRegister.asReadonly();
+
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   //#endregion
@@ -40,6 +45,7 @@ export class CashRegisterService implements OnDestroy {
   constructor(
     private readonly api: ApiService,
     private readonly db: DatabaseService,
+    private readonly deviceService: DeviceService,
   ) {}
 
   ngOnDestroy(): void {
@@ -84,8 +90,12 @@ export class CashRegisterService implements OnDestroy {
    */
   async getOpenSession(branchId: number): Promise<CashRegisterSession | null> {
     try {
+      const registerId = this._linkedRegister()?.id;
+      const url = registerId
+        ? `/cashregister/session?registerId=${registerId}`
+        : '/cashregister/session';
       const response = await firstValueFrom(
-        this.api.get<CashRegisterSession | null>('/cashregister/session'),
+        this.api.get<CashRegisterSession | null>(url),
       );
 
       if (!response) return null;
@@ -108,8 +118,16 @@ export class CashRegisterService implements OnDestroy {
    * @param request Opening details (initial amount, opened by)
    */
   async openSession(branchId: number, request: OpenSessionRequest): Promise<CashRegisterSession> {
+    const registerId = this._linkedRegister()?.id;
+    if (!registerId) {
+      throw new Error('Cannot open session: Device is not linked to a physical register.');
+    }
+    const payload: OpenSessionRequest = {
+      ...request,
+      cashRegisterId: registerId,
+    };
     const session = await firstValueFrom(
-      this.api.post<CashRegisterSession>('/cashregister/session/open', request),
+      this.api.post<CashRegisterSession>('/cashregister/session/open', payload),
     );
     await this.db.cashSessions.put(session);
     this._activeSession.set(session);
@@ -187,6 +205,88 @@ export class CashRegisterService implements OnDestroy {
 
   //#endregion
 
+  //#region Register Methods
+
+  /**
+   * Lists all physical cash registers for the active branch.
+   * Results are cached in Dexie for offline access.
+   */
+  async getRegisters(): Promise<CashRegister[]> {
+    try {
+      const registers = await firstValueFrom(
+        this.api.get<CashRegister[]>('/cashregister/registers'),
+      );
+      await this.db.cashRegisters.bulkPut(registers);
+      return registers;
+    } catch (error) {
+      console.warn('[CashRegisterService] API unreachable — using Dexie fallback for registers:', error);
+      return this.db.cashRegisters.toArray();
+    }
+  }
+
+  /**
+   * Creates a new physical cash register.
+   * @param name Human-readable name (e.g. "Caja 1")
+   * @param isActive Whether the register is active
+   */
+  async createRegister(name: string, isActive: boolean): Promise<CashRegister> {
+    const register = await firstValueFrom(
+      this.api.post<CashRegister>('/cashregister/registers', { name, isActive }),
+    );
+    await this.db.cashRegisters.put(register);
+    return register;
+  }
+
+  /**
+   * Updates an existing physical cash register.
+   * @param id Register ID
+   * @param payload Fields to update (name, isActive, deviceUuid)
+   */
+  async updateRegister(id: number, payload: Partial<CashRegister>): Promise<CashRegister> {
+    const register = await firstValueFrom(
+      this.api.put<CashRegister>(`/cashregister/registers/${id}`, payload),
+    );
+    await this.db.cashRegisters.put(register);
+    return register;
+  }
+
+  /**
+   * Looks up the cash register assigned to a specific device UUID.
+   * @param uuid Device UUID to look up
+   * @returns The linked register, or null if none is assigned
+   */
+  async getRegisterByDevice(uuid: string): Promise<CashRegister | null> {
+    try {
+      const register = await firstValueFrom(
+        this.api.get<CashRegister | null>(`/cashregister/registers/by-device/${uuid}`),
+      );
+      if (register) {
+        await this.db.cashRegisters.put(register);
+      }
+      return register ?? null;
+    } catch (error) {
+      console.warn('[CashRegisterService] API unreachable — using Dexie fallback for register lookup:', error);
+      const local = await this.db.cashRegisters
+        .where({ deviceUuid: uuid })
+        .first();
+      return local ?? null;
+    }
+  }
+
+  /**
+   * Resolves the cash register linked to the current device.
+   * Reads the UUID from DeviceService, queries the backend, and updates
+   * the linkedRegister signal.
+   */
+  async resolveLinkedRegister(): Promise<CashRegister | null> {
+    const uuid = this.deviceService.deviceUuid;
+    const register = await this.getRegisterByDevice(uuid);
+    this._linkedRegister.set(register);
+    return register;
+  }
+
+  //#endregion
+
   //#region Session Polling
 
   /**
@@ -197,8 +297,12 @@ export class CashRegisterService implements OnDestroy {
     this.stopPolling();
     this.pollTimer = setInterval(async () => {
       try {
+        const registerId = this._linkedRegister()?.id;
+        const url = registerId
+          ? `/cashregister/session?registerId=${registerId}`
+          : '/cashregister/session';
         const session = await firstValueFrom(
-          this.api.get<CashRegisterSession | null>('/cashregister/session'),
+          this.api.get<CashRegisterSession | null>(url),
         );
         this._activeSession.set(session ?? null);
       } catch {

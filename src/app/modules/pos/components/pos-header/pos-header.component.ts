@@ -545,6 +545,9 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   //#region Session Blocker (FDD-002)
 
+  /** Physical register linked to this device (null if unlinked) */
+  readonly linkedRegister = this.cashRegisterService.linkedRegister;
+
   /** Controls the full-screen session blocker overlay */
   readonly showSessionBlocker = computed(() => !this.cashRegisterService.hasOpenSession());
 

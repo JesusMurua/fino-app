@@ -1,0 +1,308 @@
+@use '../../../../../styles/variables' as *;
+
+.admin-registers {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-4;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  // ---- Device info strip ----
+  &__device-info {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    background: #F8FAFC;
+    border: 1px solid $color-border-soft;
+    border-radius: 8px;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    flex-wrap: wrap;
+  }
+
+  &__uuid {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    background: #F1F5F9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: $color-text-title;
+  }
+
+  &__linked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #F0FDF4;
+    color: $color-primary;
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  &__unlinked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #FEF3C7;
+    color: #D97706;
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  // ---- Loading skeleton ----
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+  }
+
+  // ---- Empty state ----
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $space-3;
+    padding: $space-8 $space-4;
+    text-align: center;
+  }
+
+  &__empty-icon {
+    font-size: 48px;
+    color: #D1D5DB;
+  }
+
+  &__empty-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__empty-sub {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+
+  // ---- Table ----
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-base;
+
+    th {
+      text-align: left;
+      padding: $space-3 $space-4;
+      font-weight: 600;
+      color: $color-text-sub;
+      font-size: $font-size-label;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #E5E7EB;
+    }
+
+    td {
+      padding: $space-3 $space-4;
+      border-bottom: 1px solid $color-border-soft;
+      color: $color-text-title;
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      transition: background 0.15s;
+
+      &:hover {
+        background: #F8FAFC;
+      }
+    }
+  }
+
+  &__row--linked {
+    background: #F0FDF4 !important;
+  }
+
+  &__name-cell {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-weight: 500;
+  }
+
+  &__this-device-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: $color-primary;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $space-2;
+  }
+}
+
+// ---- Status badges ----
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+
+  &--active {
+    background: #F0FDF4;
+    color: $color-primary;
+  }
+
+  &--inactive {
+    background: #F3F4F6;
+    color: #9CA3AF;
+  }
+}
+
+// ---- Skeleton rows ----
+.skeleton-row {
+  height: 48px;
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ---- Buttons (reuse project patterns) ----
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  min-height: $touch-target-pos;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: #fff;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  min-height: $touch-target-pos;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: $font-size-base;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #F9FAFB; }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $color-text-sub;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover {
+    background: #F3F4F6;
+    color: $color-text-title;
+  }
+
+  &--primary {
+    color: $color-primary;
+    &:hover { background: #F0FDF4; }
+  }
+
+  &--danger {
+    color: #DC2626;
+    &:hover { background: #FEF2F2; }
+  }
+}
+
+// ---- Dialog form ----
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+
+    label {
+      font-size: $font-size-label;
+      font-weight: 500;
+      color: $color-text-sub;
+    }
+
+    &--switch {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  &__error {
+    color: #DC2626;
+    font-size: 13px;
+  }
+}

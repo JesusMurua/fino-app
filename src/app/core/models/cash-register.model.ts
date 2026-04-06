@@ -1,7 +1,18 @@
+/** A physical cash register (caja fisica) */
+export interface CashRegister {
+  id: number;
+  branchId: number;
+  name: string;
+  isActive: boolean;
+  deviceUuid?: string;
+  createdAt?: string;
+}
+
 /** A cash register session (turno de caja) */
 export interface CashRegisterSession {
   id: number;
   branchId: number;
+  cashRegisterId?: number;
   openedBy: string;
   openedAt: Date;
   initialAmountCents: number;
@@ -28,6 +39,7 @@ export interface CashMovement {
 export interface OpenSessionRequest {
   initialAmountCents: number;
   openedBy: string;
+  cashRegisterId?: number;
 }
 
 /** Request body for closing the current session */

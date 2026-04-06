@@ -80,6 +80,7 @@ export class AdminShellComponent implements OnInit {
       { path: 'customers',    icon: 'pi-id-card',     label: 'Clientes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.ClientsAndCredit), badge: false },
       { path: 'users',        icon: 'pi-users',       label: 'Usuarios',        show: true, locked: false, badge: false },
       { path: 'cash',         icon: 'pi-wallet',      label: 'Caja',            show: true, locked: !this.featureFlags.canUse(FeatureKey.CashRegister), badge: false },
+      { path: 'registers',    icon: 'pi-desktop',     label: 'Cajas Físicas',   show: true, locked: !this.featureFlags.canUse(FeatureKey.CashRegister), badge: false },
       { path: 'invoicing',    icon: 'pi-receipt',     label: 'Facturación',     show: this.configService.hasInvoicing(), locked: !this.featureFlags.canUse(FeatureKey.Cfdi), badge: false },
       { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones',   show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Reservations), badge: false },
       { path: 'settings',     icon: 'pi-cog',         label: 'Configuración',   show: true, locked: false, badge: false },

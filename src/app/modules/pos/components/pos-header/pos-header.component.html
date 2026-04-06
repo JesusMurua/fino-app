@@ -558,6 +558,19 @@
       <h2 class="session-blocker__title">Caja Cerrada</h2>
       <p class="session-blocker__subtitle">Abre un turno de caja para comenzar a cobrar</p>
 
+      <!-- Multi-till: show linked register or warning -->
+      @if (linkedRegister(); as reg) {
+        <div class="session-blocker__register-badge">
+          <i class="pi pi-desktop"></i>
+          Caja: {{ reg.name }}
+        </div>
+      } @else {
+        <div class="session-blocker__register-danger">
+          <i class="pi pi-exclamation-triangle"></i>
+          Dispositivo no vinculado. Asigna una caja en el panel de Admin para poder vender.
+        </div>
+      }
+
       <div class="session-blocker__field">
         <label for="session-amount">Monto inicial en caja (MXN)</label>
         <p-inputNumber
@@ -568,6 +581,7 @@
           currency="MXN"
           locale="es-MX"
           [min]="0"
+          [disabled]="!linkedRegister()"
           [style]="{ width: '100%' }"
           inputStyleClass="session-blocker__input"
         />
@@ -576,7 +590,7 @@
       <button
         type="button"
         class="session-blocker__btn"
-        [disabled]="isOpeningSession()"
+        [disabled]="isOpeningSession() || !linkedRegister()"
         (click)="openSessionFromBlocker()"
       >
         @if (isOpeningSession()) {
