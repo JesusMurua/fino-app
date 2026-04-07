@@ -95,7 +95,7 @@ export class PaymentProviderService {
    * Creates the transaction locally and calls the backend to start the provider flow.
    * Sets activeTransaction signal to track the lifecycle.
    */
-  async startTransaction(method: PaymentMethod, amountCents: number): Promise<PaymentTransaction> {
+  async startTransaction(method: PaymentMethod, amountCents: number, orderId: string): Promise<PaymentTransaction> {
     // Guard: only one active transaction at a time
     if (this.activeTransaction() !== null) {
       throw new Error('A payment transaction is already in progress');
@@ -115,9 +115,9 @@ export class PaymentProviderService {
 
     try {
       if (provider === 'clip') {
-        await this.initClipTransaction(transaction);
+        await this.initClipTransaction(transaction, orderId);
       } else if (provider === 'mercadopago') {
-        await this.initMercadoPagoTransaction(transaction);
+        await this.initMercadoPagoTransaction(transaction, orderId);
       }
     } catch (err) {
       this.updateTransaction({ status: 'declined', errorMessage: 'No se pudo conectar con el proveedor', resolvedAt: new Date() });
@@ -194,12 +194,12 @@ export class PaymentProviderService {
    * Backend creates the transaction in Clip's system and returns the external ID.
    * Frontend transitions to 'awaiting_reference' so the cashier can enter the ref.
    */
-  private async initClipTransaction(tx: PaymentTransaction): Promise<void> {
+  private async initClipTransaction(tx: PaymentTransaction, orderId: string): Promise<void> {
     const clipConfig = this.enabledProviders().find(p => p.provider === 'clip');
 
     try {
       const result = await firstValueFrom(
-        this.api.post<{ externalTransactionId: string }>('/payments/clip/create', {
+        this.api.post<{ externalTransactionId: string }>(`/orders/${orderId}/payments/clip/intent`, {
           amountCents: tx.amountCents,
           terminalId: clipConfig?.terminalId,
         }),
@@ -219,11 +219,11 @@ export class PaymentProviderService {
    * Backend generates the QR and returns the QR data + external ID.
    * Frontend starts polling for payment status.
    */
-  private async initMercadoPagoTransaction(tx: PaymentTransaction): Promise<void> {
+  private async initMercadoPagoTransaction(tx: PaymentTransaction, orderId: string): Promise<void> {
     const mpConfig = this.enabledProviders().find(p => p.provider === 'mercadopago');
 
     const result = await firstValueFrom(
-      this.api.post<{ externalTransactionId: string; qrCodeData: string }>('/payments/mercadopago/qr', {
+      this.api.post<{ externalTransactionId: string; qrCodeData: string }>(`/orders/${orderId}/payments/mercadopago/intent`, {
         amountCents: tx.amountCents,
         merchantId: mpConfig?.merchantId,
       }),

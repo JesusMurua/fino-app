@@ -28,6 +28,9 @@ export class PaymentProcessingDialogComponent {
   /** The active transaction to display */
   readonly transaction = input<PaymentTransaction | null>(null);
 
+  /** Order ID for intent endpoints (required for retries) */
+  readonly orderId = input.required<string>();
+
   /** Emits when a payment is approved and ready to add to pendingPayments */
   readonly paymentConfirmed = output<OrderPayment>();
 
@@ -91,7 +94,7 @@ export class PaymentProcessingDialogComponent {
     if (!tx) return;
 
     this.paymentProviderService.cancelTransaction();
-    await this.paymentProviderService.startTransaction(tx.method, tx.amountCents);
+    await this.paymentProviderService.startTransaction(tx.method, tx.amountCents, this.orderId());
   }
 
   /** Cancels the active transaction and closes the dialog */

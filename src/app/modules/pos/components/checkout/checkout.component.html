@@ -594,6 +594,7 @@
 <app-payment-processing-dialog
   [(visible)]="showProcessingDialog"
   [transaction]="paymentProviderService.activeTransaction()"
+  [orderId]="existingOrderId() ?? preGeneratedOrderId"
   (paymentConfirmed)="onProviderPaymentConfirmed($event)"
   (paymentCancelled)="onProviderPaymentCancelled()"
 />

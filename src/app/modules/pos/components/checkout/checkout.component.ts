@@ -138,6 +138,9 @@ export class CheckoutComponent implements OnInit {
   /** When set, checkout updates an existing order instead of creating a new one */
   readonly existingOrderId = signal<string | null>(null);
 
+  /** Pre-generated UUID for new orders — used by provider intents before the order is saved */
+  readonly preGeneratedOrderId = crypto.randomUUID();
+
   // -----------------------------------------------------------------------
   // Derived state
   // -----------------------------------------------------------------------
@@ -424,8 +427,9 @@ export class CheckoutComponent implements OnInit {
     const amountCents = this.remainingCents();
     if (amountCents <= 0) return;
 
+    const orderId = this.existingOrderId() ?? this.preGeneratedOrderId;
     this.showProcessingDialog.set(true);
-    await this.paymentProviderService.startTransaction(method, amountCents);
+    await this.paymentProviderService.startTransaction(method, amountCents, orderId);
   }
 
   /** Handles a confirmed payment from the processing dialog */
@@ -627,7 +631,7 @@ export class CheckoutComponent implements OnInit {
         const orderNumber = this.syncService.consumeOrderNumber();
 
         order = {
-          id: crypto.randomUUID(),
+          id: this.preGeneratedOrderId,
           orderNumber,
           items: this.cartItems(),
           subtotalCents: this.subtotalCents(),
