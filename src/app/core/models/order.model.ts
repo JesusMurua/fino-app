@@ -127,6 +127,8 @@ export interface Order {
   cancelledAt?: Date;
   /** Sum of item prices before any discounts, in cents */
   subtotalCents?: number;
+  /** Total tax (IVA) amount in cents */
+  taxAmountCents?: number;
   /** Order-level promotion discount in cents */
   orderDiscountCents?: number;
   /** Total of all discounts (item-level + order-level) in cents */

@@ -69,6 +69,14 @@
   min-width: 240px;
 }
 
+.kiosk-ticket__tax-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  color: $color-text-sub;
+  padding: 0 $space-2;
+}
+
 .kiosk-ticket__total-label {
   font-size: 16px;
   color: $color-text-sub;

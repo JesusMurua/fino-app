@@ -21,6 +21,10 @@ export interface CartItem {
   /** Computed: unitPriceCents × quantity, in cents */
   totalPriceCents: number;
   notes?: string;
+  /** IVA tax rate as decimal fraction (e.g. 0.16 for 16%). Copied from product at add-time. */
+  taxRate?: number;
+  /** Computed tax amount in cents for this item (after discounts) */
+  taxAmountCents?: number;
   /** Discount applied by promotion engine (default 0) */
   discountCents: number;
   /** Promotion that generated the discount */

@@ -141,9 +141,9 @@
     }
 
     <!-- Order summary breakdown -->
-    @if (cartEvaluation(); as eval) {
-      @if (eval.totalDiscountCents > 0) {
-        <div class="cart-panel__summary">
+    <div class="cart-panel__summary">
+      @if (cartEvaluation(); as eval) {
+        @if (eval.totalDiscountCents > 0) {
           <div class="cart-panel__summary-row">
             <span>Subtotal</span>
             <span>{{ (totalCents() + eval.totalDiscountCents) | price }}</span>
@@ -152,9 +152,19 @@
             <span>Descuentos aplicados</span>
             <span>-{{ eval.totalDiscountCents | price }}</span>
           </div>
+        }
+      }
+      @if (totalCents() > 0) {
+        <div class="cart-panel__summary-row">
+          <span>Subtotal sin IVA</span>
+          <span>{{ subtotalPreTaxCents() | price }}</span>
+        </div>
+        <div class="cart-panel__summary-row">
+          <span>IVA</span>
+          <span>{{ totalTaxCents() | price }}</span>
         </div>
       }
-    }
+    </div>
 
     <div class="cart-panel__total-row">
       <span class="cart-panel__total-label">Total</span>

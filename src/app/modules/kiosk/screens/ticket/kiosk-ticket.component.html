@@ -11,8 +11,16 @@
     <span class="kiosk-ticket__order-num">#{{ orderNumber() }}</span>
   </div>
 
-  <!-- Total -->
+  <!-- Tax breakdown -->
   <div class="kiosk-ticket__total-block">
+    <div class="kiosk-ticket__tax-row">
+      <span>Subtotal sin IVA</span>
+      <span>{{ subtotalPreTaxCents() | price }}</span>
+    </div>
+    <div class="kiosk-ticket__tax-row">
+      <span>IVA</span>
+      <span>{{ taxAmountCents() | price }}</span>
+    </div>
     <span class="kiosk-ticket__total-label">Total a pagar</span>
     <span class="kiosk-ticket__total">{{ totalCents() | price }}</span>
   </div>

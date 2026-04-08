@@ -91,6 +91,9 @@ export class RegisterComponent implements OnInit {
   /** Pending plan from query param — stored for onboarding step 4 */
   private pendingPlan: string | null = null;
 
+  /** Country code from landing page query param (e.g. 'MX') — defaults to MX */
+  private countryCode = 'MX';
+
   //#endregion
 
   //#region Lifecycle
@@ -119,6 +122,11 @@ export class RegisterComponent implements OnInit {
     // Store pending plan for onboarding
     if (params['plan']) {
       this.pendingPlan = params['plan'].toLowerCase();
+    }
+
+    // Country code for fiscal context (Tax Engine)
+    if (params['country']) {
+      this.countryCode = params['country'].toUpperCase();
     }
   }
 
@@ -165,7 +173,7 @@ export class RegisterComponent implements OnInit {
       const response = await firstValueFrom(
         this.http.post<LoginResponse>(
           `${environment.apiUrl}/auth/register`,
-          { businessName, ownerName, email, password, businessType, planType },
+          { businessName, ownerName, email, password, businessType, planType, countryCode: this.countryCode },
         ),
       );
 
