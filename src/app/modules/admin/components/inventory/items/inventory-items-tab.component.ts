@@ -4,6 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 
 import { InventoryItem } from '../../../../../core/models';
+import { InventoryMovementType } from '../../../../../core/enums';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { InventoryService } from '../../../../../core/services/inventory.service';
 import { InventoryItemFormDialogComponent, ItemFormPayload } from './inventory-item-form-dialog.component';
@@ -99,7 +100,7 @@ export class InventoryItemsTabComponent implements OnInit {
 
   readonly showMovementDialog = signal(false);
   readonly movementTarget = signal<InventoryItem | null>(null);
-  readonly movementType = signal<'in' | 'out'>('in');
+  readonly movementType = signal<InventoryMovementType>(InventoryMovementType.In);
 
   //#endregion
 
@@ -166,13 +167,13 @@ export class InventoryItemsTabComponent implements OnInit {
 
   onAddStock(item: InventoryItem): void {
     this.movementTarget.set(item);
-    this.movementType.set('in');
+    this.movementType.set(InventoryMovementType.In);
     this.showMovementDialog.set(true);
   }
 
   onRemoveStock(item: InventoryItem): void {
     this.movementTarget.set(item);
-    this.movementType.set('out');
+    this.movementType.set(InventoryMovementType.Out);
     this.showMovementDialog.set(true);
   }
 
@@ -187,7 +188,7 @@ export class InventoryItemsTabComponent implements OnInit {
         payload.quantity,
         payload.reason || undefined,
       );
-      const label = this.movementType() === 'in' ? 'Entrada' : 'Salida';
+      const label = this.movementType() === InventoryMovementType.In ? 'Entrada' : 'Salida';
       this.messageService.add({ severity: 'success', summary: `${label} registrada`, life: 3000 });
       this.showMovementDialog.set(false);
     } catch {

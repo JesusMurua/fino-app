@@ -12,11 +12,14 @@ export interface InventoryItem {
   updatedAt: string;
 }
 
+import { InventoryMovementType } from '../enums';
+
 /** A stock movement record (in, out, adjustment) */
 export interface InventoryMovement {
   id: number;
   inventoryItemId: number;
-  type: 'in' | 'out' | 'adjustment';
+  /** 1=In, 2=Out, 3=Adjustment */
+  inventoryMovementTypeId: InventoryMovementType;
   quantity: number;
   reason?: string;
   orderId?: string;

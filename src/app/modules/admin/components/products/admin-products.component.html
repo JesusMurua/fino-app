@@ -1131,12 +1131,12 @@
       <tr>
         <td>{{ m.createdAt | date:'dd MMM y, h:mm a' }}</td>
         <td>
-          <span class="movement-badge" [class]="movementTypeSeverity(m.type)">
-            {{ movementTypeLabel(m.type) }}
+          <span class="movement-badge" [class]="movementTypeSeverity(m.inventoryMovementTypeId)">
+            {{ movementTypeLabel(m.inventoryMovementTypeId) }}
           </span>
         </td>
-        <td class="movement-qty" [class.movement-qty--in]="m.type === 'in'" [class.movement-qty--out]="m.type === 'out'">
-          {{ m.type === 'in' ? '+' : m.type === 'out' ? '-' : '' }}{{ m.quantity }}
+        <td class="movement-qty" [class.movement-qty--in]="m.inventoryMovementTypeId === 1" [class.movement-qty--out]="m.inventoryMovementTypeId === 2">
+          {{ m.inventoryMovementTypeId === 1 ? '+' : m.inventoryMovementTypeId === 2 ? '-' : '' }}{{ m.quantity }}
         </td>
         <td>{{ m.reason || '—' }}</td>
         <td>

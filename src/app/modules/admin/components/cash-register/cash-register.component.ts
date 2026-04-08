@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -13,14 +13,21 @@ import {
   CashMovement,
   CashRegisterSession,
 } from '../../../../core/models';
+import {
+  CashMovementType,
+  CashRegisterStatus,
+  CASH_MOVEMENT_TYPE_LABELS,
+  CASH_MOVEMENT_TYPE_CLASSES,
+} from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
+import { StatusLabelPipe, StatusClassPipe } from '../../../../shared/pipes/status-label.pipe';
 
 /** Movement type options for the dialog */
 interface MovementTypeOption {
-  key: 'withdrawal' | 'expense' | 'adjustment';
+  key: CashMovementType;
   label: string;
   icon: string;
   description: string;
@@ -33,12 +40,15 @@ interface MovementTypeOption {
   imports: [
     FormsModule,
     DatePipe,
+    NgClass,
     DialogModule,
     InputNumberModule,
     InputTextModule,
     InputTextareaModule,
     TableModule,
     PricePipe,
+    StatusLabelPipe,
+    StatusClassPipe,
   ],
   templateUrl: './cash-register.component.html',
   styleUrl: './cash-register.component.scss',
@@ -72,24 +82,30 @@ export class CashRegisterComponent implements OnInit {
   closeNotes = '';
   movementAmount = 0;
   movementDescription = '';
-  movementType: 'withdrawal' | 'expense' | 'adjustment' = 'withdrawal';
+  movementType: CashMovementType = CashMovementType.In;
 
   /** Movement type options for the selector */
   readonly movementTypes: MovementTypeOption[] = [
-    { key: 'withdrawal', label: 'Retiro', icon: '💰', description: 'Dinero retirado para depósito o resguardo', placeholder: 'Ej: Depósito al banco' },
-    { key: 'expense', label: 'Gasto', icon: '🧾', description: 'Pago a proveedor, servicios, etc.', placeholder: 'Ej: Pago de gas' },
-    { key: 'adjustment', label: 'Ajuste', icon: '⚖️', description: 'Corrección por error de conteo', placeholder: 'Ej: Corrección de cambio' },
+    { key: CashMovementType.In,         label: 'Retiro', icon: '💰', description: 'Dinero retirado para depósito o resguardo', placeholder: 'Ej: Depósito al banco' },
+    { key: CashMovementType.Out,        label: 'Gasto',  icon: '🧾', description: 'Pago a proveedor, servicios, etc.', placeholder: 'Ej: Pago de gas' },
+    { key: CashMovementType.Adjustment, label: 'Ajuste', icon: '⚖️', description: 'Corrección por error de conteo', placeholder: 'Ej: Corrección de cambio' },
   ];
+
+  /** Expose enums for template bindings */
+  readonly CashMovementType = CashMovementType;
+  readonly CashRegisterStatus = CashRegisterStatus;
 
   //#endregion
 
   //#region Computeds
 
-  readonly isSessionOpen = computed(() => this.currentSession()?.status === 'open');
+  readonly isSessionOpen = computed(() =>
+    this.currentSession()?.cashRegisterStatusId === CashRegisterStatus.Open,
+  );
 
   readonly movementsTotal = computed(() => {
     return this.movements()
-      .filter(m => m.type === 'withdrawal' || m.type === 'expense')
+      .filter(m => m.cashMovementTypeId === CashMovementType.In || m.cashMovementTypeId === CashMovementType.Out)
       .reduce((sum, m) => sum + m.amountCents, 0);
   });
 
@@ -221,27 +237,23 @@ export class CashRegisterComponent implements OnInit {
     if (!user) return;
 
     await this.cashRegisterService.addMovement(this.authService.branchId, {
-      type: this.movementType,
+      cashMovementTypeId: this.movementType,
       amountCents: Math.round(this.movementAmount * 100),
       description: this.movementDescription.trim(),
       createdBy: user.name,
     });
 
+    const summary = CASH_MOVEMENT_TYPE_LABELS[this.movementType] + ' registrado';
+
     await this.loadSession();
     this.showMovementDialog.set(false);
     this.movementAmount = 0;
     this.movementDescription = '';
-    this.movementType = 'withdrawal';
-
-    const labels: Record<string, string> = {
-      withdrawal: 'Retiro registrado',
-      expense: 'Gasto registrado',
-      adjustment: 'Ajuste registrado',
-    };
+    this.movementType = CashMovementType.In;
 
     this.messageService.add({
       severity: 'success',
-      summary: labels[this.movementType] ?? 'Movimiento registrado',
+      summary,
     });
   }
 
@@ -296,7 +308,7 @@ export class CashRegisterComponent implements OnInit {
   openMovementDialog(): void {
     this.movementAmount = 0;
     this.movementDescription = '';
-    this.movementType = 'withdrawal';
+    this.movementType = CashMovementType.In;
     this.showMovementDialog.set(true);
   }
 

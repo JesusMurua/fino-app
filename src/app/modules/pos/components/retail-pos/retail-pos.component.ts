@@ -7,6 +7,7 @@ import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
 import { Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
+import { PaymentStatus, SyncStatusId } from '../../../../core/enums';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
 import { PosHeaderComponent } from '../pos-header/pos-header.component';
@@ -245,6 +246,7 @@ export class RetailPosComponent implements OnInit, OnDestroy {
 
       const payment: OrderPayment = {
         method: PaymentMethod.Cash,
+        paymentStatusId: PaymentStatus.Completed,
         amountCents: paidCents,
       };
 
@@ -259,7 +261,7 @@ export class RetailPosComponent implements OnInit, OnDestroy {
         changeCents: Math.max(0, paidCents - totalCents),
         paymentProvider: null,
         createdAt: new Date(),
-        syncStatus: 'Pending',
+        syncStatusId: SyncStatusId.Pending,
         branchId: this.authService.branchId,
       };
 

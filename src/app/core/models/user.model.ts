@@ -1,11 +1,12 @@
-import { UserRole } from './auth.model';
+import { UserRoleId } from '../enums';
 
 /** User data returned by the API */
 export interface UserDto {
   id: number;
   name: string;
   email?: string;
-  role: UserRole;
+  /** Numeric role FK — use UserRoleId enum */
+  roleId: UserRoleId;
   roleName: string;
   branchId?: number;
   isActive: boolean;
@@ -17,7 +18,8 @@ export interface UserDto {
 /** Payload for creating a new user */
 export interface CreateUserRequest {
   name: string;
-  role: UserRole;
+  /** Numeric role FK — use UserRoleId enum */
+  roleId: UserRoleId;
   branchId?: number;
   pin?: string;
   email?: string;
@@ -27,7 +29,8 @@ export interface CreateUserRequest {
 /** Payload for updating an existing user */
 export interface UpdateUserRequest {
   name: string;
-  role: UserRole;
+  /** Numeric role FK — use UserRoleId enum */
+  roleId: UserRoleId;
   isActive: boolean;
   pin?: string;
   password?: string;

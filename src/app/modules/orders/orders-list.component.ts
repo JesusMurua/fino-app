@@ -7,6 +7,7 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
 import { Order } from '../../core/models';
+import { KitchenStatusId, TableStatus, UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { OrdersService, getDisplayStatus } from '../../core/services/orders.service';
 import { PrintService } from '../../core/services/print.service';
@@ -99,8 +100,8 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     private readonly messageService: MessageService,
     private readonly router: Router,
   ) {
-    const role = this.authService.currentUser()?.role;
-    this.canDeliver = role === 'Cashier' || role === 'Owner';
+    const roleId = this.authService.currentUser()?.roleId;
+    this.canDeliver = roleId === UserRoleId.Cashier || roleId === UserRoleId.Owner;
 
     effect(() => {
       const branchId = this.authService.activeBranchId();
@@ -138,7 +139,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
 
     // Release table when order is delivered
     if (order.tableId) {
-      this.tableService.updateTableStatus(order.tableId, 'available').catch(() => {});
+      this.tableService.updateTableStatus(order.tableId, TableStatus.Available).catch(() => {});
     }
   }
 
@@ -244,7 +245,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
 
   /** Returns true if the order can be cancelled */
   canCancel(order: Order): boolean {
-    return !order.cancelledAt && order.kitchenStatus !== 'Delivered';
+    return !order.cancelledAt && order.kitchenStatusId !== KitchenStatusId.Delivered;
   }
 
   getStatus(order: Order) {
@@ -252,7 +253,7 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   }
 
   isDelivered(order: Order): boolean {
-    return order.kitchenStatus === 'Delivered';
+    return order.kitchenStatusId === KitchenStatusId.Delivered;
   }
 
   private matchesFilter(order: Order, filter: StatusFilter): boolean {

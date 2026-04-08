@@ -1,3 +1,5 @@
+import { CashMovementType, CashRegisterStatus } from '../enums';
+
 /** A physical cash register (caja fisica) */
 export interface CashRegister {
   id: number;
@@ -20,7 +22,8 @@ export interface CashRegisterSession {
   closedAt?: Date;
   countedAmountCents?: number;
   notes?: string;
-  status: 'open' | 'closed';
+  /** 1=Open, 2=Closed, 3=Auditing */
+  cashRegisterStatusId: CashRegisterStatus;
   movements?: CashMovement[];
 }
 
@@ -28,7 +31,8 @@ export interface CashRegisterSession {
 export interface CashMovement {
   id: number;
   sessionId: number;
-  type: 'withdrawal' | 'expense' | 'adjustment';
+  /** 1=In, 2=Out, 3=Adjustment */
+  cashMovementTypeId: CashMovementType;
   amountCents: number;
   description: string;
   createdBy: string;
@@ -51,7 +55,8 @@ export interface CloseSessionRequest {
 
 /** Request body for adding a cash movement */
 export interface AddMovementRequest {
-  type: 'withdrawal' | 'expense' | 'adjustment';
+  /** 1=In, 2=Out, 3=Adjustment */
+  cashMovementTypeId: CashMovementType;
   amountCents: number;
   description: string;
   createdBy: string;

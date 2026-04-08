@@ -65,14 +65,14 @@ export class CatalogService {
     if (results[5].status === 'fulfilled') this.zoneTypes.set(results[5].value);
   }
 
-  /** Returns display name for a kitchen status code */
-  getKitchenStatusName(code: string): string {
-    return this.kitchenStatuses().find(s => s.code === code)?.name ?? code;
+  /** Returns display name for a kitchen status ID */
+  getKitchenStatusName(id: number): string {
+    return this.kitchenStatuses().find(s => s.id === id)?.name ?? `ID ${id}`;
   }
 
-  /** Returns hex color for a kitchen status code */
-  getKitchenStatusColor(code: string): string {
-    return this.kitchenStatuses().find(s => s.code === code)?.color ?? '#6B7280';
+  /** Returns hex color for a kitchen status ID */
+  getKitchenStatusColor(id: number): string {
+    return this.kitchenStatuses().find(s => s.id === id)?.color ?? '#6B7280';
   }
 
   /** Returns display name for a display status code */

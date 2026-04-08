@@ -9,6 +9,7 @@ import {
   DeviceConfig,
   PosExperience,
 } from '../models';
+import { BusinessTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { CatalogService } from './catalog.service';
@@ -123,7 +124,8 @@ export class ConfigService {
       );
 
       // Resolve business type catalog from CatalogService using JWT business type
-      const btCode = this.authService.businessType();
+      const btId = this.authService.businessTypeId();
+      const btCode = BusinessTypeId[btId]; // e.g. 'Restaurant'
       const btCatalog = this.catalogService.getBusinessType(btCode) ?? config.businessTypeCatalog;
 
       config = {

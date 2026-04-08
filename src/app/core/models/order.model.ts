@@ -1,5 +1,5 @@
 import { CartItem } from './cart-item.model';
-import { DeliveryStatus, OrderSource } from '../enums';
+import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatusId } from '../enums';
 import { InvoiceRequest } from './invoice.model';
 
 /** Supported payment methods */
@@ -21,6 +21,8 @@ export type PaymentTransactionStatus = 'approved' | 'pending' | 'declined';
 export interface OrderPayment {
   id?: number;
   method: PaymentMethod;
+  /** 1=Pending, 2=Completed, 3=Failed, 4=Refunded */
+  paymentStatusId: PaymentStatus;
   /** Amount paid in cents */
   amountCents: number;
   /** Optional reference (last 4 digits, auth number, etc.) */
@@ -74,15 +76,13 @@ export const ALL_PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
 ];
 
 /**
- * Lifecycle state of an order relative to backend sync — PascalCase to match backend.
- *   Pending            — Awaiting first sync attempt or retryable after transient failure
- *   Synced             — Successfully persisted in the backend
- *   Failed             — Transient failure, will be retried with exponential backoff
- *   PermanentlyFailed  — Non-retryable (4xx validation error or exceeded MAX_RETRIES)
+ * @deprecated Use SyncStatusId enum instead. Kept for Dexie migration compatibility.
  */
 export type OrderSyncStatus = 'Pending' | 'Synced' | 'Failed' | 'PermanentlyFailed';
 
-/** Kitchen display status — PascalCase to match backend enum */
+/**
+ * @deprecated Use KitchenStatusId enum instead. Kept for Dexie migration compatibility.
+ */
 export type KitchenStatus = 'Pending' | 'Ready' | 'Delivered';
 
 /**
@@ -113,14 +113,15 @@ export interface Order {
   createdAt: Date;
   /** Set when the order is successfully persisted in the backend */
   syncedAt?: Date;
-  syncStatus: OrderSyncStatus;
+  /** 1=Pending, 2=Synced, 3=Failed, 4=PermanentlyFailed */
+  syncStatusId: SyncStatusId;
   /** Number of failed sync attempts — used for exponential backoff */
   retryCount?: number;
   /** Timestamp of the last sync attempt — used to calculate backoff delay */
   lastSyncAttempt?: Date;
   branchId: number;
-  /** Kitchen display status — undefined on legacy orders */
-  kitchenStatus?: KitchenStatus;
+  /** 1=Pending, 2=Ready, 3=Delivered */
+  kitchenStatusId?: KitchenStatusId;
   /** Reason selected when cancelling */
   cancellationReason?: string;
   /** Timestamp when the order was cancelled */

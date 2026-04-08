@@ -1,4 +1,4 @@
-import { UserRole } from './auth.model';
+import { UserRoleId } from '../enums';
 
 /**
  * A locally-cached credential record for offline PIN authentication.
@@ -14,8 +14,8 @@ export interface EmployeeHash {
   branchId: number;
   /** Employee display name */
   name: string;
-  /** User role — determines routing after offline auth */
-  role: UserRole;
+  /** Numeric role FK — use UserRoleId enum */
+  roleId: UserRoleId;
   /** SHA-256 hex digest of the 4-digit PIN */
   pinHash: string;
 }

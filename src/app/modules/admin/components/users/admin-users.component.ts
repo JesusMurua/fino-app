@@ -7,7 +7,8 @@ import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { TableModule } from 'primeng/table';
-import { CreateUserRequest, UpdateUserRequest, UserDto, UserRole } from '../../../../core/models';
+import { CreateUserRequest, UpdateUserRequest, UserDto } from '../../../../core/models';
+import { UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { UserService } from '../../../../core/services/user.service';
@@ -15,7 +16,7 @@ import { UserService } from '../../../../core/services/user.service';
 /** Role option for the dropdown */
 interface RoleOption {
   label: string;
-  value: UserRole;
+  value: UserRoleId;
   icon: string;
   color: string;
 }
@@ -55,16 +56,16 @@ export class AdminUsersComponent implements OnInit {
   readonly inactiveUsers = computed(() => this.users().filter(u => !u.isActive));
 
   readonly roleOptions: RoleOption[] = [
-    { label: 'Dueño',   value: 'Owner',   icon: '👑', color: '#7C3AED' },
-    { label: 'Gerente',  value: 'Manager', icon: '🏢', color: '#7C3AED' },
-    { label: 'Cajero',   value: 'Cashier', icon: '💳', color: '#2563EB' },
-    { label: 'Mesero',   value: 'Waiter',  icon: '🍽️', color: '#16A34A' },
-    { label: 'Cocina',   value: 'Kitchen', icon: '👨‍🍳', color: '#D97706' },
+    { label: 'Dueño',   value: UserRoleId.Owner,   icon: '👑', color: '#7C3AED' },
+    { label: 'Gerente',  value: UserRoleId.Manager, icon: '🏢', color: '#7C3AED' },
+    { label: 'Cajero',   value: UserRoleId.Cashier, icon: '💳', color: '#2563EB' },
+    { label: 'Mesero',   value: UserRoleId.Waiter,  icon: '🍽️', color: '#16A34A' },
+    { label: 'Cocina',   value: UserRoleId.Kitchen, icon: '👨‍🍳', color: '#D97706' },
   ];
 
   readonly userForm: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
-    role: ['Cashier', Validators.required],
+    roleId: [UserRoleId.Cashier, Validators.required],
     pin: [''],
     email: [''],
     password: [''],
@@ -72,18 +73,18 @@ export class AdminUsersComponent implements OnInit {
   });
 
   /** Track role changes for conditional fields */
-  readonly selectedRole = signal<UserRole>('Cashier');
+  readonly selectedRole = signal<UserRoleId>(UserRoleId.Cashier);
 
   readonly usesPin = computed(() =>
-    ['Cashier', 'Kitchen', 'Waiter'].includes(this.selectedRole())
+    [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Waiter].includes(this.selectedRole())
   );
 
   readonly usesEmail = computed(() =>
-    ['Owner', 'Manager'].includes(this.selectedRole())
+    [UserRoleId.Owner, UserRoleId.Manager].includes(this.selectedRole())
   );
 
   /** Whether the logged-in user is Owner (can assign branches) */
-  readonly isOwner = computed(() => this.authService.currentUser()?.role === 'Owner');
+  readonly isOwner = computed(() => this.authService.currentUser()?.roleId === UserRoleId.Owner);
 
   /** All branches available for assignment */
   readonly availableBranches = signal<Branch[]>([]);
@@ -110,8 +111,8 @@ export class AdminUsersComponent implements OnInit {
   //#region Lifecycle
 
   ngOnInit(): void {
-    this.userForm.get('role')!.valueChanges.subscribe((role: UserRole) => {
-      this.selectedRole.set(role);
+    this.userForm.get('roleId')!.valueChanges.subscribe((roleId: UserRoleId) => {
+      this.selectedRole.set(roleId);
     });
   }
 
@@ -139,8 +140,8 @@ export class AdminUsersComponent implements OnInit {
   /** Opens dialog to create new user */
   openNewDialog(): void {
     this.editingUser.set(null);
-    this.userForm.reset({ name: '', role: 'Cashier', pin: '', email: '', password: '', isActive: true });
-    this.selectedRole.set('Cashier');
+    this.userForm.reset({ name: '', roleId: UserRoleId.Cashier, pin: '', email: '', password: '', isActive: true });
+    this.selectedRole.set(UserRoleId.Cashier);
     this.selectedBranchIds.set([]);
     this.defaultBranchId.set(0);
     this.showDialog.set(true);
@@ -154,16 +155,16 @@ export class AdminUsersComponent implements OnInit {
    */
   async openEditDialog(user: UserDto): Promise<void> {
     this.editingUser.set(user);
-    const role = this.resolveRole(user);
+    const roleId = this.resolveRoleId(user);
     this.userForm.patchValue({
       name: user.name,
-      role,
+      roleId,
       pin: '',
       email: user.email ?? '',
       password: '',
       isActive: user.isActive,
     });
-    this.selectedRole.set(role);
+    this.selectedRole.set(roleId);
     this.selectedBranchIds.set([]);
     this.defaultBranchId.set(0);
     this.showDialog.set(true);
@@ -208,15 +209,15 @@ export class AdminUsersComponent implements OnInit {
     if (this.userForm.invalid) return;
     this.savingUser.set(true);
 
-    const { name, role: formRole, pin, email, password, isActive } = this.userForm.value;
-    const role: UserRole = formRole as UserRole;
+    const { name, roleId: formRoleId, pin, email, password, isActive } = this.userForm.value;
+    const roleId: UserRoleId = formRoleId as UserRoleId;
 
     try {
       if (this.editingUser()) {
         const userId = this.editingUser()!.id;
         const req: UpdateUserRequest = {
           name: name.trim(),
-          role,
+          roleId,
           isActive,
           pin: pin || undefined,
           password: password || undefined,
@@ -234,7 +235,7 @@ export class AdminUsersComponent implements OnInit {
       } else {
         const req: CreateUserRequest = {
           name: name.trim(),
-          role,
+          roleId,
           branchId: this.authService.branchId,
           pin: pin || undefined,
           email: email || undefined,
@@ -272,14 +273,17 @@ export class AdminUsersComponent implements OnInit {
 
   //#region Helpers
 
-  /** Returns color for a user role (accepts role enum or roleName string) */
-  getRoleColor(role: string): string {
-    return this.roleOptions.find(r => r.value === role || r.label === role)?.color ?? '#6B7280';
+  /** Returns color for a user role (accepts roleId or roleName string) */
+  getRoleColor(roleId: UserRoleId | string): string {
+    if (typeof roleId === 'number') {
+      return this.roleOptions.find(r => r.value === roleId)?.color ?? '#6B7280';
+    }
+    return this.roleOptions.find(r => r.label === roleId)?.color ?? '#6B7280';
   }
 
   /** Returns label for a user role */
-  getRoleLabel(role: UserRole): string {
-    return this.roleOptions.find(r => r.value === role)?.label ?? role;
+  getRoleLabel(roleId: UserRoleId): string {
+    return this.roleOptions.find(r => r.value === roleId)?.label ?? USER_ROLE_LABELS[roleId] ?? String(roleId);
   }
 
   /** Returns the initial letter of a name */
@@ -294,29 +298,16 @@ export class AdminUsersComponent implements OnInit {
    * @param user User DTO from the API
    */
   /**
-   * Maps a numeric backend enum index to a UserRole string.
-   * Matches the C# enum: Owner=0, Manager=1, Cashier=2, Waiter=3, Kitchen=4, Kiosk=5
-   */
-  private readonly roleByIndex: UserRole[] = ['Owner', 'Manager', 'Cashier', 'Waiter', 'Kitchen', 'Kiosk'];
-
-  /**
-   * Resolves the UserRole enum value from a UserDto.
-   * The API may return role as a numeric enum (0–5), a string enum ('Owner'),
-   * or roleName in Spanish ('Dueño') / English ('Owner').
+   * Resolves the UserRoleId from a UserDto.
+   * The API returns roleId as a numeric enum. Fallback uses roleName.
    * @param user User DTO from the API
    */
-  private resolveRole(user: UserDto): UserRole {
-    const validRoles: UserRole[] = ['Owner', 'Manager', 'Cashier', 'Kitchen', 'Waiter', 'Kiosk'];
-    // Case 1: role is already a valid string enum
-    if (validRoles.includes(user.role)) return user.role;
-    // Case 2: role is a numeric enum index
-    const numRole = Number(user.role);
-    if (!isNaN(numRole) && this.roleByIndex[numRole]) return this.roleByIndex[numRole];
-    // Case 3: fallback — match roleName against value (English) or label (Spanish)
-    const match = this.roleOptions.find(
-      r => r.value === user.roleName || r.label === user.roleName,
-    );
-    return match?.value ?? 'Cashier';
+  private resolveRoleId(user: UserDto): UserRoleId {
+    // Primary: roleId is already a valid numeric enum
+    if (user.roleId in UserRoleId) return user.roleId;
+    // Fallback: match roleName against label (Spanish)
+    const match = this.roleOptions.find(r => r.label === user.roleName);
+    return match?.value ?? UserRoleId.Cashier;
   }
 
   /** Returns whether a branch is assigned to the user being edited */

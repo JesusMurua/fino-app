@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { onboardingGuard } from './core/guards/onboarding.guard';
 import { provisioningGuard } from './core/guards/provisioning.guard';
 import { setupGuard } from './core/guards/setup.guard';
+import { UserRoleId } from './core/enums';
 
 export const appRoutes: Routes = [
 	{
@@ -55,35 +56,35 @@ export const appRoutes: Routes = [
 	{
 		path: 'pos',
 		canActivate: [authGuard],
-		data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter'] },
+		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/pos/pos.routes').then((m) => m.posRoutes),
 	},
 	{
 		path: 'admin',
 		canActivate: [authGuard, onboardingGuard],
-		data: { roles: ['Owner', 'Manager'] },
+		data: { roles: [UserRoleId.Owner, UserRoleId.Manager] },
 		loadChildren: () =>
 			import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
 	},
 	{
 		path: 'kitchen',
 		canActivate: [authGuard],
-		data: { roles: ['Kitchen', 'Owner', 'Manager'] },
+		data: { roles: [UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager] },
 		loadChildren: () =>
 			import('./modules/kitchen/kitchen.routes').then((m) => m.kitchenRoutes),
 	},
 	{
 		path: 'orders',
 		canActivate: [authGuard],
-		data: { roles: ['Cashier', 'Kitchen', 'Owner', 'Manager', 'Waiter'] },
+		data: { roles: [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/orders/orders.routes').then((m) => m.ordersRoutes),
 	},
 	{
 		path: 'tables',
 		canActivate: [authGuard],
-		data: { roles: ['Cashier', 'Owner', 'Manager', 'Waiter', 'Host'] },
+		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter, UserRoleId.Host] },
 		loadComponent: () =>
 			import('./modules/tables/tables.component').then(
 				(m) => m.TablesComponent,

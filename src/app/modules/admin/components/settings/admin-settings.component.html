@@ -67,7 +67,7 @@
         <i class="pi pi-print"></i>
         Impresoras
       </button>
-      @if (authService.currentUser()?.role === 'Owner') {
+      @if (authService.currentUser()?.roleId === UserRoleId.Owner) {
         <button
           type="button"
           class="settings-tab"
@@ -375,7 +375,7 @@
         </section>
 
         <!-- Activation code card — Owner/Manager only -->
-        @if (authService.currentUser()?.role === 'Owner' || authService.currentUser()?.role === 'Manager') {
+        @if (authService.currentUser()?.roleId === UserRoleId.Owner || authService.currentUser()?.roleId === UserRoleId.Manager) {
           <section class="settings-card">
             <div class="settings-card-header">
               <div class="card-icon"><i class="pi pi-key"></i></div>

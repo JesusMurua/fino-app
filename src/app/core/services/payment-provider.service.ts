@@ -8,6 +8,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
   PROVIDER_PAYMENT_OPTIONS,
 } from '../models/order.model';
+import { PaymentStatus } from '../enums';
 import {
   PaymentProviderConfig,
   PaymentProviderId,
@@ -164,6 +165,7 @@ export class PaymentProviderService {
 
     const payment: OrderPayment = {
       method: tx.method,
+      paymentStatusId: PaymentStatus.Completed,
       amountCents: tx.amountCents,
       reference: tx.reference,
       paymentProvider: tx.provider,

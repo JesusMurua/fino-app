@@ -8,15 +8,14 @@ import {
   AUTH_USER_KEY,
   AuthUser,
   BranchInfo,
-  BusinessType,
   EmployeeHash,
   LoginResponse,
   PlanInfo,
-  PlanType,
   RETURN_URL_KEY,
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
+import { BusinessTypeId, PlanTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 
@@ -56,13 +55,13 @@ export class AuthService {
   );
 
   /** Current subscription plan tier — restored from storage on init */
-  readonly planType = signal<PlanType>(
-    this.loadUserFromStorage()?.planType ?? PlanType.Free,
+  readonly planTypeId = signal<PlanTypeId>(
+    this.loadUserFromStorage()?.planTypeId ?? PlanTypeId.Free,
   );
 
   /** Current business vertical — restored from storage on init */
-  readonly businessType = signal<BusinessType>(
-    this.loadUserFromStorage()?.businessType ?? BusinessType.General,
+  readonly businessTypeId = signal<BusinessTypeId>(
+    this.loadUserFromStorage()?.businessTypeId ?? BusinessTypeId.General,
   );
 
   /** Trial end date as ISO string — null if no trial */
@@ -76,14 +75,14 @@ export class AuthService {
     const now = new Date();
     const trialDate = endsAt ? new Date(endsAt) : null;
     return {
-      planType: this.planType(),
-      businessType: this.businessType(),
+      planTypeId: this.planTypeId(),
+      businessTypeId: this.businessTypeId(),
       trialEndsAt: endsAt ?? undefined,
       isOnTrial: trialDate ? trialDate > now : false,
       trialDaysLeft: trialDate
         ? Math.max(0, Math.ceil((trialDate.getTime() - now.getTime()) / 86_400_000))
         : 0,
-      isPaid: this.planType() !== PlanType.Free,
+      isPaid: this.planTypeId() !== PlanTypeId.Free,
     };
   });
 
@@ -112,7 +111,7 @@ export class AuthService {
   /** True when the plan is expired — only paid/trialing plans can expire */
   readonly isExpired = computed(() => {
     // Free plans never expire — they just have limited features
-    if (this.planType() === PlanType.Free) return false;
+    if (this.planTypeId() === PlanTypeId.Free) return false;
     // Paid plans without a trial end date are treated as expired (missing data)
     const trial = this.trialEndsAt();
     if (!trial) return true;
@@ -256,14 +255,14 @@ export class AuthService {
       // but the interceptor knows not to send it to the API
       const user: AuthUser = {
         token: `offline-session-${Date.now()}`,
-        role: match.role,
+        roleId: match.roleId,
         name: match.name,
         businessId: 0,
         branchId,
         branches: [{ id: branchId, name: '' }],
         currentBranchId: branchId,
-        planType: this.planType(),
-        businessType: this.businessType(),
+        planTypeId: this.planTypeId(),
+        businessTypeId: this.businessTypeId(),
         trialEndsAt: this.trialEndsAt() ?? undefined,
       };
 
@@ -307,8 +306,8 @@ export class AuthService {
     localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
     this.activeBranchId.set(0);
-    this.planType.set(PlanType.Free);
-    this.businessType.set(BusinessType.General);
+    this.planTypeId.set(PlanTypeId.Free);
+    this.businessTypeId.set(BusinessTypeId.General);
     this.trialEndsAt.set(null);
 
     // Clear cached catalog from IndexedDB (orders are preserved)
@@ -355,20 +354,20 @@ export class AuthService {
 
       // Canceled or past_due → downgrade to Free
       const effectivePlan = (status.status === 'canceled' || status.status === 'past_due')
-        ? PlanType.Free
-        : (status.planType ?? PlanType.Free);
+        ? PlanTypeId.Free
+        : (status.planTypeId ?? PlanTypeId.Free);
 
-      const changed = effectivePlan !== this.planType()
+      const changed = effectivePlan !== this.planTypeId()
         || (status.trialEndsAt ?? null) !== this.trialEndsAt();
 
       if (changed) {
-        this.planType.set(effectivePlan);
+        this.planTypeId.set(effectivePlan);
         this.trialEndsAt.set(status.trialEndsAt ?? null);
 
         // Persist to localStorage
         const user = this.currentUser();
         if (user) {
-          const updated = { ...user, planType: effectivePlan, trialEndsAt: status.trialEndsAt ?? undefined };
+          const updated = { ...user, planTypeId: effectivePlan, trialEndsAt: status.trialEndsAt ?? undefined };
           this.currentUser.set(updated);
           localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
         }
@@ -402,14 +401,14 @@ export class AuthService {
 
     const user: AuthUser = {
       token: response.token,
-      role: response.role,
+      roleId: response.roleId,
       name: response.name,
       businessId: response.businessId,
       branchId: response.branchId,
       branches: response.branches ?? [],
       currentBranchId: effectiveBranchId,
-      planType: response.planType ?? PlanType.Free,
-      businessType: response.businessType ?? BusinessType.General,
+      planTypeId: response.planTypeId ?? PlanTypeId.Free,
+      businessTypeId: response.businessTypeId ?? BusinessTypeId.General,
       trialEndsAt: response.trialEndsAt,
       onboardingStatusId: response.onboardingStatusId,
       currentOnboardingStep: response.currentOnboardingStep,
@@ -420,8 +419,8 @@ export class AuthService {
     localStorage.setItem(ACTIVE_BRANCH_KEY, effectiveBranchId.toString());
     this.currentUser.set(user);
     this.activeBranchId.set(effectiveBranchId);
-    this.planType.set(user.planType);
-    this.businessType.set(user.businessType);
+    this.planTypeId.set(user.planTypeId);
+    this.businessTypeId.set(user.businessTypeId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
 
     return user;
@@ -447,7 +446,7 @@ export class AuthService {
       const raw = localStorage.getItem(AUTH_USER_KEY);
       if (!raw) return null;
       const user: AuthUser = JSON.parse(raw);
-      if (!user.token || !user.role) return null;
+      if (!user.token || !user.roleId) return null;
       if (this.isTokenExpired(user.token)) return null;
       return user;
     } catch {

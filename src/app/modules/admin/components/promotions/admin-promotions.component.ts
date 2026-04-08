@@ -19,7 +19,8 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
 
-import { Category, Product, Promotion, PromotionScope, PromotionType } from '../../../../core/models';
+import { Category, Product, Promotion, PromotionScope } from '../../../../core/models';
+import { PromotionTypeId } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
@@ -85,13 +86,16 @@ export class AdminPromotionsComponent implements OnInit {
   // ---- Option sets ----
   readonly dayBits = DAY_BITS;
 
+  /** Exposed to template for type comparisons */
+  readonly PromotionTypeId = PromotionTypeId;
+
   readonly typeOptions = [
-    { label: 'Porcentaje',         value: PromotionType.Percentage },
-    { label: 'Monto fijo',        value: PromotionType.Fixed },
-    { label: '2×1',               value: PromotionType.Bogo },
-    { label: 'Bundle',            value: PromotionType.Bundle },
-    { label: 'Desc. de orden',    value: PromotionType.OrderDiscount },
-    { label: 'Producto gratis',   value: PromotionType.FreeProduct },
+    { label: 'Porcentaje',         value: PromotionTypeId.Percentage },
+    { label: 'Monto fijo',        value: PromotionTypeId.Fixed },
+    { label: '2×1',               value: PromotionTypeId.Bogo },
+    { label: 'Bundle',            value: PromotionTypeId.Bundle },
+    { label: 'Desc. de orden',    value: PromotionTypeId.OrderDiscount },
+    { label: 'Producto gratis',   value: PromotionTypeId.FreeProduct },
   ];
 
   readonly scopeOptions = [
@@ -241,8 +245,8 @@ export class AdminPromotionsComponent implements OnInit {
   }
 
   /** Current type selected in the form */
-  get selectedType(): PromotionType {
-    return this.form.get('type')?.value;
+  get selectedType(): PromotionTypeId {
+    return this.form.get('promotionTypeId')?.value;
   }
 
   /** Current scope selected in the form */
@@ -256,13 +260,13 @@ export class AdminPromotionsComponent implements OnInit {
 
   /** Returns a human-readable label for the promotion type + value */
   typeLabel(promo: Promotion): string {
-    switch (promo.type) {
-      case PromotionType.Percentage:    return `${promo.value}%`;
-      case PromotionType.Fixed:         return `$${(promo.value / 100).toFixed(2)}`;
-      case PromotionType.Bogo:          return '2×1';
-      case PromotionType.Bundle:        return `Lleva ${promo.minQuantity ?? 3} paga ${promo.paidQuantity ?? 2}`;
-      case PromotionType.OrderDiscount: return `${promo.value}% en orden`;
-      case PromotionType.FreeProduct:   return 'Producto gratis';
+    switch (promo.promotionTypeId) {
+      case PromotionTypeId.Percentage:    return `${promo.value}%`;
+      case PromotionTypeId.Fixed:         return `$${(promo.value / 100).toFixed(2)}`;
+      case PromotionTypeId.Bogo:          return '2×1';
+      case PromotionTypeId.Bundle:        return `Lleva ${promo.minQuantity ?? 3} paga ${promo.paidQuantity ?? 2}`;
+      case PromotionTypeId.OrderDiscount: return `${promo.value}% en orden`;
+      case PromotionTypeId.FreeProduct:   return 'Producto gratis';
       default:                          return '—';
     }
   }
@@ -310,7 +314,7 @@ export class AdminPromotionsComponent implements OnInit {
 
   /** Builds the reactive form, optionally populated from an existing promotion */
   private buildForm(promo?: Promotion): void {
-    const isFixedType = promo?.type === PromotionType.Fixed || promo?.type === PromotionType.OrderDiscount;
+    const isFixedType = promo?.promotionTypeId === PromotionTypeId.Fixed || promo?.promotionTypeId === PromotionTypeId.OrderDiscount;
     const valuePesos = isFixedType ? (promo?.value ?? 0) / 100 : (promo?.value ?? 0);
     const minOrderPesos = promo?.minOrderCents ? promo.minOrderCents / 100 : null;
 
@@ -322,7 +326,7 @@ export class AdminPromotionsComponent implements OnInit {
       description:    [promo?.description ?? ''],
 
       // Section 2 — Type
-      type:           [promo?.type ?? PromotionType.Percentage, Validators.required],
+      promotionTypeId: [promo?.promotionTypeId ?? PromotionTypeId.Percentage, Validators.required],
       value:          [valuePesos],
       minQuantity:    [promo?.minQuantity ?? 3],
       paidQuantity:   [promo?.paidQuantity ?? 2],
@@ -358,8 +362,8 @@ export class AdminPromotionsComponent implements OnInit {
 
   /** Converts form values to API payload */
   private formToPayload(raw: any): Record<string, unknown> {
-    const type: PromotionType = raw.type;
-    const isFixedType = type === PromotionType.Fixed || type === PromotionType.OrderDiscount;
+    const promotionTypeId: PromotionTypeId = raw.promotionTypeId;
+    const isFixedType = promotionTypeId === PromotionTypeId.Fixed || promotionTypeId === PromotionTypeId.OrderDiscount;
 
     // Compute days bitmask
     let daysOfWeek: number | null = 0;
@@ -378,12 +382,12 @@ export class AdminPromotionsComponent implements OnInit {
       branchId: this.authService.branchId,
       name: raw.name.trim(),
       description: raw.description?.trim() || null,
-      type,
+      promotionTypeId,
       appliesTo: raw.appliesTo,
       value: isFixedType ? Math.round((raw.value ?? 0) * 100) : (raw.value ?? 0),
-      minQuantity: type === PromotionType.Bundle ? raw.minQuantity : null,
-      paidQuantity: type === PromotionType.Bundle ? raw.paidQuantity : null,
-      freeProductId: type === PromotionType.FreeProduct ? raw.freeProductId : null,
+      minQuantity: promotionTypeId === PromotionTypeId.Bundle ? raw.minQuantity : null,
+      paidQuantity: promotionTypeId === PromotionTypeId.Bundle ? raw.paidQuantity : null,
+      freeProductId: promotionTypeId === PromotionTypeId.FreeProduct ? raw.freeProductId : null,
       categoryId: raw.appliesTo === PromotionScope.Category ? raw.categoryId : null,
       productId: raw.appliesTo === PromotionScope.Product ? raw.productId : null,
       daysOfWeek,

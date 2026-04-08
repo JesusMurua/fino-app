@@ -1,7 +1,8 @@
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
 
-import { RETURN_URL_KEY, UserRole } from '../models';
+import { RETURN_URL_KEY } from '../models';
+import { UserRoleId } from '../enums';
 import { AuthService } from '../services/auth.service';
 import { ConfigService } from '../services/config.service';
 
@@ -36,10 +37,10 @@ export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   }
 
   // 4. Role check
-  const allowedRoles: UserRole[] = route.data['roles'] ?? [];
-  const userRole = authService.currentUser()?.role;
+  const allowedRoles: UserRoleId[] = route.data['roles'] ?? [];
+  const userRoleId = authService.currentUser()?.roleId;
 
-  if (allowedRoles.length > 0 && (!userRole || !allowedRoles.includes(userRole))) {
+  if (allowedRoles.length > 0 && (!userRoleId || !allowedRoles.includes(userRoleId))) {
     return router.createUrlTree(['/pin']);
   }
 

@@ -1,16 +1,14 @@
-/** Types of promotions supported by the system */
+import { PromotionTypeId } from '../enums';
+
+/**
+ * @deprecated Use PromotionTypeId from enums instead. Kept for backward compat.
+ */
 export enum PromotionType {
-  /** Percentage discount on item price */
   Percentage = 'Percentage',
-  /** Fixed amount discount on item price (in cents) */
   Fixed = 'Fixed',
-  /** Buy one get one free */
   Bogo = 'Bogo',
-  /** Buy X pay Y (bundle pricing) */
   Bundle = 'Bundle',
-  /** Percentage discount on the entire order */
   OrderDiscount = 'OrderDiscount',
-  /** One unit of a specific product for free */
   FreeProduct = 'FreeProduct',
 }
 
@@ -41,7 +39,8 @@ export interface Promotion {
   branchId: number;
   name: string;
   description?: string;
-  type: PromotionType;
+  /** Numeric FK — use PromotionTypeId enum */
+  promotionTypeId: PromotionTypeId;
   appliesTo: PromotionScope;
   /** Discount value — meaning depends on type (percentage points or cents) */
   value: number;

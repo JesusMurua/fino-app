@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 
+import { PlanTypeId } from '../enums';
 import {
   BUSINESS_FEATURE_MAP,
   FEATURE_MIN_PLAN,
@@ -8,7 +9,6 @@ import {
   PLAN_FEATURE_MAP,
   PLAN_HIERARCHY,
   PlanInfo,
-  PlanType,
 } from '../models';
 import { AuthService } from './auth.service';
 
@@ -40,7 +40,7 @@ export class FeatureFlagService {
     const effectivePlan = this.getEffectivePlan(info);
 
     const planFeatures = PLAN_FEATURE_MAP[effectivePlan];
-    const giroFeatures = BUSINESS_FEATURE_MAP[info.businessType];
+    const giroFeatures = BUSINESS_FEATURE_MAP[info.businessTypeId];
 
     return planFeatures.includes(feature) && giroFeatures.includes(feature);
   }
@@ -50,7 +50,7 @@ export class FeatureFlagService {
    * During active trial: treated as Basic.
    * @param required The minimum plan needed
    */
-  meetsPlan(required: PlanType): boolean {
+  meetsPlan(required: PlanTypeId): boolean {
     const info = this.authService.planInfo();
     const effectivePlan = this.getEffectivePlan(info);
 
@@ -74,7 +74,7 @@ export class FeatureFlagService {
    * @param feature The feature to check
    */
   isRelevantForGiro(feature: FeatureKey): boolean {
-    const giro = this.authService.planInfo().businessType;
+    const giro = this.authService.planInfo().businessTypeId;
     return BUSINESS_FEATURE_MAP[giro].includes(feature);
   }
 
@@ -84,7 +84,7 @@ export class FeatureFlagService {
    * @param feature The feature to check
    */
   isBlockedByBusinessType(feature: FeatureKey): boolean {
-    const giro = this.authService.planInfo().businessType;
+    const giro = this.authService.planInfo().businessTypeId;
     return !BUSINESS_FEATURE_MAP[giro].includes(feature);
   }
 
@@ -106,15 +106,15 @@ export class FeatureFlagService {
 
   /**
    * Resolves the effective plan for feature gating.
-   * During active trial: uses the contracted planType (Pro/Enterprise).
-   * If planType is Free and trial is active, falls back to Basic
+   * During active trial: uses the contracted planTypeId (Pro/Enterprise).
+   * If planTypeId is Free and trial is active, falls back to Basic
    * (subscription endpoint may not have updated the plan yet).
    */
-  private getEffectivePlan(info: PlanInfo): PlanType {
+  private getEffectivePlan(info: PlanInfo): PlanTypeId {
     if (info.isOnTrial) {
-      return info.planType !== PlanType.Free ? info.planType : PlanType.Basic;
+      return info.planTypeId !== PlanTypeId.Free ? info.planTypeId : PlanTypeId.Basic;
     }
-    return info.planType;
+    return info.planTypeId;
   }
 
   //#endregion

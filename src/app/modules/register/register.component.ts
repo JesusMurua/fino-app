@@ -8,7 +8,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { environment } from '../../../environments/environment';
-import { BusinessType, LoginResponse, PlanType } from '../../core/models';
+import { LoginResponse } from '../../core/models';
+import { BusinessTypeId, PlanTypeId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 
 /** Giro display info for the read-only badge */
@@ -59,12 +60,12 @@ export class RegisterComponent implements OnInit {
   readonly errorMessage = signal('');
 
   readonly businessTypeOptions = [
-    { label: 'Restaurante',       value: BusinessType.Restaurant },
-    { label: 'Cafe',              value: BusinessType.Cafe },
-    { label: 'Bar',               value: BusinessType.Bar },
-    { label: 'Abarrotes / Retail', value: BusinessType.Retail },
-    { label: 'Food Truck',        value: BusinessType.FoodTruck },
-    { label: 'General',           value: BusinessType.General },
+    { label: 'Restaurante',       value: BusinessTypeId.Restaurant },
+    { label: 'Cafe',              value: BusinessTypeId.Cafe },
+    { label: 'Bar',               value: BusinessTypeId.Bar },
+    { label: 'Abarrotes / Retail', value: BusinessTypeId.Retail },
+    { label: 'Food Truck',        value: BusinessTypeId.FoodTruck },
+    { label: 'General',           value: BusinessTypeId.General },
   ];
 
   readonly form = this.fb.group({
@@ -73,7 +74,7 @@ export class RegisterComponent implements OnInit {
     email:           ['', [Validators.required, Validators.email]],
     password:        ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', Validators.required],
-    businessType:    [BusinessType.Restaurant, Validators.required],
+    businessType:    [BusinessTypeId.Restaurant, Validators.required],
   }, { validators: passwordMatchValidator });
 
   /** Giro param from URL — when set, shows badge instead of dropdown */
@@ -104,14 +105,14 @@ export class RegisterComponent implements OnInit {
     // Pre-select business type from ?giro=
     if (params['giro']) {
       this.giroParam.set(params['giro'].toLowerCase());
-      const giroMap: Record<string, BusinessType> = {
-        restaurant: BusinessType.Restaurant,
-        cafe: BusinessType.Cafe,
-        bar: BusinessType.Bar,
-        retail: BusinessType.Retail,
-        foodtruck: BusinessType.FoodTruck,
-        'food-truck': BusinessType.FoodTruck,
-        general: BusinessType.General,
+      const giroMap: Record<string, BusinessTypeId> = {
+        restaurant: BusinessTypeId.Restaurant,
+        cafe: BusinessTypeId.Cafe,
+        bar: BusinessTypeId.Bar,
+        retail: BusinessTypeId.Retail,
+        foodtruck: BusinessTypeId.FoodTruck,
+        'food-truck': BusinessTypeId.FoodTruck,
+        general: BusinessTypeId.General,
       };
       const mapped = giroMap[params['giro'].toLowerCase()];
       if (mapped) {
@@ -161,19 +162,19 @@ export class RegisterComponent implements OnInit {
 
     const { businessName, ownerName, email, password, businessType } = this.form.getRawValue();
 
-    /** Resolve planType: URL param → PlanType enum, default Free */
-    const planMap: Record<string, PlanType> = {
-      basic: PlanType.Basic,
-      pro: PlanType.Pro,
-      enterprise: PlanType.Enterprise,
+    /** Resolve planTypeId: URL param → PlanTypeId enum, default Free */
+    const planMap: Record<string, PlanTypeId> = {
+      basic: PlanTypeId.Basic,
+      pro: PlanTypeId.Pro,
+      enterprise: PlanTypeId.Enterprise,
     };
-    const planType = (this.pendingPlan && planMap[this.pendingPlan]) ?? PlanType.Free;
+    const planTypeId = (this.pendingPlan && planMap[this.pendingPlan]) ?? PlanTypeId.Free;
 
     try {
       const response = await firstValueFrom(
         this.http.post<LoginResponse>(
           `${environment.apiUrl}/auth/register`,
-          { businessName, ownerName, email, password, businessType, planType, countryCode: this.countryCode },
+          { businessName, ownerName, email, password, businessType, planTypeId, countryCode: this.countryCode },
         ),
       );
 

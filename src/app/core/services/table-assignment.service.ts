@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
 
+import { SyncStatusId, TableStatus } from '../enums';
 import { DatabaseService } from './database.service';
 import { OrderContextService } from './order-context.service';
 import { SyncService } from './sync.service';
@@ -45,7 +46,7 @@ export class TableAssignmentService {
     }
 
     const table = await this.db.restaurantTables.get(tableId);
-    if (!table || table.status !== 'available') {
+    if (!table || table.tableStatusId !== TableStatus.Available) {
       this.messageService.add({ severity: 'warn', summary: 'Mesa no disponible', life: 3000 });
       return false;
     }
@@ -56,12 +57,12 @@ export class TableAssignmentService {
         await this.db.orders.update(orderId, {
           tableId,
           tableName,
-          syncStatus: 'Pending',
+          syncStatusId: SyncStatusId.Pending,
           lastSyncAttempt: undefined,
           retryCount: 0,
         });
         await this.db.restaurantTables.update(tableId, {
-          status: 'occupied' as const,
+          tableStatusId: TableStatus.Occupied,
           orderId,
         });
       });
@@ -101,11 +102,11 @@ export class TableAssignmentService {
         await this.db.orders.update(orderId, {
           tableId: undefined,
           tableName: undefined,
-          syncStatus: 'Pending',
+          syncStatusId: SyncStatusId.Pending,
           retryCount: 0,
         });
         await this.db.restaurantTables.update(tableId, {
-          status: 'available' as const,
+          tableStatusId: TableStatus.Available,
           orderId: undefined,
         });
       });

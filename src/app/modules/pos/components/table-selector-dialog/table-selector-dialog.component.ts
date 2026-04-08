@@ -5,6 +5,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
 
 import { RestaurantTable } from '../../../../core/models';
+import { TableStatus } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { TableService } from '../../../../core/services/table.service';
 
@@ -55,7 +56,7 @@ export class TableSelectorDialogComponent {
   /** Tables grouped by zoneId for visual organization */
   readonly zoneGroups = computed<ZoneGroup[]>(() => {
     const all = this.tables();
-    const available = all.filter(t => t.status === 'available');
+    const available = all.filter(t => t.tableStatusId === TableStatus.Available);
     const map = new Map<number | null, RestaurantTable[]>();
 
     for (const table of available) {
@@ -81,7 +82,7 @@ export class TableSelectorDialogComponent {
 
   /** Total available tables count */
   readonly availableCount = computed(() =>
-    this.tables().filter(t => t.status === 'available').length,
+    this.tables().filter(t => t.tableStatusId === TableStatus.Available).length,
   );
 
   /** True when confirm button should be enabled */
@@ -122,7 +123,7 @@ export class TableSelectorDialogComponent {
 
   /** Handles table card tap */
   onTableClick(table: RestaurantTable): void {
-    if (table.status !== 'available') return;
+    if (table.tableStatusId !== TableStatus.Available) return;
 
     // Toggle selection
     if (this.selectedTable()?.id === table.id) {

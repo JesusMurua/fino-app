@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
+import { KitchenStatusId, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -31,13 +32,13 @@ export function getDisplayStatus(order: Order): OrderDisplayStatus {
   if (order.cancelledAt) {
     return { label: 'Cancelada', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
   }
-  if (order.kitchenStatus === 'Delivered') {
+  if (order.kitchenStatusId === KitchenStatusId.Delivered) {
     return { label: 'Entregado', color: '#3B82F6', bgColor: 'rgba(59, 130, 246, 0.1)' };
   }
-  if (order.kitchenStatus === 'Ready') {
+  if (order.kitchenStatusId === KitchenStatusId.Ready) {
     return { label: 'Listo', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.1)' };
   }
-  if (order.kitchenStatus === 'Pending') {
+  if (order.kitchenStatusId === KitchenStatusId.Pending) {
     return { label: 'En cocina', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.1)' };
   }
   return { label: 'Nueva', color: '#6B7280', bgColor: 'rgba(107, 114, 128, 0.1)' };
@@ -92,9 +93,9 @@ export class OrdersService implements OnDestroy {
    * @param orderId The order UUID to mark as delivered
    */
   async markAsDelivered(orderId: string): Promise<void> {
-    await this.db.orders.update(orderId, { kitchenStatus: 'Delivered' });
+    await this.db.orders.update(orderId, { kitchenStatusId: KitchenStatusId.Delivered });
     this.todayOrders.update(orders =>
-      orders.map(o => o.id === orderId ? { ...o, kitchenStatus: 'Delivered' as const } : o),
+      orders.map(o => o.id === orderId ? { ...o, kitchenStatusId: KitchenStatusId.Delivered } : o),
     );
   }
 
@@ -110,12 +111,12 @@ export class OrdersService implements OnDestroy {
     await this.db.orders.update(orderId, {
       cancellationReason: reason,
       cancelledAt: now,
-      syncStatus: 'Pending',
+      syncStatusId: SyncStatusId.Pending,
     });
 
     this.todayOrders.update(orders =>
       orders.map(o => o.id === orderId
-        ? { ...o, cancellationReason: reason, cancelledAt: now, syncStatus: 'Pending' as const }
+        ? { ...o, cancellationReason: reason, cancelledAt: now, syncStatusId: SyncStatusId.Pending }
         : o,
       ),
     );

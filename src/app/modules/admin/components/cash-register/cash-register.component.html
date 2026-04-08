@@ -108,13 +108,9 @@
               @for (m of movements(); track m.id) {
                 <tr>
                   <td>
-                    @if (m.type === 'withdrawal') {
-                      <span class="badge badge--withdrawal">Retiro</span>
-                    } @else if (m.type === 'expense') {
-                      <span class="badge badge--expense">Gasto</span>
-                    } @else {
-                      <span class="badge badge--adjustment">Ajuste</span>
-                    }
+                    <span class="badge" [ngClass]="m.cashMovementTypeId | statusClass:'cashMovement'">
+                      {{ m.cashMovementTypeId | statusLabel:'cashMovement' }}
+                    </span>
                   </td>
                   <td>{{ m.description }}</td>
                   <td class="data-table__time">{{ formatTime(m.createdAt) }}</td>
@@ -391,7 +387,7 @@
               <td>{{ s.initialAmountCents | price }}</td>
               <td>{{ s.countedAmountCents != null ? (s.countedAmountCents | price) : '—' }}</td>
               <td>
-                @if (s.countedAmountCents != null && s.status === 'closed') {
+                @if (s.countedAmountCents != null && s.cashRegisterStatusId === CashRegisterStatus.Closed) {
                   <span [class.text-green]="(s.countedAmountCents - s.initialAmountCents) >= 0"
                         [class.text-red]="(s.countedAmountCents - s.initialAmountCents) < 0">
                     {{ (s.countedAmountCents - s.initialAmountCents) | price }}
@@ -401,11 +397,9 @@
                 }
               </td>
               <td>
-                @if (s.status === 'open') {
-                  <span class="badge badge--open">Abierto</span>
-                } @else {
-                  <span class="badge badge--closed">Cerrado</span>
-                }
+                <span class="badge" [ngClass]="s.cashRegisterStatusId | statusClass:'cashRegister'">
+                  {{ s.cashRegisterStatusId | statusLabel:'cashRegister' }}
+                </span>
               </td>
             </tr>
           }

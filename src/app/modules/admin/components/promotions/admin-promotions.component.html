@@ -147,7 +147,7 @@
       <div class="form-field">
         <label class="form-field__label">Tipo *</label>
         <p-dropdown
-          formControlName="type"
+          formControlName="promotionTypeId"
           [options]="typeOptions"
           optionLabel="label"
           optionValue="value"
@@ -157,7 +157,7 @@
       </div>
 
       <!-- Conditional fields per type -->
-      @if (selectedType === 'Percentage') {
+      @if (selectedType === PromotionTypeId.Percentage) {
         <div class="form-field">
           <label class="form-field__label" for="pf-pct">Porcentaje de descuento</label>
           <p-inputNumber
@@ -171,7 +171,7 @@
         </div>
       }
 
-      @if (selectedType === 'Fixed') {
+      @if (selectedType === PromotionTypeId.Fixed) {
         <div class="form-field">
           <label class="form-field__label" for="pf-fixed">Monto del descuento (MXN)</label>
           <p-inputNumber
@@ -186,7 +186,7 @@
         </div>
       }
 
-      @if (selectedType === 'Bundle') {
+      @if (selectedType === PromotionTypeId.Bundle) {
         <div class="form-row">
           <div class="form-field">
             <label class="form-field__label" for="pf-minqty">Compra (unidades)</label>
@@ -209,7 +209,7 @@
         </div>
       }
 
-      @if (selectedType === 'OrderDiscount') {
+      @if (selectedType === PromotionTypeId.OrderDiscount) {
         <div class="form-field">
           <label class="form-field__label" for="pf-orddisc">Porcentaje en orden</label>
           <p-inputNumber
@@ -223,7 +223,7 @@
         </div>
       }
 
-      @if (selectedType === 'FreeProduct') {
+      @if (selectedType === PromotionTypeId.FreeProduct) {
         <div class="form-field">
           <label class="form-field__label">Producto gratis</label>
           <p-dropdown

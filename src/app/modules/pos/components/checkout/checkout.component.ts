@@ -14,6 +14,7 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
 import { CartItem, Customer, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
+import { KitchenStatusId, PaymentStatus, SyncStatusId, TableStatus } from '../../../../core/enums';
 import { DEFAULT_TAX_RATE, calculateItemTax } from '../../../../core/utils/tax.utils';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
@@ -411,6 +412,7 @@ export class CheckoutComponent implements OnInit {
 
     const payment: OrderPayment = {
       method: this.dialogMethod(),
+      paymentStatusId: PaymentStatus.Completed,
       amountCents,
       reference: this.dialogReference.trim() || undefined,
     };
@@ -479,6 +481,7 @@ export class CheckoutComponent implements OnInit {
   registerSplitPayment(method: PaymentMethod): void {
     const payment: OrderPayment = {
       method,
+      paymentStatusId: PaymentStatus.Completed,
       amountCents: this.splitAmountCents(),
     };
     this.pendingPayments.update(arr => [...arr, payment]);
@@ -600,8 +603,8 @@ export class CheckoutComponent implements OnInit {
     // Check if existing order is still in kitchen
     if (this.existingOrderId()) {
       const existing = await this.db.orders.get(this.existingOrderId()!);
-      const ks = existing?.kitchenStatus;
-      if (ks === 'Pending') {
+      const ks = existing?.kitchenStatusId;
+      if (ks === KitchenStatusId.Pending) {
         this.showKitchenConfirm.set(true);
         return;
       }
@@ -644,7 +647,7 @@ export class CheckoutComponent implements OnInit {
           orderPromotionName: this.discountLabel() || undefined,
           totalCents: finalTotal,
           taxAmountCents: this.taxAmountCents(),
-          syncStatus: 'Pending',
+          syncStatusId: SyncStatusId.Pending,
           cashRegisterSessionId: existing.cashRegisterSessionId ?? this.cashRegisterService.activeSession()?.id,
         };
 
@@ -669,7 +672,7 @@ export class CheckoutComponent implements OnInit {
           changeCents: this.changeCents(),
           paymentProvider: this.derivePaymentProvider(payments),
           createdAt: new Date(),
-          syncStatus: 'Pending',
+          syncStatusId: SyncStatusId.Pending,
           branchId: this.authService.branchId,
           cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
           customerId: this.customerService.selectedCustomer()?.id,
@@ -761,7 +764,7 @@ export class CheckoutComponent implements OnInit {
           await firstValueFrom(
             this.http.patch(
               `${environment.apiUrl}/table/${tableId}/status`,
-              { status: 'available' },
+              { tableStatusId: TableStatus.Available },
               { headers: { Authorization: `Bearer ${token}` } },
             )
           );
