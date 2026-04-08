@@ -558,12 +558,27 @@
       <h2 class="session-blocker__title">Caja Cerrada</h2>
       <p class="session-blocker__subtitle">Abre un turno de caja para comenzar a cobrar</p>
 
-      <!-- Multi-till: show linked register or warning -->
+      <!-- Multi-till: show linked register, self-link button, or warning -->
       @if (linkedRegister(); as reg) {
         <div class="session-blocker__register-badge">
           <i class="pi pi-desktop"></i>
           Caja: {{ reg.name }}
         </div>
+      } @else if (canSelfLink()) {
+        <button
+          type="button"
+          class="session-blocker__link-btn"
+          [disabled]="isLinkingDevice()"
+          (click)="linkDeviceAsRegister()"
+        >
+          @if (isLinkingDevice()) {
+            <i class="pi pi-spin pi-spinner"></i>
+            Vinculando...
+          } @else {
+            <i class="pi pi-link"></i>
+            Vincular este equipo como Caja Principal
+          }
+        </button>
       } @else {
         <div class="session-blocker__register-danger">
           <i class="pi pi-exclamation-triangle"></i>

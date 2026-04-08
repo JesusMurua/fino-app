@@ -870,6 +870,30 @@
     i { font-size: 16px; }
   }
 
+  &__link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    width: 100%;
+    min-height: 52px;
+    padding: $space-3 $space-5;
+    border: 2px solid $color-primary;
+    border-radius: $radius-button;
+    background: #F0FDF4;
+    color: $color-primary;
+    font-size: $font-size-base;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover:not(:disabled) { background: $color-primary; color: white; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    i { font-size: 18px; }
+  }
+
   &__register-danger {
     display: inline-flex;
     align-items: center;
