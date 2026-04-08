@@ -10,6 +10,7 @@ import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 
 import { DashboardChartsDto, DashboardOrderRow, DashboardSummary } from '../../../../core/models';
+import { KitchenStatusId } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
@@ -376,10 +377,12 @@ export class DashboardComponent implements OnInit {
   /** Returns status badge label for a dashboard order row */
   getStatusLabel(order: DashboardOrderRow): string {
     if (order.cancelledAt) return 'Cancelada';
-    if (order.kitchenStatus === 'Delivered') return 'Entregado';
-    if (order.kitchenStatus === 'Ready') return 'Listo';
-    if (order.kitchenStatus === 'Pending') return 'En cocina';
-    return 'Nueva';
+    switch (order.kitchenStatusId) {
+      case KitchenStatusId.Delivered: return 'Entregado';
+      case KitchenStatusId.Ready:    return 'Listo';
+      case KitchenStatusId.Pending:  return 'En cocina';
+      default:                       return 'Nueva';
+    }
   }
 
   /** Returns payment method label for a dashboard order row */

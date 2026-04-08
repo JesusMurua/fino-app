@@ -20,6 +20,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
 import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, SAT_UNIT_OPTIONS } from '../../../../core/models';
+import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { DiscountService } from '../../../../core/services/discount.service';
@@ -708,23 +709,13 @@ export class AdminProductsComponent implements OnInit {
   }
 
   /** Returns display label for movement type */
-  movementTypeLabel(type: string): string {
-    switch (type) {
-      case 'in':         return 'Entrada';
-      case 'out':        return 'Salida';
-      case 'adjustment': return 'Ajuste';
-      default:           return type;
-    }
+  movementTypeLabel(type: number): string {
+    return INVENTORY_MOVEMENT_TYPE_LABELS[type as InventoryMovementType] ?? String(type);
   }
 
   /** Returns CSS class for movement type badge */
-  movementTypeSeverity(type: string): string {
-    switch (type) {
-      case 'in':         return 'movement-badge--in';
-      case 'out':        return 'movement-badge--out';
-      case 'adjustment': return 'movement-badge--adj';
-      default:           return '';
-    }
+  movementTypeSeverity(type: number): string {
+    return INVENTORY_MOVEMENT_TYPE_CLASSES[type as InventoryMovementType] ?? '';
   }
 
   //#endregion

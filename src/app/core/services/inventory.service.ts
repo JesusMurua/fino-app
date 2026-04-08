@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { CartItem, InventoryItem, InventoryLedgerDto, InventoryMovement, PageData, ProductConsumption } from '../models';
+import { InventoryMovementType } from '../enums';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 
@@ -143,20 +144,20 @@ export class InventoryService {
   /**
    * Records a stock movement (in, out, or adjustment) for an inventory item
    * @param itemId The inventory item ID
-   * @param type Movement type: 'in' for restocking, 'out' for manual deduction, 'adjustment' for corrections
+   * @param inventoryMovementTypeId 1=In, 2=Out, 3=Adjustment
    * @param quantity Amount to move (always positive — direction is determined by type)
    * @param reason Optional description of why the movement was made
    */
   async addMovement(
     itemId: number,
-    type: 'in' | 'out' | 'adjustment',
+    inventoryMovementTypeId: InventoryMovementType,
     quantity: number,
     reason?: string,
   ): Promise<InventoryMovement> {
     const movement = await firstValueFrom(
       this.http.post<InventoryMovement>(
         `${this.baseUrl}/inventory/${itemId}/movement`,
-        { type, quantity, reason },
+        { inventoryMovementTypeId, quantity, reason },
       )
     );
     await this.db.inventoryMovements.put(movement);

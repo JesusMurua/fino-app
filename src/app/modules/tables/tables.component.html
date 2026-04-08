@@ -292,11 +292,11 @@
           </div>
 
           <div class="td-order-card__badges">
-            @if (order.kitchenStatus === 'Pending' || !order.kitchenStatus) {
+            @if (order.kitchenStatusId === KitchenStatusId.Pending || !order.kitchenStatusId) {
               <span class="td-badge td-badge--pending">En cocina</span>
-            } @else if (order.kitchenStatus === 'Ready') {
+            } @else if (order.kitchenStatusId === KitchenStatusId.Ready) {
               <span class="td-badge td-badge--ready">Listo</span>
-            } @else if (order.kitchenStatus === 'Delivered') {
+            } @else if (order.kitchenStatusId === KitchenStatusId.Delivered) {
               <span class="td-badge td-badge--ready">Entregada</span>
             }
           </div>

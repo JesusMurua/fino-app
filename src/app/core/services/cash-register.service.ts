@@ -10,6 +10,7 @@ import {
   CloseSessionRequest,
   OpenSessionRequest,
 } from '../models';
+import { CashMovementType, CashRegisterStatus } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 import { DeviceService } from './device.service';
@@ -106,7 +107,7 @@ export class CashRegisterService implements OnDestroy {
       console.warn('[CashRegisterService] API unreachable — using Dexie fallback:', error);
 
       const local = await this.db.cashSessions
-        .where({ branchId, status: 'open' })
+        .where({ branchId, cashRegisterStatusId: CashRegisterStatus.Open })
         .first();
       return local ?? null;
     }
@@ -184,7 +185,7 @@ export class CashRegisterService implements OnDestroy {
   calculateExpected(session: CashRegisterSession, cashSalesTotal: number): number {
     const movements = session.movements ?? [];
     const outflows = movements
-      .filter(m => m.type === 'withdrawal' || m.type === 'expense')
+      .filter(m => m.cashMovementTypeId === CashMovementType.In || m.cashMovementTypeId === CashMovementType.Out)
       .reduce((sum, m) => sum + m.amountCents, 0);
 
     return session.initialAmountCents + cashSalesTotal - outflows;

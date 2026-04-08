@@ -2,7 +2,7 @@ import { Injectable, Injector, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { Order } from '../models';
-import { OrderSource } from '../enums';
+import { KitchenStatusId, OrderSource, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -135,7 +135,7 @@ export class SyncService implements OnDestroy {
    * @param order The completed order to persist
    */
   async saveOrder(order: Order): Promise<void> {
-    await this.db.orders.put({ ...order, syncStatus: 'Pending', retryCount: 0 });
+    await this.db.orders.put({ ...order, syncStatusId: SyncStatusId.Pending, retryCount: 0 });
     this.pendingCount.update(n => n + 1);
 
     if (navigator.onLine) {
@@ -153,8 +153,8 @@ export class SyncService implements OnDestroy {
     if (this.isSyncing() || !navigator.onLine) return;
 
     const retryable = await this.db.orders
-      .where('syncStatus')
-      .anyOf('Pending', 'Failed')
+      .where('syncStatusId')
+      .anyOf(SyncStatusId.Pending, SyncStatusId.Failed)
       .toArray();
 
     if (retryable.length === 0) return;
@@ -165,7 +165,7 @@ export class SyncService implements OnDestroy {
 
     for (const order of retryable) {
       // Respect exponential backoff for previously failed orders
-      if (order.syncStatus === 'Failed' && order.lastSyncAttempt) {
+      if (order.syncStatusId === SyncStatusId.Failed && order.lastSyncAttempt) {
         const retries = order.retryCount ?? 0;
         const backoffMs = Math.min(BACKOFF_BASE_MS * Math.pow(2, retries), BACKOFF_CAP_MS);
         const elapsed = now - new Date(order.lastSyncAttempt).getTime();
@@ -261,7 +261,7 @@ export class SyncService implements OnDestroy {
       const locals = await this.db.orders.where('id').anyOf(remoteIds).toArray();
       const pendingIds = new Set(
         locals
-          .filter(o => o.syncStatus === 'Pending' || o.syncStatus === 'Failed')
+          .filter(o => o.syncStatusId === SyncStatusId.Pending || o.syncStatusId === SyncStatusId.Failed)
           .map(o => o.id),
       );
 
@@ -302,10 +302,10 @@ export class SyncService implements OnDestroy {
       changeCents: dto.changeCents,
       paymentProvider: null,
       createdAt: new Date(dto.createdAt),
-      syncStatus: 'Synced',
+      syncStatusId: SyncStatusId.Synced,
       syncedAt: new Date(),
       retryCount: 0,
-      kitchenStatus: dto.kitchenStatus,
+      kitchenStatusId: dto.kitchenStatusId,
       cancellationReason: dto.cancellationReason,
       cancelledAt: dto.cancelledAt ? new Date(dto.cancelledAt) : undefined,
       tableId: dto.tableId,
@@ -371,7 +371,7 @@ export class SyncService implements OnDestroy {
         this.api.post<void>('/orders/sync', [dto]),
       );
       await this.db.orders.update(order.id, {
-        syncStatus: 'Synced',
+        syncStatusId: SyncStatusId.Synced,
         syncedAt: new Date(),
         lastSyncAttempt: new Date(),
       });
@@ -386,7 +386,7 @@ export class SyncService implements OnDestroy {
         // 4xx (except 408 timeout, 409 conflict, 429 rate limit) — data is malformed, will never sync
         console.error(`[SyncService] Order ${order.id} permanently failed (HTTP ${status}):`, error);
         await this.db.orders.update(order.id, {
-          syncStatus: 'PermanentlyFailed',
+          syncStatusId: SyncStatusId.PermanentlyFailed,
           lastSyncAttempt: new Date(),
           retryCount: retryCount + 1,
         });
@@ -394,7 +394,7 @@ export class SyncService implements OnDestroy {
         // Exceeded maximum retries — give up
         console.error(`[SyncService] Order ${order.id} exceeded ${MAX_RETRIES} retries — marking permanently failed`);
         await this.db.orders.update(order.id, {
-          syncStatus: 'PermanentlyFailed',
+          syncStatusId: SyncStatusId.PermanentlyFailed,
           lastSyncAttempt: new Date(),
           retryCount: retryCount + 1,
         });
@@ -402,7 +402,7 @@ export class SyncService implements OnDestroy {
         // Transient failure (5xx, network, timeout, 429) — retry with backoff
         console.warn(`[SyncService] Order ${order.id} failed (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
         await this.db.orders.update(order.id, {
-          syncStatus: 'Failed',
+          syncStatusId: SyncStatusId.Failed,
           lastSyncAttempt: new Date(),
           retryCount: retryCount + 1,
         });
@@ -467,7 +467,7 @@ export class SyncService implements OnDestroy {
       totalDiscountCents: order.totalDiscountCents ?? 0,
       orderPromotionId: order.orderPromotionId ?? null,
       orderPromotionName: order.orderPromotionName ?? null,
-      kitchenStatus: order.kitchenStatus ?? 'Pending',
+      kitchenStatusId: order.kitchenStatusId ?? KitchenStatusId.Pending,
       cancellationReason: order.cancellationReason ?? null,
       cancelledAt: order.cancelledAt ?? null,
       items: order.items.map(item => ({
@@ -522,8 +522,8 @@ export class SyncService implements OnDestroy {
    */
   private async refreshPendingCount(): Promise<void> {
     const count = await this.db.orders
-      .where('syncStatus')
-      .anyOf('Pending', 'Failed')
+      .where('syncStatusId')
+      .anyOf(SyncStatusId.Pending, SyncStatusId.Failed)
       .count();
     this.pendingCount.set(count);
   }
@@ -533,8 +533,8 @@ export class SyncService implements OnDestroy {
    */
   private async refreshPermanentlyFailedCount(): Promise<void> {
     const count = await this.db.orders
-      .where('syncStatus')
-      .equals('PermanentlyFailed')
+      .where('syncStatusId')
+      .equals(SyncStatusId.PermanentlyFailed)
       .count();
     this.permanentlyFailedCount.set(count);
   }

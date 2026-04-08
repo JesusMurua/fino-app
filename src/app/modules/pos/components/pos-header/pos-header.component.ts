@@ -25,6 +25,7 @@ import {
   Supplier,
   UserRole,
 } from '../../../../core/models';
+import { SyncStatusId } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -634,8 +635,8 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   /** Opens the Sync Center modal and loads permanently failed orders from Dexie */
   async openSyncCenter(): Promise<void> {
     const orders = await this.db.orders
-      .where('syncStatus')
-      .equals('PermanentlyFailed')
+      .where('syncStatusId')
+      .equals(SyncStatusId.PermanentlyFailed)
       .toArray();
     this.failedOrders.set(orders);
     this.showSyncCenter.set(true);
@@ -643,7 +644,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   /** Resets a single order to Pending and triggers immediate sync */
   async retryOrder(order: Order): Promise<void> {
-    await this.db.orders.update(order.id, { syncStatus: 'Pending', retryCount: 0 });
+    await this.db.orders.update(order.id, { syncStatusId: SyncStatusId.Pending, retryCount: 0 });
     this.failedOrders.update(arr => arr.filter(o => o.id !== order.id));
     await this.syncService.refreshCounts();
 
@@ -661,7 +662,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       const ids = this.failedOrders().map(o => o.id);
       await this.db.transaction('rw', this.db.orders, async () => {
         for (const id of ids) {
-          await this.db.orders.update(id, { syncStatus: 'Pending', retryCount: 0 });
+          await this.db.orders.update(id, { syncStatusId: SyncStatusId.Pending, retryCount: 0 });
         }
       });
       this.failedOrders.set([]);

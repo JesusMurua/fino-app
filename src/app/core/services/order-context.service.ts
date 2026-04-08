@@ -27,7 +27,7 @@ export class OrderContextService {
     const order = this.activeOrder();
     return order !== null
       && order.tableId == null
-      && order.kitchenStatus != null;
+      && order.kitchenStatusId != null;
   });
 
   /** Display name of the assigned table — null when no table */

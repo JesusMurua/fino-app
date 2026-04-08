@@ -150,6 +150,70 @@ export class DatabaseService extends Dexie {
     this.version(19).stores({
       cashRegisters: 'id, branchId, isActive, deviceUuid',
     });
+
+    // Migrate cashSessions status string → cashRegisterStatusId (int FK)
+    // Migrate cashMovements type string → cashMovementTypeId (int FK)
+    this.version(20).stores({
+      cashSessions:  '++id, branchId, cashRegisterStatusId, openedAt',
+      cashMovements: '++id, sessionId, cashMovementTypeId, createdAt',
+    }).upgrade(tx => {
+      const statusMap: Record<string, number> = { 'open': 1, 'closed': 2 };
+      const typeMap: Record<string, number> = { 'withdrawal': 1, 'expense': 2, 'adjustment': 3 };
+
+      return Promise.all([
+        tx.table('cashSessions').toCollection().modify((s: any) => {
+          if (s.status && !s.cashRegisterStatusId) {
+            s.cashRegisterStatusId = statusMap[s.status] ?? 1;
+          }
+          delete s.status;
+        }),
+        tx.table('cashMovements').toCollection().modify((m: any) => {
+          if (m.type && !m.cashMovementTypeId) {
+            m.cashMovementTypeId = typeMap[m.type] ?? 1;
+          }
+          delete m.type;
+        }),
+      ]);
+    });
+
+    // Migrate orders syncStatus/kitchenStatus strings → numeric IDs
+    // Migrate restaurantTables status string → tableStatusId (int FK)
+    // Migrate inventoryMovements type string → inventoryMovementTypeId (int FK)
+    this.version(21).stores({
+      orders:             'id, syncStatusId, createdAt, kitchenStatusId, deliveryStatus, cancellationStatus, branchId',
+      restaurantTables:   '++id, branchId, tableStatusId, isActive',
+      inventoryMovements: 'id, inventoryItemId, inventoryMovementTypeId, createdAt',
+    }).upgrade(tx => {
+      const syncMap: Record<string, number> = { 'Pending': 1, 'Synced': 2, 'Failed': 3, 'PermanentlyFailed': 4 };
+      const kitchenMap: Record<string, number> = { 'Pending': 1, 'Ready': 2, 'Delivered': 3 };
+      const tableMap: Record<string, number> = { 'available': 1, 'occupied': 2 };
+      const invTypeMap: Record<string, number> = { 'in': 1, 'out': 2, 'adjustment': 3 };
+
+      return Promise.all([
+        tx.table('orders').toCollection().modify((o: any) => {
+          if (o.syncStatus && !o.syncStatusId) {
+            o.syncStatusId = syncMap[o.syncStatus] ?? 1;
+          }
+          delete o.syncStatus;
+          if (o.kitchenStatus && !o.kitchenStatusId) {
+            o.kitchenStatusId = kitchenMap[o.kitchenStatus] ?? 1;
+          }
+          delete o.kitchenStatus;
+        }),
+        tx.table('restaurantTables').toCollection().modify((t: any) => {
+          if (t.status && !t.tableStatusId) {
+            t.tableStatusId = tableMap[t.status] ?? 1;
+          }
+          delete t.status;
+        }),
+        tx.table('inventoryMovements').toCollection().modify((m: any) => {
+          if (m.type && !m.inventoryMovementTypeId) {
+            m.inventoryMovementTypeId = invTypeMap[m.type] ?? 1;
+          }
+          delete m.type;
+        }),
+      ]);
+    });
   }
   //#endregion
 

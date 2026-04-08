@@ -6,6 +6,7 @@ import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
 import { CartItem, Order, OrderPayment, PaymentMethod, Product } from '../../../../core/models';
+import { KitchenStatusId, PaymentStatus, SyncStatusId } from '../../../../core/enums';
 import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -232,8 +233,8 @@ export class CounterPosComponent implements OnInit, OnDestroy {
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus: 'Pending',
-      kitchenStatus: 'Pending',
+      syncStatusId: SyncStatusId.Pending,
+      kitchenStatusId: KitchenStatusId.Pending,
       createdAt: new Date(),
       branchId: this.authService.branchId,
     };
@@ -277,6 +278,7 @@ export class CounterPosComponent implements OnInit, OnDestroy {
 
     const payment: OrderPayment = {
       method: PaymentMethod.Cash,
+      paymentStatusId: PaymentStatus.Completed,
       amountCents: paidCents,
     };
 
@@ -291,7 +293,7 @@ export class CounterPosComponent implements OnInit, OnDestroy {
       changeCents: Math.max(0, paidCents - totalCents),
       paymentProvider: null,
       createdAt: new Date(),
-      syncStatus: 'Pending',
+      syncStatusId: SyncStatusId.Pending,
       branchId: this.authService.branchId,
     };
 

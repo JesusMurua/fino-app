@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { CartItem, Order } from '../../../../core/models';
+import { SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -82,7 +83,7 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus:      'Pending',
+      syncStatusId:    SyncStatusId.Pending,
       createdAt:       new Date(),
       branchId:        deviceConfig.branchId,
     };

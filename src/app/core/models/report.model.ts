@@ -1,3 +1,5 @@
+import { KitchenStatusId } from '../enums';
+
 /** Full report summary for a date range */
 export interface ReportSummary {
   from: Date;
@@ -118,7 +120,7 @@ export interface DashboardOrderRow {
   orderNumber: number;
   itemCount: number;
   totalCents: number;
-  kitchenStatus: string;
+  kitchenStatusId: KitchenStatusId;
   cancelledAt: string | null;
   cancellationReason: string | null;
   createdAt: string;

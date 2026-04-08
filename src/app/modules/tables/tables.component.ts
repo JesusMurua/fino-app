@@ -15,6 +15,7 @@ import {
   ZoneType,
   normalizeDisplayStatus,
 } from '../../core/models';
+import { KitchenStatusId, TableStatus } from '../../core/enums';
 import { Reservation } from '../../core/models/reservation.model';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
@@ -65,6 +66,7 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /** Expose enums for template */
   readonly ZoneType = ZoneType;
+  readonly KitchenStatusId = KitchenStatusId;
   readonly catalogService = inject(CatalogService);
   private readonly reservationService = inject(ReservationService);
 
@@ -378,7 +380,7 @@ export class TablesComponent implements OnInit, OnDestroy {
         branchId: this.authService.branchId,
         name: dto.tableName,
         zoneId: dto.zoneId,
-        status: dto.displayStatus === 'free' ? 'available' as const : 'occupied' as const,
+        tableStatusId: dto.displayStatus === 'free' ? TableStatus.Available : TableStatus.Occupied,
         isActive: true,
         createdAt: new Date(),
         orderId: dto.orderId,
@@ -423,7 +425,7 @@ export class TablesComponent implements OnInit, OnDestroy {
       branchId: this.authService.branchId,
       name: dto.tableName,
       zoneId: dto.zoneId,
-      status: dto.displayStatus === 'free' ? 'available' : 'occupied',
+      tableStatusId: dto.displayStatus === 'free' ? TableStatus.Available : TableStatus.Occupied,
       isActive: true,
       createdAt: new Date(),
       orderId: dto.orderId,
@@ -437,7 +439,7 @@ export class TablesComponent implements OnInit, OnDestroy {
    * Occupied → open orders dialog.
    */
   onTableClick(table: RestaurantTable): void {
-    if (table.status === 'available') {
+    if (table.tableStatusId === TableStatus.Available) {
       sessionStorage.setItem('activeTable', JSON.stringify({
         tableId: table.id,
         tableName: table.name,
@@ -487,7 +489,7 @@ export class TablesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.tableService.updateTableStatus(table.id, 'available');
+    await this.tableService.updateTableStatus(table.id, TableStatus.Available);
     this.showTableDialog.set(false);
     await this.loadTableStatuses();
   }
@@ -1095,7 +1097,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     if (!tableId) return;
 
     try {
-      await this.tableService.updateTableStatus(tableId, 'available');
+      await this.tableService.updateTableStatus(tableId, TableStatus.Available);
       this.messageService.add({ severity: 'success', summary: 'Mesa liberada', life: 3000 });
     } catch {
       this.messageService.add({ severity: 'error', summary: 'Error al liberar mesa', life: 3000 });

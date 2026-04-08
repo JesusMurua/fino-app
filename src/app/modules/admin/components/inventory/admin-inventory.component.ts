@@ -27,6 +27,7 @@ import {
   Supplier,
   UpdateSupplierRequest,
 } from '../../../../core/models';
+import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -137,7 +138,7 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
 
   readonly showMovementDialog = signal(false);
   readonly movementItemId = signal(0);
-  readonly movementType = signal<'in' | 'out'>('in');
+  readonly movementType = signal<InventoryMovementType>(InventoryMovementType.In);
   movementForm: MovementForm = { quantity: 0, reason: '' };
 
   readonly unitOptions = [
@@ -313,14 +314,14 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
 
   openEntryDialog(item: InventoryItem): void {
     this.movementItemId.set(item.id);
-    this.movementType.set('in');
+    this.movementType.set(InventoryMovementType.In);
     this.movementForm = { quantity: 0, reason: '' };
     this.showMovementDialog.set(true);
   }
 
   openExitDialog(item: InventoryItem): void {
     this.movementItemId.set(item.id);
-    this.movementType.set('out');
+    this.movementType.set(InventoryMovementType.Out);
     this.movementForm = { quantity: 0, reason: '' };
     this.showMovementDialog.set(true);
   }
@@ -335,7 +336,7 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
         this.movementForm.quantity,
         this.movementForm.reason.trim() || undefined,
       );
-      const label = this.movementType() === 'in' ? 'Entrada' : 'Salida';
+      const label = this.movementType() === InventoryMovementType.In ? 'Entrada' : 'Salida';
       this.messageService.add({ severity: 'success', summary: `${label} registrada`, life: 3000 });
       this.showMovementDialog.set(false);
     } catch {
@@ -366,22 +367,12 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
     }
   }
 
-  movementTypeLabel(type: string): string {
-    switch (type) {
-      case 'in':         return 'Entrada';
-      case 'out':        return 'Salida';
-      case 'adjustment': return 'Ajuste';
-      default:           return type;
-    }
+  movementTypeLabel(type: number): string {
+    return INVENTORY_MOVEMENT_TYPE_LABELS[type as InventoryMovementType] ?? String(type);
   }
 
-  movementTypeSeverity(type: string): string {
-    switch (type) {
-      case 'in':         return 'movement-badge--in';
-      case 'out':        return 'movement-badge--out';
-      case 'adjustment': return 'movement-badge--adj';
-      default:           return '';
-    }
+  movementTypeSeverity(type: number): string {
+    return INVENTORY_MOVEMENT_TYPE_CLASSES[type as InventoryMovementType] ?? '';
   }
 
   //#endregion

@@ -9,6 +9,7 @@ import { InputTextModule } from 'primeng/inputtext';
 
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
+import { KitchenStatusId, SyncStatusId } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
@@ -181,8 +182,8 @@ export class CartPanelComponent implements OnInit {
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus: 'Pending',
-      kitchenStatus: 'Pending',
+      syncStatusId: SyncStatusId.Pending,
+      kitchenStatusId: KitchenStatusId.Pending,
       tableId: tableId ?? undefined,
       tableName: tableName ?? undefined,
       customerId: this.customerService.selectedCustomer()?.id,
@@ -213,7 +214,7 @@ export class CartPanelComponent implements OnInit {
     const totalCents = existing.items.reduce((sum, item) => sum + item.totalPriceCents, 0);
     existing.subtotalCents = totalCents;
     existing.totalCents = totalCents;
-    existing.syncStatus = 'Pending';
+    existing.syncStatusId = SyncStatusId.Pending;
 
     await this.syncService.saveOrder(existing);
     await this.cartService.clearCart();

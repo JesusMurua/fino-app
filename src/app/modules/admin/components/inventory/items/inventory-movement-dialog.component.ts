@@ -14,6 +14,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { InventoryItem } from '../../../../../core/models';
+import { InventoryMovementType } from '../../../../../core/enums';
 
 /** Payload emitted on save */
 export interface MovementFormPayload {
@@ -44,7 +45,7 @@ interface MovementFormState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog
-      [header]="movementType === 'in' ? 'Entrada de stock' : 'Salida de stock'"
+      [header]="movementType === InventoryMovementType.In ? 'Entrada de stock' : 'Salida de stock'"
       [visible]="visible"
       (visibleChange)="visibleChange.emit($event)"
       [modal]="true"
@@ -86,7 +87,7 @@ interface MovementFormState {
             id="mf-reason"
             type="text"
             pInputText
-            [placeholder]="movementType === 'in' ? 'Ej. Compra a proveedor' : 'Ej. Merma, caducidad'"
+            [placeholder]="movementType === InventoryMovementType.In ? 'Ej. Compra a proveedor' : 'Ej. Merma, caducidad'"
           />
         </div>
 
@@ -100,7 +101,7 @@ interface MovementFormState {
             [text]="true"
             (onClick)="visibleChange.emit(false)"
           />
-          @if (movementType === 'in') {
+          @if (movementType === InventoryMovementType.In) {
             <p-button
               label="Registrar entrada"
               icon="pi pi-plus"
@@ -127,7 +128,7 @@ export class InventoryMovementDialogComponent implements OnChanges {
 
   /** Item receiving the movement — shown as context in the dialog header area */
   @Input() item: InventoryItem | null = null;
-  @Input() movementType: 'in' | 'out' = 'in';
+  @Input() movementType: InventoryMovementType = InventoryMovementType.In;
   @Input() visible = false;
 
   //#endregion
@@ -138,6 +139,9 @@ export class InventoryMovementDialogComponent implements OnChanges {
   @Output() readonly save = new EventEmitter<MovementFormPayload>();
 
   //#endregion
+
+  /** Expose enum for template bindings */
+  readonly InventoryMovementType = InventoryMovementType;
 
   //#region State
 

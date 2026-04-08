@@ -4,6 +4,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { RestaurantTable, TableStatusDto } from '../models';
+import { TableStatus } from '../enums';
 import { DatabaseService } from './database.service';
 
 /** Lightweight order summary returned by the by-table endpoint */
@@ -11,7 +12,7 @@ export interface OrderSummary {
   id: string;
   orderNumber: number;
   totalCents: number;
-  kitchenStatus: string | null;
+  kitchenStatusId: number | null;
   createdAt: string;
   items: { id: number; productName: string; quantity: number }[];
 }
@@ -224,15 +225,15 @@ export class TableService {
    */
   async updateTableStatus(
     id: number,
-    status: 'available' | 'occupied',
+    tableStatusId: TableStatus,
   ): Promise<RestaurantTable> {
     const updated = await firstValueFrom(
       this.http.patch<RestaurantTable>(
         `${this.baseUrl}/table/${id}/status`,
-        { status },
+        { tableStatusId },
       )
     );
-    await this.db.restaurantTables.update(id, { status });
+    await this.db.restaurantTables.update(id, { tableStatusId });
     return updated;
   }
 
