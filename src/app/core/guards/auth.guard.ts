@@ -5,8 +5,6 @@ import { RETURN_URL_KEY, UserRole } from '../models';
 import { AuthService } from '../services/auth.service';
 import { ConfigService } from '../services/config.service';
 
-const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
-
 /**
  * Role-based route guard with onboarding and device setup checks.
  *
@@ -28,23 +26,7 @@ export const authGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   }
 
   // 2. Onboarding check
-  const branchId = authService.branchId;
-  let onboardingDone = localStorage.getItem(`${ONBOARDING_KEY_PREFIX}${branchId}`) === 'true';
-
-  if (!onboardingDone) {
-    const token = authService.getToken();
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.onboardingCompleted === 'true' || payload.onboardingCompleted === true) {
-          localStorage.setItem(`${ONBOARDING_KEY_PREFIX}${branchId}`, 'true');
-          onboardingDone = true;
-        }
-      } catch { /* decode failed */ }
-    }
-  }
-
-  if (!onboardingDone) {
+  if (!authService.isOnboardingComplete()) {
     return router.createUrlTree(['/onboarding']);
   }
 

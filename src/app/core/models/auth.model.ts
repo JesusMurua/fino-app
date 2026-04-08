@@ -24,6 +24,10 @@ export interface AuthUser {
   businessType: BusinessType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
+  /** 1=Pending, 2=InProgress, 3=Completed */
+  onboardingStatusId?: number;
+  /** Last reached onboarding step (1-based) */
+  currentOnboardingStep?: number;
 }
 
 /** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
@@ -41,6 +45,10 @@ export interface LoginResponse {
   businessType?: BusinessType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
+  /** 1=Pending, 2=InProgress, 3=Completed */
+  onboardingStatusId?: number;
+  /** Last reached onboarding step (1-based) */
+  currentOnboardingStep?: number;
 }
 
 /** Shape of GET /api/subscription/status response */

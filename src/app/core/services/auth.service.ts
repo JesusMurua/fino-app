@@ -90,6 +90,25 @@ export class AuthService {
   /** Cached subscription status from the API */
   readonly subscriptionStatus = signal<SubscriptionStatus | null>(null);
 
+  /**
+   * Whether the current user has completed onboarding.
+   * Priority: onboardingStatusId === 3 → localStorage → JWT claim (legacy).
+   */
+  readonly isOnboardingComplete = computed(() => {
+    const user = this.currentUser();
+    if (user?.onboardingStatusId === 3) return true;
+    const branchId = this.activeBranchId();
+    if (localStorage.getItem(`onboarding-completed-${branchId}`) === 'true') return true;
+    const token = this.getToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.onboardingCompleted === 'true' || payload.onboardingCompleted === true) return true;
+      } catch { /* decode failed */ }
+    }
+    return false;
+  });
+
   /** True when the plan is expired — only paid/trialing plans can expire */
   readonly isExpired = computed(() => {
     // Free plans never expire — they just have limited features
@@ -392,6 +411,8 @@ export class AuthService {
       planType: response.planType ?? PlanType.Free,
       businessType: response.businessType ?? BusinessType.General,
       trialEndsAt: response.trialEndsAt,
+      onboardingStatusId: response.onboardingStatusId,
+      currentOnboardingStep: response.currentOnboardingStep,
     };
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);

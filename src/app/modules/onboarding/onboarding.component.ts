@@ -7,8 +7,9 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { BusinessType, DeviceConfig, LoginResponse, ZoneType } from '../../core/models';
+import { BusinessType, DeviceConfig, ZoneType } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { BusinessService } from '../../core/services/business.service';
 import { ConfigService } from '../../core/services/config.service';
 
 /** Draft zone to be created during onboarding */
@@ -193,6 +194,7 @@ export class OnboardingComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly businessService = inject(BusinessService);
   private readonly configService = inject(ConfigService);
   private readonly router = inject(Router);
 
@@ -327,6 +329,13 @@ export class OnboardingComponent implements OnInit {
   //#region Lifecycle
 
   ngOnInit(): void {
+    // Restore step from user profile (survives page refresh)
+    const user = this.authService.currentUser();
+    const savedStep = user?.currentOnboardingStep;
+    if (savedStep && savedStep > 1 && savedStep <= this.totalSteps()) {
+      this.currentStep.set(savedStep);
+    }
+
     // Pre-fill giro from JWT
     const jwtGiro = this.authService.businessType();
     if (jwtGiro) {
@@ -365,6 +374,9 @@ export class OnboardingComponent implements OnInit {
         this.refreshZoneSuggestions();
       }
       this.currentStep.update(s => s + 1);
+      // Sync to backend — best-effort, never blocks UI
+      this.businessService.syncOnboardingStep(2, this.currentStep())
+        .subscribe({ error: () => {} });
     }
   }
 
@@ -372,6 +384,9 @@ export class OnboardingComponent implements OnInit {
   prevStep(): void {
     if (this.currentStep() > 1) {
       this.currentStep.update(s => s - 1);
+      // Sync to backend — best-effort, never blocks UI
+      this.businessService.syncOnboardingStep(2, this.currentStep())
+        .subscribe({ error: () => {} });
     } else {
       this.router.navigate(['/login']);
     }
@@ -538,10 +553,10 @@ export class OnboardingComponent implements OnInit {
     // 1. Update business types (multi-giro)
     try {
       await firstValueFrom(
-        this.http.put(`${environment.apiUrl}/business/type`, {
-          businessTypes: this.selectedGiros(),
-          customGiroDescription: this.customGiroText().trim() || null,
-        }),
+        this.businessService.updateBusinessTypes(
+          this.selectedGiros(),
+          this.customGiroText().trim() || null,
+        ),
       );
     } catch { /* best-effort */ }
 
@@ -628,10 +643,7 @@ export class OnboardingComponent implements OnInit {
     // 5. Mark onboarding complete via API → get new JWT
     try {
       const response = await firstValueFrom(
-        this.http.post<LoginResponse>(
-          `${environment.apiUrl}/business/complete-onboarding`,
-          {},
-        ),
+        this.businessService.completeOnboarding(),
       );
       this.authService.handleLoginSuccess(response);
     } catch { /* best-effort — localStorage fallback below */ }
