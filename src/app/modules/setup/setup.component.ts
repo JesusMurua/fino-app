@@ -91,10 +91,10 @@ export class SetupComponent {
   private activateData: ActivateResponse | null = null;
 
   readonly modes: ModeOption[] = [
-    { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'Cobro y venta directa' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Servicio a Mesas (Restaurante, Bar)' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes' },
+    { value: 'cashier', icon: '💳', label: 'Caja Registradora',  description: 'Cobro y venta directa' },
+    { value: 'tables',  icon: '🪑', label: 'Mesas',             description: 'Servicio a mesas (restaurante, bar)' },
+    { value: 'kitchen', icon: '👨‍🍳', label: 'Pantalla de Cocina', description: 'Vista de pedidos para cocina' },
+    { value: 'kiosk',   icon: '📱', label: 'Kiosko',            description: 'Autoservicio para clientes' },
   ];
 
   /** Human-readable labels for device modes — used in code flow badge */
