@@ -7,6 +7,7 @@ import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { FeatureKey } from '../../core/models';
+import { UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { FeatureFlagService } from '../../core/services/feature-flag.service';
@@ -50,8 +51,8 @@ export class AdminShellComponent implements OnInit {
 
   /** Whether the current user can switch branches */
   readonly canSwitchBranch = computed(() => {
-    const role = this.authService.currentUser()?.role;
-    return (role === 'Owner' || role === 'Manager')
+    const roleId = this.authService.currentUser()?.roleId;
+    return (roleId === UserRoleId.Owner || roleId === UserRoleId.Manager)
       && this.authService.availableBranches().length > 1;
   });
 

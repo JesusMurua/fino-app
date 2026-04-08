@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
+import { UserRoleId } from '../enums';
 import { AuthService } from '../services/auth.service';
 import { ConfigService } from '../services/config.service';
 
@@ -22,8 +23,8 @@ export const provisioningGuard: CanActivateFn = () => {
   }
 
   // Device already configured — only Owner/Manager can re-provision
-  const role = authService.currentUser()?.role;
-  if (role === 'Owner' || role === 'Manager') {
+  const roleId = authService.currentUser()?.roleId;
+  if (roleId === UserRoleId.Owner || roleId === UserRoleId.Manager) {
     return true;
   }
 

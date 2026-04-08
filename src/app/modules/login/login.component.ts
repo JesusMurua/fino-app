@@ -48,7 +48,7 @@ export class LoginComponent {
 
     if (user) {
       const returnUrl = this.authService.consumeReturnUrl();
-      const defaultRoute = this.deviceRoutingService.getPostLoginRoute(user.role);
+      const defaultRoute = this.deviceRoutingService.getPostLoginRoute(user.roleId);
       this.router.navigateByUrl(returnUrl ?? defaultRoute);
     } else {
       this.hasError.set(true);

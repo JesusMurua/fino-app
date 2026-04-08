@@ -10,10 +10,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
-import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, PlanType, REGIMEN_FISCAL_OPTIONS, RFC_REGEX, SatCatalogOption } from '../../../../core/models';
-import { BusinessType, PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
+import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, REGIMEN_FISCAL_OPTIONS, RFC_REGEX, SatCatalogOption } from '../../../../core/models';
+import { PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
-import { OrderSource } from '../../../../core/enums';
+import { BusinessTypeId, OrderSource, PlanTypeId, UserRoleId } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
@@ -60,6 +60,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Properties
+
+  /** Exposed to template for role comparisons */
+  readonly UserRoleId = UserRoleId;
 
   /** Active settings tab */
   readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing' | 'printers'>('business');
@@ -138,7 +141,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Display name for the current plan */
   readonly currentPlanName = computed(() =>
-    PLAN_DISPLAY_NAME[this.authService.planType()] ?? 'Gratuito'
+    PLAN_DISPLAY_NAME[this.authService.planTypeId()] ?? 'Gratuito'
   );
 
   /** Badge variant for subscription status */
@@ -195,25 +198,25 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Upgrade plan options above current tier */
   readonly upgradeOptions = computed(() => {
-    const current = this.authService.planType();
+    const current = this.authService.planTypeId();
     const currentLevel = PLAN_HIERARCHY[current] ?? 0;
     const options: { name: string; price: string; features: string[] }[] = [];
 
-    if (currentLevel < PLAN_HIERARCHY[PlanType.Basic]) {
+    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Basic]) {
       options.push({
         name: 'Básico',
         price: '$199/mes',
         features: ['Impresora térmica', 'Escáner de códigos', 'Promociones'],
       });
     }
-    if (currentLevel < PLAN_HIERARCHY[PlanType.Pro]) {
+    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Pro]) {
       options.push({
         name: 'Pro',
         price: '$399/mes',
         features: ['Reportes avanzados', 'Facturación CFDI', 'Multi-sucursal'],
       });
     }
-    if (currentLevel < PLAN_HIERARCHY[PlanType.Enterprise]) {
+    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Enterprise]) {
       options.push({
         name: 'Enterprise',
         price: 'Contacto',
@@ -228,7 +231,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     const status = this.authService.subscriptionStatus();
     if (!status) return false;
     return (status.status === 'active' || status.status === 'trialing')
-      && this.authService.planType() !== PlanType.Free;
+      && this.authService.planTypeId() !== PlanTypeId.Free;
   });
 
   /** Formatted period end for cancel dialog */
@@ -259,15 +262,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Whether to show kitchen toggle in branch dialog */
   readonly showKitchenToggle = computed(() => {
-    const type = this.authService.businessType();
-    return [BusinessType.Restaurant, BusinessType.Cafe, BusinessType.Bar,
-            BusinessType.FoodTruck, BusinessType.Taqueria].includes(type);
+    const type = this.authService.businessTypeId();
+    return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar,
+            BusinessTypeId.FoodTruck, BusinessTypeId.Taqueria].includes(type);
   });
 
   /** Whether to show tables toggle in branch dialog */
   readonly showTablesToggle = computed(() => {
-    const type = this.authService.businessType();
-    return [BusinessType.Restaurant, BusinessType.Cafe, BusinessType.Bar].includes(type);
+    const type = this.authService.businessTypeId();
+    return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar].includes(type);
   });
 
   /** Delivery platforms available for configuration */
@@ -278,22 +281,22 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Current business type info — read-only display from authService */
   readonly currentGiroInfo = computed(() => {
-    const giro = this.authService.businessType();
-    const map: Record<string, { icon: string; name: string; description: string }> = {
-      [BusinessType.Restaurant]: { icon: '🍽️', name: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
-      [BusinessType.Cafe]:       { icon: '☕',  name: 'Café / Barra',  description: 'Comandas rápidas, barra' },
-      [BusinessType.Bar]:        { icon: '🍺',  name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
-      [BusinessType.Retail]:     { icon: '🛒',  name: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
-      [BusinessType.FoodTruck]:  { icon: '🚚',  name: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
-      [BusinessType.General]:    { icon: '⚙️',  name: 'General',       description: 'Cualquier negocio' },
-      [BusinessType.Taqueria]:   { icon: '🌮',  name: 'Taquería',      description: 'Cobro rápido, con cocina' },
-      [BusinessType.Abarrotes]:  { icon: '🛒',  name: 'Abarrotes',     description: 'Tiendita de barrio' },
-      [BusinessType.Ferreteria]: { icon: '🔧',  name: 'Ferretería',    description: 'Materiales y herramientas' },
-      [BusinessType.Papeleria]:  { icon: '📝',  name: 'Papelería',     description: 'Útiles y copias' },
-      [BusinessType.Farmacia]:   { icon: '💊',  name: 'Farmacia',      description: 'Medicinas y salud' },
-      [BusinessType.Servicios]:  { icon: '🏪',  name: 'Servicios',     description: 'Salones, talleres, oficios' },
+    const giro = this.authService.businessTypeId();
+    const map: Record<BusinessTypeId, { icon: string; name: string; description: string }> = {
+      [BusinessTypeId.Restaurant]: { icon: '🍽️', name: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
+      [BusinessTypeId.Cafe]:       { icon: '☕',  name: 'Café / Barra',  description: 'Comandas rápidas, barra' },
+      [BusinessTypeId.Bar]:        { icon: '🍺',  name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+      [BusinessTypeId.Retail]:     { icon: '🛒',  name: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
+      [BusinessTypeId.FoodTruck]:  { icon: '🚚',  name: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
+      [BusinessTypeId.General]:    { icon: '⚙️',  name: 'General',       description: 'Cualquier negocio' },
+      [BusinessTypeId.Taqueria]:   { icon: '🌮',  name: 'Taquería',      description: 'Cobro rápido, con cocina' },
+      [BusinessTypeId.Abarrotes]:  { icon: '🛒',  name: 'Abarrotes',     description: 'Tiendita de barrio' },
+      [BusinessTypeId.Ferreteria]: { icon: '🔧',  name: 'Ferretería',    description: 'Materiales y herramientas' },
+      [BusinessTypeId.Papeleria]:  { icon: '📝',  name: 'Papelería',     description: 'Útiles y copias' },
+      [BusinessTypeId.Farmacia]:   { icon: '💊',  name: 'Farmacia',      description: 'Medicinas y salud' },
+      [BusinessTypeId.Servicios]:  { icon: '🏪',  name: 'Servicios',     description: 'Salones, talleres, oficios' },
     };
-    return map[giro] ?? { icon: '⚙️', name: giro, description: '' };
+    return map[giro] ?? { icon: '⚙️', name: String(giro), description: '' };
   });
 
   //#endregion
@@ -342,7 +345,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     // Refresh subscription status for billing tab
     this.authService.refreshSubscriptionStatus();
 
-    if (this.authService.currentUser()?.role === 'Owner') {
+    if (this.authService.currentUser()?.roleId === UserRoleId.Owner) {
       await this.loadBranches();
       const first = this.branches()[0];
       if (first) this.codeBranchId = first.id;

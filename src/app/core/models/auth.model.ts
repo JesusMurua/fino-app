@@ -1,6 +1,8 @@
-import { BusinessType, PlanType } from './plan.model';
+import { BusinessTypeId, PlanTypeId, UserRoleId } from '../enums';
 
-/** Roles returned by the API — PascalCase to match backend enum */
+/**
+ * @deprecated Use UserRoleId enum instead. Kept for backward compat.
+ */
 export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk' | 'Host';
 
 /** Branch summary returned in the login response */
@@ -11,17 +13,18 @@ export interface BranchInfo {
 
 /** Authenticated user state held in AuthService */
 export interface AuthUser {
-  role: UserRole;
+  /** Numeric role FK — use UserRoleId enum for comparisons */
+  roleId: UserRoleId;
   name: string;
   businessId: number;
   branchId: number;
   token: string;
   branches: BranchInfo[];
   currentBranchId: number;
-  /** Subscription plan tier */
-  planType: PlanType;
-  /** Business vertical */
-  businessType: BusinessType;
+  /** Numeric plan FK — use PlanTypeId enum */
+  planTypeId: PlanTypeId;
+  /** Numeric business type FK — use BusinessTypeId enum */
+  businessTypeId: BusinessTypeId;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */
@@ -33,16 +36,16 @@ export interface AuthUser {
 /** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
 export interface LoginResponse {
   token: string;
-  role: UserRole;
+  roleId: UserRoleId;
   name: string;
   businessId: number;
   branchId: number;
   branches: BranchInfo[];
   currentBranchId: number;
-  /** Subscription plan tier */
-  planType?: PlanType;
-  /** Business vertical */
-  businessType?: BusinessType;
+  /** Numeric plan FK */
+  planTypeId?: PlanTypeId;
+  /** Numeric business type FK */
+  businessTypeId?: BusinessTypeId;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */
@@ -53,7 +56,8 @@ export interface LoginResponse {
 
 /** Shape of GET /api/subscription/status response */
 export interface SubscriptionStatus {
-  planType: PlanType;
+  /** Numeric plan FK — use PlanTypeId enum */
+  planTypeId: PlanTypeId;
   /** active | trialing | past_due | canceled */
   status: string;
   trialEndsAt: string | null;

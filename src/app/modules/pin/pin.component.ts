@@ -185,7 +185,7 @@ export class PinComponent implements OnInit {
         return;
       }
 
-      const dest = this.deviceRoutingService.getPostLoginRoute(result.user.role);
+      const dest = this.deviceRoutingService.getPostLoginRoute(result.user.roleId);
       this.router.navigate([dest]);
 
       // Request push notification permission (best-effort, non-blocking)

@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
+import { BusinessTypeId, UserRoleId } from '../enums';
+import { BUSINESS_TYPE_LABELS } from '../enums/config.enum';
 import { AuthService } from './auth.service';
 import { CatalogService } from './catalog.service';
 import { ConfigService } from './config.service';
@@ -21,23 +23,23 @@ export class DeviceRoutingService {
 
   /**
    * Resolves the post-login landing route.
-   * @param userRole Role from the authenticated user
+   * @param roleId Numeric role from the authenticated user
    * @param deviceMode Optional device mode override (defaults to current device config)
    */
-  getPostLoginRoute(userRole: string, deviceMode?: string): string {
+  getPostLoginRoute(roleId: UserRoleId, deviceMode?: string): string {
     const mode = deviceMode ?? this.configService.deviceConfig$.getValue().mode;
 
-    switch (userRole) {
-      case 'Owner':
-      case 'Manager':
+    switch (roleId) {
+      case UserRoleId.Owner:
+      case UserRoleId.Manager:
         return '/admin';
-      case 'Kitchen':
+      case UserRoleId.Kitchen:
         return '/kitchen';
-      case 'Host':
+      case UserRoleId.Host:
         return '/tables';
-      case 'Waiter':
+      case UserRoleId.Waiter:
         return mode === 'tables' ? '/tables' : this.resolvePosRoute();
-      case 'Cashier':
+      case UserRoleId.Cashier:
         if (mode === 'tables') return '/tables';
         if (mode === 'kitchen') return '/kitchen';
         return this.resolvePosRoute();
@@ -55,14 +57,15 @@ export class DeviceRoutingService {
    *
    * Resolution order:
    *   1. configService.posExperience() — loaded from Dexie/API during preload
-   *   2. Fallback: derive from authService.businessType() using static catalog
+   *   2. Fallback: derive from authService.businessTypeId() using static catalog
    *   3. Last resort: /pos (Restaurant default)
    */
   private resolvePosRoute(): string {
     let experience = this.configService.posExperience();
 
     if (!experience) {
-      const btCode = this.authService.businessType();
+      const btId = this.authService.businessTypeId();
+      const btCode = BusinessTypeId[btId]; // e.g. 'Restaurant'
       const catalog = this.catalogService.getBusinessType(btCode);
       experience = catalog?.posExperience;
     }

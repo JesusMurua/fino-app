@@ -7,7 +7,8 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { BusinessType, DeviceConfig, ZoneType } from '../../core/models';
+import { DeviceConfig, ZoneType } from '../../core/models';
+import { BusinessTypeId, UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { BusinessService } from '../../core/services/business.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -31,44 +32,44 @@ const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 /** Giro display info for all 12 business types */
 interface GiroInfo { icon: string; label: string; description: string }
 
-const GIRO_INFO_MAP: Record<string, GiroInfo> = {
-  [BusinessType.Restaurant]: { icon: '🍽️', label: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
-  [BusinessType.Cafe]:       { icon: '☕',  label: 'Café / Barra',  description: 'Comandas rápidas, barra' },
-  [BusinessType.Bar]:        { icon: '🍺',  label: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
-  [BusinessType.Retail]:     { icon: '🛒',  label: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
-  [BusinessType.FoodTruck]:  { icon: '🚚',  label: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
-  [BusinessType.General]:    { icon: '⚙️',  label: 'General',       description: 'Cualquier negocio' },
-  [BusinessType.Taqueria]:   { icon: '🌮',  label: 'Taquería',      description: 'Cobro rápido, con cocina' },
-  [BusinessType.Abarrotes]:  { icon: '🛒',  label: 'Abarrotes',     description: 'Tiendita de barrio' },
-  [BusinessType.Ferreteria]: { icon: '🔧',  label: 'Ferretería',    description: 'Materiales y herramientas' },
-  [BusinessType.Papeleria]:  { icon: '📝',  label: 'Papelería',     description: 'Útiles y copias' },
-  [BusinessType.Farmacia]:   { icon: '💊',  label: 'Farmacia',      description: 'Medicinas y salud' },
-  [BusinessType.Servicios]:  { icon: '🏪',  label: 'Servicios',     description: 'Salones, talleres, oficios' },
+const GIRO_INFO_MAP: Record<BusinessTypeId, GiroInfo> = {
+  [BusinessTypeId.Restaurant]: { icon: '🍽️', label: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
+  [BusinessTypeId.Cafe]:       { icon: '☕',  label: 'Café / Barra',  description: 'Comandas rápidas, barra' },
+  [BusinessTypeId.Bar]:        { icon: '🍺',  label: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+  [BusinessTypeId.Retail]:     { icon: '🛒',  label: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
+  [BusinessTypeId.FoodTruck]:  { icon: '🚚',  label: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
+  [BusinessTypeId.General]:    { icon: '⚙️',  label: 'General',       description: 'Cualquier negocio' },
+  [BusinessTypeId.Taqueria]:   { icon: '🌮',  label: 'Taquería',      description: 'Cobro rápido, con cocina' },
+  [BusinessTypeId.Abarrotes]:  { icon: '🛒',  label: 'Abarrotes',     description: 'Tiendita de barrio' },
+  [BusinessTypeId.Ferreteria]: { icon: '🔧',  label: 'Ferretería',    description: 'Materiales y herramientas' },
+  [BusinessTypeId.Papeleria]:  { icon: '📝',  label: 'Papelería',     description: 'Útiles y copias' },
+  [BusinessTypeId.Farmacia]:   { icon: '💊',  label: 'Farmacia',      description: 'Medicinas y salud' },
+  [BusinessTypeId.Servicios]:  { icon: '🏪',  label: 'Servicios',     description: 'Salones, talleres, oficios' },
 };
 
 /** Main giro options displayed in step 1 grid (no JWT pre-selection) */
-const GIRO_OPTIONS: { value: BusinessType; icon: string; label: string; description: string }[] = [
-  { value: BusinessType.Restaurant, ...GIRO_INFO_MAP[BusinessType.Restaurant] },
-  { value: BusinessType.Cafe,       ...GIRO_INFO_MAP[BusinessType.Cafe] },
-  { value: BusinessType.Bar,        ...GIRO_INFO_MAP[BusinessType.Bar] },
-  { value: BusinessType.Retail,     ...GIRO_INFO_MAP[BusinessType.Retail] },
-  { value: BusinessType.FoodTruck,  ...GIRO_INFO_MAP[BusinessType.FoodTruck] },
-  { value: BusinessType.General,    ...GIRO_INFO_MAP[BusinessType.General] },
+const GIRO_OPTIONS: { value: BusinessTypeId; icon: string; label: string; description: string }[] = [
+  { value: BusinessTypeId.Restaurant, ...GIRO_INFO_MAP[BusinessTypeId.Restaurant] },
+  { value: BusinessTypeId.Cafe,       ...GIRO_INFO_MAP[BusinessTypeId.Cafe] },
+  { value: BusinessTypeId.Bar,        ...GIRO_INFO_MAP[BusinessTypeId.Bar] },
+  { value: BusinessTypeId.Retail,     ...GIRO_INFO_MAP[BusinessTypeId.Retail] },
+  { value: BusinessTypeId.FoodTruck,  ...GIRO_INFO_MAP[BusinessTypeId.FoodTruck] },
+  { value: BusinessTypeId.General,    ...GIRO_INFO_MAP[BusinessTypeId.General] },
 ];
 
 /** BusinessTypes in the retail group — show sub-options */
-const RETAIL_GROUP: BusinessType[] = [
-  BusinessType.Retail, BusinessType.Abarrotes, BusinessType.Ferreteria,
-  BusinessType.Papeleria, BusinessType.Farmacia,
+const RETAIL_GROUP: BusinessTypeId[] = [
+  BusinessTypeId.Retail, BusinessTypeId.Abarrotes, BusinessTypeId.Ferreteria,
+  BusinessTypeId.Papeleria, BusinessTypeId.Farmacia,
 ];
 
 /** Sub-options shown when giro is in RETAIL_GROUP */
-const RETAIL_SUB_OPTIONS: { value: BusinessType; icon: string; label: string }[] = [
-  { value: BusinessType.Abarrotes,  icon: '🛒', label: 'Abarrotes' },
-  { value: BusinessType.Ferreteria, icon: '🔧', label: 'Ferretería' },
-  { value: BusinessType.Papeleria,  icon: '📝', label: 'Papelería' },
-  { value: BusinessType.Farmacia,   icon: '💊', label: 'Farmacia' },
-  { value: BusinessType.Retail,     icon: '🏪', label: 'Otra tienda' },
+const RETAIL_SUB_OPTIONS: { value: BusinessTypeId; icon: string; label: string }[] = [
+  { value: BusinessTypeId.Abarrotes,  icon: '🛒', label: 'Abarrotes' },
+  { value: BusinessTypeId.Ferreteria, icon: '🔧', label: 'Ferretería' },
+  { value: BusinessTypeId.Papeleria,  icon: '📝', label: 'Papelería' },
+  { value: BusinessTypeId.Farmacia,   icon: '💊', label: 'Farmacia' },
+  { value: BusinessTypeId.Retail,     icon: '🏪', label: 'Otra tienda' },
 ];
 
 /** Device mode options */
@@ -80,17 +81,17 @@ const MODE_OPTIONS: { value: string; icon: string; label: string; description: s
 ];
 
 /** Zone suggestions per giro */
-const ZONE_SUGGESTIONS: Record<string, ZoneDraft[]> = {
-  [BusinessType.Restaurant]: [
+const ZONE_SUGGESTIONS: Record<number, ZoneDraft[]> = {
+  [BusinessTypeId.Restaurant]: [
     { name: 'Salón', type: ZoneType.Salon, checked: true },
     { name: 'Terraza', type: ZoneType.Other, checked: true },
   ],
-  [BusinessType.Bar]: [
+  [BusinessTypeId.Bar]: [
     { name: 'Salón', type: ZoneType.Salon, checked: true },
     { name: 'Barra', type: ZoneType.BarSeats, checked: true },
     { name: 'Terraza', type: ZoneType.Other, checked: false },
   ],
-  [BusinessType.Cafe]: [
+  [BusinessTypeId.Cafe]: [
     { name: 'Salón', type: ZoneType.Salon, checked: true },
     { name: 'Terraza', type: ZoneType.Other, checked: false },
   ],
@@ -104,19 +105,19 @@ type PricingGroup = 'restaurant' | 'standard' | 'general';
 type BillingCycle = 'monthly' | 'annual';
 
 /** Maps businessType → pricing group */
-const PRICING_GROUP_MAP: Record<string, PricingGroup> = {
-  [BusinessType.Restaurant]: 'restaurant',
-  [BusinessType.Bar]:        'restaurant',
-  [BusinessType.Cafe]:       'standard',
-  [BusinessType.FoodTruck]:  'standard',
-  [BusinessType.Taqueria]:   'standard',
-  [BusinessType.Retail]:     'general',
-  [BusinessType.General]:    'general',
-  [BusinessType.Abarrotes]:  'standard',
-  [BusinessType.Ferreteria]: 'standard',
-  [BusinessType.Papeleria]:  'standard',
-  [BusinessType.Farmacia]:   'standard',
-  [BusinessType.Servicios]:  'general',
+const PRICING_GROUP_MAP: Record<number, PricingGroup> = {
+  [BusinessTypeId.Restaurant]: 'restaurant',
+  [BusinessTypeId.Bar]:        'restaurant',
+  [BusinessTypeId.Cafe]:       'standard',
+  [BusinessTypeId.FoodTruck]:  'standard',
+  [BusinessTypeId.Taqueria]:   'standard',
+  [BusinessTypeId.Retail]:     'general',
+  [BusinessTypeId.General]:    'general',
+  [BusinessTypeId.Abarrotes]:  'standard',
+  [BusinessTypeId.Ferreteria]: 'standard',
+  [BusinessTypeId.Papeleria]:  'standard',
+  [BusinessTypeId.Farmacia]:   'standard',
+  [BusinessTypeId.Servicios]:  'general',
 };
 
 /** Stripe price IDs keyed by [plan][group][cycle] */
@@ -165,19 +166,19 @@ const PLAN_NAMES: Record<string, string> = {
 };
 
 /** Which device modes are relevant per giro */
-const MODES_BY_GIRO: Record<string, string[]> = {
-  [BusinessType.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
-  [BusinessType.Bar]:        ['cashier', 'tables', 'kitchen', 'kiosk'],
-  [BusinessType.Cafe]:       ['cashier', 'kitchen', 'kiosk'],
-  [BusinessType.Retail]:     ['cashier'],
-  [BusinessType.FoodTruck]:  ['cashier', 'kiosk'],
-  [BusinessType.General]:    ['cashier'],
-  [BusinessType.Taqueria]:   ['cashier', 'kiosk'],
-  [BusinessType.Abarrotes]:  ['cashier'],
-  [BusinessType.Ferreteria]: ['cashier'],
-  [BusinessType.Papeleria]:  ['cashier'],
-  [BusinessType.Farmacia]:   ['cashier'],
-  [BusinessType.Servicios]:  ['cashier'],
+const MODES_BY_GIRO: Record<number, string[]> = {
+  [BusinessTypeId.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
+  [BusinessTypeId.Bar]:        ['cashier', 'tables', 'kitchen', 'kiosk'],
+  [BusinessTypeId.Cafe]:       ['cashier', 'kitchen', 'kiosk'],
+  [BusinessTypeId.Retail]:     ['cashier'],
+  [BusinessTypeId.FoodTruck]:  ['cashier', 'kiosk'],
+  [BusinessTypeId.General]:    ['cashier'],
+  [BusinessTypeId.Taqueria]:   ['cashier', 'kiosk'],
+  [BusinessTypeId.Abarrotes]:  ['cashier'],
+  [BusinessTypeId.Ferreteria]: ['cashier'],
+  [BusinessTypeId.Papeleria]:  ['cashier'],
+  [BusinessTypeId.Farmacia]:   ['cashier'],
+  [BusinessTypeId.Servicios]:  ['cashier'],
 };
 
 @Component({
@@ -203,8 +204,8 @@ export class OnboardingComponent implements OnInit {
 
   /** True when the current user is an Owner or Manager (cloud-only role) */
   readonly isOwnerOrManager = computed(() => {
-    const role = this.authService.currentUser()?.role;
-    return role === 'Owner' || role === 'Manager';
+    const roleId = this.authService.currentUser()?.roleId;
+    return roleId === UserRoleId.Owner || roleId === UserRoleId.Manager;
   });
 
   /** Owners skip step 4 (device mode) — it's auto-configured as 'admin' */
@@ -214,21 +215,21 @@ export class OnboardingComponent implements OnInit {
   readonly retailSubOptions = RETAIL_SUB_OPTIONS;
 
   // Step 1 — Giro (multi-select)
-  readonly selectedGiros = signal<BusinessType[]>([]);
+  readonly selectedGiros = signal<BusinessTypeId[]>([]);
   readonly customGiroText = signal('');
 
   /** Primary giro (first selected) — used for pricing, modes, and zone suggestions */
-  readonly primaryGiro = computed(() => this.selectedGiros()[0] ?? BusinessType.General);
+  readonly primaryGiro = computed(() => this.selectedGiros()[0] ?? BusinessTypeId.General);
 
   /** Whether "Otra tienda" (Retail) is selected, requiring a custom description */
-  readonly showCustomGiroInput = computed(() => this.selectedGiros().includes(BusinessType.Retail));
+  readonly showCustomGiroInput = computed(() => this.selectedGiros().includes(BusinessTypeId.Retail));
 
   /** Business type from JWT — null if not pre-selected */
-  readonly jwtGiro = signal<BusinessType | null>(null);
+  readonly jwtGiro = signal<BusinessTypeId | null>(null);
 
   /** True when the JWT giro is in the retail group */
   readonly isRetailGroup = computed(() =>
-    RETAIL_GROUP.includes(this.jwtGiro() as BusinessType)
+    RETAIL_GROUP.includes(this.jwtGiro() as BusinessTypeId)
   );
 
   /** True when giro grid should be shown (no JWT pre-selection) */
@@ -240,7 +241,7 @@ export class OnboardingComponent implements OnInit {
     if (!giro) return null;
     // For retail group, always show the group badge
     if (RETAIL_GROUP.includes(giro)) {
-      return GIRO_INFO_MAP[BusinessType.Retail];
+      return GIRO_INFO_MAP[BusinessTypeId.Retail];
     }
     return GIRO_INFO_MAP[giro] ?? null;
   });
@@ -251,7 +252,7 @@ export class OnboardingComponent implements OnInit {
   folioPrefix = '';
   /** True if any selected giro supports zones (Restaurant, Bar, Cafe) */
   readonly isZoneStep = computed(() => {
-    const zoneGiros: BusinessType[] = [BusinessType.Restaurant, BusinessType.Bar, BusinessType.Cafe];
+    const zoneGiros: BusinessTypeId[] = [BusinessTypeId.Restaurant, BusinessTypeId.Bar, BusinessTypeId.Cafe];
     return this.selectedGiros().some(g => zoneGiros.includes(g));
   });
 
@@ -337,7 +338,7 @@ export class OnboardingComponent implements OnInit {
     }
 
     // Pre-fill giro from JWT
-    const jwtGiro = this.authService.businessType();
+    const jwtGiro = this.authService.businessTypeId();
     if (jwtGiro) {
       this.jwtGiro.set(jwtGiro);
       // Non-retail JWT giros are pre-selected (user just sees a badge)
@@ -405,7 +406,7 @@ export class OnboardingComponent implements OnInit {
         const giros = this.selectedGiros();
         if (giros.length === 0) return false;
         // When "Otra tienda" (Retail) is selected, require a custom description
-        if (giros.includes(BusinessType.Retail) && !this.customGiroText().trim()) return false;
+        if (giros.includes(BusinessTypeId.Retail) && !this.customGiroText().trim()) return false;
         return true;
       }
       case 2: return true; // zones/folio are optional
@@ -420,30 +421,30 @@ export class OnboardingComponent implements OnInit {
   //#region Step 1 — Giro
 
   /** Whether a giro is currently selected (used in template bindings) */
-  hasGiro(giro: BusinessType | string): boolean {
-    return this.selectedGiros().includes(giro as BusinessType);
+  hasGiro(giro: BusinessTypeId | number): boolean {
+    return this.selectedGiros().includes(giro as BusinessTypeId);
   }
 
   /** Toggles a business type on/off in the multi-select array */
-  toggleGiro(giro: BusinessType): void {
+  toggleGiro(giro: BusinessTypeId): void {
     this.selectedGiros.update(current =>
       current.includes(giro)
         ? current.filter(g => g !== giro)
         : [...current, giro],
     );
-    if (giro === BusinessType.Retail && !this.selectedGiros().includes(BusinessType.Retail)) {
+    if (giro === BusinessTypeId.Retail && !this.selectedGiros().includes(BusinessTypeId.Retail)) {
       this.customGiroText.set('');
     }
   }
 
   /** Toggles a retail sub-option on/off in the multi-select array */
-  toggleRetailSub(giro: BusinessType): void {
+  toggleRetailSub(giro: BusinessTypeId): void {
     this.selectedGiros.update(current =>
       current.includes(giro)
         ? current.filter(g => g !== giro)
         : [...current, giro],
     );
-    if (giro === BusinessType.Retail && !this.selectedGiros().includes(BusinessType.Retail)) {
+    if (giro === BusinessTypeId.Retail && !this.selectedGiros().includes(BusinessTypeId.Retail)) {
       this.customGiroText.set('');
     }
   }

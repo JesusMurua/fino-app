@@ -1,4 +1,8 @@
-/** Subscription plan tiers — mirrors backend PlanType enum */
+import { BusinessTypeId, PlanTypeId } from '../enums';
+
+/**
+ * @deprecated Use PlanTypeId from enums instead. Kept for backward compat.
+ */
 export enum PlanType {
   Free = 'Free',
   Basic = 'Basic',
@@ -6,7 +10,9 @@ export enum PlanType {
   Enterprise = 'Enterprise',
 }
 
-/** Business verticals — mirrors backend BusinessType enum */
+/**
+ * @deprecated Use BusinessTypeId from enums instead. Kept for backward compat.
+ */
 export enum BusinessType {
   Restaurant = 'Restaurant',
   Retail = 'Retail',
@@ -45,14 +51,14 @@ export enum FeatureKey {
 
 /** Computed plan metadata derived from auth state */
 export interface PlanInfo {
-  planType: PlanType;
-  businessType: BusinessType;
+  planTypeId: PlanTypeId;
+  businessTypeId: BusinessTypeId;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
   isOnTrial: boolean;
   /** Days remaining in trial — 0 if expired or not on trial */
   trialDaysLeft: number;
-  /** True when planType is not Free */
+  /** True when planTypeId is not Free */
   isPaid: boolean;
 }
 
@@ -61,11 +67,11 @@ export interface PlanInfo {
 // ---------------------------------------------------------------------------
 
 /** Numeric hierarchy for plan comparison */
-export const PLAN_HIERARCHY: Record<PlanType, number> = {
-  [PlanType.Free]: 0,
-  [PlanType.Basic]: 1,
-  [PlanType.Pro]: 2,
-  [PlanType.Enterprise]: 3,
+export const PLAN_HIERARCHY: Record<PlanTypeId, number> = {
+  [PlanTypeId.Free]: 0,
+  [PlanTypeId.Basic]: 1,
+  [PlanTypeId.Pro]: 2,
+  [PlanTypeId.Enterprise]: 3,
 };
 
 const BASIC_FEATURES: FeatureKey[] = [
@@ -97,98 +103,98 @@ const ENTERPRISE_FEATURES: FeatureKey[] = [
 ];
 
 /** Features unlocked per plan tier */
-export const PLAN_FEATURE_MAP: Record<PlanType, FeatureKey[]> = {
-  [PlanType.Free]: [],
-  [PlanType.Basic]: BASIC_FEATURES,
-  [PlanType.Pro]: PRO_FEATURES,
-  [PlanType.Enterprise]: ENTERPRISE_FEATURES,
+export const PLAN_FEATURE_MAP: Record<PlanTypeId, FeatureKey[]> = {
+  [PlanTypeId.Free]: [],
+  [PlanTypeId.Basic]: BASIC_FEATURES,
+  [PlanTypeId.Pro]: PRO_FEATURES,
+  [PlanTypeId.Enterprise]: ENTERPRISE_FEATURES,
 };
 
 /** Features relevant per business type (regardless of plan) */
-export const BUSINESS_FEATURE_MAP: Record<BusinessType, FeatureKey[]> = {
-  [BusinessType.Restaurant]: [
+export const BUSINESS_FEATURE_MAP: Record<BusinessTypeId, FeatureKey[]> = {
+  [BusinessTypeId.Restaurant]: [
     FeatureKey.Zones, FeatureKey.BarSeats, FeatureKey.KioskMode,
     FeatureKey.HardwarePrinter, FeatureKey.Promotions, FeatureKey.LoyaltyProgram,
     FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Cafe]: [
+  [BusinessTypeId.Cafe]: [
     FeatureKey.KioskMode, FeatureKey.HardwarePrinter,
     FeatureKey.Promotions, FeatureKey.LoyaltyProgram,
     FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Bar]: [
+  [BusinessTypeId.Bar]: [
     FeatureKey.Zones, FeatureKey.BarSeats,
     FeatureKey.HardwarePrinter, FeatureKey.Promotions,
     FeatureKey.Tables, FeatureKey.Reservations, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.FoodTruck]: [
+  [BusinessTypeId.FoodTruck]: [
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Taqueria]: [
+  [BusinessTypeId.Taqueria]: [
     FeatureKey.HardwarePrinter, FeatureKey.KioskMode,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Retail]: [
+  [BusinessTypeId.Retail]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Abarrotes]: [
+  [BusinessTypeId.Abarrotes]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Ferreteria]: [
+  [BusinessTypeId.Ferreteria]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.HardwareScale, FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Papeleria]: [
+  [BusinessTypeId.Papeleria]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Farmacia]: [
+  [BusinessTypeId.Farmacia]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.Promotions, FeatureKey.ClientsAndCredit,
     FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.General]: [
+  [BusinessTypeId.General]: [
     FeatureKey.HardwarePrinter, FeatureKey.HardwareScanner,
     FeatureKey.ClientsAndCredit, FeatureKey.Inventory, FeatureKey.CashRegister,
   ],
-  [BusinessType.Servicios]: [
+  [BusinessTypeId.Servicios]: [
     FeatureKey.HardwarePrinter, FeatureKey.ClientsAndCredit,
     FeatureKey.CashRegister,
   ],
 };
 
 /** Minimum plan required to unlock a feature */
-export const FEATURE_MIN_PLAN: Record<FeatureKey, PlanType> = {
-  [FeatureKey.Zones]: PlanType.Basic,
-  [FeatureKey.BarSeats]: PlanType.Basic,
-  [FeatureKey.KioskMode]: PlanType.Basic,
-  [FeatureKey.HardwarePrinter]: PlanType.Basic,
-  [FeatureKey.HardwareScanner]: PlanType.Basic,
-  [FeatureKey.Promotions]: PlanType.Basic,
-  [FeatureKey.AdvancedReports]: PlanType.Pro,
-  [FeatureKey.Cfdi]: PlanType.Pro,
-  [FeatureKey.LoyaltyProgram]: PlanType.Pro,
-  [FeatureKey.ClientsAndCredit]: PlanType.Pro,
-  [FeatureKey.MultiBranch]: PlanType.Pro,
-  [FeatureKey.HardwareScale]: PlanType.Enterprise,
-  [FeatureKey.ApiAccess]: PlanType.Enterprise,
-  [FeatureKey.Tables]: PlanType.Basic,
-  [FeatureKey.Reservations]: PlanType.Pro,
-  [FeatureKey.Inventory]: PlanType.Basic,
-  [FeatureKey.CashRegister]: PlanType.Basic,
+export const FEATURE_MIN_PLAN: Record<FeatureKey, PlanTypeId> = {
+  [FeatureKey.Zones]: PlanTypeId.Basic,
+  [FeatureKey.BarSeats]: PlanTypeId.Basic,
+  [FeatureKey.KioskMode]: PlanTypeId.Basic,
+  [FeatureKey.HardwarePrinter]: PlanTypeId.Basic,
+  [FeatureKey.HardwareScanner]: PlanTypeId.Basic,
+  [FeatureKey.Promotions]: PlanTypeId.Basic,
+  [FeatureKey.AdvancedReports]: PlanTypeId.Pro,
+  [FeatureKey.Cfdi]: PlanTypeId.Pro,
+  [FeatureKey.LoyaltyProgram]: PlanTypeId.Pro,
+  [FeatureKey.ClientsAndCredit]: PlanTypeId.Pro,
+  [FeatureKey.MultiBranch]: PlanTypeId.Pro,
+  [FeatureKey.HardwareScale]: PlanTypeId.Enterprise,
+  [FeatureKey.ApiAccess]: PlanTypeId.Enterprise,
+  [FeatureKey.Tables]: PlanTypeId.Basic,
+  [FeatureKey.Reservations]: PlanTypeId.Pro,
+  [FeatureKey.Inventory]: PlanTypeId.Basic,
+  [FeatureKey.CashRegister]: PlanTypeId.Basic,
 };
 
 /** Human-readable plan names in Spanish */
-export const PLAN_DISPLAY_NAME: Record<PlanType, string> = {
-  [PlanType.Free]: 'Gratuito',
-  [PlanType.Basic]: 'Básico',
-  [PlanType.Pro]: 'Pro',
-  [PlanType.Enterprise]: 'Enterprise',
+export const PLAN_DISPLAY_NAME: Record<PlanTypeId, string> = {
+  [PlanTypeId.Free]: 'Gratuito',
+  [PlanTypeId.Basic]: 'Básico',
+  [PlanTypeId.Pro]: 'Pro',
+  [PlanTypeId.Enterprise]: 'Enterprise',
 };

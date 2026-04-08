@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BusinessType, LoginResponse } from '../models';
+import { LoginResponse } from '../models';
+import { BusinessTypeId } from '../enums';
 import { ApiService } from './api.service';
 
 /**
@@ -44,7 +45,7 @@ export class BusinessService {
    * @param businessTypes Array of selected business types
    * @param customGiroDescription Free-text description when "Otra tienda" is selected
    */
-  updateBusinessTypes(businessTypes: BusinessType[], customGiroDescription: string | null): Observable<void> {
+  updateBusinessTypes(businessTypes: BusinessTypeId[], customGiroDescription: string | null): Observable<void> {
     return this.api.put<void>('/business/type', { businessTypes, customGiroDescription });
   }
 

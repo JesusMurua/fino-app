@@ -8,14 +8,13 @@ import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 
 import {
-  BusinessType,
   RestaurantTable,
   TableStatusDto,
   Zone,
   ZoneType,
   normalizeDisplayStatus,
 } from '../../core/models';
-import { KitchenStatusId, TableStatus } from '../../core/enums';
+import { BusinessTypeId, KitchenStatusId, TableStatus } from '../../core/enums';
 import { Reservation } from '../../core/models/reservation.model';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
@@ -1167,10 +1166,10 @@ export class TablesComponent implements OnInit, OnDestroy {
 
   /** Whether KPI strip should be visible based on business type */
   showKpis(): boolean {
-    const giro = this.authService.businessType();
-    return giro === BusinessType.Restaurant
-      || giro === BusinessType.Bar
-      || giro === BusinessType.Cafe;
+    const giro = this.authService.businessTypeId();
+    return giro === BusinessTypeId.Restaurant
+      || giro === BusinessTypeId.Bar
+      || giro === BusinessTypeId.Cafe;
   }
 
   /**

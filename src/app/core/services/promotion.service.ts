@@ -8,10 +8,10 @@ import {
   Promotion,
   PromotionEvaluation,
   PromotionScope,
-  PromotionType,
   RejectedPromotion,
   RejectionReason,
 } from '../models';
+import { PromotionTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -168,7 +168,7 @@ export class PromotionService {
         continue;
       }
 
-      if (promo.type === PromotionType.OrderDiscount) {
+      if (promo.promotionTypeId === PromotionTypeId.OrderDiscount) {
         const discount = Math.floor(subtotalCents * promo.value / 100);
         orderDiscountCents += discount;
         applied.push({ promotion: promo, discountCents: discount });
@@ -284,8 +284,8 @@ export class PromotionService {
     const result = new Map<string, ItemDiscount>();
     const matching = this.getMatchingItems(promo, items);
 
-    switch (promo.type) {
-      case PromotionType.Percentage:
+    switch (promo.promotionTypeId) {
+      case PromotionTypeId.Percentage:
         for (const item of matching) {
           const disc = Math.floor(item.totalPriceCents * promo.value / 100);
           if (disc > 0) {
@@ -298,7 +298,7 @@ export class PromotionService {
         }
         break;
 
-      case PromotionType.Fixed:
+      case PromotionTypeId.Fixed:
         for (const item of matching) {
           const disc = Math.min(promo.value, item.totalPriceCents);
           if (disc > 0) {
@@ -311,7 +311,7 @@ export class PromotionService {
         }
         break;
 
-      case PromotionType.Bogo:
+      case PromotionTypeId.Bogo:
         for (const item of matching) {
           if (item.quantity >= 2) {
             const freeUnits = Math.floor(item.quantity / 2);
@@ -324,7 +324,7 @@ export class PromotionService {
         }
         break;
 
-      case PromotionType.Bundle: {
+      case PromotionTypeId.Bundle: {
         const minQty = promo.minQuantity ?? 2;
         const paidQty = promo.paidQuantity ?? 1;
         for (const item of matching) {
@@ -341,7 +341,7 @@ export class PromotionService {
         break;
       }
 
-      case PromotionType.FreeProduct: {
+      case PromotionTypeId.FreeProduct: {
         if (promo.freeProductId == null) break;
         const freeItem = items.find(i => i.product.id === promo.freeProductId);
         if (freeItem) {

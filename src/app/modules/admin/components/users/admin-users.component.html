@@ -56,7 +56,7 @@
           <div class="user-card__left">
             <div
               class="user-card__avatar"
-              [style.background]="getRoleColor(user.role)"
+              [style.background]="getRoleColor(user.roleId)"
             >
               {{ getInitial(user.name) }}
             </div>
@@ -143,7 +143,7 @@
         [options]="roleOptions"
         optionLabel="label"
         optionValue="value"
-        formControlName="role"
+        formControlName="roleId"
         placeholder="Seleccionar rol"
         styleClass="form-field__input"
         [appendTo]="'body'"

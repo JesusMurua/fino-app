@@ -7,7 +7,7 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
 import { Order } from '../../core/models';
-import { KitchenStatusId, TableStatus } from '../../core/enums';
+import { KitchenStatusId, TableStatus, UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { OrdersService, getDisplayStatus } from '../../core/services/orders.service';
 import { PrintService } from '../../core/services/print.service';
@@ -100,8 +100,8 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     private readonly messageService: MessageService,
     private readonly router: Router,
   ) {
-    const role = this.authService.currentUser()?.role;
-    this.canDeliver = role === 'Cashier' || role === 'Owner';
+    const roleId = this.authService.currentUser()?.roleId;
+    this.canDeliver = roleId === UserRoleId.Cashier || roleId === UserRoleId.Owner;
 
     effect(() => {
       const branchId = this.authService.activeBranchId();

@@ -23,8 +23,8 @@ import {
   DeviceConfig,
   Order,
   Supplier,
-  UserRole,
 } from '../../../../core/models';
+import { UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
 import { SyncStatusId } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
@@ -57,7 +57,9 @@ interface ReceiptLine {
 /** Response shape from verify-pin endpoint */
 interface VerifyPinResponse {
   valid: boolean;
+  /** @deprecated Use roleId instead */
   role?: string;
+  roleId?: UserRoleId;
 }
 
 @Component({
@@ -107,23 +109,18 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   readonly showOrdersButton = computed(() => {
     const experience = this.configService.posExperience();
-    const role = this.authService.currentUser()?.role;
+    const roleId = this.authService.currentUser()?.roleId;
     const isRestaurantOrCounter = experience === 'Restaurant' || experience === 'Counter';
     return isRestaurantOrCounter &&
-      (role === 'Cashier' || role === 'Owner' || role === 'Manager');
+      (roleId === UserRoleId.Cashier || roleId === UserRoleId.Owner || roleId === UserRoleId.Manager);
   });
 
   readonly showTablesButton = computed(() =>
     this.configService.hasTables() &&
-    (this.authService.currentUser()?.role === 'Cashier' ||
-     this.authService.currentUser()?.role === 'Owner' ||
-     this.authService.currentUser()?.role === 'Manager')
+    (this.authService.currentUser()?.roleId === UserRoleId.Cashier ||
+     this.authService.currentUser()?.roleId === UserRoleId.Owner ||
+     this.authService.currentUser()?.roleId === UserRoleId.Manager)
   );
-
-  private readonly roleLabels: Record<UserRole, string> = {
-    Owner: 'Dueño', Manager: 'Gerente', Cashier: 'Cajero',
-    Waiter: 'Mesero', Kitchen: 'Cocina', Kiosk: 'Kiosko', Host: 'Hostess',
-  };
 
   readonly branchName = computed(() => {
     const user = this.authService.currentUser();
@@ -137,8 +134,8 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   );
 
   readonly userRoleLabel = computed(() => {
-    const role = this.authService.currentUser()?.role;
-    return role ? (this.roleLabels[role] ?? role) : '';
+    const roleId = this.authService.currentUser()?.roleId;
+    return roleId ? (USER_ROLE_LABELS[roleId] ?? String(roleId)) : '';
   });
 
   //#endregion
@@ -330,7 +327,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (res) => {
         this.pinLoading.set(false);
-        if (res.valid && (res.role === 'Owner' || res.role === 'Manager')) {
+        if (res.valid && (res.role === 'Owner' || res.role === 'Manager' || res.roleId === UserRoleId.Owner || res.roleId === UserRoleId.Manager)) {
           this.showPinDialog.set(false);
           this.openReceiptModal();
         } else {
@@ -557,8 +554,8 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   /** True when the user is an Owner or Manager (can self-link a register) */
   readonly canSelfLink = computed(() => {
-    const role = this.authService.currentUser()?.role;
-    return role === 'Owner' || role === 'Manager';
+    const roleId = this.authService.currentUser()?.roleId;
+    return roleId === UserRoleId.Owner || roleId === UserRoleId.Manager;
   });
 
   /** Opening amount for the new session (in pesos) */
