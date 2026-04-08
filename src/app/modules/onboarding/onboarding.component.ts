@@ -211,8 +211,15 @@ export class OnboardingComponent implements OnInit {
   readonly giroOptions = GIRO_OPTIONS;
   readonly retailSubOptions = RETAIL_SUB_OPTIONS;
 
-  // Step 1 — Giro
-  readonly selectedGiro = signal<BusinessType>(BusinessType.Restaurant);
+  // Step 1 — Giro (multi-select)
+  readonly selectedGiros = signal<BusinessType[]>([]);
+  readonly customGiroText = signal('');
+
+  /** Primary giro (first selected) — used for pricing, modes, and zone suggestions */
+  readonly primaryGiro = computed(() => this.selectedGiros()[0] ?? BusinessType.General);
+
+  /** Whether "Otra tienda" (Retail) is selected, requiring a custom description */
+  readonly showCustomGiroInput = computed(() => this.selectedGiros().includes(BusinessType.Retail));
 
   /** Business type from JWT — null if not pre-selected */
   readonly jwtGiro = signal<BusinessType | null>(null);
@@ -240,9 +247,10 @@ export class OnboardingComponent implements OnInit {
   zones: ZoneDraft[] = [];
   newZoneName = '';
   folioPrefix = '';
+  /** True if any selected giro supports zones (Restaurant, Bar, Cafe) */
   readonly isZoneStep = computed(() => {
-    const g = this.selectedGiro();
-    return g === BusinessType.Restaurant || g === BusinessType.Bar || g === BusinessType.Cafe;
+    const zoneGiros: BusinessType[] = [BusinessType.Restaurant, BusinessType.Bar, BusinessType.Cafe];
+    return this.selectedGiros().some(g => zoneGiros.includes(g));
   });
 
   // Step 3 — First product
@@ -258,10 +266,15 @@ export class OnboardingComponent implements OnInit {
   readonly selectedMode = signal('cashier');
   readonly pendingPlan = signal<string | null>(null);
 
-  /** Device modes filtered by selected giro */
+  /** Device modes: union of all selected giros' allowed modes */
   readonly filteredModes = computed(() => {
-    const allowed = MODES_BY_GIRO[this.selectedGiro()] ?? ['cashier'];
-    return MODE_OPTIONS.filter(m => allowed.includes(m.value));
+    const giros = this.selectedGiros();
+    const allowedSet = new Set<string>();
+    for (const g of giros) {
+      for (const m of MODES_BY_GIRO[g] ?? ['cashier']) allowedSet.add(m);
+    }
+    if (allowedSet.size === 0) allowedSet.add('cashier');
+    return MODE_OPTIONS.filter(m => allowedSet.has(m.value));
   });
 
   // Step 4 — Plan activation
@@ -271,7 +284,7 @@ export class OnboardingComponent implements OnInit {
 
   /** Pricing group derived from selected business type */
   readonly pricingGroup = computed<PricingGroup>(() =>
-    PRICING_GROUP_MAP[this.selectedGiro()] ?? 'general'
+    PRICING_GROUP_MAP[this.primaryGiro()] ?? 'general'
   );
 
   /** Display name for the pending plan */
@@ -317,8 +330,12 @@ export class OnboardingComponent implements OnInit {
     // Pre-fill giro from JWT
     const jwtGiro = this.authService.businessType();
     if (jwtGiro) {
-      this.selectedGiro.set(jwtGiro);
       this.jwtGiro.set(jwtGiro);
+      // Non-retail JWT giros are pre-selected (user just sees a badge)
+      // Retail group starts empty — user must pick sub-options
+      if (!RETAIL_GROUP.includes(jwtGiro)) {
+        this.selectedGiros.set([jwtGiro]);
+      }
     }
 
     // Init zone suggestions
@@ -370,9 +387,10 @@ export class OnboardingComponent implements OnInit {
   canProceed(): boolean {
     switch (this.currentStep()) {
       case 1: {
-        if (!this.selectedGiro()) return false;
-        // Retail group with JWT pre-selection: must pick a sub-option
-        if (this.isRetailGroup() && this.selectedGiro() === this.jwtGiro()) return false;
+        const giros = this.selectedGiros();
+        if (giros.length === 0) return false;
+        // When "Otra tienda" (Retail) is selected, require a custom description
+        if (giros.includes(BusinessType.Retail) && !this.customGiroText().trim()) return false;
         return true;
       }
       case 2: return true; // zones/folio are optional
@@ -386,22 +404,33 @@ export class OnboardingComponent implements OnInit {
 
   //#region Step 1 — Giro
 
-  /** Selects a business type */
-  selectGiro(giro: BusinessType): void {
-    this.selectedGiro.set(giro);
+  /** Whether a giro is currently selected (used in template bindings) */
+  hasGiro(giro: BusinessType | string): boolean {
+    return this.selectedGiros().includes(giro as BusinessType);
   }
 
-  /**
-   * Selects a retail sub-option and updates the backend business type.
-   * Called when user picks from the retail sub-options grid.
-   */
-  async selectRetailSub(giro: BusinessType): Promise<void> {
-    this.selectedGiro.set(giro);
-    try {
-      await firstValueFrom(
-        this.http.put(`${environment.apiUrl}/business/type`, { businessType: giro }),
-      );
-    } catch { /* best-effort */ }
+  /** Toggles a business type on/off in the multi-select array */
+  toggleGiro(giro: BusinessType): void {
+    this.selectedGiros.update(current =>
+      current.includes(giro)
+        ? current.filter(g => g !== giro)
+        : [...current, giro],
+    );
+    if (giro === BusinessType.Retail && !this.selectedGiros().includes(BusinessType.Retail)) {
+      this.customGiroText.set('');
+    }
+  }
+
+  /** Toggles a retail sub-option on/off in the multi-select array */
+  toggleRetailSub(giro: BusinessType): void {
+    this.selectedGiros.update(current =>
+      current.includes(giro)
+        ? current.filter(g => g !== giro)
+        : [...current, giro],
+    );
+    if (giro === BusinessType.Retail && !this.selectedGiros().includes(BusinessType.Retail)) {
+      this.customGiroText.set('');
+    }
   }
 
   //#endregion
@@ -424,10 +453,19 @@ export class OnboardingComponent implements OnInit {
     this.newZoneName = '';
   }
 
-  /** Refreshes zone suggestions when giro changes */
+  /** Refreshes zone suggestions — unions suggestions for all selected giros, deduped by name */
   private refreshZoneSuggestions(): void {
-    const giro = this.selectedGiro();
-    this.zones = (ZONE_SUGGESTIONS[giro] ?? []).map(z => ({ ...z }));
+    const seen = new Set<string>();
+    const merged: ZoneDraft[] = [];
+    for (const giro of this.selectedGiros()) {
+      for (const z of ZONE_SUGGESTIONS[giro] ?? []) {
+        if (!seen.has(z.name)) {
+          seen.add(z.name);
+          merged.push({ ...z });
+        }
+      }
+    }
+    this.zones = merged;
   }
 
   //#endregion
@@ -497,17 +535,15 @@ export class OnboardingComponent implements OnInit {
 
     const branchId = this.authService.branchId;
 
-    // 1. Update business type if changed
-    const jwtGiro = this.authService.businessType();
-    if (this.selectedGiro() !== jwtGiro) {
-      try {
-        await firstValueFrom(
-          this.http.put(`${environment.apiUrl}/business/type`, {
-            businessType: this.selectedGiro(),
-          }),
-        );
-      } catch { /* best-effort */ }
-    }
+    // 1. Update business types (multi-giro)
+    try {
+      await firstValueFrom(
+        this.http.put(`${environment.apiUrl}/business/type`, {
+          businessTypes: this.selectedGiros(),
+          customGiroDescription: this.customGiroText().trim() || null,
+        }),
+      );
+    } catch { /* best-effort */ }
 
     // 2a. Create zones (if zone step)
     if (this.isZoneStep()) {

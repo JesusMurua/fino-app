@@ -32,10 +32,10 @@
             <button
               type="button"
               class="giro-card"
-              [class.giro-card--active]="selectedGiro() === sub.value"
-              (click)="selectRetailSub(sub.value)"
+              [class.giro-card--active]="hasGiro(sub.value)"
+              (click)="toggleRetailSub(sub.value)"
             >
-              @if (selectedGiro() === sub.value) {
+              @if (hasGiro(sub.value)) {
                 <i class="pi pi-check-circle giro-card__check"></i>
               }
               <span class="giro-card__icon">{{ sub.icon }}</span>
@@ -43,6 +43,21 @@
             </button>
           }
         </div>
+
+        @if (showCustomGiroInput()) {
+          <div class="custom-giro-field">
+            <label for="ob-custom-giro">Describe tu tipo de tienda</label>
+            <input
+              id="ob-custom-giro"
+              type="text"
+              pInputText
+              [ngModel]="customGiroText()"
+              (ngModelChange)="customGiroText.set($event)"
+              placeholder="Ej. Mayoreo de comida para mascotas"
+              class="custom-giro-field__input"
+            />
+          </div>
+        }
 
       <!-- Case B: Non-retail JWT giro — badge only, no selection needed -->
       } @else if (giroBadge()) {
@@ -59,10 +74,10 @@
             <button
               type="button"
               class="giro-card"
-              [class.giro-card--active]="selectedGiro() === giro.value"
-              (click)="selectGiro(giro.value)"
+              [class.giro-card--active]="hasGiro(giro.value)"
+              (click)="toggleGiro(giro.value)"
             >
-              @if (selectedGiro() === giro.value) {
+              @if (hasGiro(giro.value)) {
                 <i class="pi pi-check-circle giro-card__check"></i>
               }
               <span class="giro-card__icon">{{ giro.icon }}</span>
@@ -71,6 +86,21 @@
             </button>
           }
         </div>
+
+        @if (showCustomGiroInput()) {
+          <div class="custom-giro-field">
+            <label for="ob-custom-giro-main">Describe tu tipo de tienda</label>
+            <input
+              id="ob-custom-giro-main"
+              type="text"
+              pInputText
+              [ngModel]="customGiroText()"
+              (ngModelChange)="customGiroText.set($event)"
+              placeholder="Ej. Mayoreo de comida para mascotas"
+              class="custom-giro-field__input"
+            />
+          </div>
+        }
       }
     }
 
