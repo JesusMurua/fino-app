@@ -177,6 +177,18 @@ export class PrintService {
         </table>
         ${sep}
         ` : ''}
+        ${order.taxAmountCents ? `
+        <table style="width:100%;font-size:12px;border-collapse:collapse;color:#374151">
+          <tr>
+            <td style="padding:2px 0">Subtotal sin IVA</td>
+            <td style="padding:2px 0;text-align:right">$${((order.totalCents - order.taxAmountCents) / 100).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:2px 0">IVA</td>
+            <td style="padding:2px 0;text-align:right">$${(order.taxAmountCents / 100).toFixed(2)}</td>
+          </tr>
+        </table>
+        ` : ''}
         <table style="width:100%;border-collapse:collapse">
           <tr>
             <td style="font-size:15px;font-weight:700;padding:4px 0">TOTAL</td>
@@ -329,6 +341,10 @@ export class PrintService {
       ? `\nSubtotal:${''.padEnd(15)}$${(order.subtotalCents / 100).toFixed(2)}\nDescuento:${''.padEnd(14)}-$${(order.totalDiscountCents / 100).toFixed(2)}\n${line}`
       : '';
 
+    const taxSection = order.taxAmountCents
+      ? `\nSubtotal sin IVA:${''.padEnd(7)}$${((order.totalCents - order.taxAmountCents) / 100).toFixed(2)}\nIVA:${''.padEnd(20)}$${(order.taxAmountCents / 100).toFixed(2)}`
+      : '';
+
     const savingsLine = order.totalDiscountCents
       ? `\nAhorraste: $${(order.totalDiscountCents / 100).toFixed(2)}`
       : '';
@@ -341,6 +357,7 @@ export class PrintService {
       ...itemLines,
       line,
       discountSection,
+      taxSection,
       `TOTAL: $${total}`,
       `Pago: ${methodLabel}`,
       changeSection,

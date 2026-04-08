@@ -7,6 +7,7 @@ import { PasswordModule } from 'primeng/password';
 import { DeviceConfig } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
 import { ConfigService } from '../../core/services/config.service';
+import { DeviceService } from '../../core/services/device.service';
 import { firstValueFrom } from 'rxjs';
 
 /** Operating mode option for the mode selector */
@@ -52,6 +53,7 @@ export class SetupComponent {
 
   private readonly api = inject(ApiService);
   private readonly configService = inject(ConfigService);
+  private readonly deviceService = inject(DeviceService);
   private readonly router = inject(Router);
 
   //#endregion
@@ -201,19 +203,27 @@ export class SetupComponent {
     this.step.set('mode');
   }
 
-  /** Step 2A final: Save device config and redirect to /pin */
-  saveEmailSetup(): void {
+  /** Step 2A final: Register device in backend, save config, and redirect */
+  async saveEmailSetup(): Promise<void> {
+    const name = this.deviceName.trim() || 'POS Principal';
+
     const config: DeviceConfig = {
       businessId:   this.businessId,
       branchId:     this.selectedBranchId,
       businessName: this.businessName,
       branchName:   this.selectedBranchName,
       mode:         this.selectedMode,
-      deviceName:   this.deviceName.trim() || 'POS Principal',
+      deviceName:   name,
       configuredAt: new Date().toISOString(),
     };
 
     this.configService.saveDeviceConfig(config);
+
+    // Register in backend (best-effort — local config is already saved)
+    this.deviceService
+      .registerDevice(this.selectedBranchId, this.selectedMode, name)
+      .catch(() => console.warn('[SetupComponent] Backend device registration failed — will retry on next validate'));
+
     this.router.navigate(['/pin']);
   }
 
@@ -243,9 +253,11 @@ export class SetupComponent {
     }
   }
 
-  /** Step 2B final: Save device config from activation code and redirect */
-  saveCodeSetup(): void {
+  /** Step 2B final: Register device in backend, save config, and redirect */
+  async saveCodeSetup(): Promise<void> {
     if (!this.activateData) return;
+
+    const name = this.deviceName.trim() || 'POS Principal';
 
     const config: DeviceConfig = {
       businessId:   this.activateData.businessId,
@@ -253,11 +265,17 @@ export class SetupComponent {
       businessName: this.activateData.businessName,
       branchName:   this.activateData.branchName,
       mode:         this.activateData.mode,
-      deviceName:   this.deviceName.trim() || 'POS Principal',
+      deviceName:   name,
       configuredAt: new Date().toISOString(),
     };
 
     this.configService.saveDeviceConfig(config);
+
+    // Register in backend (best-effort — local config is already saved)
+    this.deviceService
+      .registerDevice(this.activateData.branchId, this.activateData.mode, name)
+      .catch(() => console.warn('[SetupComponent] Backend device registration failed — will retry on next validate'));
+
     this.router.navigate(['/pin']);
   }
 

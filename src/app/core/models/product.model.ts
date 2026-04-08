@@ -63,6 +63,8 @@ export interface Product {
   satUnitCode?: string;
   /** IVA tax rate as integer percentage (e.g. 16, 8, 0). Default: 16 */
   taxRate?: number;
+  /** Whether the product price includes tax. Default: true (Mexican standard) */
+  isTaxIncluded?: boolean;
   /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
   printingDestinationId?: number | null;
 }

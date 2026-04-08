@@ -31,6 +31,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DeliveryService } from '../../../../core/services/delivery.service';
+import { DeviceService } from '../../../../core/services/device.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -545,17 +546,61 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   //#region Session Blocker (FDD-002)
 
+  private readonly deviceService = inject(DeviceService);
+
   /** Physical register linked to this device (null if unlinked) */
   readonly linkedRegister = this.cashRegisterService.linkedRegister;
 
   /** Controls the full-screen session blocker overlay */
   readonly showSessionBlocker = computed(() => !this.cashRegisterService.hasOpenSession());
 
+  /** True when the user is an Owner or Manager (can self-link a register) */
+  readonly canSelfLink = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'Owner' || role === 'Manager';
+  });
+
   /** Opening amount for the new session (in pesos) */
   readonly sessionAmountPesos = signal(0);
 
   /** True while the session is being opened */
   readonly isOpeningSession = signal(false);
+
+  /** True while the self-link flow is in progress */
+  readonly isLinkingDevice = signal(false);
+
+  /**
+   * One-click self-link for Owners/Managers: creates a register named
+   * "Caja Principal", links it to this device, and resolves it so the
+   * session blocker unlocks the amount input and "Abrir Turno" button.
+   */
+  async linkDeviceAsRegister(): Promise<void> {
+    if (this.isLinkingDevice()) return;
+
+    this.isLinkingDevice.set(true);
+    try {
+      const register = await this.cashRegisterService.createRegister('Caja Principal', true);
+      await this.cashRegisterService.updateRegister(register.id, {
+        deviceUuid: this.deviceService.deviceUuid,
+      });
+      await this.cashRegisterService.resolveLinkedRegister();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Caja vinculada',
+        detail: `"${register.name}" asignada a este dispositivo.`,
+        life: 4000,
+      });
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error al vincular',
+        detail: 'No se pudo crear la caja. Verifica tu conexión.',
+        life: 5000,
+      });
+    } finally {
+      this.isLinkingDevice.set(false);
+    }
+  }
 
   /** Opens a new cash register session and dismisses the blocker */
   async openSessionFromBlocker(): Promise<void> {

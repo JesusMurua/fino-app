@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
+import { DEFAULT_TAX_RATE, calculateItemTax } from '../utils/tax.utils';
 import { DatabaseService } from './database.service';
 import { ProductService } from './product.service';
 import { PromotionService } from './promotion.service';
@@ -35,6 +36,22 @@ export class CartService {
     const subtotal = this.items().reduce((sum, i) => sum + i.totalPriceCents, 0);
     return Math.max(0, subtotal - evaluation.totalDiscountCents);
   });
+
+  /** Total tax (IVA) in cents — extracted from effective item prices after discounts */
+  readonly totalTaxCents = computed(() => {
+    const items = this.items();
+    if (items.length === 0) return 0;
+    return items.reduce((sum, item) => {
+      const rate = item.taxRate ?? DEFAULT_TAX_RATE;
+      const isTaxIncluded = item.product.isTaxIncluded !== false;
+      return sum + calculateItemTax(item.totalPriceCents, item.discountCents, rate, isTaxIncluded);
+    }, 0);
+  });
+
+  /** Subtotal (pre-tax) in cents — total minus extracted tax */
+  readonly subtotalPreTaxCents = computed(() =>
+    Math.max(0, this.totalCents() - this.totalTaxCents()),
+  );
 
   /** Number of individual items in the cart (sum of quantities) */
   readonly itemCount = computed(() =>
@@ -120,6 +137,7 @@ export class CartService {
       unitPriceCents,
       totalPriceCents: unitPriceCents,
       notes,
+      taxRate: product.taxRate ?? DEFAULT_TAX_RATE,
       discountCents: 0,
     };
 

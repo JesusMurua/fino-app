@@ -19,6 +19,8 @@ export class KioskSummaryComponent {
 
   readonly items = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
+  readonly totalTaxCents = this.cartService.totalTaxCents;
+  readonly subtotalPreTaxCents = this.cartService.subtotalPreTaxCents;
   readonly cartEvaluation = this.cartService.cartEvaluation;
 
   //#endregion

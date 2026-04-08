@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { CartItem, Order } from '../../../../core/models';
+import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { DatabaseService } from '../../../../core/services/database.service';
@@ -22,10 +23,12 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
 
   //#region Properties
 
-  readonly orderNumber  = signal(0);
-  readonly totalCents   = signal(0);
-  readonly businessName = signal('');
-  readonly countdown    = signal(AUTO_RESET_S);
+  readonly orderNumber        = signal(0);
+  readonly totalCents         = signal(0);
+  readonly taxAmountCents     = signal(0);
+  readonly subtotalPreTaxCents = signal(0);
+  readonly businessName       = signal('');
+  readonly countdown          = signal(AUTO_RESET_S);
 
   /** Items captured before clearCart() — used for WhatsApp text generation */
   private completedItems: CartItem[] = [];
@@ -56,8 +59,9 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // ── Step 2: Compute total from snapshot items — avoids signal desync ──
+    // ── Step 2: Compute total + tax from frozen snapshot — avoids signal desync ──
     const total = snapshot.reduce((sum, item) => sum + item.totalPriceCents, 0);
+    const tax = calculateOrderTaxFromSnapshot(snapshot);
 
     // ── Step 3: Async operations (DB reads + config) ──
     const deviceConfig = this.configService.deviceConfig$.getValue();
@@ -69,17 +73,18 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
 
     // ── Step 4: Persist order BEFORE clearing the cart ──
     const order: Order = {
-      id:            crypto.randomUUID(),
-      orderNumber:   num,
-      items:         snapshot,
-      totalCents:    total,
-      payments: [],  // kiosk: customer pays at counter after pickup
+      id:              crypto.randomUUID(),
+      orderNumber:     num,
+      items:           snapshot,
+      totalCents:      total,
+      taxAmountCents:  tax,
+      payments: [],    // kiosk: customer pays at counter after pickup
       paidCents: 0,
       changeCents: 0,
       paymentProvider: null,
-      syncStatus:    'Pending',
-      createdAt:     new Date(),
-      branchId:      deviceConfig.branchId,
+      syncStatus:      'Pending',
+      createdAt:       new Date(),
+      branchId:        deviceConfig.branchId,
     };
     await this.db.orders.add(order);
 
@@ -90,6 +95,8 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
     this.completedItems = snapshot;
     this.orderNumber.set(num);
     this.totalCents.set(total);
+    this.taxAmountCents.set(tax);
+    this.subtotalPreTaxCents.set(total - tax);
     this.businessName.set(branchConfig.businessName);
 
     // ── Step 7: Start auto-reset countdown ──
@@ -154,6 +161,8 @@ export class KioskTicketComponent implements OnInit, OnDestroy {
         return `${item.quantity}× ${item.product.name}${size}${extras}`;
       }),
       '',
+      `Subtotal sin IVA: $${(this.subtotalPreTaxCents() / 100).toFixed(2)}`,
+      `IVA: $${(this.taxAmountCents() / 100).toFixed(2)}`,
       `Total: $${(this.totalCents() / 100).toFixed(2)} MXN`,
       '',
       'Presenta este número en caja para pagar.',

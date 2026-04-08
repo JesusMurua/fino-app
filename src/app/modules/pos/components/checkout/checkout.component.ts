@@ -14,6 +14,7 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
 import { CartItem, Customer, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
+import { DEFAULT_TAX_RATE, calculateItemTax } from '../../../../core/utils/tax.utils';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -189,6 +190,28 @@ export class CheckoutComponent implements OnInit {
   /** Final total after discount */
   readonly totalWithDiscount = computed(() =>
     Math.max(0, this.subtotalCents() - this.discountCents()),
+  );
+
+  /** Tax (IVA) extracted from the final total — uses per-item rates */
+  readonly taxAmountCents = computed(() => {
+    const items = this.cartItems();
+    if (items.length === 0) return 0;
+    const totalBeforeDiscount = items.reduce((s, i) => s + i.totalPriceCents, 0);
+    const totalAfterDiscount = this.totalWithDiscount();
+    // Prorate discount across items proportionally, then extract tax per item
+    return items.reduce((sum, item) => {
+      const itemShare = totalBeforeDiscount > 0
+        ? Math.round(item.totalPriceCents * totalAfterDiscount / totalBeforeDiscount)
+        : 0;
+      const rate = item.taxRate ?? DEFAULT_TAX_RATE;
+      const isTaxIncluded = item.product.isTaxIncluded !== false;
+      return sum + calculateItemTax(itemShare, 0, rate, isTaxIncluded);
+    }, 0);
+  });
+
+  /** Subtotal pre-tax (total minus extracted tax) */
+  readonly subtotalPreTaxCents = computed(() =>
+    Math.max(0, this.totalWithDiscount() - this.taxAmountCents()),
   );
 
   /** Display label for the applied discount */
@@ -620,6 +643,7 @@ export class CheckoutComponent implements OnInit {
           totalDiscountCents: discount > 0 ? discount : undefined,
           orderPromotionName: this.discountLabel() || undefined,
           totalCents: finalTotal,
+          taxAmountCents: this.taxAmountCents(),
           syncStatus: 'Pending',
           cashRegisterSessionId: existing.cashRegisterSessionId ?? this.cashRegisterService.activeSession()?.id,
         };
@@ -639,6 +663,7 @@ export class CheckoutComponent implements OnInit {
           totalDiscountCents: discount > 0 ? discount : undefined,
           orderPromotionName: this.discountLabel() || undefined,
           totalCents: this.totalWithDiscount(),
+          taxAmountCents: this.taxAmountCents(),
           payments,
           paidCents,
           changeCents: this.changeCents(),

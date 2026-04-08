@@ -34,6 +34,8 @@ export class CartPanelComponent implements OnInit {
   //#region Properties
   readonly cartItems = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
+  readonly totalTaxCents = this.cartService.totalTaxCents;
+  readonly subtotalPreTaxCents = this.cartService.subtotalPreTaxCents;
   readonly itemCount = this.cartService.itemCount;
   readonly cartEvaluation = this.cartService.cartEvaluation;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
