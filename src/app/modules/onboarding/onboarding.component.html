@@ -5,7 +5,7 @@
     <div class="onboarding-progress__bar" [style.width.%]="progress()"></div>
   </div>
   <div class="onboarding-step-counter">
-    Paso {{ currentStep() }} de {{ totalSteps }}
+    Paso {{ currentStep() }} de {{ totalSteps() }}
   </div>
 
   <!-- Step content -->
@@ -298,7 +298,7 @@
       {{ currentStep() === 1 ? 'Salir' : 'Atrás' }}
     </button>
 
-    @if (currentStep() < totalSteps) {
+    @if (currentStep() < totalSteps()) {
       <button
         type="button"
         class="onboarding-nav__next"

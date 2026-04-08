@@ -5,6 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { AuthService } from '../../core/services/auth.service';
+import { DeviceRoutingService } from '../../core/services/device-routing.service';
 
 @Component({
   selector: 'app-login',
@@ -27,13 +28,14 @@ export class LoginComponent {
   //#region Constructor
   constructor(
     private readonly authService: AuthService,
+    private readonly deviceRoutingService: DeviceRoutingService,
     private readonly router: Router,
   ) {}
   //#endregion
 
   //#region Auth
 
-  /** Attempts email login and redirects to /admin on success */
+  /** Attempts email login and redirects based on role */
   async submit(): Promise<void> {
     if (!this.email || !this.password) return;
 
@@ -46,7 +48,8 @@ export class LoginComponent {
 
     if (user) {
       const returnUrl = this.authService.consumeReturnUrl();
-      this.router.navigateByUrl(returnUrl ?? '/admin');
+      const defaultRoute = this.deviceRoutingService.getPostLoginRoute(user.role);
+      this.router.navigateByUrl(returnUrl ?? defaultRoute);
     } else {
       this.hasError.set(true);
       this.errorMessage.set('Correo o contraseña incorrectos.');

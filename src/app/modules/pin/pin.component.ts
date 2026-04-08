@@ -4,8 +4,8 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
 import { CashRegisterService } from '../../core/services/cash-register.service';
-import { CatalogService } from '../../core/services/catalog.service';
 import { ConfigService } from '../../core/services/config.service';
+import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
@@ -81,8 +81,8 @@ export class PinComponent implements OnInit {
 
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
-  private readonly catalogService = inject(CatalogService);
   private readonly configService = inject(ConfigService);
+  private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly productService = inject(ProductService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
@@ -137,39 +137,6 @@ export class PinComponent implements OnInit {
 
   //#endregion
 
-  //#region Routing Helpers
-
-  /**
-   * Returns the POS route based on the current business type's posExperience.
-   *
-   * Resolution order:
-   *   1. configService.posExperience() — loaded from Dexie/API during preload
-   *   2. Fallback: derive from authService.businessType() using static catalog
-   *   3. Last resort: /pos (Restaurant default)
-   *
-   * This ensures first-login on a fresh device (Dexie empty) always gets a valid route.
-   */
-  private getPosDest(): string {
-    let experience = this.configService.posExperience();
-
-    // Fallback: if Dexie had no businessTypeCatalog, derive from the JWT businessType
-    if (!experience) {
-      const btCode = this.authService.businessType();
-      const catalog = this.catalogService.getBusinessType(btCode);
-      experience = catalog?.posExperience;
-    }
-
-    switch (experience) {
-      case 'Restaurant': return '/pos';
-      case 'Retail':     return '/pos/retail';
-      case 'Counter':    return '/pos/counter';
-      case 'Quick':      return '/pos/quick';
-      default:           return '/pos';
-    }
-  }
-
-  //#endregion
-
   //#region Auth
 
   /**
@@ -218,32 +185,8 @@ export class PinComponent implements OnInit {
         return;
       }
 
-      const raw = localStorage.getItem('pos-device-config');
-      const mode = raw ? JSON.parse(raw).mode : 'cashier';
-
-      switch (result.user.role) {
-        case 'Owner':
-        case 'Manager':
-          this.router.navigate(['/admin']);
-          break;
-        case 'Kitchen':
-          this.router.navigate(['/kitchen']);
-          break;
-        case 'Host':
-          this.router.navigate(['/tables']);
-          break;
-        case 'Waiter':
-          this.router.navigate([mode === 'tables' ? '/tables' : '/pos']);
-          break;
-        case 'Cashier':
-        default: {
-          const dest = mode === 'tables' ? '/tables'
-            : mode === 'kitchen' ? '/kitchen'
-            : this.getPosDest();
-          this.router.navigate([dest]);
-          break;
-        }
-      }
+      const dest = this.deviceRoutingService.getPostLoginRoute(result.user.role);
+      this.router.navigate([dest]);
 
       // Request push notification permission (best-effort, non-blocking)
       this.notificationService.requestPermission();

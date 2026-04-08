@@ -204,11 +204,28 @@ export class ConfigService {
   /**
    * Reads the device config from localStorage and emits to deviceConfig$.
    * Falls back to DEFAULT_DEVICE_CONFIG if no value has been saved yet.
+   *
+   * Storage format: Base64-encoded JSON (obfuscated to prevent casual DevTools edits).
+   * Includes backward-compatible fallback for legacy raw JSON entries.
    */
   loadDeviceConfig(): DeviceConfig {
     try {
       const raw = localStorage.getItem(DEVICE_CONFIG_KEY);
-      const config: DeviceConfig = raw ? JSON.parse(raw) : { ...DEFAULT_DEVICE_CONFIG };
+      if (!raw) {
+        this.deviceConfig$.next({ ...DEFAULT_DEVICE_CONFIG });
+        return { ...DEFAULT_DEVICE_CONFIG };
+      }
+
+      let config: DeviceConfig;
+
+      try {
+        // Primary: decode Base64-obfuscated value
+        config = JSON.parse(decodeURIComponent(atob(raw)));
+      } catch {
+        // Fallback: legacy raw JSON — migrate to obfuscated format
+        config = JSON.parse(raw);
+        this.saveDeviceConfig(config);
+      }
 
       // Migrate deprecated modes
       const mode = config.mode as string;
@@ -227,10 +244,13 @@ export class ConfigService {
   /**
    * Persists the device config to localStorage and emits to deviceConfig$.
    * Only affects this physical device — other devices are unchanged.
+   *
+   * Stored as Base64-encoded JSON to prevent casual DevTools manipulation.
    * @param config Updated device config to save
    */
   saveDeviceConfig(config: DeviceConfig): void {
-    localStorage.setItem(DEVICE_CONFIG_KEY, JSON.stringify(config));
+    const encoded = btoa(encodeURIComponent(JSON.stringify(config)));
+    localStorage.setItem(DEVICE_CONFIG_KEY, encoded);
     this.deviceConfig$.next(config);
   }
 
