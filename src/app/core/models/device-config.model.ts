@@ -12,7 +12,7 @@
  *   kitchen — Kitchen display mode
  */
 export interface DeviceConfig {
-  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen';
+  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen' | 'admin';
   /** Human-readable name for this device, e.g. "Caja 1" or "Kiosko Entrada" */
   deviceName: string;
   /** Business this device belongs to (set during /setup) */

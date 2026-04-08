@@ -197,8 +197,16 @@ export class OnboardingComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly currentStep = signal(1);
-  readonly totalSteps = 4;
   readonly isSubmitting = signal(false);
+
+  /** True when the current user is an Owner or Manager (cloud-only role) */
+  readonly isOwnerOrManager = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'Owner' || role === 'Manager';
+  });
+
+  /** Owners skip step 4 (device mode) — it's auto-configured as 'admin' */
+  readonly totalSteps = computed(() => this.isOwnerOrManager() ? 3 : 4);
 
   readonly giroOptions = GIRO_OPTIONS;
   readonly retailSubOptions = RETAIL_SUB_OPTIONS;
@@ -292,7 +300,7 @@ export class OnboardingComponent implements OnInit {
 
   /** Progress percentage */
   readonly progress = computed(() =>
-    Math.round((this.currentStep() / this.totalSteps) * 100),
+    Math.round((this.currentStep() / this.totalSteps()) * 100),
   );
 
   /** Folio preview for non-zone giros */
@@ -334,7 +342,7 @@ export class OnboardingComponent implements OnInit {
 
   /** Advances to the next step */
   nextStep(): void {
-    if (this.currentStep() < this.totalSteps) {
+    if (this.currentStep() < this.totalSteps()) {
       // When leaving step 1, refresh zone suggestions for new giro
       if (this.currentStep() === 1) {
         this.refreshZoneSuggestions();
@@ -564,13 +572,19 @@ export class OnboardingComponent implements OnInit {
     const branchEntry = user?.branches?.find(b => b.id === activeBranchId);
     const branchDisplayName = branchEntry?.name ?? '';
 
+    // Owners get a silent 'admin' config — they never select a device mode
+    const mode: DeviceConfig['mode'] = this.isOwnerOrManager()
+      ? 'admin'
+      : this.selectedMode() as DeviceConfig['mode'];
+    const defaultName = this.isOwnerOrManager() ? 'Admin' : 'POS Principal';
+
     const deviceConfig: DeviceConfig = {
       businessId:   user?.businessId ?? 0,
       branchId:     activeBranchId,
       businessName: branchDisplayName,
       branchName:   branchDisplayName,
-      mode:         this.selectedMode() as DeviceConfig['mode'],
-      deviceName:   this.deviceName().trim() || 'POS Principal',
+      mode,
+      deviceName:   this.deviceName().trim() || defaultName,
       configuredAt: new Date().toISOString(),
     };
     this.configService.saveDeviceConfig(deviceConfig);
@@ -594,8 +608,8 @@ export class OnboardingComponent implements OnInit {
 
     this.isSubmitting.set(false);
 
-    // 7. Navigate to pin (device config is now complete)
-    this.router.navigate(['/pin']);
+    // 7. Owners go straight to /admin — floor staff go to /pin
+    this.router.navigate([this.isOwnerOrManager() ? '/admin' : '/pin']);
   }
 
   //#endregion

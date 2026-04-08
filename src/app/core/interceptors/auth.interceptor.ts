@@ -34,7 +34,8 @@ export const authInterceptor: HttpInterceptorFn = (
 
   if (!isPublic) {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) {
+    // Only attach real JWTs — never send offline session markers to the backend
+    if (token && !token.startsWith('offline-session-')) {
       request = request.clone({
         setHeaders: { Authorization: `Bearer ${token}`, 'X-Timezone': timezone },
       });
