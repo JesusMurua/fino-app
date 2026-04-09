@@ -214,6 +214,11 @@ export class DatabaseService extends Dexie {
         }),
       ]);
     });
+
+    // Add sortOrder index to printerDestinations (fixes SchemaError on KeyPath sortOrder)
+    this.version(22).stores({
+      printerDestinations: '++id, isDefault, isActive, sortOrder',
+    });
   }
   //#endregion
 
