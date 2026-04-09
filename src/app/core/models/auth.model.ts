@@ -1,10 +1,5 @@
 import { BusinessTypeId, PlanTypeId, UserRoleId } from '../enums';
 
-/**
- * @deprecated Use UserRoleId enum instead. Kept for backward compat.
- */
-export type UserRole = 'Owner' | 'Manager' | 'Cashier' | 'Kitchen' | 'Waiter' | 'Kiosk' | 'Host';
-
 /** Branch summary returned in the login response */
 export interface BranchInfo {
   id: number;
@@ -43,9 +38,9 @@ export interface LoginResponse {
   branches: BranchInfo[];
   currentBranchId: number;
   /** Numeric plan FK */
-  planTypeId?: PlanTypeId;
+  planTypeId: PlanTypeId;
   /** Numeric business type FK */
-  businessTypeId?: BusinessTypeId;
+  businessTypeId: BusinessTypeId;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */

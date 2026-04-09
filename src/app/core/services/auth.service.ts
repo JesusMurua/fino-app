@@ -355,7 +355,7 @@ export class AuthService {
       // Canceled or past_due → downgrade to Free
       const effectivePlan = (status.status === 'canceled' || status.status === 'past_due')
         ? PlanTypeId.Free
-        : (status.planTypeId ?? PlanTypeId.Free);
+        : status.planTypeId;
 
       const changed = effectivePlan !== this.planTypeId()
         || (status.trialEndsAt ?? null) !== this.trialEndsAt();
@@ -407,8 +407,8 @@ export class AuthService {
       branchId: response.branchId,
       branches: response.branches ?? [],
       currentBranchId: effectiveBranchId,
-      planTypeId: response.planTypeId ?? PlanTypeId.Free,
-      businessTypeId: response.businessTypeId ?? BusinessTypeId.General,
+      planTypeId: response.planTypeId,
+      businessTypeId: response.businessTypeId,
       trialEndsAt: response.trialEndsAt,
       onboardingStatusId: response.onboardingStatusId,
       currentOnboardingStep: response.currentOnboardingStep,
