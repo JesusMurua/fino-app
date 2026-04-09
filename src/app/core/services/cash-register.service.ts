@@ -239,13 +239,38 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Updates an existing physical cash register.
+   * Updates an existing physical cash register (name, isActive).
    * @param id Register ID
-   * @param payload Fields to update (name, isActive, deviceUuid)
+   * @param payload Fields to update (name, isActive)
    */
   async updateRegister(id: number, payload: Partial<CashRegister>): Promise<CashRegister> {
     const register = await firstValueFrom(
       this.api.put<CashRegister>(`/cashregister/registers/${id}`, payload),
+    );
+    await this.db.cashRegisters.put(register);
+    return register;
+  }
+
+  /**
+   * Links a device to a cash register via the dedicated endpoint.
+   * @param registerId Register ID to link
+   * @param deviceUuid UUID of the device to assign
+   */
+  async linkDevice(registerId: number, deviceUuid: string): Promise<CashRegister> {
+    const register = await firstValueFrom(
+      this.api.patch<CashRegister>(`/cashregister/registers/${registerId}/link-device`, { deviceUuid }),
+    );
+    await this.db.cashRegisters.put(register);
+    return register;
+  }
+
+  /**
+   * Unlinks any device from a cash register via the dedicated endpoint.
+   * @param registerId Register ID to unlink
+   */
+  async unlinkDevice(registerId: number): Promise<CashRegister> {
+    const register = await firstValueFrom(
+      this.api.patch<CashRegister>(`/cashregister/registers/${registerId}/unlink-device`, {}),
     );
     await this.db.cashRegisters.put(register);
     return register;

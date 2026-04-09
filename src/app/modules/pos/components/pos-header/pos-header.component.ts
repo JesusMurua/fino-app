@@ -578,9 +578,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     this.isLinkingDevice.set(true);
     try {
       const register = await this.cashRegisterService.createRegister('Caja Principal', true);
-      await this.cashRegisterService.updateRegister(register.id, {
-        deviceUuid: this.deviceService.deviceUuid,
-      });
+      await this.cashRegisterService.linkDevice(register.id, this.deviceService.deviceUuid);
       await this.cashRegisterService.resolveLinkedRegister();
       this.messageService.add({
         severity: 'success',

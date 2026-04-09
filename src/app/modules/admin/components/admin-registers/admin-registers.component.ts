@@ -160,9 +160,7 @@ export class AdminRegistersComponent implements OnInit {
    */
   async linkDevice(register: CashRegister): Promise<void> {
     try {
-      await this.cashRegisterService.updateRegister(register.id, {
-        deviceUuid: this.currentDeviceUuid,
-      });
+      await this.cashRegisterService.linkDevice(register.id, this.currentDeviceUuid);
       this.messageService.add({
         severity: 'success',
         summary: 'Dispositivo vinculado',
@@ -186,9 +184,7 @@ export class AdminRegistersComponent implements OnInit {
    */
   async unlinkDevice(register: CashRegister): Promise<void> {
     try {
-      await this.cashRegisterService.updateRegister(register.id, {
-        deviceUuid: undefined,
-      });
+      await this.cashRegisterService.unlinkDevice(register.id);
       this.messageService.add({
         severity: 'info',
         summary: 'Dispositivo desvinculado',
