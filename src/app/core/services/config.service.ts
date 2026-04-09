@@ -29,8 +29,8 @@ interface BranchConfigResponse {
   folioPrefix?: string;
   folioFormat?: string;
   folioCounter?: number;
-  planType?: string;
-  businessType?: string;
+  planTypeId?: number;
+  businessTypeId?: number;
   posExperience?: string;
 }
 

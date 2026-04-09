@@ -174,7 +174,7 @@ export class RegisterComponent implements OnInit {
       const response = await firstValueFrom(
         this.http.post<LoginResponse>(
           `${environment.apiUrl}/auth/register`,
-          { businessName, ownerName, email, password, businessType, planTypeId, countryCode: this.countryCode },
+          { businessName, ownerName, email, password, businessTypeId: businessType, planTypeId, countryCode: this.countryCode },
         ),
       );
 
