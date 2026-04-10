@@ -25,15 +25,23 @@ const BILL_DENOMINATIONS = [
   { label: '$1000', cents: 100000 },
 ];
 
+/**
+ * Waiter POS — Pro feature.
+ *
+ * Mobile-first touch UI for waiters taking orders at tables. Renders a
+ * compact product grid with quick add-to-cart and an integrated kitchen
+ * comanda flow. NOT used for general "Quick Service" sales — those use
+ * the standard ProductGridComponent.
+ */
 @Component({
-  selector: 'app-counter-pos',
+  selector: 'app-waiter-pos',
   standalone: true,
   imports: [ButtonModule, DialogModule, ToastModule, PricePipe],
-  templateUrl: './counter-pos.component.html',
-  styleUrl: './counter-pos.component.scss',
+  templateUrl: './waiter-pos.component.html',
+  styleUrl: './waiter-pos.component.scss',
   providers: [MessageService],
 })
-export class CounterPosComponent implements OnInit, OnDestroy {
+export class WaiterPosComponent implements OnInit, OnDestroy {
 
   //#region Properties
 

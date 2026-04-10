@@ -73,7 +73,8 @@ export class DeviceRoutingService {
     switch (experience) {
       case 'Restaurant': return '/pos';
       case 'Retail':     return '/pos/retail';
-      case 'Counter':    return '/pos/counter';
+      // 'Counter' posExperience now maps to Quick Service (standard ProductGrid)
+      case 'Counter':    return '/pos/quick-service';
       case 'Quick':      return '/pos/quick';
       default:           return '/pos';
     }

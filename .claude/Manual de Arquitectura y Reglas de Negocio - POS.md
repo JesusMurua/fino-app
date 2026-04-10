@@ -21,31 +21,45 @@ El Onboarding del pos-landing obliga al cliente a elegir una de 4 categorías. E
 
 Fragmento de código
 
-graph TD  
-    A\[Cliente entra al Landing\] \--\> B{Selección de Categoría}  
-    B \--\>|Restaurantes y Bares| C\[Inyecta Giro: Restaurante\]  
-    B \--\>|Comida Rápida y Cafés| D\[Inyecta Giro: Fast Food\]  
-    B \--\>|Tiendas y Comercios| E\[Inyecta Giro: Retail\]  
-    B \--\>|Servicios Especializados| F\[Inyecta Giro: General\]  
-      
-    C \--\> G(Motor Asignado: TABLES MODE)  
-    D \--\> H(Motor Asignado: COUNTER MODE)  
-    E \--\> I(Motor Asignado: RETAIL MODE)  
-    F \--\> J(Motor Asignado: QUICK MODE)
+graph TD
+    A\[Cliente entra al Landing\] \--\> B{Selección de Categoría}
+    B \--\>|Restaurantes y Bares| C\[Inyecta Giro: Restaurante\]
+    B \--\>|Comida Rápida y Cafés \(Quick Service\)| D\[Inyecta Giro: Quick Service\]
+    B \--\>|Tiendas y Comercios| E\[Inyecta Giro: Retail\]
+    B \--\>|Servicios Especializados \(Quick\)| F\[Inyecta Giro: General\]
+
+    C \--\> G(Motor Asignado: RESTAURANT HUB)
+    D \--\> H(Motor Asignado: STANDARD POS)
+    E \--\> I(Motor Asignado: RETAIL MODE)
+    F \--\> J(Motor Asignado: QUICK POS)
 
 ### **Detalle de los Motores**
 
-* 🍽️ **Tables Mode / Restaurant (Restaurantes/Bares) — Hub Omnicanal:**
-  La Caja Principal en modo Restaurante NO es un simple mapa de mesas. Es un **Hub Omnicanal** que centraliza tres canales de venta simultáneos:
-  1. **Dine-in (Comer aquí):** Mapa de zonas y mesas. Flujo: Abrir mesa ➔ Asignar comensales ➔ Enviar comanda a cocina ➔ Imprimir pre-cuenta ➔ Cobrar.
-  2. **Takeout (Para llevar):** Órdenes directas de mostrador sin asignación de mesa. Flujo: Agregar productos al carrito ➔ Cobrar ➔ Imprimir ticket con número de orden.
-  3. **Comando central:** La Caja recibe, visualiza y cobra las cuentas creadas por los Meseros (dispositivos móviles) y coordina el flujo con las Pantallas de Cocina (KDS).
+* 🍽️ **Categoría 1 — Restaurantes y Bares (Restaurant Hub Omnicanal):**
+  La Caja Principal en modo Restaurante NO es un simple mapa de mesas. Es un **Hub Omnicanal** (`RestaurantHubComponent` en `/pos`) que centraliza tres canales de venta simultáneos mediante un switcher:
+  1. **Dine-in (Mesas):** Renderiza `<app-tables />`. Mapa de zonas y mesas. Flujo: Abrir mesa ➔ Asignar comensales ➔ Enviar comanda a cocina ➔ Imprimir pre-cuenta ➔ Cobrar.
+  2. **Takeout (Para Llevar):** Renderiza `<app-product-grid />` (el Standard POS). Flujo: Agregar productos al carrito ➔ Cobrar ➔ Imprimir ticket con número de orden.
+  3. **Delivery:** Lista de órdenes de plataformas externas (Uber Eats, Rappi, DiDi Food). Flujo: Recibir orden ➔ Aceptar ➔ Coordinar con cocina ➔ Marcar lista.
 
-  La Caja Principal es el punto de convergencia de todos los dispositivos de la sucursal. No depende de que haya mesas activas para operar — siempre puede cobrar órdenes directas.
+  Adicionalmente, la Caja recibe en tiempo real las cuentas creadas por los Meseros (dispositivos móviles) y coordina el flujo con las Pantallas de Cocina (KDS). Es el punto de convergencia de todos los dispositivos de la sucursal.
 
-* 🍔 **Counter Mode (Comida Rápida/Cafés):** Renderiza cuadrícula táctil visual (Grid). Flujo: Tocar productos ➔ Cobrar inmediatamente ➔ Entregar ticket con número de orden. Opcionalmente envía comandas a cocina si `hasKitchen=true`.
-* 🏪 **Retail Mode (Tiendas/Abarrotes):** Renderiza lista de alta densidad con búsqueda por nombre o código de barras. Flujo: Escaneo intensivo con lector de código de barras ➔ Cobro por teclado numérico con denominaciones de billetes.
-* ✂️ **Quick Mode (Servicios):** Renderiza input de concepto libre. Flujo: Escribir servicio manual (ej. "Manicure") ➔ Ingresar precio variable ➔ Cobrar. También permite búsqueda en catálogo como función secundaria.
+* 🍔 **Categoría 2 — Comida Rápida y Cafés (Quick Service):**
+  Motor: **Standard POS** (`ProductGridComponent` en `/pos/quick-service`). Renderiza la cuadrícula táctil visual con categorías, búsqueda y carrito lateral. Flujo: Tocar productos ➔ Cobrar inmediatamente ➔ Entregar ticket con número de orden. Opcionalmente envía comandas a cocina si `hasKitchen=true`. Es el mismo motor que se usa como canal "Takeout" dentro del Restaurant Hub — la diferencia es que aquí es la pantalla principal y única.
+
+* 🏪 **Categoría 3 — Tiendas y Comercios (Retail Mode):**
+  Motor: `RetailPosComponent` en `/pos/retail`. Renderiza lista de alta densidad con búsqueda por nombre o código de barras. Flujo: Escaneo intensivo con lector de código de barras ➔ Cobro por teclado numérico con denominaciones de billetes.
+
+* ✂️ **Categoría 4 — Servicios Especializados (Quick):**
+  Motor: `QuickPosComponent` en `/pos/quick`. Renderiza input de concepto libre. Flujo: Escribir servicio manual (ej. "Manicure") ➔ Ingresar precio variable ➔ Cobrar. También permite búsqueda en catálogo como función secundaria.
+
+### **Modo Mesero (Waiter Mode) — Feature Pro**
+
+El **Modo Mesero** (`WaiterPosComponent` en `/pos/waiter`) es un motor adicional **NO ligado a un giro de negocio**, sino a un **rol de dispositivo Pro**. Está reservado exclusivamente para el rol Waiter en dispositivos móviles (celulares y tablets pequeñas) que toman órdenes directamente en mesa.
+
+* **Cuándo se carga:** Cuando un usuario con rol `Waiter` inicia sesión en un dispositivo configurado en `mode: 'tables'`, o cuando se accede explícitamente a `/pos/waiter`.
+* **UX:** Layout mobile-first con touch targets grandes, vista compacta de productos, flujo de comanda a cocina integrado.
+* **NO se usa para:** Ventas generales de Quick Service. Esos negocios usan el Standard POS (`ProductGridComponent`), no este componente.
+* **Plan requerido:** Solo Pro. En plan Free, los meseros usan el flujo regular de la Caja Principal.
 
 ---
 

@@ -4,6 +4,12 @@ export const posRoutes: Routes = [
   {
     path: '',
     loadComponent: () =>
+      import('./pages/restaurant-hub/restaurant-hub.component')
+        .then(m => m.RestaurantHubComponent),
+  },
+  {
+    path: 'quick-service',
+    loadComponent: () =>
       import('./components/product-grid/product-grid.component')
         .then(m => m.ProductGridComponent),
   },
@@ -26,10 +32,10 @@ export const posRoutes: Routes = [
         .then(m => m.RetailPosComponent),
   },
   {
-    path: 'counter',
+    path: 'waiter',
     loadComponent: () =>
-      import('./components/counter-pos/counter-pos.component')
-        .then(m => m.CounterPosComponent),
+      import('./components/waiter-pos/waiter-pos.component')
+        .then(m => m.WaiterPosComponent),
   },
   {
     path: 'quick',
