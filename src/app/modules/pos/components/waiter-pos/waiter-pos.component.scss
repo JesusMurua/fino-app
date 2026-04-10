@@ -1,502 +1,514 @@
-// ---------------------------------------------------------------------------
-// Counter POS — Single-column touch-optimized layout
-// ---------------------------------------------------------------------------
+@use '../../../../../styles/variables' as *;
 
-:host {
-  display: block;
-  height: 100dvh;
-  overflow: hidden;
-  background: #f9fafb;
-}
+// ============================================================================
+// Waiter POS — Mobile-first, full-screen, single-column on phones
+// ============================================================================
 
-// ---------------------------------------------------------------------------
-// Main layout — single column, vertically stacked
-// ---------------------------------------------------------------------------
-
-.counter-layout {
+.waiter {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 12px 16px 0;
-}
+  background: #F9FAFB;
+  font-family: inherit;
+  overflow: hidden;
 
-// ---------------------------------------------------------------------------
-// Search — small, secondary to category chips
-// ---------------------------------------------------------------------------
-
-.counter-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-bottom: 8px;
-
-  &__icon {
-    position: absolute;
-    left: 12px;
-    font-size: 14px;
-    color: #9ca3af;
-    pointer-events: none;
+  // Ensure admin sidebar, if somehow rendered, is hidden
+  :host ::ng-deep .sidebar,
+  :host ::ng-deep app-admin-shell {
+    display: none !important;
   }
 
-  &__input {
-    width: 100%;
-    height: 40px;
-    padding: 0 36px 0 36px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 15px;
-    outline: none;
-    background: white;
-    color: #374151;
-    transition: border-color 0.15s;
-
-    &:focus {
-      border-color: #16a34a;
-    }
-
-    &::placeholder {
-      color: #9ca3af;
-    }
-  }
-
-  &__clear {
-    position: absolute;
-    right: 4px;
+  &__header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: #6b7280;
-    cursor: pointer;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
 
-    &:active {
-      background: #f3f4f6;
+    &--order {
+      justify-content: flex-start;
     }
   }
-}
 
-// ---------------------------------------------------------------------------
-// Category chips — horizontal scroll, 44px height
-// ---------------------------------------------------------------------------
-
-.counter-categories {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  flex-shrink: 0;
-  padding-bottom: 8px;
-  -webkit-overflow-scrolling: touch;
-
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
-
-.counter-chip {
-  flex-shrink: 0;
-  height: 44px;
-  padding: 0 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 22px;
-  background: white;
-  font-size: 15px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-
-  &:active {
-    transform: scale(0.96);
+  &__title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
   }
 
-  &--active {
-    background: #16a34a;
-    border-color: #16a34a;
-    color: white;
+  &__subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0;
   }
+
+  &__back-btn {
+    display: flex;
+    align-items: center;
+    gap: $space-1;
+    min-height: 48px;
+    min-width: 96px;
+    padding: 0 $space-3;
+    background: transparent;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #111827;
+    cursor: pointer;
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  &__table-badge {
+    display: flex;
+    align-items: center;
+    gap: $space-1;
+    padding: $space-1 $space-3;
+    background: #16A34A;
+    color: #FFFFFF;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 700;
+    min-height: 40px;
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  &__tables-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: $space-3;
+    padding: $space-4;
+    overflow-y: auto;
+  }
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-3;
+    margin: $space-3 $space-3 0;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+
+    i { color: #6B7280; font-size: 16px; }
+
+    input {
+      flex: 1;
+      min-height: 48px;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 16px;
+      color: #111827;
+    }
+  }
+
+  &__search-clear {
+    min-width: 48px;
+    min-height: 48px;
+    border: none;
+    background: transparent;
+    color: #6B7280;
+    cursor: pointer;
+  }
+
+  &__categories {
+    display: flex;
+    gap: $space-2;
+    overflow-x: auto;
+    padding: $space-3;
+    scroll-snap-type: x mandatory;
+
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  &__products {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: $space-3;
+    padding: 0 $space-3 $space-8;
+    overflow-y: auto;
+  }
+
+  &__loading {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-6;
+    color: #6B7280;
+    font-size: 16px;
+
+    i { font-size: 28px; }
+  }
+
+  &__empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-6;
+    color: #6B7280;
+    text-align: center;
+
+    i { font-size: 36px; }
+    p { margin: 0; font-size: 15px; }
+  }
+
+  &__cart-fab {
+    position: fixed;
+    left: $space-3;
+    right: $space-3;
+    bottom: $space-3;
+    min-height: 64px;
+    padding: 0 $space-4;
+    background: #16A34A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-3;
+    font-size: 17px;
+    font-weight: 700;
+    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.35);
+    cursor: pointer;
+    z-index: 20;
+  }
+
+  &__cart-fab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    background: #FFFFFF;
+    color: #16A34A;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  &__cart-fab-label { flex: 1; text-align: left; }
+
+  &__cart-fab-total { font-size: 18px; font-weight: 700; }
 }
 
-// ---------------------------------------------------------------------------
-// Product grid — scrollable, touch-friendly cards
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// Table picker cards
+// ----------------------------------------------------------------------------
 
-.counter-products {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
-  align-content: start;
-  padding-bottom: 8px;
-}
-
-.counter-product-card {
+.waiter-table-card {
+  min-height: 120px;
+  min-width: 120px;
+  padding: $space-3;
+  background: #FFFFFF;
+  border: 2px solid #E5E7EB;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 80px;
-  padding: 10px 12px;
-  border: none;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
   cursor: pointer;
-  text-align: left;
-  transition: transform 0.1s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
-  &:active {
-    transform: scale(0.97);
-    background: #f0fdf4;
+  &--occupied {
+    border-color: #D97706;
+    background: #FFFBEB;
   }
 
   &__name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  &__capacity {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #6B7280;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Category chips
+// ----------------------------------------------------------------------------
+
+.waiter-cat-btn {
+  min-height: 48px;
+  padding: 0 $space-3;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+
+  &--active {
+    background: #16A34A;
+    border-color: #16A34A;
+    color: #FFFFFF;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Product tiles
+// ----------------------------------------------------------------------------
+
+.waiter-product-btn {
+  min-height: 120px;
+  padding: $space-3;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &:active { background: #F0FDF4; border-color: #16A34A; }
+
+  &__name {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     color: #111827;
     line-height: 1.3;
   }
 
   &__price {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    color: #16a34a;
-    margin-top: 4px;
+    color: #16A34A;
+    margin-top: $space-2;
   }
 }
 
-.counter-empty {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  color: #9ca3af;
+// ----------------------------------------------------------------------------
+// Bottom sheet cart
+// ----------------------------------------------------------------------------
 
-  i {
-    font-size: 48px;
-    margin-bottom: 12px;
-  }
-
-  p {
-    font-size: 16px;
-  }
+.waiter-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  animation: fadeIn 150ms ease-out;
 }
 
-// ---------------------------------------------------------------------------
-// Order list
-// ---------------------------------------------------------------------------
-
-.counter-order {
-  flex-shrink: 0;
-  max-height: 200px;
+.waiter-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  border-top: 2px solid #e5e7eb;
-  padding-top: 8px;
+  background: #FFFFFF;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+  z-index: 31;
+  animation: slideUp 200ms ease-out;
 
   &__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    padding: 0 0 4px;
-
-    h2 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #111827;
-      margin: 0;
-    }
+    padding: $space-4;
+    border-bottom: 1px solid #E5E7EB;
   }
 
-  &__clear {
+  &__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  &__meta {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 4px 0 0;
+  }
+
+  &__close {
+    min-width: 44px;
+    min-height: 44px;
+    border: none;
+    background: transparent;
+    color: #6B7280;
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  &__list {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  &__footer {
+    padding: $space-3 $space-4 $space-4;
+    border-top: 1px solid #E5E7EB;
+    background: #FFFFFF;
+  }
+
+  &__send-btn {
+    width: 100%;
+    min-height: 72px;
+    padding: 0 $space-4;
+    background: #16A34A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: #dc2626;
+    gap: $space-2;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     cursor: pointer;
-    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.3);
 
-    &:active {
-      background: #fef2f2;
+    &:disabled {
+      background: #9CA3AF;
+      box-shadow: none;
+      cursor: not-allowed;
     }
-  }
 
-  &__items {
-    flex: 1;
-    overflow-y: auto;
+    i { font-size: 22px; }
   }
 }
 
-.counter-order-item {
+.waiter-sheet-item {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  border-bottom: 1px solid #F3F4F6;
 
-  &__info {
+  &__main {
+    flex: 1;
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
   }
 
   &__name {
-    font-size: 15px;
-    font-weight: 500;
-    color: #111827;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    margin-right: 8px;
-  }
-
-  &__subtotal {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
-    color: #374151;
-    white-space: nowrap;
+    color: #111827;
   }
 
-  &__controls {
+  &__note {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    font-size: 13px;
+    color: #D97706;
+    font-style: italic;
+
+    i { font-size: 12px; }
   }
 
   &__qty {
-    font-size: 15px;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: $space-1;
+  }
+
+  &__qty-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #111827;
-    min-width: 24px;
+    cursor: pointer;
+
+    &:active { background: #F3F4F6; }
+  }
+
+  &__qty-value {
+    min-width: 32px;
     text-align: center;
-  }
-}
-
-.counter-qty-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  background: white;
-  color: #374151;
-  cursor: pointer;
-  font-size: 14px;
-
-  &:active {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-  }
-}
-
-.counter-remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  margin-left: auto;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: #dc2626;
-  cursor: pointer;
-  font-size: 14px;
-
-  &:active {
-    background: #fef2f2;
-  }
-}
-
-.counter-order-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  color: #9ca3af;
-
-  p {
-    font-size: 15px;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Footer — Total, Bills, Action Buttons
-// ---------------------------------------------------------------------------
-
-.counter-footer {
-  flex-shrink: 0;
-  padding: 12px 0 16px;
-  border-top: 2px solid #e5e7eb;
-}
-
-.counter-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-
-  span:first-child {
-    font-size: 18px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  &__amount {
-    font-size: 28px;
+    font-size: 17px;
     font-weight: 700;
     color: #111827;
   }
-}
 
-.counter-bills {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.counter-bill-btn {
-  height: 56px;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
-  background: white;
-  font-size: 16px;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.1s;
-
-  &:active {
-    transform: scale(0.96);
-  }
-
-  &--active {
-    border-color: #16a34a;
-    background: #f0fdf4;
-    color: #16a34a;
+  &__note-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    border-radius: 8px;
+    color: #D97706;
+    cursor: pointer;
   }
 }
 
-.counter-change {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-  padding: 8px 12px;
-  background: #f0fdf4;
-  border-radius: 8px;
-
-  span:first-child {
+.waiter-note {
+  &__input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 $space-3;
     font-size: 16px;
-    font-weight: 500;
-    color: #374151;
-  }
-
-  &__amount {
-    font-size: 20px;
-    font-weight: 700;
-    color: #16a34a;
   }
 }
 
-// Action buttons — side by side when both shown
-.counter-actions {
-  display: flex;
-  gap: 10px;
+// ----------------------------------------------------------------------------
+// Animations
+// ----------------------------------------------------------------------------
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.counter-action-btn {
-  flex: 1;
-  height: 72px;
-  border: none;
-  border-radius: 12px;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  letter-spacing: 0.3px;
-  transition: background 0.15s;
-
-  &:disabled {
-    background: #d1d5db;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-
-  &--kitchen {
-    background: #d97706;
-    color: white;
-
-    &:active:not(:disabled) {
-      background: #b45309;
-    }
-  }
-
-  &--cobrar {
-    background: #16a34a;
-    color: white;
-
-    &:active:not(:disabled) {
-      background: #15803d;
-    }
-  }
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
-// ---------------------------------------------------------------------------
-// Payment Dialog
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// Tablet breakpoint — two-column layout for bigger screens
+// ----------------------------------------------------------------------------
 
-.counter-pay-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  &__row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 18px;
-
-    strong {
-      font-weight: 700;
+@media (min-width: 768px) {
+  .waiter {
+    &__products {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
-
-    &--change {
-      padding-top: 12px;
-      border-top: 2px solid #e5e7eb;
-
-      strong {
-        color: #16a34a;
-        font-size: 22px;
-      }
-    }
-  }
-
-  &__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
   }
 }
