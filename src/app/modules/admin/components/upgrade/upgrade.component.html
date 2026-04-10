@@ -1,0 +1,57 @@
+<div class="upgrade-page">
+
+  <header class="upgrade-page__header">
+    <span class="upgrade-page__badge">Plan {{ currentPlanName() }}</span>
+    <h1 class="upgrade-page__title">
+      @if (isAlreadyPro()) {
+        Ya tienes acceso a las funciones Pro
+      } @else {
+        Mejora a Pro y desbloquea todo el potencial de tu POS
+      }
+    </h1>
+    <p class="upgrade-page__subtitle">
+      Pasa de operar un negocio a escalarlo. Todas las herramientas para
+      delegar, facturar y crecer — en un solo plan.
+    </p>
+  </header>
+
+  <section class="upgrade-page__features">
+    @for (feature of proFeatures; track feature.title) {
+      <article class="feature-card">
+        <i [class]="'pi ' + feature.icon + ' feature-card__icon'"></i>
+        <h3 class="feature-card__title">{{ feature.title }}</h3>
+        <p class="feature-card__description">{{ feature.description }}</p>
+      </article>
+    }
+  </section>
+
+  <section class="upgrade-page__cta">
+    @if (!isAlreadyPro()) {
+      <div class="upgrade-page__price">
+        <span class="upgrade-page__price-amount">$249</span>
+        <span class="upgrade-page__price-unit">MXN / mes</span>
+        <span class="upgrade-page__price-promo">Precio promocional</span>
+      </div>
+      <button
+        pButton
+        type="button"
+        class="upgrade-page__cta-btn"
+        label="Mejorar a Pro"
+        icon="pi pi-arrow-right"
+        iconPos="right"
+        (click)="openCheckout()"
+      ></button>
+    }
+    <button
+      pButton
+      type="button"
+      class="upgrade-page__back-btn"
+      label="Volver al panel"
+      icon="pi pi-arrow-left"
+      severity="secondary"
+      [outlined]="true"
+      (click)="goBack()"
+    ></button>
+  </section>
+
+</div>
