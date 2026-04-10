@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 
@@ -12,6 +12,7 @@ import {
 } from '../models';
 import { CashMovementType, CashRegisterStatus } from '../enums';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 import { DeviceService } from './device.service';
 
@@ -43,14 +44,48 @@ export class CashRegisterService implements OnDestroy {
   //#endregion
 
   //#region Constructor
+
+  private readonly authService = inject(AuthService);
+
+  /** Guard so the silent recovery runs at most once per service lifetime */
+  private hasAttemptedRecovery = false;
+
   constructor(
     private readonly api: ApiService,
     private readonly db: DatabaseService,
     private readonly deviceService: DeviceService,
-  ) {}
+  ) {
+    // Silent auto-recovery: when the user becomes authenticated (either after
+    // login or restored from localStorage on a page refresh), look up the
+    // register linked to this device's UUID. This prevents the UI from
+    // wrongly asking the user to "Vincular" a register that already exists
+    // on the backend, which would crash with a 400 error.
+    effect(() => {
+      if (this.authService.isAuthenticated() && !this.hasAttemptedRecovery) {
+        this.hasAttemptedRecovery = true;
+        void this.silentlyRecoverLinkedRegister();
+      }
+    }, { allowSignalWrites: true });
+  }
 
   ngOnDestroy(): void {
     this.stopPolling();
+  }
+
+  /**
+   * Best-effort lookup of the register linked to this device's UUID.
+   * Silent: never throws, never shows toasts. 404s are treated as "no
+   * linked register" and ignored.
+   */
+  private async silentlyRecoverLinkedRegister(): Promise<void> {
+    try {
+      const uuid = this.deviceService.deviceUuid;
+      if (!uuid) return;
+      const register = await this.getRegisterByDevice(uuid);
+      if (register) this._linkedRegister.set(register);
+    } catch {
+      // Silent — recovery is best-effort
+    }
   }
   //#endregion
 
@@ -284,6 +319,11 @@ export class CashRegisterService implements OnDestroy {
    * Looks up the cash register assigned to a specific device UUID.
    * @param uuid Device UUID to look up
    * @returns The linked register, or null if none is assigned
+   *
+   * Resolution order:
+   *   - 200 → cache and return the register
+   *   - 404 → no register linked, return null silently (expected case)
+   *   - other errors (offline, 500, timeout) → fall back to Dexie cache
    */
   async getRegisterByDevice(uuid: string): Promise<CashRegister | null> {
     try {
@@ -294,7 +334,13 @@ export class CashRegisterService implements OnDestroy {
         await this.db.cashRegisters.put(register);
       }
       return register ?? null;
-    } catch (error) {
+    } catch (error: unknown) {
+      const status = (error as { status?: number })?.status;
+
+      // 404 = no register linked yet — expected, not an error
+      if (status === 404) return null;
+
+      // Other failures (offline, 500, timeout) → try Dexie cache
       console.warn('[CashRegisterService] API unreachable — using Dexie fallback for register lookup:', error);
       const local = await this.db.cashRegisters
         .where({ deviceUuid: uuid })
