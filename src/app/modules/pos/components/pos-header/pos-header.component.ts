@@ -552,6 +552,35 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   /** Controls the full-screen session blocker overlay */
   readonly showSessionBlocker = computed(() => !this.cashRegisterService.hasOpenSession());
 
+  /**
+   * Strict state machine for the cash register setup flow inside the blocker.
+   * States are mutually exclusive — the template uses @switch on this signal
+   * to render exactly one UI block at a time.
+   *
+   * - 'loading'      → an async action is in flight (linking or opening)
+   * - 'needsLinking' → no register linked to this device yet
+   * - 'needsOpening' → register linked but no open session
+   * - 'isOpen'       → register linked and a session is open (blocker is hidden)
+   */
+  readonly setupState = computed<'loading' | 'needsLinking' | 'needsOpening' | 'isOpen'>(() => {
+    if (this.isLinkingDevice() || this.isOpeningSession()) return 'loading';
+    if (this.cashRegisterService.hasOpenSession()) return 'isOpen';
+    if (!this.linkedRegister()) return 'needsLinking';
+    return 'needsOpening';
+  });
+
+  /** Controls visibility of the takeover confirmation dialog */
+  readonly takeoverDialogVisible = signal(false);
+
+  /** Name of the register the user attempted to create when 409 was returned */
+  readonly pendingTakeoverName = signal('');
+
+  /** ID of the existing register on the backend (returned in the 409 body) */
+  readonly pendingExistingRegisterId = signal<number | null>(null);
+
+  /** Whether the existing register has an open session (returned in the 409 body) */
+  readonly pendingHasOpenSession = signal(false);
+
   /** True when the user is an Owner or Manager (can self-link a register) */
   readonly canSelfLink = computed(() => {
     const roleId = this.authService.currentUser()?.roleId;
@@ -567,35 +596,106 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   /** True while the self-link flow is in progress */
   readonly isLinkingDevice = signal(false);
 
+  /** Default name used by the one-click self-link flow */
+  private readonly DEFAULT_REGISTER_NAME = 'Caja Principal';
+
   /**
    * One-click self-link for Owners/Managers: creates a register named
    * "Caja Principal", links it to this device, and resolves it so the
-   * session blocker unlocks the amount input and "Abrir Turno" button.
+   * session blocker advances to `needsOpening`.
+   *
+   * If the backend returns 409 `register_name_taken`, the takeover dialog
+   * is shown so the user can reclaim the existing register.
    */
   async linkDeviceAsRegister(): Promise<void> {
     if (this.isLinkingDevice()) return;
+    this.isLinkingDevice.set(true);
+
+    try {
+      await this.createAndLinkRegister(this.DEFAULT_REGISTER_NAME, false);
+    } catch (error: unknown) {
+      this.handleLinkError(error, this.DEFAULT_REGISTER_NAME);
+    } finally {
+      this.isLinkingDevice.set(false);
+    }
+  }
+
+  /**
+   * Performs the create + link + resolve sequence and shows the success toast.
+   * Throws the original error so callers can branch on HTTP 409.
+   */
+  private async createAndLinkRegister(name: string, takeover: boolean): Promise<void> {
+    const register = await this.cashRegisterService.createRegister(name, true, takeover);
+    await this.cashRegisterService.linkDevice(register.id, this.deviceService.deviceUuid);
+    await this.cashRegisterService.resolveLinkedRegister();
+    this.messageService.add({
+      severity: 'success',
+      summary: takeover ? 'Caja reconectada' : 'Caja vinculada',
+      detail: `"${register.name}" asignada a este dispositivo.`,
+      life: 4000,
+    });
+  }
+
+  /**
+   * Inspects a link error: if it is HTTP 409 with `register_name_taken`,
+   * opens the takeover dialog. Otherwise shows a generic error toast.
+   */
+  private handleLinkError(error: unknown, attemptedName: string): void {
+    const httpError = error as { status?: number; error?: { error?: string; existingRegisterId?: number; hasOpenSession?: boolean } };
+
+    if (httpError?.status === 409 && httpError.error?.error === 'register_name_taken') {
+      this.pendingTakeoverName.set(attemptedName);
+      this.pendingExistingRegisterId.set(httpError.error.existingRegisterId ?? null);
+      this.pendingHasOpenSession.set(httpError.error.hasOpenSession ?? false);
+      this.takeoverDialogVisible.set(true);
+      return;
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error al vincular',
+      detail: 'No se pudo crear la caja. Verifica tu conexión.',
+      life: 5000,
+    });
+  }
+
+  /**
+   * User confirmed the takeover from the dialog. Re-runs the create flow
+   * with `takeover: true` so the backend reclaims the existing register.
+   */
+  async confirmTakeover(): Promise<void> {
+    if (this.isLinkingDevice()) return;
+
+    const name = this.pendingTakeoverName();
+    if (!name) return;
 
     this.isLinkingDevice.set(true);
     try {
-      const register = await this.cashRegisterService.createRegister('Caja Principal', true);
-      await this.cashRegisterService.linkDevice(register.id, this.deviceService.deviceUuid);
-      await this.cashRegisterService.resolveLinkedRegister();
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Caja vinculada',
-        detail: `"${register.name}" asignada a este dispositivo.`,
-        life: 4000,
-      });
+      await this.createAndLinkRegister(name, true);
+      this.closeTakeoverDialog();
     } catch {
       this.messageService.add({
         severity: 'error',
-        summary: 'Error al vincular',
-        detail: 'No se pudo crear la caja. Verifica tu conexión.',
+        summary: 'No se pudo reconectar',
+        detail: 'Verifica tu conexión e intenta de nuevo.',
         life: 5000,
       });
     } finally {
       this.isLinkingDevice.set(false);
     }
+  }
+
+  /** User dismissed the takeover dialog without taking action */
+  cancelTakeover(): void {
+    this.closeTakeoverDialog();
+  }
+
+  /** Resets the takeover dialog state */
+  private closeTakeoverDialog(): void {
+    this.takeoverDialogVisible.set(false);
+    this.pendingTakeoverName.set('');
+    this.pendingExistingRegisterId.set(null);
+    this.pendingHasOpenSession.set(false);
   }
 
   /** Opens a new cash register session and dismisses the blocker */

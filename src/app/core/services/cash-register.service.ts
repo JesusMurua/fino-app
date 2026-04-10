@@ -227,12 +227,16 @@ export class CashRegisterService implements OnDestroy {
 
   /**
    * Creates a new physical cash register.
+   * If a register with the same name already exists, the API returns
+   * HTTP 409 with `{ error: 'register_name_taken', existingRegisterId, hasOpenSession }`.
+   * Pass `takeover: true` on a follow-up call to reclaim the existing register.
    * @param name Human-readable name (e.g. "Caja 1")
    * @param isActive Whether the register is active
+   * @param takeover When true, signals the API to reclaim an existing register with the same name
    */
-  async createRegister(name: string, isActive: boolean): Promise<CashRegister> {
+  async createRegister(name: string, isActive: boolean, takeover = false): Promise<CashRegister> {
     const register = await firstValueFrom(
-      this.api.post<CashRegister>('/cashregister/registers', { name, isActive }),
+      this.api.post<CashRegister>('/cashregister/registers', { name, isActive, takeover }),
     );
     await this.db.cashRegisters.put(register);
     return register;
