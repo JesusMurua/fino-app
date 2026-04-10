@@ -104,10 +104,23 @@ const ENTERPRISE_FEATURES: FeatureKey[] = [
 
 /** Features unlocked per plan tier */
 export const PLAN_FEATURE_MAP: Record<PlanTypeId, FeatureKey[]> = {
-  [PlanTypeId.Free]: [],
+  [PlanTypeId.Free]: [FeatureKey.HardwarePrinter],
   [PlanTypeId.Basic]: BASIC_FEATURES,
   [PlanTypeId.Pro]: PRO_FEATURES,
   [PlanTypeId.Enterprise]: ENTERPRISE_FEATURES,
+};
+
+/** Quantitative limits per plan tier */
+export interface PlanLimits {
+  maxUsers: number;
+  maxProducts: number;
+}
+
+export const PLAN_LIMITS: Record<PlanTypeId, PlanLimits> = {
+  [PlanTypeId.Free]:       { maxUsers: 3,        maxProducts: 100 },
+  [PlanTypeId.Basic]:      { maxUsers: Infinity,  maxProducts: Infinity },
+  [PlanTypeId.Pro]:        { maxUsers: Infinity,  maxProducts: Infinity },
+  [PlanTypeId.Enterprise]: { maxUsers: Infinity,  maxProducts: Infinity },
 };
 
 /** Features relevant per business type (regardless of plan) */
@@ -175,7 +188,7 @@ export const FEATURE_MIN_PLAN: Record<FeatureKey, PlanTypeId> = {
   [FeatureKey.Zones]: PlanTypeId.Basic,
   [FeatureKey.BarSeats]: PlanTypeId.Basic,
   [FeatureKey.KioskMode]: PlanTypeId.Basic,
-  [FeatureKey.HardwarePrinter]: PlanTypeId.Basic,
+  [FeatureKey.HardwarePrinter]: PlanTypeId.Free,
   [FeatureKey.HardwareScanner]: PlanTypeId.Basic,
   [FeatureKey.Promotions]: PlanTypeId.Basic,
   [FeatureKey.AdvancedReports]: PlanTypeId.Pro,
