@@ -1,5 +1,6 @@
 import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { MessageService } from 'primeng/api';
 import { tap } from 'rxjs';
 
 import { AUTH_TOKEN_KEY } from '../models';
@@ -42,6 +43,8 @@ export const authInterceptor: HttpInterceptorFn = (
     }
   }
 
+  const messageService = inject(MessageService);
+
   return next(request).pipe(
     tap({
       error: (error) => {
@@ -51,6 +54,17 @@ export const authInterceptor: HttpInterceptorFn = (
           if (!isPublicRoute) {
             authService.logout();
           }
+        }
+
+        if (error.status === 402) {
+          const body = error.error;
+          const detail = body?.message ?? 'Límite de plan alcanzado. Mejora a Pro para continuar.';
+          messageService.add({
+            severity: 'warn',
+            summary: 'Plan limitado',
+            detail,
+            life: 6000,
+          });
         }
       },
     }),
