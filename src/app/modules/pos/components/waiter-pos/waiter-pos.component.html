@@ -1,225 +1,259 @@
-<p-toast />
+<div class="waiter">
 
-<div class="counter-layout">
+  <!-- ============================================================== -->
+  <!-- VIEW A — Table picker                                           -->
+  <!-- ============================================================== -->
+  @if (!selectedTable()) {
+    <header class="waiter__header">
+      <h1 class="waiter__title">Seleccionar mesa</h1>
+      <p class="waiter__subtitle">Toca la mesa donde vas a tomar la orden</p>
+    </header>
 
-  <!-- Search (small, secondary) -->
-  <div class="counter-search">
-    <i class="pi pi-search counter-search__icon"></i>
-    <input
-      type="text"
-      placeholder="Buscar..."
-      class="counter-search__input"
-      [value]="searchTerm()"
-      (input)="onSearchInput($event)"
-    />
-    @if (searchTerm()) {
-      <button
-        type="button"
-        class="counter-search__clear"
-        (click)="clearSearch()"
-        aria-label="Limpiar búsqueda"
-      >
-        <i class="pi pi-times"></i>
-      </button>
-    }
-  </div>
-
-  <!-- Category Chips -->
-  <nav class="counter-categories" aria-label="Categorías">
-    <button
-      type="button"
-      class="counter-chip"
-      [class.counter-chip--active]="selectedCategory() === null"
-      (click)="selectCategory(null)"
-    >
-      Todos
-    </button>
-    @for (cat of categories(); track cat.id) {
-      <button
-        type="button"
-        class="counter-chip"
-        [class.counter-chip--active]="selectedCategory() === cat.id"
-        (click)="selectCategory(cat.id)"
-      >
-        {{ cat.name }}
-      </button>
-    }
-  </nav>
-
-  <!-- Product Grid -->
-  <div class="counter-products">
-    @for (product of filteredProducts(); track product.id) {
-      <button
-        type="button"
-        class="counter-product-card"
-        (click)="addToCart(product)"
-      >
-        <span class="counter-product-card__name">{{ product.name }}</span>
-        <span class="counter-product-card__price">{{ product.priceCents | price }}</span>
-      </button>
-    } @empty {
-      @if (!isLoading()) {
-        <div class="counter-empty">
-          <i class="pi pi-inbox"></i>
-          <p>No hay productos</p>
-        </div>
-      }
-    }
-  </div>
-
-  <!-- Order List -->
-  <div class="counter-order">
-    <div class="counter-order__header">
-      <h2>Orden</h2>
-      @if (cartItems().length > 0) {
+    <div class="waiter__tables-grid">
+      @for (table of tables(); track table.id) {
         <button
           type="button"
-          class="counter-order__clear"
-          (click)="clearCart()"
-          aria-label="Vaciar orden"
+          class="waiter-table-card"
+          [class.waiter-table-card--occupied]="table.tableStatusId === 2"
+          (click)="selectTable(table)"
         >
-          <i class="pi pi-trash"></i>
+          <span class="waiter-table-card__name">{{ table.name }}</span>
+          @if (table.capacity) {
+            <span class="waiter-table-card__capacity">
+              <i class="pi pi-users"></i> {{ table.capacity }}
+            </span>
+          }
+        </button>
+      }
+
+      @if (tables().length === 0) {
+        <div class="waiter__empty-state">
+          <i class="pi pi-inbox"></i>
+          <p>No hay mesas configuradas para esta sucursal.</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ============================================================== -->
+  <!-- VIEW B — Order composer for the selected table                  -->
+  <!-- ============================================================== -->
+  @if (selectedTable(); as table) {
+    <header class="waiter__header waiter__header--order">
+      <button
+        type="button"
+        class="waiter__back-btn"
+        (click)="backToTables()"
+        aria-label="Volver a mesas"
+      >
+        <i class="pi pi-arrow-left"></i>
+        <span>Mesas</span>
+      </button>
+      <div class="waiter__table-badge">
+        <i class="pi pi-th-large"></i>
+        <span>{{ table.name }}</span>
+      </div>
+    </header>
+
+    <div class="waiter__search">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        placeholder="Buscar platillo…"
+        [value]="searchTerm()"
+        (input)="onSearchInput($event)"
+      />
+      @if (searchTerm()) {
+        <button type="button" class="waiter__search-clear" (click)="clearSearch()">
+          <i class="pi pi-times"></i>
         </button>
       }
     </div>
 
-    <div class="counter-order__items">
-      @for (item of cartItems(); track item.id) {
-        <div class="counter-order-item">
-          <div class="counter-order-item__info">
-            <span class="counter-order-item__name">{{ item.product.name }}</span>
-            <span class="counter-order-item__subtotal">{{ item.totalPriceCents | price }}</span>
-          </div>
-          <div class="counter-order-item__controls">
-            <button
-              type="button"
-              class="counter-qty-btn"
-              (click)="updateQuantity(item.id, -1)"
-              aria-label="Disminuir cantidad"
-            >
-              <i class="pi pi-minus"></i>
-            </button>
-            <span class="counter-order-item__qty">{{ item.quantity }}</span>
-            <button
-              type="button"
-              class="counter-qty-btn"
-              (click)="updateQuantity(item.id, 1)"
-              aria-label="Aumentar cantidad"
-            >
-              <i class="pi pi-plus"></i>
-            </button>
-            <button
-              type="button"
-              class="counter-remove-btn"
-              (click)="removeItem(item.id)"
-              aria-label="Eliminar producto"
-            >
-              <i class="pi pi-times"></i>
-            </button>
-          </div>
-        </div>
-      } @empty {
-        <div class="counter-order-empty">
-          <p>Agrega productos a la orden</p>
-        </div>
+    <nav class="waiter__categories" aria-label="Categorías">
+      <button
+        type="button"
+        class="waiter-cat-btn"
+        [class.waiter-cat-btn--active]="selectedCategory() === null"
+        (click)="selectCategory(null)"
+      >
+        Todas
+      </button>
+      @for (cat of categories(); track cat.id) {
+        <button
+          type="button"
+          class="waiter-cat-btn"
+          [class.waiter-cat-btn--active]="selectedCategory() === cat.id"
+          (click)="selectCategory(cat.id)"
+        >
+          {{ cat.name }}
+        </button>
       }
-    </div>
-  </div>
+    </nav>
 
-  <!-- Footer: Total + Bills + Actions -->
-  <div class="counter-footer">
-    <div class="counter-total">
-      <span>Total</span>
-      <span class="counter-total__amount">{{ cartTotal() | price }}</span>
-    </div>
-
-    <!-- Bill Denomination Buttons -->
-    @if (cartItems().length > 0) {
-      <div class="counter-bills">
-        @for (bill of bills; track bill.cents) {
+    <main class="waiter__products">
+      @if (isLoading()) {
+        <div class="waiter__loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando catálogo…</span>
+        </div>
+      } @else {
+        @for (product of filteredProducts(); track product.id) {
           <button
             type="button"
-            class="counter-bill-btn"
-            [class.counter-bill-btn--active]="amountTendered() === bill.cents"
-            (click)="selectBill(bill.cents)"
+            class="waiter-product-btn"
+            (click)="addToCart(product)"
           >
-            {{ bill.label }}
+            <span class="waiter-product-btn__name">{{ product.name }}</span>
+            <span class="waiter-product-btn__price">
+              {{ product.priceCents | price }}
+            </span>
           </button>
         }
-      </div>
-
-      @if (amountTendered() > 0) {
-        <div class="counter-change">
-          <span>Cambio:</span>
-          <span class="counter-change__amount">{{ change() | price }}</span>
-        </div>
+        @if (filteredProducts().length === 0) {
+          <div class="waiter__empty-state">
+            <i class="pi pi-inbox"></i>
+            <p>Sin productos para los filtros seleccionados.</p>
+          </div>
+        }
       }
-    }
+    </main>
 
-    <!-- Action Buttons -->
-    <div class="counter-actions">
-      @if (hasKitchen()) {
-        <button
-          type="button"
-          class="counter-action-btn counter-action-btn--kitchen"
-          [disabled]="cartItems().length === 0"
-          (click)="sendToKitchen()"
-        >
-          <i class="pi pi-send"></i>
-          ENVIAR A COCINA
-        </button>
-      }
+    <!-- Floating cart trigger — always visible at the bottom -->
+    @if (cartItemCount() > 0) {
       <button
         type="button"
-        class="counter-action-btn counter-action-btn--cobrar"
-        [disabled]="cartItems().length === 0"
-        (click)="openPayDialog()"
+        class="waiter__cart-fab"
+        (click)="openCart()"
       >
-        COBRAR {{ cartTotal() | price }}
+        <span class="waiter__cart-fab-count">{{ cartItemCount() }}</span>
+        <span class="waiter__cart-fab-label">Ver comanda</span>
+        <span class="waiter__cart-fab-total">{{ cartTotal() | price }}</span>
       </button>
-    </div>
-  </div>
+    }
+  }
 
-</div>
+  <!-- ============================================================== -->
+  <!-- BOTTOM SHEET — Current order                                    -->
+  <!-- ============================================================== -->
+  @if (isCartOpen() && selectedTable(); as table) {
+    <div class="waiter-sheet-backdrop" (click)="closeCart()"></div>
+    <aside class="waiter-sheet" role="dialog" aria-label="Comanda actual">
+      <header class="waiter-sheet__header">
+        <div>
+          <h2 class="waiter-sheet__title">Comanda de {{ table.name }}</h2>
+          <p class="waiter-sheet__meta">
+            {{ cartItemCount() }} {{ cartItemCount() === 1 ? 'platillo' : 'platillos' }}
+            · {{ cartTotal() | price }}
+          </p>
+        </div>
+        <button type="button" class="waiter-sheet__close" (click)="closeCart()">
+          <i class="pi pi-times"></i>
+        </button>
+      </header>
 
-<!-- Payment Confirmation Dialog -->
-<p-dialog
-  header="Confirmar cobro"
-  [(visible)]="showPayDialog"
-  [modal]="true"
-  [closable]="true"
-  [style]="{ width: '90vw', maxWidth: '400px' }"
-  [contentStyle]="{ padding: '1.5rem' }"
->
-  <div class="counter-pay-dialog">
-    <div class="counter-pay-dialog__row">
-      <span>Total:</span>
-      <strong>{{ cartTotal() | price }}</strong>
-    </div>
-    <div class="counter-pay-dialog__row">
-      <span>Recibido:</span>
-      <strong>{{ amountTendered() | price }}</strong>
-    </div>
-    <div class="counter-pay-dialog__row counter-pay-dialog__row--change">
-      <span>Cambio:</span>
-      <strong>{{ change() | price }}</strong>
-    </div>
-  </div>
+      <ul class="waiter-sheet__list">
+        @for (item of cartItems(); track item.id) {
+          <li class="waiter-sheet-item">
+            <div class="waiter-sheet-item__main">
+              <span class="waiter-sheet-item__name">{{ item.product.name }}</span>
+              @if (item.notes) {
+                <span class="waiter-sheet-item__note">
+                  <i class="pi pi-comment"></i> {{ item.notes }}
+                </span>
+              }
+            </div>
+            <div class="waiter-sheet-item__qty">
+              <button
+                type="button"
+                class="waiter-sheet-item__qty-btn"
+                (click)="updateQuantity(item.id, -1)"
+                aria-label="Quitar uno"
+              >
+                <i class="pi pi-minus"></i>
+              </button>
+              <span class="waiter-sheet-item__qty-value">{{ item.quantity }}</span>
+              <button
+                type="button"
+                class="waiter-sheet-item__qty-btn"
+                (click)="updateQuantity(item.id, 1)"
+                aria-label="Agregar uno"
+              >
+                <i class="pi pi-plus"></i>
+              </button>
+            </div>
+            <button
+              type="button"
+              class="waiter-sheet-item__note-btn"
+              (click)="openNoteDialog(item.id)"
+              [attr.aria-label]="item.notes ? 'Editar nota' : 'Agregar nota'"
+            >
+              <i class="pi pi-comment"></i>
+            </button>
+          </li>
+        }
+      </ul>
 
-  <ng-template pTemplate="footer">
-    <div class="counter-pay-dialog__actions">
-      <p-button
+      <footer class="waiter-sheet__footer">
+        <button
+          type="button"
+          class="waiter-sheet__send-btn"
+          [disabled]="isSending() || cartItems().length === 0"
+          (click)="sendToKitchen()"
+        >
+          @if (isSending()) {
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Enviando…</span>
+          } @else {
+            <i class="pi pi-send"></i>
+            <span>ENVIAR A COCINA</span>
+          }
+        </button>
+      </footer>
+    </aside>
+  }
+
+  <!-- ============================================================== -->
+  <!-- DIALOG — Per-item quick note                                    -->
+  <!-- ============================================================== -->
+  <p-dialog
+    [visible]="showNoteDialog()"
+    (visibleChange)="showNoteDialog.set($event)"
+    [modal]="true"
+    [closable]="false"
+    [dismissableMask]="false"
+    [style]="{ width: '90vw', maxWidth: '420px' }"
+    header="Nota para cocina"
+  >
+    <input
+      type="text"
+      pInputText
+      class="waiter-note__input"
+      placeholder="Ej. Sin cebolla, término medio…"
+      [(ngModel)]="noteDraft"
+      [maxlength]="120"
+      autofocus
+    />
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        type="button"
         label="Cancelar"
         severity="secondary"
-        (onClick)="showPayDialog.set(false)"
-        styleClass="p-button-outlined"
-      />
-      <p-button
-        label="Confirmar"
-        severity="success"
-        (onClick)="confirmPayment()"
-        [disabled]="amountTendered() < cartTotal()"
-      />
-    </div>
-  </ng-template>
-</p-dialog>
+        [outlined]="true"
+        (click)="cancelNote()"
+      ></button>
+      <button
+        pButton
+        type="button"
+        label="Guardar nota"
+        icon="pi pi-check"
+        (click)="saveNote()"
+      ></button>
+    </ng-template>
+  </p-dialog>
+
+  <p-toast position="top-center" />
+
+</div>
