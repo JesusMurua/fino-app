@@ -1,0 +1,57 @@
+<div class="restaurant-hub">
+
+  <header class="restaurant-hub__header">
+    <h1 class="restaurant-hub__title">Caja Principal</h1>
+    <p-selectButton
+      [options]="channelOptions"
+      [ngModel]="activeChannel()"
+      (ngModelChange)="setChannel($event)"
+      optionLabel="label"
+      optionValue="value"
+      styleClass="restaurant-hub__switcher"
+    >
+      <ng-template let-option pTemplate="item">
+        <i [class]="option.icon"></i>
+        <span>{{ option.label }}</span>
+      </ng-template>
+    </p-selectButton>
+  </header>
+
+  <section class="restaurant-hub__viewport">
+    @switch (activeChannel()) {
+      @case ('tables') {
+        <app-tables />
+      }
+      @case ('takeout') {
+        <app-product-grid />
+      }
+      @case ('delivery') {
+        <div class="restaurant-hub__placeholder">
+          <i class="pi pi-send restaurant-hub__placeholder-icon"></i>
+          <h2>Órdenes de Delivery</h2>
+          <p>
+            Aquí aparecerán las órdenes externas de Uber Eats, Rappi y DiDi Food
+            cuando integres tu cuenta en Configuración → Sucursales.
+          </p>
+          <table class="restaurant-hub__delivery-table">
+            <thead>
+              <tr>
+                <th>Plataforma</th>
+                <th>Folio</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="restaurant-hub__delivery-empty">
+                <td colspan="5">Sin órdenes de delivery por ahora.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </section>
+
+</div>

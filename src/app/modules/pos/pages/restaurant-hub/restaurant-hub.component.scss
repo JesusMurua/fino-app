@@ -1,0 +1,108 @@
+@use '../../../../../styles/variables' as *;
+
+.restaurant-hub {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #F9FAFB;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $space-3 $space-4;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5E7EB;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  &__title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  &__switcher {
+    :host ::ng-deep .p-selectbutton .p-button {
+      display: flex;
+      align-items: center;
+      gap: $space-1;
+      padding: $space-2 $space-3;
+      font-size: 16px;
+      font-weight: 500;
+      min-height: 48px;
+    }
+  }
+
+  &__viewport {
+    flex: 1;
+    overflow: auto;
+  }
+
+  &__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: $space-3;
+    padding: $space-7 $space-4;
+    color: #6B7280;
+    text-align: center;
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+
+    p {
+      max-width: 480px;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+  }
+
+  &__placeholder-icon {
+    font-size: 48px;
+    color: #16A34A;
+  }
+
+  &__delivery-table {
+    width: 100%;
+    max-width: 720px;
+    margin-top: $space-4;
+    border-collapse: collapse;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    overflow: hidden;
+
+    th, td {
+      padding: $space-2 $space-3;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    thead {
+      background: #F3F4F6;
+      th {
+        font-weight: 600;
+        color: #374151;
+      }
+    }
+
+    tbody td {
+      border-top: 1px solid #E5E7EB;
+      color: #6B7280;
+    }
+  }
+
+  &__delivery-empty td {
+    text-align: center;
+    padding: $space-4;
+    font-style: italic;
+  }
+}

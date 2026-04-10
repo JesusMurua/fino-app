@@ -67,15 +67,14 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'cash',
-        loadComponent: () =>
-          import('./components/cash-register/cash-register.component')
-            .then(m => m.CashRegisterComponent),
+        redirectTo: 'registers',
+        pathMatch: 'full',
       },
       {
         path: 'registers',
         loadComponent: () =>
-          import('./components/admin-registers/admin-registers.component')
-            .then(m => m.AdminRegistersComponent),
+          import('./components/cajas-container/cajas-container.component')
+            .then(m => m.CajasContainerComponent),
       },
       {
         path: 'reservations',
