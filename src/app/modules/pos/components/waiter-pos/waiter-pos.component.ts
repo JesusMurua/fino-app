@@ -10,6 +10,7 @@ import { ToastModule } from 'primeng/toast';
 import { CartItem, Order, Product, RestaurantTable } from '../../../../core/models';
 import { KitchenStatusId, SyncStatusId } from '../../../../core/enums';
 import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
+import { NotificationToggleComponent } from '../../../../shared/components/notification-toggle/notification-toggle.component';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -46,6 +47,7 @@ interface WaiterDraft {
     ButtonModule,
     DialogModule,
     InputTextModule,
+    NotificationToggleComponent,
     ToastModule,
     PricePipe,
   ],

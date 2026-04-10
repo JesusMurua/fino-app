@@ -12,12 +12,13 @@ import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
 import { KitchenService } from '../../core/services/kitchen.service';
+import { NotificationToggleComponent } from '../../shared/components/notification-toggle/notification-toggle.component';
 import { KitchenOrderCardComponent } from './kitchen-order-card.component';
 
 @Component({
 	selector: 'app-kitchen-display',
 	standalone: true,
-	imports: [DatePipe, KitchenOrderCardComponent, ToastModule],
+	imports: [DatePipe, KitchenOrderCardComponent, NotificationToggleComponent, ToastModule],
 	providers: [MessageService],
 	templateUrl: './kitchen-display.component.html',
 	styleUrl: './kitchen-display.component.scss',
