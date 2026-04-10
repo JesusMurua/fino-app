@@ -558,67 +558,148 @@
       <h2 class="session-blocker__title">Caja Cerrada</h2>
       <p class="session-blocker__subtitle">Abre un turno de caja para comenzar a cobrar</p>
 
-      <!-- Multi-till: show linked register, self-link button, or warning -->
-      @if (linkedRegister(); as reg) {
-        <div class="session-blocker__register-badge">
-          <i class="pi pi-desktop"></i>
-          Caja: {{ reg.name }}
-        </div>
-      } @else if (canSelfLink()) {
-        <button
-          type="button"
-          class="session-blocker__link-btn"
-          [disabled]="isLinkingDevice()"
-          (click)="linkDeviceAsRegister()"
-        >
-          @if (isLinkingDevice()) {
-            <i class="pi pi-spin pi-spinner"></i>
-            Vinculando...
+      @switch (setupState()) {
+
+        <!-- ============================================================ -->
+        <!-- State: needsLinking — no register tied to this device yet     -->
+        <!-- ============================================================ -->
+        @case ('needsLinking') {
+          @if (canSelfLink()) {
+            <button
+              type="button"
+              class="session-blocker__link-btn"
+              (click)="linkDeviceAsRegister()"
+            >
+              <i class="pi pi-link"></i>
+              Vincular este equipo como Caja Principal
+            </button>
           } @else {
-            <i class="pi pi-link"></i>
-            Vincular este equipo como Caja Principal
+            <div class="session-blocker__register-danger">
+              <i class="pi pi-exclamation-triangle"></i>
+              Dispositivo no vinculado. Asigna una caja en el panel de Admin para poder vender.
+            </div>
           }
-        </button>
-      } @else {
-        <div class="session-blocker__register-danger">
-          <i class="pi pi-exclamation-triangle"></i>
-          Dispositivo no vinculado. Asigna una caja en el panel de Admin para poder vender.
-        </div>
-      }
-
-      <div class="session-blocker__field">
-        <label for="session-amount">Monto inicial en caja (MXN)</label>
-        <p-inputNumber
-          inputId="session-amount"
-          [ngModel]="sessionAmountPesos()"
-          (ngModelChange)="sessionAmountPesos.set($event)"
-          mode="currency"
-          currency="MXN"
-          locale="es-MX"
-          [min]="0"
-          [disabled]="!linkedRegister()"
-          [style]="{ width: '100%' }"
-          inputStyleClass="session-blocker__input"
-        />
-      </div>
-
-      <button
-        type="button"
-        class="session-blocker__btn"
-        [disabled]="isOpeningSession() || !linkedRegister()"
-        (click)="openSessionFromBlocker()"
-      >
-        @if (isOpeningSession()) {
-          <i class="pi pi-spin pi-spinner"></i>
-          Abriendo...
-        } @else {
-          <i class="pi pi-lock-open"></i>
-          Abrir Turno
         }
-      </button>
+
+        <!-- ============================================================ -->
+        <!-- State: needsOpening — register linked, awaiting opening cash  -->
+        <!-- ============================================================ -->
+        @case ('needsOpening') {
+          @if (linkedRegister(); as reg) {
+            <div class="session-blocker__register-badge">
+              <i class="pi pi-desktop"></i>
+              Caja: {{ reg.name }}
+            </div>
+          }
+
+          <div class="session-blocker__field">
+            <label for="session-amount">Monto inicial en caja (MXN)</label>
+            <p-inputNumber
+              inputId="session-amount"
+              [ngModel]="sessionAmountPesos()"
+              (ngModelChange)="sessionAmountPesos.set($event)"
+              mode="currency"
+              currency="MXN"
+              locale="es-MX"
+              [min]="0"
+              [style]="{ width: '100%' }"
+              inputStyleClass="session-blocker__input"
+            />
+          </div>
+
+          <button
+            type="button"
+            class="session-blocker__btn"
+            (click)="openSessionFromBlocker()"
+          >
+            <i class="pi pi-lock-open"></i>
+            Abrir Turno
+          </button>
+        }
+
+        <!-- ============================================================ -->
+        <!-- State: loading — async action in flight                       -->
+        <!-- ============================================================ -->
+        @case ('loading') {
+          <button
+            type="button"
+            class="session-blocker__btn"
+            [disabled]="true"
+          >
+            <i class="pi pi-spin pi-spinner"></i>
+            @if (isLinkingDevice()) {
+              Vinculando...
+            } @else {
+              Abriendo turno...
+            }
+          </button>
+        }
+      }
     </div>
   </div>
 }
+
+<!-- ====================================================================== -->
+<!-- Takeover dialog — shown when the backend returns 409                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  [visible]="takeoverDialogVisible()"
+  (visibleChange)="takeoverDialogVisible.set($event)"
+  [modal]="true"
+  [showHeader]="false"
+  [closable]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '90vw', maxWidth: '460px' }"
+  styleClass="takeover-dialog"
+>
+  <div class="takeover">
+    <div class="takeover__icon">
+      <i class="pi pi-history"></i>
+    </div>
+    <h2 class="takeover__title">Caja Detectada</h2>
+    <p class="takeover__body">
+      Ya existe una caja llamada
+      <strong>"{{ pendingTakeoverName() }}"</strong>.
+      Para mantener tu historial seguro, vamos a reconectar este equipo a esa caja.
+    </p>
+
+    @if (pendingHasOpenSession()) {
+      <div class="takeover__warning">
+        <i class="pi pi-info-circle"></i>
+        Esa caja tiene un turno abierto. Al reconectar continuarás ese turno.
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="takeover__footer">
+      <button
+        type="button"
+        class="takeover__primary-btn"
+        [disabled]="isLinkingDevice()"
+        (click)="confirmTakeover()"
+      >
+        @if (isLinkingDevice()) {
+          <i class="pi pi-spin pi-spinner"></i>
+          Reconectando...
+        } @else {
+          <i class="pi pi-sync"></i>
+          Reconectar Caja
+        }
+      </button>
+      <button
+        type="button"
+        class="takeover__secondary-btn"
+        [disabled]="isLinkingDevice()"
+        (click)="cancelTakeover()"
+      >
+        Cancelar
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
 
 <!-- Confirm dialog for discard action -->
 <p-confirmDialog />
