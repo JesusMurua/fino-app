@@ -9,6 +9,10 @@
       <p class="waiter__subtitle">Toca la mesa donde vas a tomar la orden</p>
     </header>
 
+    <div class="waiter__notif-banner">
+      <app-notification-toggle variant="banner" />
+    </div>
+
     <div class="waiter__tables-grid">
       @for (table of tables(); track table.id) {
         <button

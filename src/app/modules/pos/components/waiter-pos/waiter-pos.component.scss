@@ -82,6 +82,14 @@
     }
   }
 
+  &__notif-banner {
+    padding: $space-3 $space-4 0;
+
+    // The banner toggle hides itself when permission is granted/denied,
+    // so we don't need conditional rendering wrappers here.
+    &:empty { display: none; }
+  }
+
   &__tables-grid {
     flex: 1;
     display: grid;

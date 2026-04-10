@@ -1,0 +1,86 @@
+@use '../../../../styles/variables' as *;
+
+.notif-toggle {
+  font-family: inherit;
+  cursor: pointer;
+
+  // ----- Compact (icon-only) -----
+  &--compact {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #FFFFFF;
+    color: #16A34A;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+
+    &:active { background: #F0FDF4; }
+  }
+
+  // ----- Pill (icon + label) -----
+  &--pill {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
+    min-height: 44px;
+    padding: 0 $space-3;
+    border: 1px solid #16A34A;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: #16A34A;
+    font-size: 14px;
+    font-weight: 600;
+
+    i { font-size: 16px; }
+
+    &:active { background: #F0FDF4; }
+  }
+
+  // ----- Banner (full-width CTA row) -----
+  &--banner {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    background: #F0FDF4;
+    border: 1px solid #16A34A;
+    border-radius: 12px;
+    cursor: default;
+  }
+
+  &__banner-icon {
+    font-size: 22px;
+    color: #16A34A;
+    flex-shrink: 0;
+  }
+
+  &__banner-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: #14532D;
+    font-size: 13px;
+    line-height: 1.4;
+
+    strong { font-size: 15px; font-weight: 700; }
+  }
+
+  &__banner-btn {
+    min-height: 44px;
+    padding: 0 $space-3;
+    background: #16A34A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:active { background: #15803D; }
+  }
+}

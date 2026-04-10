@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SelectButtonModule } from 'primeng/selectbutton';
 
+import { NotificationToggleComponent } from '../../../../shared/components/notification-toggle/notification-toggle.component';
 import { TablesComponent } from '../../../tables/tables.component';
 import { ProductGridComponent } from '../../components/product-grid/product-grid.component';
 
@@ -31,6 +32,7 @@ const CHANNEL_STORAGE_KEY = 'pos-restaurant-hub-channel';
   imports: [
     FormsModule,
     SelectButtonModule,
+    NotificationToggleComponent,
     TablesComponent,
     ProductGridComponent,
   ],

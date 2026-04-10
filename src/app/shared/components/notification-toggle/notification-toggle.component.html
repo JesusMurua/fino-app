@@ -1,0 +1,44 @@
+@if (shouldRender()) {
+  @switch (variant) {
+    @case ('compact') {
+      <button
+        type="button"
+        class="notif-toggle notif-toggle--compact"
+        (click)="enable()"
+        pTooltip="Activar notificaciones"
+        tooltipPosition="bottom"
+        aria-label="Activar notificaciones"
+      >
+        <i class="pi pi-bell"></i>
+      </button>
+    }
+    @case ('banner') {
+      <div class="notif-toggle notif-toggle--banner">
+        <i class="pi pi-bell notif-toggle__banner-icon"></i>
+        <div class="notif-toggle__banner-text">
+          <strong>Activa las notificaciones</strong>
+          <span>Recibe avisos de nuevas órdenes incluso con la app en segundo plano.</span>
+        </div>
+        <button
+          type="button"
+          class="notif-toggle__banner-btn"
+          (click)="enable()"
+        >
+          Activar
+        </button>
+      </div>
+    }
+    @default {
+      <button
+        type="button"
+        class="notif-toggle notif-toggle--pill"
+        (click)="enable()"
+        pTooltip="Activar notificaciones"
+        tooltipPosition="bottom"
+      >
+        <i class="pi pi-bell"></i>
+        <span>Activar</span>
+      </button>
+    }
+  }
+}

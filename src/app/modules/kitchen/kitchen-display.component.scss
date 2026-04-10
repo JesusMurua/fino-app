@@ -71,6 +71,12 @@
     color: $color-text-title;
   }
 
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+  }
+
   &__clock {
     font-size: 18px;
     font-weight: 600;

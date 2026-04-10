@@ -17,7 +17,10 @@
       </div>
       <span class="kds-header__title">{{ destinationName() }}</span>
     </div>
-    <span class="kds-header__clock">{{ now() | date:'HH:mm:ss' }}</span>
+    <div class="kds-header__actions">
+      <app-notification-toggle variant="compact" />
+      <span class="kds-header__clock">{{ now() | date:'HH:mm:ss' }}</span>
+    </div>
   </header>
 
   <!-- Job grid -->
