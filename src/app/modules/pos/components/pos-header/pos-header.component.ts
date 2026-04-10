@@ -628,6 +628,13 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     const register = await this.cashRegisterService.createRegister(name, true, takeover);
     await this.cashRegisterService.linkDevice(register.id, this.deviceService.deviceUuid);
     await this.cashRegisterService.resolveLinkedRegister();
+
+    // Re-fetch the active session scoped to the new register. If the
+    // takeover reclaimed a register that already had an open session
+    // (e.g. left running on another iPad), the blocker will dismiss
+    // immediately instead of asking for an opening amount.
+    await this.cashRegisterService.refreshActiveSession();
+
     this.messageService.add({
       severity: 'success',
       summary: takeover ? 'Caja reconectada' : 'Caja vinculada',

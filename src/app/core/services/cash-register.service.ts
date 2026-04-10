@@ -76,13 +76,28 @@ export class CashRegisterService implements OnDestroy {
    * Best-effort lookup of the register linked to this device's UUID.
    * Silent: never throws, never shows toasts. 404s are treated as "no
    * linked register" and ignored.
+   *
+   * After successfully recovering the register, re-fetches the active
+   * session scoped to that register's ID. Without this re-fetch, the
+   * earlier `loadActiveSession()` call from PIN login would have queried
+   * `/cashregister/session` with no `registerId` filter and could have
+   * missed the actual open session — leaving the UI in `needsOpening`
+   * even though a session is already running on the backend.
    */
   private async silentlyRecoverLinkedRegister(): Promise<void> {
     try {
       const uuid = this.deviceService.deviceUuid;
       if (!uuid) return;
+
       const register = await this.getRegisterByDevice(uuid);
-      if (register) this._linkedRegister.set(register);
+      if (!register) return;
+
+      this._linkedRegister.set(register);
+
+      // Re-query the session now that we know which register we own.
+      // The signal flip will reactively switch setupState() to 'isOpen'
+      // and hide the blocker without any user action.
+      await this.refreshActiveSession();
     } catch {
       // Silent — recovery is best-effort
     }
@@ -100,6 +115,18 @@ export class CashRegisterService implements OnDestroy {
     const session = await this.getOpenSession(branchId);
     this._activeSession.set(session);
     this.startPolling(branchId);
+  }
+
+  /**
+   * Re-queries the open session for the current branch and updates the
+   * `_activeSession` signal. Call this after the linked register changes
+   * (auto-recovery, takeover, manual link) so the session lookup runs
+   * with the correct `registerId` filter.
+   */
+  async refreshActiveSession(): Promise<void> {
+    const branchId = this.authService.branchId;
+    const session = await this.getOpenSession(branchId);
+    this._activeSession.set(session);
   }
 
   /**
