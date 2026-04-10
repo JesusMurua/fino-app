@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { PlanTypeId } from '../../core/enums';
+import { planGuard } from '../../core/guards/plan.guard';
+
 export const posRoutes: Routes = [
   {
     path: '',
@@ -33,6 +36,8 @@ export const posRoutes: Routes = [
   },
   {
     path: 'waiter',
+    canActivate: [planGuard],
+    data: { requiredPlan: PlanTypeId.Pro },
     loadComponent: () =>
       import('./components/waiter-pos/waiter-pos.component')
         .then(m => m.WaiterPosComponent),

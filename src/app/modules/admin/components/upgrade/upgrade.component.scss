@@ -1,0 +1,130 @@
+@use '../../../../../styles/variables' as *;
+
+.upgrade-page {
+  padding: $space-6 $space-4;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+
+  &__header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    align-items: center;
+  }
+
+  &__badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #F3F4F6;
+    color: #6B7280;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 999px;
+  }
+
+  &__title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    max-width: 720px;
+    line-height: 1.2;
+  }
+
+  &__subtitle {
+    font-size: 16px;
+    color: #6B7280;
+    margin: 0;
+    max-width: 640px;
+    line-height: 1.5;
+  }
+
+  &__features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: $space-3;
+  }
+
+  &__cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-5;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  &__price {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__price-amount {
+    font-size: 48px;
+    font-weight: 700;
+    color: #16A34A;
+    line-height: 1;
+  }
+
+  &__price-unit {
+    font-size: 16px;
+    color: #6B7280;
+  }
+
+  &__price-promo {
+    font-size: 13px;
+    color: #D97706;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  &__cta-btn {
+    min-width: 240px;
+    min-height: 56px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &__back-btn {
+    min-height: 48px;
+  }
+}
+
+.feature-card {
+  padding: $space-4;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &__icon {
+    font-size: 28px;
+    color: #16A34A;
+  }
+
+  &__title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  &__description {
+    font-size: 14px;
+    color: #6B7280;
+    margin: 0;
+    line-height: 1.5;
+  }
+}

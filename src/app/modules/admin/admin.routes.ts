@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { PlanTypeId } from '../../core/enums';
+import { planGuard } from '../../core/guards/plan.guard';
+
 export const adminRoutes: Routes = [
   {
     path: '',
@@ -31,9 +34,17 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'reports',
+        canActivate: [planGuard],
+        data: { requiredPlan: PlanTypeId.Pro },
         loadComponent: () =>
           import('./components/reports/reports.component')
             .then(m => m.ReportsComponent),
+      },
+      {
+        path: 'upgrade',
+        loadComponent: () =>
+          import('./components/upgrade/upgrade.component')
+            .then(m => m.UpgradeComponent),
       },
       {
         path: 'tables',
@@ -90,6 +101,8 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'invoicing',
+        canActivate: [planGuard],
+        data: { requiredPlan: PlanTypeId.Pro },
         loadComponent: () =>
           import('./components/invoicing/admin-invoicing.component')
             .then(m => m.AdminInvoicingComponent),
