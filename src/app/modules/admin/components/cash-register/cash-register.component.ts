@@ -1,8 +1,11 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { from } from 'rxjs';
+import { liveQuery } from 'dexie';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -75,7 +78,26 @@ export class CashRegisterComponent implements OnInit {
   readonly activeSession = this.cashRegisterService.activeSession;
 
   readonly loading = signal(false);
-  readonly cashSalesTotalCents = signal(0);
+
+  /**
+   * Today's cash sales total — live-reactive via Dexie `liveQuery`.
+   *
+   * The callback re-runs every time ANY write touches the `orders`
+   * table (new sale, sync pull, cancellation). That means the KPI
+   * card on the main view and the "Ventas efectivo" row revealed in
+   * step 2 of the close dialog are always in sync with the DB
+   * without a single manual refresh, polling tick or event wiring.
+   *
+   * `liveQuery` returns Dexie's own `Observable<T>` that carries the
+   * `Symbol.observable` interop protocol. Wrapping it in rxjs' `from`
+   * bridges it to a true rxjs observable so `toSignal` can infer
+   * `Signal<number>` correctly. `initialValue: 0` avoids an
+   * `undefined` render before the first async emission lands.
+   */
+  readonly cashSalesTotalCents = toSignal(
+    from(liveQuery(() => this.computeCashSalesTotal())),
+    { initialValue: 0 },
+  );
 
   /** True while the open-session API call is in flight */
   readonly isOpeningSession = signal(false);
@@ -193,6 +215,45 @@ export class CashRegisterComponent implements OnInit {
 
   //#endregion
 
+  //#region Constructor
+
+  constructor() {
+    // O9 — Detect an external session closure (polling flip or another
+    // device) while the close dialog is open, and dismiss it cleanly
+    // with a warning toast instead of leaving the user staring at a
+    // blank dialog frame.
+    //
+    // Only `activeSession` is tracked as a dependency. `showCloseDialog`
+    // and `isClosingSession` are read via `untracked()` so the effect
+    // only re-runs on session transitions — not on every dialog toggle
+    // or user-initiated close round-trip.
+    //
+    // `isClosingSession === true` means this device is currently
+    // running its own close request. In that case the `_activeSession`
+    // flip to null is the EXPECTED consequence of our own API call,
+    // not an external event, so we stay silent.
+    effect(() => {
+      const session = this.activeSession();
+      if (session !== null) return;
+
+      const dialogOpen = untracked(() => this.showCloseDialog());
+      if (!dialogOpen) return;
+
+      const isClosingByUs = untracked(() => this.isClosingSession());
+      if (isClosingByUs) return;
+
+      this.showCloseDialog.set(false);
+      this.messageService.add({
+        severity: 'info',
+        summary: 'Turno cerrado',
+        detail: 'La sesión fue cerrada desde otro dispositivo.',
+        life: 5000,
+      });
+    }, { allowSignalWrites: true });
+  }
+
+  //#endregion
+
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
@@ -204,14 +265,13 @@ export class CashRegisterComponent implements OnInit {
   //#region Session Methods
 
   /**
-   * Refreshes the active session via the service and loads today's cash
-   * sales. The component does not hold a local copy of the session — the
-   * service's signal is the single source of truth.
+   * Refreshes the active session via the service. `cashSalesTotalCents`
+   * is kept fresh automatically by the `liveQuery` subscription in the
+   * state region, so nothing else needs to be awaited here.
    */
   async loadSession(): Promise<void> {
     this.loading.set(true);
     await this.cashRegisterService.refreshActiveSession();
-    await this.loadCashSales();
     this.loading.set(false);
   }
 
@@ -244,7 +304,6 @@ export class CashRegisterComponent implements OnInit {
       });
 
       this.showOpenDialog.set(false);
-      await this.loadCashSales();
 
       this.messageService.add({
         severity: 'success',
@@ -529,15 +588,19 @@ export class CashRegisterComponent implements OnInit {
   //#region Private
 
   /**
-   * Loads today's cash sales total from Dexie.
+   * Computes today's cash sales total from Dexie in a single pass.
+   *
+   * Used by `liveQuery` — Dexie invokes this callback on every
+   * change to the `orders` table, so the returned number flows
+   * straight into `cashSalesTotalCents` via `toSignal`.
    *
    * Uses the `createdAt` index to narrow the scan to today, then
    * applies the "non-cancelled, has cash payment" predicate via
-   * Dexie's `Collection.and(...)` so filtering happens during the
-   * index walk. The accumulator is built with `Collection.each(...)`
-   * to avoid materializing an intermediate array.
+   * `Collection.and(...)` so filtering happens during the index
+   * walk. The accumulator is built with `Collection.each(...)` to
+   * avoid materializing an intermediate array.
    */
-  private async loadCashSales(): Promise<void> {
+  private async computeCashSalesTotal(): Promise<number> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -548,7 +611,7 @@ export class CashRegisterComponent implements OnInit {
       .and(o => !o.cancelledAt && (o.payments ?? []).some(p => p.method === 'Cash'))
       .each(o => { cashTotal += o.totalCents; });
 
-    this.cashSalesTotalCents.set(cashTotal);
+    return cashTotal;
   }
 
   //#endregion
