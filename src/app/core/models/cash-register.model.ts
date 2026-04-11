@@ -48,6 +48,15 @@ export interface OpenSessionRequest {
 
 /** Request body for closing the current session */
 export interface CloseSessionRequest {
+  /**
+   * Explicit identifier of the session being closed. Making this
+   * required (rather than letting the backend infer it from the
+   * JWT + device) closes the race where a stale frontend tries to
+   * close a session that was already closed remotely — the backend
+   * can now reject with a precise 409 "session mismatch" instead
+   * of silently closing the wrong record.
+   */
+  sessionId: number;
   countedAmountCents: number;
   closedBy: string;
   notes?: string;
