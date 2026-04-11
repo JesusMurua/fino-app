@@ -114,7 +114,7 @@ export class CashRegisterService implements OnDestroy {
   async loadActiveSession(branchId: number): Promise<void> {
     const session = await this.getOpenSession(branchId);
     this._activeSession.set(session);
-    this.startPolling(branchId);
+    this.startPolling();
   }
 
   /**
@@ -200,11 +200,14 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Closes the current open session.
-   * @param branchId Branch to close session for
-   * @param request Closing details (counted amount, closed by, notes)
+   * Closes the currently open session. The caller is expected to
+   * provide the explicit `sessionId` in the request so the backend
+   * can reject a stale close attempt with a precise 409 instead of
+   * silently closing whatever session happens to be active server-side.
+   *
+   * @param request Closing details — `sessionId` is now required
    */
-  async closeSession(branchId: number, request: CloseSessionRequest): Promise<CashRegisterSession> {
+  async closeSession(request: CloseSessionRequest): Promise<CashRegisterSession> {
     const session = await firstValueFrom(
       this.api.post<CashRegisterSession>('/cashregister/session/close', request),
     );
@@ -214,11 +217,13 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Adds a cash movement to the current session.
-   * @param branchId Branch the session belongs to
+   * Adds a cash movement to the current session. The backend resolves
+   * scope from the caller's JWT + active session — `branchId` is not
+   * needed client-side.
+   *
    * @param request Movement details (type, amount, description, created by)
    */
-  async addMovement(branchId: number, request: AddMovementRequest): Promise<CashMovement> {
+  async addMovement(request: AddMovementRequest): Promise<CashMovement> {
     const movement = await firstValueFrom(
       this.api.post<CashMovement>('/cashregister/movement', request),
     );
@@ -227,12 +232,13 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Gets session history for a date range from API.
-   * @param branchId Branch to query
+   * Gets session history for a date range from the API. The backend
+   * scopes the query to the caller's branch via the JWT.
+   *
    * @param from Start date (inclusive)
    * @param to End date (inclusive)
    */
-  async getHistory(branchId: number, from: Date, to: Date): Promise<CashRegisterSession[]> {
+  async getHistory(from: Date, to: Date): Promise<CashRegisterSession[]> {
     return firstValueFrom(
       this.api.get<CashRegisterSession[]>(
         `/cashregister/history?from=${from.toISOString()}&to=${to.toISOString()}`,
@@ -398,7 +404,7 @@ export class CashRegisterService implements OnDestroy {
    * Starts polling the backend every 3 minutes to detect remote session closure.
    * If the backend reports no open session, the signal is cleared immediately.
    */
-  private startPolling(branchId: number): void {
+  private startPolling(): void {
     this.stopPolling();
     this.pollTimer = setInterval(async () => {
       try {

@@ -343,6 +343,13 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
+    // The close request requires an explicit sessionId so the backend
+    // can reject a stale close (e.g. the session was already closed
+    // from another device) with a precise 409 instead of silently
+    // acting on whatever session it thinks is active.
+    const session = this.activeSession();
+    if (!session) return;
+
     // Dismiss the dialog before awaiting — the service will clear
     // `_activeSession` on success, and a visible dialog bound to
     // `@if (activeSession(); as session)` would otherwise render a
@@ -351,7 +358,8 @@ export class CashRegisterComponent implements OnInit {
     this.isClosingSession.set(true);
 
     try {
-      await this.cashRegisterService.closeSession(this.authService.branchId, {
+      await this.cashRegisterService.closeSession({
+        sessionId: session.id,
         countedAmountCents: Math.round(this.closeAmount * 100),
         closedBy: user.name,
         notes: this.closeNotes.trim() || undefined,
@@ -403,7 +411,7 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
-    await this.cashRegisterService.addMovement(this.authService.branchId, {
+    await this.cashRegisterService.addMovement({
       cashMovementTypeId: this.movementType,
       amountCents: Math.round(this.movementAmount * 100),
       description: this.movementDescription.trim(),
@@ -439,7 +447,7 @@ export class CashRegisterComponent implements OnInit {
     const from = new Date();
     from.setDate(from.getDate() - 30);
 
-    const sessions = await this.cashRegisterService.getHistory(this.authService.branchId, from, to);
+    const sessions = await this.cashRegisterService.getHistory(from, to);
     this.history.set(sessions);
 
     this.loadingHistory.set(false);
