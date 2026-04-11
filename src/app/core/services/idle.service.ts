@@ -1,7 +1,9 @@
-import { Injectable, NgZone, OnDestroy, signal } from '@angular/core';
+import { Injectable, NgZone, OnDestroy, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { DeviceConfig } from '../models';
 import { CartService } from './cart.service';
+import { ConfigService } from './config.service';
 
 /** Inactivity threshold before auto-lock (5 minutes) */
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
@@ -11,6 +13,15 @@ const CHECK_INTERVAL_MS = 30_000;
 
 /** Routes where idle lock should NOT apply */
 const EXEMPT_ROUTES = ['/pin', '/login', '/register', '/setup', '/onboarding', '/kiosk'];
+
+/**
+ * Device modes that run 24/7 as infrastructure (kitchen / kiosk) or as
+ * back office on a personal laptop (admin). None of them should ever be
+ * auto-locked by the global idle timer — the KDS must keep showing
+ * orders, the Kiosk must stay on the welcome screen, and an Owner
+ * reading reports at night should not be kicked back to the PIN pad.
+ */
+const INFRA_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk', 'admin'];
 
 /**
  * Global idle-detection service for the POS application.
@@ -46,6 +57,8 @@ export class IdleService implements OnDestroy {
 
   //#region Constructor
 
+  private readonly configService = inject(ConfigService);
+
   constructor(
     private readonly router: Router,
     private readonly cartService: CartService,
@@ -60,9 +73,16 @@ export class IdleService implements OnDestroy {
    * Starts idle monitoring. Safe to call multiple times.
    * Runs the check interval outside Angular zone to avoid
    * triggering change detection every 30 seconds.
+   *
+   * Short-circuits when the device is in an infrastructure mode
+   * (`kitchen`, `kiosk`, `admin`) — those screens must never be
+   * auto-locked. No listeners are registered so the event loop
+   * is completely free.
    */
   start(): void {
     if (this.isRunning) return;
+    if (this.isInfraDevice()) return;
+
     this.isRunning = true;
     this.lastActivity = Date.now();
 
@@ -102,11 +122,21 @@ export class IdleService implements OnDestroy {
   private checkIdle(): void {
     if (Date.now() - this.lastActivity < IDLE_TIMEOUT_MS) return;
 
+    // Runtime safety: if the device mode was flipped to an infra mode
+    // after `start()` ran (e.g. re-provisioning flow), respect it.
+    if (this.isInfraDevice()) return;
+
     // Don't lock if already on an exempt route
     const url = this.router.url;
     if (EXEMPT_ROUTES.some(r => url.startsWith(r))) return;
 
     this.ngZone.run(() => this.lock());
+  }
+
+  /** True when the current device is one of the infrastructure modes */
+  private isInfraDevice(): boolean {
+    const mode = this.configService.deviceConfig$.getValue().mode;
+    return INFRA_MODES.includes(mode);
   }
 
   /** Locks the screen: clears session state and navigates to /pin */

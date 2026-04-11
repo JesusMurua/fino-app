@@ -8,6 +8,7 @@ import { PrintJobDto } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
+import { DeviceService } from './device.service';
 import { KitchenAudioService } from './kitchen-audio.service';
 
 /**
@@ -38,6 +39,7 @@ export class KitchenService implements OnDestroy {
 
     private readonly messageService = inject(MessageService, { optional: true });
     private readonly authService = inject(AuthService);
+    private readonly deviceService = inject(DeviceService);
     private readonly kitchenAudio = inject(KitchenAudioService);
 
     constructor(
@@ -166,7 +168,15 @@ export class KitchenService implements OnDestroy {
 
         this.hubConnection = new HubConnectionBuilder()
             .withUrl(hubUrl, {
-                accessTokenFactory: () => this.authService.getToken() ?? '',
+                // Prefer the long-lived device token when this is a KDS
+                // machine (no human logged in). Fall back to the user
+                // token for backward-compatibility with devices that
+                // have not yet been re-provisioned against the new
+                // backend contract.
+                accessTokenFactory: () =>
+                    this.deviceService.getDeviceToken()
+                    ?? this.authService.getToken()
+                    ?? '',
             })
             .withAutomaticReconnect()
             .configureLogging(LogLevel.Warning)
