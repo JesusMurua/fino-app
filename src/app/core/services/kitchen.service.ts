@@ -6,7 +6,6 @@ import { MessageService } from 'primeng/api';
 import { environment } from '../../../environments/environment';
 import { PrintJobDto } from '../models';
 import { ApiService } from './api.service';
-import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 import { DeviceService } from './device.service';
 import { KitchenAudioService } from './kitchen-audio.service';
@@ -38,7 +37,6 @@ export class KitchenService implements OnDestroy {
     //#region Constructor & Lifecycle
 
     private readonly messageService = inject(MessageService, { optional: true });
-    private readonly authService = inject(AuthService);
     private readonly deviceService = inject(DeviceService);
     private readonly kitchenAudio = inject(KitchenAudioService);
 
@@ -168,15 +166,14 @@ export class KitchenService implements OnDestroy {
 
         this.hubConnection = new HubConnectionBuilder()
             .withUrl(hubUrl, {
-                // Prefer the long-lived device token when this is a KDS
-                // machine (no human logged in). Fall back to the user
-                // token for backward-compatibility with devices that
-                // have not yet been re-provisioned against the new
-                // backend contract.
-                accessTokenFactory: () =>
-                    this.deviceService.getDeviceToken()
-                    ?? this.authService.getToken()
-                    ?? '',
+                // KDS machines authenticate to the hub EXCLUSIVELY with
+                // their long-lived device token. If the token is missing
+                // or expired the factory returns an empty string, the
+                // handshake fails with 401, and the catch block below
+                // surfaces the connection error — the fix is to
+                // re-provision the device, never to borrow a human's
+                // session.
+                accessTokenFactory: () => this.deviceService.getDeviceToken() ?? '',
             })
             .withAutomaticReconnect()
             .configureLogging(LogLevel.Warning)

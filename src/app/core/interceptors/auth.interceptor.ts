@@ -87,20 +87,30 @@ export const authInterceptor: HttpInterceptorFn = (
 /**
  * Resolves which bearer token this request should carry.
  *
- * Priority:
- *   1. Infrastructure devices (kitchen / kiosk) with a valid device
- *      token → use the device token. This lets the machine talk to
- *      the API without a human logged in.
- *   2. Otherwise → user token from localStorage (existing behaviour),
- *      skipping offline-session markers that must never hit the API.
+ * Zero-fallback policy for infrastructure devices:
+ *   - If the device mode is one of `DEVICE_TOKEN_MODES` (kitchen /
+ *     kiosk), we commit to the device token. A valid token is returned
+ *     verbatim; anything else resolves to `null` so the request fires
+ *     without an Authorization header. The resulting 401 is the
+ *     intended signal — it tells the backend and the frontend that
+ *     the machine has lost its identity and must be re-provisioned.
+ *     Under NO circumstance does an infrastructure device borrow a
+ *     human user's token.
+ *
+ *   - For every other mode (cashier / tables / admin) we keep the
+ *     existing user-token flow, skipping the `offline-session-*`
+ *     marker that must never hit the API.
  */
 function resolveBearerToken(
   configService: ConfigService,
   deviceService: DeviceService,
 ): string | null {
   const mode = configService.deviceConfig$.getValue().mode;
-  if (DEVICE_TOKEN_MODES.includes(mode) && deviceService.hasValidDeviceToken()) {
-    return deviceService.getDeviceToken();
+
+  if (DEVICE_TOKEN_MODES.includes(mode)) {
+    return deviceService.hasValidDeviceToken()
+      ? deviceService.getDeviceToken()
+      : null;
   }
 
   const userToken = localStorage.getItem(AUTH_TOKEN_KEY);
