@@ -85,17 +85,17 @@
 
       <div class="register-field">
         <label for="reg-type">Tipo de negocio</label>
-        @if (giroBadgeInfo()) {
+        @if (giroBadge(); as badge) {
           <div class="register-giro-badge">
-            <span class="register-giro-badge__icon">{{ giroBadgeInfo()?.icon }}</span>
-            <span class="register-giro-badge__label">{{ giroBadgeInfo()?.label }}</span>
+            <span class="register-giro-badge__icon">{{ badge.icon }}</span>
+            <span class="register-giro-badge__label">{{ badge.label }}</span>
           </div>
           <a class="register-giro-badge__link" [href]="landingUrl + '/#precios'" target="_blank">
             ¿No es tu giro? Volver a planes →
           </a>
         } @else {
           <p-dropdown
-            formControlName="businessType"
+            formControlName="businessTypeId"
             inputId="reg-type"
             [options]="businessTypeOptions"
             optionLabel="label"
@@ -107,10 +107,10 @@
         }
       </div>
 
-      @if (errorMessage()) {
+      @if (errorCode(); as code) {
         <p class="register-error">
           {{ errorMessage() }}
-          @if (errorMessage().includes('ya tiene')) {
+          @if (code === 'email_taken') {
             <a routerLink="/login" class="register-error__link">¿Iniciar sesión?</a>
           }
         </p>

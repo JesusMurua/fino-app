@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, tap } from 'rxjs';
 
 import {
   ACTIVE_BRANCH_KEY,
@@ -12,6 +12,7 @@ import {
   LoginResponse,
   PlanInfo,
   RETURN_URL_KEY,
+  RegisterRequest,
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
@@ -307,6 +308,22 @@ export class AuthService {
       console.error('[AuthService] Email login failed:', error);
       return null;
     }
+  }
+
+  /**
+   * Registers a new business and owner in a single call.
+   *
+   * Returns the raw `LoginResponse` stream so the component can handle
+   * typed HTTP errors (e.g. 409 email taken). Side-effects — JWT storage,
+   * signal hydration, and `TenantContextService` priming with the
+   * `features` claim — are run in a `tap` before the observable emits.
+   *
+   * @param payload Fully typed registration request
+   */
+  register(payload: RegisterRequest): Observable<LoginResponse> {
+    return this.api.post<LoginResponse>('/auth/register', payload).pipe(
+      tap(response => this.handleLoginSuccess(response)),
+    );
   }
 
   /**

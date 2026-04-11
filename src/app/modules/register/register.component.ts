@@ -1,27 +1,36 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { environment } from '../../../environments/environment';
-import { LoginResponse } from '../../core/models';
-import { BusinessTypeId, PlanTypeId } from '../../core/enums';
+import { RegisterRequest } from '../../core/models';
+import { BUSINESS_TYPE_LABELS, BusinessTypeId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
+import { RegistrationIntent, parseRegistrationIntent } from '../../core/utils/registration.utils';
 
-/** Giro display info for the read-only badge */
-const GIRO_BADGE_MAP: Record<string, { icon: string; label: string }> = {
-  restaurant:  { icon: '🍽️', label: 'Restaurante' },
-  cafe:        { icon: '☕',  label: 'Café' },
-  bar:         { icon: '🍺',  label: 'Bar' },
-  retail:      { icon: '🛒',  label: 'Abarrotes / Tienda' },
-  foodtruck:   { icon: '🚚',  label: 'Food Truck' },
-  'food-truck': { icon: '🚚',  label: 'Food Truck' },
-  general:     { icon: '⚙️',  label: 'General' },
+/** Icon used next to each giro in the read-only badge (landing-driven flow) */
+const GIRO_BADGE_ICON: Partial<Record<BusinessTypeId, string>> = {
+  [BusinessTypeId.Restaurant]: '🍽️',
+  [BusinessTypeId.Cafe]:       '☕',
+  [BusinessTypeId.Bar]:        '🍺',
+  [BusinessTypeId.Retail]:     '🛒',
+  [BusinessTypeId.FoodTruck]:  '🚚',
+  [BusinessTypeId.Taqueria]:   '🌮',
+  [BusinessTypeId.Abarrotes]:  '🛒',
+  [BusinessTypeId.Ferreteria]: '🔧',
+  [BusinessTypeId.Papeleria]:  '📝',
+  [BusinessTypeId.Farmacia]:   '💊',
+  [BusinessTypeId.Servicios]:  '🏪',
+  [BusinessTypeId.General]:    '⚙️',
 };
+
+/** Typed error surfaced to the template — avoids substring matching on messages */
+type RegisterErrorCode = 'email_taken' | 'generic' | null;
 
 /** Custom validator: password fields must match */
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -48,25 +57,55 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
 })
 export class RegisterComponent implements OnInit {
 
-  //#region Properties
+  //#region Injections
 
   private readonly fb = inject(FormBuilder);
-  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly isLoading = signal(false);
-  readonly errorMessage = signal('');
+  //#endregion
 
+  //#region State
+
+  readonly isLoading = signal(false);
+  readonly errorCode = signal<RegisterErrorCode>(null);
+
+  /** Parsed intent from the landing handshake — never null after ngOnInit */
+  private intent: RegistrationIntent = {
+    businessTypeId: BusinessTypeId.General,
+    planTypeId: 0 as unknown as number,
+    countryCode: 'MX',
+    planSlug: null,
+    giroSlug: null,
+  };
+
+  /** Whether the landing provided a `?giro=` — drives badge vs dropdown */
+  readonly hasGiroFromUrl = signal(false);
+
+  /** Badge display info for the pre-selected giro */
+  readonly giroBadge = computed(() => {
+    if (!this.hasGiroFromUrl()) return null;
+    const id = this.form.getRawValue().businessTypeId ?? this.intent.businessTypeId;
+    return {
+      icon: GIRO_BADGE_ICON[id] ?? '⚙️',
+      label: BUSINESS_TYPE_LABELS[id] ?? 'Negocio',
+    };
+  });
+
+  /** Dropdown options when the landing did not pre-select a giro */
   readonly businessTypeOptions = [
-    { label: 'Restaurante',       value: BusinessTypeId.Restaurant },
-    { label: 'Cafe',              value: BusinessTypeId.Cafe },
-    { label: 'Bar',               value: BusinessTypeId.Bar },
+    { label: 'Restaurante',        value: BusinessTypeId.Restaurant },
+    { label: 'Café',               value: BusinessTypeId.Cafe },
+    { label: 'Bar',                value: BusinessTypeId.Bar },
     { label: 'Abarrotes / Retail', value: BusinessTypeId.Retail },
-    { label: 'Food Truck',        value: BusinessTypeId.FoodTruck },
-    { label: 'General',           value: BusinessTypeId.General },
+    { label: 'Food Truck',         value: BusinessTypeId.FoodTruck },
+    { label: 'Servicios',          value: BusinessTypeId.Servicios },
+    { label: 'General',            value: BusinessTypeId.General },
   ];
+
+  /** Landing URL for the "back to plans" link */
+  readonly landingUrl = environment.landingUrl;
 
   readonly form = this.fb.group({
     businessName:    ['', Validators.required],
@@ -74,66 +113,22 @@ export class RegisterComponent implements OnInit {
     email:           ['', [Validators.required, Validators.email]],
     password:        ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', Validators.required],
-    businessType:    [BusinessTypeId.Restaurant, Validators.required],
+    businessTypeId:  [BusinessTypeId.Restaurant, Validators.required],
   }, { validators: passwordMatchValidator });
-
-  /** Giro param from URL — when set, shows badge instead of dropdown */
-  readonly giroParam = signal<string | null>(null);
-
-  /** Badge display info for the pre-selected giro */
-  readonly giroBadgeInfo = computed(() => {
-    const giro = this.giroParam();
-    return giro ? (GIRO_BADGE_MAP[giro] ?? null) : null;
-  });
-
-  /** Landing URL for "go back" link */
-  readonly landingUrl = environment.landingUrl;
-
-  /** Pending plan from query param — stored for onboarding step 4 */
-  private pendingPlan: string | null = null;
-
-  /** Country code from landing page query param (e.g. 'MX') — defaults to MX */
-  private countryCode = 'MX';
 
   //#endregion
 
   //#region Lifecycle
 
   ngOnInit(): void {
-    const params = this.route.snapshot.queryParams;
-
-    // Pre-select business type from ?giro=
-    if (params['giro']) {
-      this.giroParam.set(params['giro'].toLowerCase());
-      const giroMap: Record<string, BusinessTypeId> = {
-        restaurant: BusinessTypeId.Restaurant,
-        cafe: BusinessTypeId.Cafe,
-        bar: BusinessTypeId.Bar,
-        retail: BusinessTypeId.Retail,
-        foodtruck: BusinessTypeId.FoodTruck,
-        'food-truck': BusinessTypeId.FoodTruck,
-        general: BusinessTypeId.General,
-      };
-      const mapped = giroMap[params['giro'].toLowerCase()];
-      if (mapped) {
-        this.form.patchValue({ businessType: mapped });
-      }
-    }
-
-    // Store pending plan for onboarding
-    if (params['plan']) {
-      this.pendingPlan = params['plan'].toLowerCase();
-    }
-
-    // Country code for fiscal context (Tax Engine)
-    if (params['country']) {
-      this.countryCode = params['country'].toUpperCase();
-    }
+    this.intent = parseRegistrationIntent(this.route.snapshot.queryParams);
+    this.hasGiroFromUrl.set(this.intent.giroSlug !== null);
+    this.form.patchValue({ businessTypeId: this.intent.businessTypeId });
   }
 
   //#endregion
 
-  //#region Form Helpers
+  //#region Template helpers
 
   /** Returns true if a form control is invalid and touched */
   isInvalidField(name: string): boolean {
@@ -146,11 +141,27 @@ export class RegisterComponent implements OnInit {
     return this.form.hasError('passwordMismatch') && !!this.form.get('confirmPassword')?.touched;
   }
 
+  /** Human-readable error message for the template */
+  readonly errorMessage = computed(() => {
+    switch (this.errorCode()) {
+      case 'email_taken': return 'Este correo ya tiene una cuenta.';
+      case 'generic':     return 'Error al crear la cuenta. Intenta de nuevo.';
+      default:            return '';
+    }
+  });
+
   //#endregion
 
   //#region Submit
 
-  /** Submits registration form to the API */
+  /**
+   * Orchestrates the registration flow:
+   *   1. validate the form
+   *   2. build a typed RegisterRequest
+   *   3. delegate to AuthService.register()
+   *   4. persist the pending plan for the onboarding checkout step
+   *   5. navigate to the onboarding wizard
+   */
   async submit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -158,43 +169,63 @@ export class RegisterComponent implements OnInit {
     }
 
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.errorCode.set(null);
 
-    const { businessName, ownerName, email, password, businessType } = this.form.getRawValue();
-
-    /** Resolve planTypeId: URL param → PlanTypeId enum, default Free */
-    const planMap: Record<string, PlanTypeId> = {
-      basic: PlanTypeId.Basic,
-      pro: PlanTypeId.Pro,
-      enterprise: PlanTypeId.Enterprise,
+    const { businessName, ownerName, email, password, businessTypeId } = this.form.getRawValue();
+    const payload: RegisterRequest = {
+      businessName: businessName!.trim(),
+      ownerName:    ownerName!.trim(),
+      email:        email!.trim(),
+      password:     password!,
+      businessTypeId: businessTypeId ?? this.intent.businessTypeId,
+      planTypeId:   this.intent.planTypeId,
+      countryCode:  this.intent.countryCode,
     };
-    const planTypeId = (this.pendingPlan && planMap[this.pendingPlan]) ?? PlanTypeId.Free;
 
     try {
-      const response = await firstValueFrom(
-        this.http.post<LoginResponse>(
-          `${environment.apiUrl}/auth/register`,
-          { businessName, ownerName, email, password, businessTypeId: businessType, planTypeId, countryCode: this.countryCode },
-        ),
-      );
-
-      const user = this.authService.handleLoginSuccess(response);
-
-      // Store pending plan for onboarding step 4
-      if (this.pendingPlan && user.currentBranchId) {
-        localStorage.setItem(`pending-plan-${user.currentBranchId}`, this.pendingPlan);
-      }
-
+      await firstValueFrom(this.authService.register(payload));
+      this.persistPendingPlan();
       this.router.navigate(['/onboarding']);
-    } catch (err: any) {
-      if (err?.status === 409) {
-        this.errorMessage.set('Este correo ya tiene una cuenta.');
-      } else {
-        this.errorMessage.set('Error al crear la cuenta. Intenta de nuevo.');
-      }
+    } catch (error) {
+      this.errorCode.set(this.mapError(error));
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  //#endregion
+
+  //#region Private helpers
+
+  /**
+   * Persists the pending plan slug so the onboarding wizard's step 4
+   * (Stripe checkout) can resume the user's original intent.
+   *
+   * Keyed by the active branch id written by `handleLoginSuccess` — the
+   * signal is always up to date here because `register()` runs its
+   * success side-effects synchronously before the observable emits.
+   * When the branch id is somehow 0, we skip persistence and warn so
+   * the failure is visible in the console rather than silently dropped.
+   */
+  private persistPendingPlan(): void {
+    if (!this.intent.planSlug) return;
+    const branchId = this.authService.branchId;
+    if (branchId <= 0) {
+      console.warn('[Register] Cannot persist pending plan — no active branch id.');
+      return;
+    }
+    localStorage.setItem(`pending-plan-${branchId}`, this.intent.planSlug);
+  }
+
+  /**
+   * Maps an HTTP error to a typed error code. Status 409 → email taken,
+   * everything else → generic. No substring matching on messages.
+   */
+  private mapError(error: unknown): RegisterErrorCode {
+    if (error instanceof HttpErrorResponse && error.status === 409) {
+      return 'email_taken';
+    }
+    return 'generic';
   }
 
   //#endregion
