@@ -18,6 +18,7 @@ import {
 import { BusinessTypeId, PlanTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
+import { TenantContextService } from './tenant-context.service';
 
 /**
  * Manages authentication state for the POS application.
@@ -125,7 +126,13 @@ export class AuthService {
     private readonly api: ApiService,
     private readonly db: DatabaseService,
     private readonly router: Router,
-  ) {}
+    private readonly tenantContext: TenantContextService,
+  ) {
+    // Field initializers have already hydrated `currentUser` from localStorage.
+    // Mirror that state into the tenant context so guards and directives see
+    // the correct plan/giro/features immediately on app boot.
+    this.syncTenantContext();
+  }
   //#endregion
 
   //#region Branch Access
@@ -252,7 +259,10 @@ export class AuthService {
       if (!match) return null;
 
       // Build a local-only AuthUser — use a marker token so isAuthenticated works
-      // but the interceptor knows not to send it to the API
+      // but the interceptor knows not to send it to the API.
+      // Feature keys are inherited from the previously stored user so
+      // gating stays functional offline until the next real login.
+      const previous = this.loadUserFromStorage();
       const user: AuthUser = {
         token: `offline-session-${Date.now()}`,
         roleId: match.roleId,
@@ -264,6 +274,7 @@ export class AuthService {
         planTypeId: this.planTypeId(),
         businessTypeId: this.businessTypeId(),
         trialEndsAt: this.trialEndsAt() ?? undefined,
+        features: previous?.features ?? [],
       };
 
       localStorage.setItem(AUTH_TOKEN_KEY, user.token);
@@ -271,6 +282,7 @@ export class AuthService {
       localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
       this.currentUser.set(user);
       this.activeBranchId.set(branchId);
+      this.syncTenantContext();
 
       return user;
     } catch (error) {
@@ -309,6 +321,7 @@ export class AuthService {
     this.planTypeId.set(PlanTypeId.Free);
     this.businessTypeId.set(BusinessTypeId.General);
     this.trialEndsAt.set(null);
+    this.tenantContext.clear();
 
     // Clear cached catalog from IndexedDB (orders are preserved)
     this.db.products.clear().catch(() => {});
@@ -371,6 +384,10 @@ export class AuthService {
           this.currentUser.set(updated);
           localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
         }
+
+        // Propagate the new plan to the tenant context so guards and
+        // directives see the updated state without waiting for re-login.
+        this.syncTenantContext();
       }
     } catch (error: any) {
       // 404 = endpoint not implemented yet — silently ignore
@@ -399,6 +416,11 @@ export class AuthService {
     const storedBranchId = parseInt(localStorage.getItem(ACTIVE_BRANCH_KEY) ?? '', 10);
     const effectiveBranchId = storedBranchId || responseBranchId;
 
+    // Prefer the JWT `features` claim when present — it's what the
+    // backend signs — and fall back to the response body field.
+    const jwtFeatures = this.extractFeaturesFromJwt(response.token);
+    const features = jwtFeatures ?? response.features ?? [];
+
     const user: AuthUser = {
       token: response.token,
       roleId: response.roleId,
@@ -412,6 +434,7 @@ export class AuthService {
       trialEndsAt: response.trialEndsAt,
       onboardingStatusId: response.onboardingStatusId,
       currentOnboardingStep: response.currentOnboardingStep,
+      features,
     };
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
@@ -422,6 +445,7 @@ export class AuthService {
     this.planTypeId.set(user.planTypeId);
     this.businessTypeId.set(user.businessTypeId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
+    this.syncTenantContext();
 
     return user;
   }
@@ -469,6 +493,42 @@ export class AuthService {
     } catch {
       return true;
     }
+  }
+
+  /**
+   * Extracts the `features` claim from a JWT payload.
+   * Returns undefined when the token is not a real JWT
+   * (e.g. `offline-session-*`) or when the claim is missing.
+   */
+  private extractFeaturesFromJwt(token: string): string[] | undefined {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return undefined;
+      const payload = JSON.parse(atob(parts[1]));
+      return Array.isArray(payload.features) ? payload.features : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Mirrors the current auth state into the tenant context so that
+   * guards and directives see a consistent plan/giro/feature snapshot.
+   * Called on boot, login, offline login, and subscription refresh.
+   */
+  private syncTenantContext(): void {
+    const user = this.currentUser();
+    if (!user) {
+      this.tenantContext.clear();
+      return;
+    }
+    const jwtFeatures = this.extractFeaturesFromJwt(user.token);
+    const features = jwtFeatures ?? user.features ?? [];
+    this.tenantContext.setContext(
+      this.planTypeId(),
+      this.businessTypeId(),
+      features,
+    );
   }
 
   //#endregion

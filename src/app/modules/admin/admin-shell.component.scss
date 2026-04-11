@@ -162,9 +162,11 @@ $transition: 0.25s ease;
     border-left-color: $color-primary;
   }
 
-  &--locked {
+  // Applied by AppFeatureDirective when a feature is locked by plan tier
+  &.feature-locked {
     opacity: 0.5;
     cursor: not-allowed;
+    pointer-events: none;
 
     &:hover {
       background: transparent;

@@ -1,10 +1,11 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { featureGuard } from './core/guards/feature.guard';
 import { onboardingGuard } from './core/guards/onboarding.guard';
 import { provisioningGuard } from './core/guards/provisioning.guard';
 import { setupGuard } from './core/guards/setup.guard';
-import { UserRoleId } from './core/enums';
+import { FeatureKey, UserRoleId } from './core/enums';
 
 export const appRoutes: Routes = [
 	{
@@ -48,6 +49,8 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'kiosk',
+		canActivate: [featureGuard],
+		data: { requiredFeature: FeatureKey.KioskMode },
 		loadChildren: () =>
 			import('./modules/kiosk/kiosk.routes').then((m) => m.kioskRoutes),
 	},
@@ -69,8 +72,11 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'kitchen',
-		canActivate: [authGuard],
-		data: { roles: [UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager] },
+		canActivate: [authGuard, featureGuard],
+		data: {
+			roles: [UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager],
+			requiredFeature: [FeatureKey.KdsBasic, FeatureKey.RealtimeKds],
+		},
 		loadChildren: () =>
 			import('./modules/kitchen/kitchen.routes').then((m) => m.kitchenRoutes),
 	},
