@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
-import { PlanTypeId } from '../../core/enums';
-import { planGuard } from '../../core/guards/plan.guard';
+import { FeatureKey } from '../../core/enums';
+import { featureGuard } from '../../core/guards/feature.guard';
 
 export const adminRoutes: Routes = [
   {
@@ -34,8 +34,8 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'reports',
-        canActivate: [planGuard],
-        data: { requiredPlan: PlanTypeId.Pro },
+        canActivate: [featureGuard],
+        data: { requiredFeature: FeatureKey.AdvancedReports },
         loadComponent: () =>
           import('./components/reports/reports.component')
             .then(m => m.ReportsComponent),
@@ -54,12 +54,16 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'inventory',
+        canActivate: [featureGuard],
+        data: { requiredFeature: [FeatureKey.RecipeInventory, FeatureKey.MultiWarehouseInventory] },
         loadComponent: () =>
           import('./components/inventory/admin-inventory-shell.component')
             .then(m => m.AdminInventoryShellComponent),
       },
       {
         path: 'recipes',
+        canActivate: [featureGuard],
+        data: { requiredFeature: FeatureKey.RecipeInventory },
         loadComponent: () =>
           import('./components/recipes/admin-recipes.component')
             .then(m => m.AdminRecipesComponent),
@@ -83,6 +87,8 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'registers',
+        canActivate: [featureGuard],
+        data: { requiredFeature: FeatureKey.MultiTill },
         loadComponent: () =>
           import('./components/cajas-container/cajas-container.component')
             .then(m => m.CajasContainerComponent),
@@ -101,8 +107,8 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'invoicing',
-        canActivate: [planGuard],
-        data: { requiredPlan: PlanTypeId.Pro },
+        canActivate: [featureGuard],
+        data: { requiredFeature: FeatureKey.CfdiInvoicing },
         loadComponent: () =>
           import('./components/invoicing/admin-invoicing.component')
             .then(m => m.AdminInvoicingComponent),

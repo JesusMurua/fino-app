@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
-import { PlanTypeId } from '../../core/enums';
-import { planGuard } from '../../core/guards/plan.guard';
+import { FeatureKey } from '../../core/enums';
+import { featureGuard } from '../../core/guards/feature.guard';
 
 export const posRoutes: Routes = [
   {
@@ -36,8 +36,8 @@ export const posRoutes: Routes = [
   },
   {
     path: 'waiter',
-    canActivate: [planGuard],
-    data: { requiredPlan: PlanTypeId.Pro },
+    canActivate: [featureGuard],
+    data: { requiredFeature: FeatureKey.WaiterApp },
     loadComponent: () =>
       import('./components/waiter-pos/waiter-pos.component')
         .then(m => m.WaiterPosComponent),

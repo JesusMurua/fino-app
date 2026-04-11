@@ -26,6 +26,11 @@ export interface AuthUser {
   onboardingStatusId?: number;
   /** Last reached onboarding step (1-based) */
   currentOnboardingStep?: number;
+  /**
+   * Feature keys enabled for this tenant, mirrored from the
+   * JWT `features` claim. Drives `TenantContextService`.
+   */
+  features?: string[];
 }
 
 /** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
@@ -47,6 +52,11 @@ export interface LoginResponse {
   onboardingStatusId?: number;
   /** Last reached onboarding step (1-based) */
   currentOnboardingStep?: number;
+  /**
+   * Feature keys enabled for this tenant — mirrors the JWT
+   * `features` claim for convenience. Drives `TenantContextService`.
+   */
+  features?: string[];
 }
 
 /** Shape of GET /api/subscription/status response */

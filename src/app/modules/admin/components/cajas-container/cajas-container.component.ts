@@ -2,8 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { TabViewModule } from 'primeng/tabview';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { FeatureKey } from '../../../../core/models';
-import { FeatureFlagService } from '../../../../core/services/feature-flag.service';
+import { FeatureKey } from '../../../../core/enums';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { CashRegisterComponent } from '../cash-register/cash-register.component';
 import { AdminRegistersComponent } from '../admin-registers/admin-registers.component';
 
@@ -28,7 +28,7 @@ export class CajasContainerComponent {
 
   //#region Injections
 
-  private readonly featureFlags = inject(FeatureFlagService);
+  private readonly tenantContext = inject(TenantContextService);
 
   //#endregion
 
@@ -40,10 +40,10 @@ export class CajasContainerComponent {
   /**
    * True when the current plan locks the multi-device hardware tab.
    * The first device link is always allowed; the lock is a visual hint that
-   * managing multiple devices/roles requires Pro.
+   * managing multiple devices/roles requires a plan tier with `MultiTill`.
    */
   readonly isHardwareLocked = computed(() =>
-    !this.featureFlags.canUse(FeatureKey.CashRegister)
+    !this.tenantContext.hasFeature(FeatureKey.MultiTill)
   );
 
   //#endregion

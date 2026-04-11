@@ -6,17 +6,32 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { FeatureKey } from '../../core/models';
-import { UserRoleId } from '../../core/enums';
+import { FeatureKey, UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
-import { FeatureFlagService } from '../../core/services/feature-flag.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
+import { TenantContextService } from '../../core/services/tenant-context.service';
+import { AppFeatureDirective, AppFeatureMode } from '../../shared/directives/app-feature.directive';
 import { TrialBannerComponent } from '../../shared/components/trial-banner/trial-banner.component';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
+
+/**
+ * Single nav item declaration. The template uses `*appFeature` with the
+ * item's `feature` key to hide or lock the link reactively based on
+ * `TenantContextService` state. Items without a `feature` are always visible.
+ */
+interface NavItem {
+  path: string;
+  icon: string;
+  label: string;
+  /** Feature key required to unlock this item. Omit for always-visible items. */
+  feature?: FeatureKey;
+  /** Shows the low-stock badge next to this item */
+  badge?: boolean;
+}
 
 @Component({
   selector: 'app-admin-shell',
@@ -24,6 +39,7 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
     FormsModule, DropdownModule, ToastModule, TooltipModule,
+    AppFeatureDirective,
     TrialBannerComponent,
   ],
   templateUrl: './admin-shell.component.html',
@@ -31,14 +47,20 @@ const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 })
 export class AdminShellComponent implements OnInit {
 
+  //#region Injections
+
   private readonly configService = inject(ConfigService);
-  private readonly featureFlags = inject(FeatureFlagService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
+  private readonly tenantContext = inject(TenantContextService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  //#endregion
+
+  //#region State
 
   /** Whether the sidebar is collapsed (icon-only mode) */
   readonly isCollapsed = signal(false);
@@ -66,28 +88,47 @@ export class AdminShellComponent implements OnInit {
   /** Number of inventory items below low-stock threshold */
   readonly lowStockCount = computed(() => this.inventoryService.lowStockItems().length);
 
-  /** Navigation items filtered by businessType and plan */
-  readonly navItems = computed(() => {
-    const hasTables = this.configService.hasTables();
+  //#endregion
 
-    const allItems = [
-      { path: 'dashboard',    icon: 'pi-chart-bar',  label: 'Dashboard',       show: true, locked: false, badge: false },
-      { path: 'products',     icon: 'pi-list',        label: 'Catálogo',        show: true, locked: false, badge: false },
-      { path: 'reports',      icon: 'pi-chart-line',  label: 'Reportes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.AdvancedReports), badge: false },
-      { path: 'tables',       icon: 'pi-table',       label: 'Mesas',           show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Tables), badge: false },
-      { path: 'inventory',    icon: 'pi-box',         label: 'Inventario',      show: this.featureFlags.isRelevantForGiro(FeatureKey.Inventory), locked: !this.featureFlags.canUse(FeatureKey.Inventory), badge: true },
-      { path: 'recipes',      icon: 'pi-book',        label: 'Recetas',         show: this.featureFlags.isRelevantForGiro(FeatureKey.Inventory), locked: !this.featureFlags.canUse(FeatureKey.Inventory), badge: false },
-      { path: 'promotions',   icon: 'pi-tag',         label: 'Promociones',     show: this.featureFlags.isRelevantForGiro(FeatureKey.Promotions), locked: !this.featureFlags.canUse(FeatureKey.Promotions), badge: false },
-      { path: 'customers',    icon: 'pi-id-card',     label: 'Clientes',        show: true, locked: !this.featureFlags.canUse(FeatureKey.ClientsAndCredit), badge: false },
-      { path: 'users',        icon: 'pi-users',       label: 'Usuarios',        show: true, locked: false, badge: false },
-      { path: 'registers',    icon: 'pi-wallet',      label: 'Cajas',           show: true, locked: !this.featureFlags.canUse(FeatureKey.CashRegister), badge: false },
-      { path: 'invoicing',    icon: 'pi-receipt',     label: 'Facturación',     show: this.configService.hasInvoicing(), locked: !this.featureFlags.canUse(FeatureKey.Cfdi), badge: false },
-      { path: 'reservations', icon: 'pi-calendar',    label: 'Reservaciones',   show: hasTables, locked: !this.featureFlags.canUse(FeatureKey.Reservations), badge: false },
-      { path: 'settings',     icon: 'pi-cog',         label: 'Configuración',   show: true, locked: false, badge: false },
-    ];
+  //#region Navigation
 
-    return allItems.filter(item => item.show);
-  });
+  /**
+   * Static nav item declaration. Each entry is a candidate link — whether
+   * it renders is decided at template time by `*appFeature`, so the items
+   * array itself is reactive only for the low-stock badge.
+   */
+  readonly navItems: readonly NavItem[] = [
+    { path: 'dashboard',    icon: 'pi-chart-bar',  label: 'Dashboard' },
+    { path: 'products',     icon: 'pi-list',       label: 'Catálogo' },
+    { path: 'reports',      icon: 'pi-chart-line', label: 'Reportes',      feature: FeatureKey.AdvancedReports },
+    { path: 'tables',       icon: 'pi-table',      label: 'Mesas',         feature: FeatureKey.TableMap },
+    { path: 'inventory',    icon: 'pi-box',        label: 'Inventario',    feature: FeatureKey.RecipeInventory, badge: true },
+    { path: 'recipes',      icon: 'pi-book',       label: 'Recetas',       feature: FeatureKey.RecipeInventory },
+    { path: 'promotions',   icon: 'pi-tag',        label: 'Promociones',   feature: FeatureKey.LoyaltyCrm },
+    { path: 'customers',    icon: 'pi-id-card',    label: 'Clientes',      feature: FeatureKey.CustomerBase },
+    { path: 'users',        icon: 'pi-users',      label: 'Usuarios' },
+    { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas',         feature: FeatureKey.MultiTill },
+    { path: 'invoicing',    icon: 'pi-receipt',    label: 'Facturación',   feature: FeatureKey.CfdiInvoicing },
+    { path: 'reservations', icon: 'pi-calendar',   label: 'Reservaciones', feature: FeatureKey.TableMap },
+    { path: 'settings',     icon: 'pi-cog',        label: 'Configuración' },
+  ];
+
+  /**
+   * Resolves the directive mode for a nav item based on the current giro:
+   *   - `lock` when the feature is applicable to this giro (user can upgrade)
+   *   - `hide` when the feature is not applicable (never shown for this giro)
+   *
+   * Items without a feature are always visible; the template skips the
+   * directive for them entirely.
+   */
+  modeFor(item: NavItem): AppFeatureMode {
+    if (!item.feature) return 'lock';
+    return this.tenantContext.isApplicableToGiro(item.feature) ? 'lock' : 'hide';
+  }
+
+  //#endregion
+
+  //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
     const saved = localStorage.getItem(SIDEBAR_KEY);
@@ -102,6 +143,10 @@ export class AdminShellComponent implements OnInit {
 
     await this.inventoryService.loadFromApi();
   }
+
+  //#endregion
+
+  //#region Actions
 
   /** Toggles sidebar collapsed state and persists to localStorage */
   toggleSidebar(): void {
@@ -147,16 +192,6 @@ export class AdminShellComponent implements OnInit {
     }
   }
 
-  /** Shows upgrade toast for locked nav items */
-  onLockedClick(label: string): void {
-    this.messageService.add({
-      severity: 'info',
-      summary: label,
-      detail: 'Requiere un plan superior para acceder',
-      life: 3000,
-    });
-  }
-
   /** Navigates to the POS without logging out */
   goToPos(): void {
     this.router.navigate(['/pos']);
@@ -167,4 +202,7 @@ export class AdminShellComponent implements OnInit {
     this.notificationService.unsubscribe();
     this.authService.logout();
   }
+
+  //#endregion
+
 }

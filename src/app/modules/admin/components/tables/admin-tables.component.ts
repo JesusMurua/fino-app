@@ -13,10 +13,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { environment } from '../../../../../environments/environment';
-import { FeatureKey, RestaurantTable, Zone, ZoneType } from '../../../../core/models';
+import { FeatureKey } from '../../../../core/enums';
+import { RestaurantTable, Zone, ZoneType } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
-import { FeatureFlagService } from '../../../../core/services/feature-flag.service';
 import { TableService } from '../../../../core/services/table.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { ZoneService } from '../../../../core/services/zone.service';
 
 /** Shape of the table form used in create/edit dialog */
@@ -50,7 +51,7 @@ export class AdminTablesComponent implements OnInit {
 
   private readonly tableService = inject(TableService);
   private readonly zoneService = inject(ZoneService);
-  private readonly featureFlags = inject(FeatureFlagService);
+  private readonly tenantContext = inject(TenantContextService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
   readonly authService = inject(AuthService);
@@ -114,7 +115,7 @@ export class AdminTablesComponent implements OnInit {
 
   /** Whether the Zones kanban is available (plan gate) */
   readonly canUseZones = computed(() =>
-    this.featureFlags.canUse(FeatureKey.Zones),
+    this.tenantContext.hasFeature(FeatureKey.TableMap),
   );
 
   /** Tables not assigned to any zone */
