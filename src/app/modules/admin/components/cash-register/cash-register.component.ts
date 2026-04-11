@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
 
@@ -9,15 +9,11 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { TableModule } from 'primeng/table';
 import { MessageService } from 'primeng/api';
 
-import {
-  CashMovement,
-  CashRegisterSession,
-} from '../../../../core/models';
+import { CashRegisterSession } from '../../../../core/models';
 import {
   CashMovementType,
   CashRegisterStatus,
   CASH_MOVEMENT_TYPE_LABELS,
-  CASH_MOVEMENT_TYPE_CLASSES,
 } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
@@ -55,10 +51,24 @@ interface MovementTypeOption {
 })
 export class CashRegisterComponent implements OnInit {
 
-  //#region Properties
+  //#region Injections
 
-  readonly currentSession = signal<CashRegisterSession | null>(null);
-  readonly movements = signal<CashMovement[]>([]);
+  private readonly cashRegisterService = inject(CashRegisterService);
+  private readonly authService = inject(AuthService);
+  private readonly db = inject(DatabaseService);
+  private readonly messageService = inject(MessageService);
+
+  //#endregion
+
+  //#region State
+
+  /**
+   * Reactive reference to the service's active session signal.
+   * The component NEVER mirrors this locally — every render reads the
+   * single source of truth exposed by `CashRegisterService`.
+   */
+  readonly activeSession = this.cashRegisterService.activeSession;
+
   readonly loading = signal(false);
   readonly cashSalesTotalCents = signal(0);
 
@@ -86,9 +96,27 @@ export class CashRegisterComponent implements OnInit {
 
   /** Movement type options for the selector */
   readonly movementTypes: MovementTypeOption[] = [
-    { key: CashMovementType.In,         label: 'Retiro', icon: '💰', description: 'Dinero retirado para depósito o resguardo', placeholder: 'Ej: Depósito al banco' },
-    { key: CashMovementType.Out,        label: 'Gasto',  icon: '🧾', description: 'Pago a proveedor, servicios, etc.', placeholder: 'Ej: Pago de gas' },
-    { key: CashMovementType.Adjustment, label: 'Ajuste', icon: '⚖️', description: 'Corrección por error de conteo', placeholder: 'Ej: Corrección de cambio' },
+    {
+      key: CashMovementType.In,
+      label: 'Retiro',
+      icon: '💰',
+      description: 'Dinero retirado para depósito o resguardo',
+      placeholder: 'Ej: Depósito al banco',
+    },
+    {
+      key: CashMovementType.Out,
+      label: 'Gasto',
+      icon: '🧾',
+      description: 'Pago a proveedor, servicios, etc.',
+      placeholder: 'Ej: Pago de gas',
+    },
+    {
+      key: CashMovementType.Adjustment,
+      label: 'Ajuste',
+      icon: '⚖️',
+      description: 'Corrección por error de conteo',
+      placeholder: 'Ej: Corrección de cambio',
+    },
   ];
 
   /** Expose enums for template bindings */
@@ -99,18 +127,26 @@ export class CashRegisterComponent implements OnInit {
 
   //#region Computeds
 
+  /** True when the session held by the service is in the Open state */
   readonly isSessionOpen = computed(() =>
-    this.currentSession()?.cashRegisterStatusId === CashRegisterStatus.Open,
+    this.activeSession()?.cashRegisterStatusId === CashRegisterStatus.Open,
   );
 
-  readonly movementsTotal = computed(() => {
-    return this.movements()
-      .filter(m => m.cashMovementTypeId === CashMovementType.In || m.cashMovementTypeId === CashMovementType.Out)
-      .reduce((sum, m) => sum + m.amountCents, 0);
-  });
+  /** Movements of the currently active session — derived from the service signal */
+  readonly movements = computed(() =>
+    this.activeSession()?.movements ?? [],
+  );
+
+  /** Total cents moved as In/Out this shift */
+  readonly movementsTotal = computed(() =>
+    this.movements()
+      .filter(m => m.cashMovementTypeId === CashMovementType.In
+                || m.cashMovementTypeId === CashMovementType.Out)
+      .reduce((sum, m) => sum + m.amountCents, 0),
+  );
 
   readonly expectedAmount = computed(() => {
-    const session = this.currentSession();
+    const session = this.activeSession();
     if (!session) return 0;
     return this.cashRegisterService.calculateExpected(session, this.cashSalesTotalCents());
   });
@@ -126,15 +162,6 @@ export class CashRegisterComponent implements OnInit {
 
   //#endregion
 
-  //#region Constructor
-  constructor(
-    private readonly cashRegisterService: CashRegisterService,
-    private readonly authService: AuthService,
-    private readonly db: DatabaseService,
-    private readonly messageService: MessageService,
-  ) {}
-  //#endregion
-
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
@@ -145,16 +172,15 @@ export class CashRegisterComponent implements OnInit {
 
   //#region Session Methods
 
-  /** Loads current open session and today's cash sales */
+  /**
+   * Refreshes the active session via the service and loads today's cash
+   * sales. The component does not hold a local copy of the session — the
+   * service's signal is the single source of truth.
+   */
   async loadSession(): Promise<void> {
     this.loading.set(true);
-
-    const session = await this.cashRegisterService.getOpenSession(this.authService.branchId);
-    this.currentSession.set(session);
-    this.movements.set(session?.movements ?? []);
-
+    await this.cashRegisterService.refreshActiveSession();
     await this.loadCashSales();
-
     this.loading.set(false);
   }
 
@@ -163,13 +189,11 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
-    const session = await this.cashRegisterService.openSession(this.authService.branchId, {
+    await this.cashRegisterService.openSession({
       initialAmountCents: Math.round(this.openAmount * 100),
       openedBy: user.name,
     });
 
-    this.currentSession.set(session);
-    this.movements.set(session.movements ?? []);
     this.showOpenDialog.set(false);
     this.openAmount = 0;
     await this.loadCashSales();
@@ -193,7 +217,7 @@ export class CashRegisterComponent implements OnInit {
       .filter(o =>
         (o.payments?.length ?? 0) === 0 &&
         !o.cancelledAt &&
-        new Date(o.createdAt) >= todayStart
+        new Date(o.createdAt) >= todayStart,
       )
       .toArray();
 
@@ -218,8 +242,8 @@ export class CashRegisterComponent implements OnInit {
       notes: this.closeNotes.trim() || undefined,
     });
 
-    this.currentSession.set(null);
-    this.movements.set([]);
+    // `closeSession` clears `_activeSession` internally, so every
+    // signal-backed computed reactively flips to the empty state.
     this.showCloseDialog.set(false);
     this.closeAmount = 0;
     this.closeNotes = '';
@@ -245,7 +269,10 @@ export class CashRegisterComponent implements OnInit {
 
     const summary = CASH_MOVEMENT_TYPE_LABELS[this.movementType] + ' registrado';
 
-    await this.loadSession();
+    // Re-query the session so the service signal picks up the new
+    // movement. Local `movements()` reacts automatically.
+    await this.cashRegisterService.refreshActiveSession();
+
     this.showMovementDialog.set(false);
     this.movementAmount = 0;
     this.movementDescription = '';

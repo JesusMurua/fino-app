@@ -10,6 +10,22 @@ export enum UserRoleId {
   Kiosk = 8,
 }
 
+/**
+ * Roles that belong exclusively to the cloud Back Office. These users
+ * log in from any browser (laptop, phone) and should never be forced
+ * through device-setup / cash-register flows when navigating to
+ * `/admin` — they only need hardware gating when they try to sell.
+ */
+export const BACK_OFFICE_ROLES: readonly UserRoleId[] = [
+  UserRoleId.Owner,
+  UserRoleId.Manager,
+];
+
+/** Returns true when the given role is a Back Office role (Owner/Manager) */
+export function isBackOfficeRole(roleId: UserRoleId | null | undefined): boolean {
+  return roleId != null && BACK_OFFICE_ROLES.includes(roleId);
+}
+
 /** Subscription plan tier — maps to PlanTypeCatalog in backend */
 export enum PlanTypeId {
   Free = 1,

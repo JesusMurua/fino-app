@@ -37,7 +37,7 @@
   <!-- ================================================================ -->
   <!-- SESSION OPEN                                                       -->
   <!-- ================================================================ -->
-  @if (!loading() && isSessionOpen() && currentSession(); as session) {
+  @if (!loading() && isSessionOpen() && activeSession(); as session) {
 
     <!-- Session header bar -->
     <div class="session-bar">
@@ -185,7 +185,7 @@
   [style]="{ width: '480px' }"
   [draggable]="false"
 >
-  @if (currentSession(); as session) {
+  @if (activeSession(); as session) {
     <div class="dialog-form">
 
       <!-- Summary -->
@@ -385,9 +385,9 @@
               <td>{{ s.openedBy }}</td>
               <td>{{ s.closedBy ?? '—' }}</td>
               <td>{{ s.initialAmountCents | price }}</td>
-              <td>{{ s.countedAmountCents != null ? (s.countedAmountCents | price) : '—' }}</td>
+              <td>{{ s.countedAmountCents !== null ? (s.countedAmountCents | price) : '—' }}</td>
               <td>
-                @if (s.countedAmountCents != null && s.cashRegisterStatusId === CashRegisterStatus.Closed) {
+                @if (s.countedAmountCents !== null && s.cashRegisterStatusId === CashRegisterStatus.Closed) {
                   <span [class.text-green]="(s.countedAmountCents - s.initialAmountCents) >= 0"
                         [class.text-red]="(s.countedAmountCents - s.initialAmountCents) < 0">
                     {{ (s.countedAmountCents - s.initialAmountCents) | price }}
