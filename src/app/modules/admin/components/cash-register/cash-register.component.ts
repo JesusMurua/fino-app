@@ -83,6 +83,26 @@ export class CashRegisterComponent implements OnInit {
   /** True while the close-session API call is in flight */
   readonly isClosingSession = signal(false);
 
+  /**
+   * Two-step state machine for the close-session dialog:
+   *
+   *   'counting' — the cashier sees only the opening float and the
+   *                counted-amount input. Sales, movements, expected
+   *                total and difference are all hidden. This is the
+   *                blind-count step — the whole point of an arqueo is
+   *                that the cashier cannot peek at the system total
+   *                before committing their physical count.
+   *
+   *   'reveal'   — after the cashier confirms their count via
+   *                "Verificar conteo", the full summary panel and
+   *                the difference label are unlocked. The amount
+   *                input becomes read-only so the cashier cannot
+   *                adjust their count to match the expected total.
+   *                A "Volver a contar" secondary button lets them
+   *                return to the counting step if they miskeyed.
+   */
+  readonly closeStep = signal<'counting' | 'reveal'>('counting');
+
   // Dialog visibility
   readonly showOpenDialog = signal(false);
   readonly showCloseDialog = signal(false);
@@ -456,11 +476,36 @@ export class CashRegisterComponent implements OnInit {
     this.showOpenDialog.set(true);
   }
 
-  /** Opens the close dialog and pre-sets expected */
+  /**
+   * Opens the close dialog. Always rewinds the two-step flow to
+   * `'counting'` so a previous session never leaks into the next
+   * attempt — the cashier must count blind every single time.
+   */
   openCloseDialog(): void {
     this.closeAmount = 0;
     this.closeNotes = '';
+    this.closeStep.set('counting');
     this.showCloseDialog.set(true);
+  }
+
+  /**
+   * Commits the blind count and unlocks the reveal step.
+   * Called by the primary button in step 1. Refuses to advance when
+   * the amount is still zero — the button is also disabled in that
+   * state, this is a defensive guard for programmatic invocation.
+   */
+  verifyCount(): void {
+    if (this.closeAmount <= 0) return;
+    this.closeStep.set('reveal');
+  }
+
+  /**
+   * Returns the user to the counting step. Called by the "Volver a
+   * contar" secondary button in step 2 when the cashier realizes
+   * they miskeyed and wants to correct the count before committing.
+   */
+  backToCounting(): void {
+    this.closeStep.set('counting');
   }
 
   /** Opens the movement dialog and resets form */

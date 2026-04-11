@@ -198,29 +198,44 @@
   @if (activeSession(); as session) {
     <div class="dialog-form">
 
-      <!-- Summary -->
+      <!-- Step 1 hint — only shown while counting blind -->
+      @if (closeStep() === 'counting') {
+        <p class="close-step-hint">
+          <i class="pi pi-info-circle"></i>
+          Cuenta el dinero físico de la caja. El sistema te mostrará el esperado
+          <strong>después</strong> de confirmar tu conteo.
+        </p>
+      }
+
+      <!-- Summary — Fondo inicial always visible (the cashier put it there
+           at open time so it is not privileged information). Ventas,
+           movimientos and esperado are revealed only in step 2. -->
       <div class="close-summary">
         <div class="close-summary__row">
           <span>Fondo inicial</span>
           <span>{{ session.initialAmountCents | price }}</span>
         </div>
-        <div class="close-summary__row">
-          <span>Ventas efectivo</span>
-          <span>{{ cashSalesTotalCents() | price }}</span>
-        </div>
-        <div class="close-summary__row">
-          <span>Movimientos</span>
-          <span>-{{ movementsTotal() | price }}</span>
-        </div>
-        <div class="close-summary__row close-summary__row--total">
-          <span>Esperado en caja</span>
-          <span>{{ expectedAmount() | price }}</span>
-        </div>
+
+        @if (closeStep() === 'reveal') {
+          <div class="close-summary__row">
+            <span>Ventas efectivo</span>
+            <span>{{ cashSalesTotalCents() | price }}</span>
+          </div>
+          <div class="close-summary__row">
+            <span>Movimientos</span>
+            <span>-{{ movementsTotal() | price }}</span>
+          </div>
+          <div class="close-summary__row close-summary__row--total">
+            <span>Esperado en caja</span>
+            <span>{{ expectedAmount() | price }}</span>
+          </div>
+        }
       </div>
 
       <div class="dialog-divider"></div>
 
-      <!-- Counted amount -->
+      <!-- Counted amount — editable in step 1, readonly in step 2 so the
+           cashier cannot adjust the count after seeing the expected total. -->
       <div class="dialog-field">
         <label class="dialog-field__label" for="close-amount">¿Cuánto hay físicamente en caja?</label>
         <p-inputNumber
@@ -230,14 +245,15 @@
           currency="MXN"
           locale="es-MX"
           [min]="0"
+          [readonly]="closeStep() === 'reveal'"
           styleClass="dialog-field__input-lg"
           inputStyleClass="dialog-field__input-lg-inner"
           placeholder="$0.00"
         />
       </div>
 
-      <!-- Difference -->
-      @if (difference() !== null) {
+      <!-- Difference — unlocked only in step 2, after the count is committed -->
+      @if (closeStep() === 'reveal' && difference() !== null) {
         <div class="close-diff" [class.close-diff--ok]="difference()! >= 0" [class.close-diff--bad]="difference()! < 0">
           @if (difference()! >= 0) {
             <i class="pi pi-check-circle"></i>
@@ -249,7 +265,8 @@
         </div>
       }
 
-      <!-- Notes -->
+      <!-- Notes — editable in both steps so the cashier can pre-write
+           context during counting or justify a discrepancy after reveal. -->
       <div class="dialog-field">
         <label class="dialog-field__label" for="close-notes">Notas (opcional)</label>
         <textarea
@@ -267,25 +284,46 @@
 
   <ng-template pTemplate="footer">
     <div class="dialog-footer">
-      <button
-        type="button"
-        class="btn-ghost"
-        [disabled]="isClosingSession()"
-        (click)="showCloseDialog.set(false)"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        [class]="closeAmount > 0 && difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
-        [disabled]="closeAmount <= 0 || isClosingSession()"
-        (click)="onCloseSession()"
-      >
-        @if (isClosingSession()) {
-          <i class="pi pi-spin pi-spinner"></i>
-        }
-        Cerrar turno
-      </button>
+      @if (closeStep() === 'counting') {
+        <!-- Step 1 footer: Cancel + primary "Verificar conteo" -->
+        <button
+          type="button"
+          class="btn-ghost"
+          (click)="showCloseDialog.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="closeAmount <= 0"
+          (click)="verifyCount()"
+        >
+          Verificar conteo
+        </button>
+      } @else {
+        <!-- Step 2 footer: "Volver a contar" + primary "Cerrar turno" -->
+        <button
+          type="button"
+          class="btn-ghost"
+          [disabled]="isClosingSession()"
+          (click)="backToCounting()"
+        >
+          <i class="pi pi-arrow-left"></i>
+          Volver a contar
+        </button>
+        <button
+          type="button"
+          [class]="difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
+          [disabled]="closeAmount <= 0 || isClosingSession()"
+          (click)="onCloseSession()"
+        >
+          @if (isClosingSession()) {
+            <i class="pi pi-spin pi-spinner"></i>
+          }
+          Cerrar turno
+        </button>
+      }
     </div>
   </ng-template>
 </p-dialog>
