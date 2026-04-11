@@ -1,13 +1,15 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { TableModule } from 'primeng/table';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { CashRegisterSession } from '../../../../core/models';
 import {
@@ -37,6 +39,7 @@ interface MovementTypeOption {
     FormsModule,
     DatePipe,
     NgClass,
+    ConfirmDialogModule,
     DialogModule,
     InputNumberModule,
     InputTextModule,
@@ -46,6 +49,7 @@ interface MovementTypeOption {
     StatusLabelPipe,
     StatusClassPipe,
   ],
+  providers: [ConfirmationService],
   templateUrl: './cash-register.component.html',
   styleUrl: './cash-register.component.scss',
 })
@@ -57,6 +61,7 @@ export class CashRegisterComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly db = inject(DatabaseService);
   private readonly messageService = inject(MessageService);
+  private readonly confirmationService = inject(ConfirmationService);
 
   //#endregion
 
@@ -71,6 +76,12 @@ export class CashRegisterComponent implements OnInit {
 
   readonly loading = signal(false);
   readonly cashSalesTotalCents = signal(0);
+
+  /** True while the open-session API call is in flight */
+  readonly isOpeningSession = signal(false);
+
+  /** True while the close-session API call is in flight */
+  readonly isClosingSession = signal(false);
 
   // Dialog visibility
   readonly showOpenDialog = signal(false);
@@ -184,24 +195,90 @@ export class CashRegisterComponent implements OnInit {
     this.loading.set(false);
   }
 
-  /** Opens a new cash register session */
+  /**
+   * Opens a new cash register session.
+   *
+   * Guards against:
+   *   - Double-click / concurrent opens via `isOpeningSession`
+   *   - Accidental $0 float via a confirmation dialog (the cajero must
+   *     explicitly acknowledge that there is no cash for change)
+   *   - Network / validation errors via a typed toast that preserves
+   *     the dialog so the user can retry without re-entering the amount
+   */
   async openSession(): Promise<void> {
+    if (this.isOpeningSession()) return;
+
     const user = this.authService.currentUser();
     if (!user) return;
 
-    await this.cashRegisterService.openSession({
-      initialAmountCents: Math.round(this.openAmount * 100),
-      openedBy: user.name,
-    });
+    if (this.openAmount === 0) {
+      const confirmed = await this.confirmOpenWithoutFloat();
+      if (!confirmed) return;
+    }
 
-    this.showOpenDialog.set(false);
-    this.openAmount = 0;
-    await this.loadCashSales();
+    this.isOpeningSession.set(true);
+    try {
+      await this.cashRegisterService.openSession({
+        initialAmountCents: Math.round(this.openAmount * 100),
+        openedBy: user.name,
+      });
+
+      this.showOpenDialog.set(false);
+      await this.loadCashSales();
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Turno abierto',
+        detail: 'Turno abierto correctamente',
+      });
+    } catch (error) {
+      this.showOpenError(error);
+    } finally {
+      this.isOpeningSession.set(false);
+    }
+  }
+
+  /**
+   * Prompts the user to confirm an opening balance of zero.
+   * Resolves to `true` when the user explicitly accepts, `false` on
+   * reject / close.
+   */
+  private confirmOpenWithoutFloat(): Promise<boolean> {
+    return new Promise(resolve => {
+      this.confirmationService.confirm({
+        key: 'cashRegisterConfirm',
+        header: '¿Abrir sin fondo de cambio?',
+        message: 'Vas a abrir el turno con $0. Sin fondo no podrás dar cambio a tus clientes. ¿Estás seguro?',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, abrir sin fondo',
+        rejectLabel: 'Cancelar',
+        accept: () => resolve(true),
+        reject: () => resolve(false),
+      });
+    });
+  }
+
+  /** Maps an open-session error to a human-readable toast */
+  private showOpenError(error: unknown): void {
+    let detail = 'No se pudo abrir el turno. Intenta de nuevo.';
+
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 409) {
+        detail = 'Ya existe un turno abierto para esta caja.';
+      } else if (error.status === 400) {
+        detail = 'El monto inicial no es válido.';
+      } else if (error.status === 0) {
+        detail = 'Sin conexión. Intenta de nuevo cuando vuelva internet.';
+      }
+    } else if (error instanceof Error && error.message.toLowerCase().includes('not linked')) {
+      detail = 'Este dispositivo no está vinculado a una caja física.';
+    }
 
     this.messageService.add({
-      severity: 'success',
-      summary: 'Turno abierto',
-      detail: 'Turno abierto correctamente',
+      severity: 'error',
+      summary: 'Error al abrir turno',
+      detail,
+      life: 5000,
     });
   }
 
@@ -230,28 +307,74 @@ export class CashRegisterComponent implements OnInit {
     await this.closeSession();
   }
 
-  /** Closes the current session */
+  /**
+   * Closes the current session.
+   *
+   * The close dialog is dismissed BEFORE awaiting the service call so
+   * the user does not see a one-frame blank dialog when the service
+   * flips `_activeSession` to null. If the call fails the dialog is
+   * reopened with the preserved form state so the user can retry
+   * without re-entering their counted amount.
+   */
   async closeSession(): Promise<void> {
     this.showCloseConfirm.set(false);
+    if (this.isClosingSession()) return;
+
     const user = this.authService.currentUser();
     if (!user) return;
 
-    await this.cashRegisterService.closeSession(this.authService.branchId, {
-      countedAmountCents: Math.round(this.closeAmount * 100),
-      closedBy: user.name,
-      notes: this.closeNotes.trim() || undefined,
-    });
-
-    // `closeSession` clears `_activeSession` internally, so every
-    // signal-backed computed reactively flips to the empty state.
+    // Dismiss the dialog before awaiting — the service will clear
+    // `_activeSession` on success, and a visible dialog bound to
+    // `@if (activeSession(); as session)` would otherwise render a
+    // one-frame blank card.
     this.showCloseDialog.set(false);
-    this.closeAmount = 0;
-    this.closeNotes = '';
+    this.isClosingSession.set(true);
+
+    try {
+      await this.cashRegisterService.closeSession(this.authService.branchId, {
+        countedAmountCents: Math.round(this.closeAmount * 100),
+        closedBy: user.name,
+        notes: this.closeNotes.trim() || undefined,
+      });
+
+      this.closeAmount = 0;
+      this.closeNotes = '';
+
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Turno cerrado',
+        detail: 'Turno cerrado correctamente',
+      });
+    } catch (error) {
+      // Reopen the dialog — the service throws before clearing
+      // `_activeSession`, so the preserved counted amount is still
+      // consistent with the session currently held in the signal.
+      this.showCloseDialog.set(true);
+      this.showCloseError(error);
+    } finally {
+      this.isClosingSession.set(false);
+    }
+  }
+
+  /** Maps a close-session error to a human-readable toast */
+  private showCloseError(error: unknown): void {
+    let detail = 'No se pudo cerrar el turno. Intenta de nuevo.';
+
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 409) {
+        detail = 'El turno ya fue cerrado desde otro dispositivo.';
+      } else if (error.status === 400) {
+        detail = 'El monto declarado no es válido.';
+      } else if (error.status === 0) {
+        detail = 'Sin conexión. Intenta de nuevo cuando vuelva internet.';
+      }
+    }
 
     this.messageService.add({
-      severity: 'success',
-      summary: 'Turno cerrado',
-      detail: 'Turno cerrado correctamente',
+      severity: 'error',
+      summary: 'Error al cerrar turno',
+      detail,
+      life: 5000,
     });
   }
 
@@ -324,6 +447,15 @@ export class CashRegisterComponent implements OnInit {
     });
   }
 
+  /**
+   * Opens the open-session dialog and clears any residual amount
+   * from a previous attempt so the cashier never sees a stale value.
+   */
+  openOpenDialog(): void {
+    this.openAmount = 0;
+    this.showOpenDialog.set(true);
+  }
+
   /** Opens the close dialog and pre-sets expected */
   openCloseDialog(): void {
     this.closeAmount = 0;
@@ -343,19 +475,25 @@ export class CashRegisterComponent implements OnInit {
 
   //#region Private
 
-  /** Loads today's cash sales total from Dexie (non-cancelled, cash only) */
+  /**
+   * Loads today's cash sales total from Dexie.
+   *
+   * Uses the `createdAt` index to narrow the scan to today, then
+   * applies the "non-cancelled, has cash payment" predicate via
+   * Dexie's `Collection.and(...)` so filtering happens during the
+   * index walk. The accumulator is built with `Collection.each(...)`
+   * to avoid materializing an intermediate array.
+   */
   private async loadCashSales(): Promise<void> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const orders = await this.db.orders
+    let cashTotal = 0;
+    await this.db.orders
       .where('createdAt')
       .aboveOrEqual(todayStart)
-      .toArray();
-
-    const cashTotal = orders
-      .filter(o => (o.payments ?? []).some(p => p.method === 'Cash') && !o.cancelledAt)
-      .reduce((sum, o) => sum + o.totalCents, 0);
+      .and(o => !o.cancelledAt && (o.payments ?? []).some(p => p.method === 'Cash'))
+      .each(o => { cashTotal += o.totalCents; });
 
     this.cashSalesTotalCents.set(cashTotal);
   }

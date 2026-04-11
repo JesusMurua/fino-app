@@ -26,7 +26,7 @@
       <i class="pi pi-wallet cash-empty__icon"></i>
       <h2 class="cash-empty__title">No hay turno abierto</h2>
       <p class="cash-empty__text">Abre un turno para comenzar a registrar ventas del día</p>
-      <button type="button" class="btn-primary btn-primary--lg" (click)="showOpenDialog.set(true)">
+      <button type="button" class="btn-primary btn-primary--lg" (click)="openOpenDialog()">
         <i class="pi pi-plus"></i>
         Abrir turno
       </button>
@@ -161,13 +161,23 @@
 
   <ng-template pTemplate="footer">
     <div class="dialog-footer">
-      <button type="button" class="btn-ghost" (click)="showOpenDialog.set(false)">Cancelar</button>
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isOpeningSession()"
+        (click)="showOpenDialog.set(false)"
+      >
+        Cancelar
+      </button>
       <button
         type="button"
         class="btn-primary"
-        [disabled]="openAmount < 0"
+        [disabled]="openAmount < 0 || isOpeningSession()"
         (click)="openSession()"
       >
+        @if (isOpeningSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
         Abrir turno
       </button>
     </div>
@@ -257,13 +267,23 @@
 
   <ng-template pTemplate="footer">
     <div class="dialog-footer">
-      <button type="button" class="btn-ghost" (click)="showCloseDialog.set(false)">Cancelar</button>
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isClosingSession()"
+        (click)="showCloseDialog.set(false)"
+      >
+        Cancelar
+      </button>
       <button
         type="button"
         [class]="closeAmount > 0 && difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
-        [disabled]="closeAmount <= 0"
+        [disabled]="closeAmount <= 0 || isClosingSession()"
         (click)="onCloseSession()"
       >
+        @if (isClosingSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
         Cerrar turno
       </button>
     </div>
@@ -430,11 +450,38 @@
 
   <ng-template pTemplate="footer">
     <div class="close-confirm__footer">
-      <button type="button" class="btn-ghost" (click)="showCloseConfirm.set(false)">Cancelar</button>
-      <button type="button" class="btn-warning" (click)="closeSession()">
-        <i class="pi pi-lock"></i>
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isClosingSession()"
+        (click)="showCloseConfirm.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-warning"
+        [disabled]="isClosingSession()"
+        (click)="closeSession()"
+      >
+        @if (isClosingSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-lock"></i>
+        }
         Sí, cerrar
       </button>
     </div>
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Confirmation dialog — $0 opening warning                                -->
+<!-- ====================================================================== -->
+<p-confirmDialog
+  key="cashRegisterConfirm"
+  [style]="{ width: '420px' }"
+  acceptButtonStyleClass="btn-primary"
+  rejectButtonStyleClass="btn-ghost"
+  [closable]="false"
+/>
