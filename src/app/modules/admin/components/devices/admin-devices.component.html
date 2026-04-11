@@ -1,0 +1,110 @@
+<div class="admin-devices">
+
+  <!-- Header -->
+  <div class="admin-devices__header">
+    <div>
+      <h1 class="admin-devices__title">Dispositivos</h1>
+      <p class="admin-devices__subtitle">
+        Genera códigos de activación y administra los equipos vinculados a tu negocio
+      </p>
+    </div>
+  </div>
+
+  <div class="admin-devices__grid">
+
+    <!-- =================================================================== -->
+    <!-- Section 1 — Activation code generator                                -->
+    <!-- =================================================================== -->
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div class="card-icon"><i class="pi pi-key"></i></div>
+        <div>
+          <div class="card-title">Vincular un dispositivo nuevo</div>
+          <div class="card-subtitle">Genera un código de 6 dígitos válido por 24 horas</div>
+        </div>
+      </div>
+
+      <div class="settings-form">
+        <div class="form-field">
+          <label class="form-field__label" for="device-branch">Sucursal</label>
+          <p-dropdown
+            inputId="device-branch"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            [(ngModel)]="codeBranchId"
+            placeholder="Seleccionar sucursal"
+            styleClass="w-full"
+            [disabled]="loadingBranches()"
+          />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="device-mode">Modo del dispositivo</label>
+          <p-dropdown
+            inputId="device-mode"
+            [options]="modes"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="codeMode"
+            styleClass="w-full"
+          />
+        </div>
+      </div>
+
+      @if (activationCode()) {
+        <div class="activation-code">
+          <span class="activation-code__value">{{ activationCode() }}</span>
+          <span class="activation-code__summary">
+            Código para: <strong>{{ codeBranchLabel() }}</strong>
+            — Modo: <strong>{{ codeModeLabel() }}</strong>
+          </span>
+          <span class="activation-code__hint">
+            Ingresa este código en el nuevo dispositivo desde la pantalla "Dispositivo no vinculado".
+          </span>
+        </div>
+      }
+
+      <div class="settings-card__footer">
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="generatingCode() || !codeBranchId"
+          (click)="generateActivationCode()"
+        >
+          @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
+          Generar código
+        </button>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- Section 2 — Devices list (placeholder until backend lands)           -->
+    <!-- =================================================================== -->
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div class="card-icon"><i class="pi pi-tablet"></i></div>
+        <div>
+          <div class="card-title">Dispositivos vinculados</div>
+          <div class="card-subtitle">Cajas, cocinas y kioscos registrados en tu negocio</div>
+        </div>
+      </div>
+
+      <div class="devices-empty">
+        <i class="pi pi-tablet devices-empty__icon"></i>
+        <p class="devices-empty__title">Listado en camino</p>
+        <p class="devices-empty__text">
+          Pronto podrás ver aquí todos tus equipos con su estado en tiempo real,
+          revocar accesos y renombrarlos. Por ahora, usa el generador de arriba
+          para vincular dispositivos nuevos.
+        </p>
+        <span class="devices-empty__badge">
+          <i class="pi pi-clock"></i>
+          Próximamente
+        </span>
+      </div>
+    </section>
+
+  </div>
+
+</div>

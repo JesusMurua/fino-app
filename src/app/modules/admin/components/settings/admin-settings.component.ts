@@ -111,12 +111,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly showCopyDialog = signal(false);
   readonly copyingCatalog = signal(false);
 
-  /** Activation code generation */
-  readonly activationCode = signal('');
-  readonly generatingCode = signal(false);
-  codeBranchId = 0;
-  codeMode: DeviceMode = 'cashier';
-
   /** Phone field — local only, not persisted yet */
   businessPhone = '';
 
@@ -347,8 +341,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
     if (this.authService.currentUser()?.roleId === UserRoleId.Owner) {
       await this.loadBranches();
-      const first = this.branches()[0];
-      if (first) this.codeBranchId = first.id;
     }
   }
 
@@ -720,51 +712,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         this.messageService.add({ severity: 'error', summary: 'Error al eliminar', life: 3000 });
       },
     });
-  }
-
-  //#endregion
-
-  //#region Activation Code Helpers
-
-  /** Display label for the selected branch in the code generator */
-  codeBranchLabel(): string {
-    return this.branches().find(b => b.id === this.codeBranchId)?.name ?? '';
-  }
-
-  /** Display label for the selected mode in the code generator */
-  codeModeLabel(): string {
-    return this.availableModes().find(m => m.value === this.codeMode)?.label ?? this.codeMode;
-  }
-
-  //#endregion
-
-  //#region Activation Code
-
-  /**
-   * Generates a 6-digit activation code for configuring another device.
-   * The code is valid for 24 hours.
-   */
-  async generateActivationCode(): Promise<void> {
-    this.generatingCode.set(true);
-    this.activationCode.set('');
-
-    try {
-      const response = await firstValueFrom(
-        this.api.post<{ code: string }>('/device/generate-code', {
-          branchId: this.codeBranchId,
-          mode: this.codeMode,
-        }),
-      );
-      this.activationCode.set(response.code);
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo generar el código',
-      });
-    } finally {
-      this.generatingCode.set(false);
-    }
   }
 
   //#endregion
