@@ -2,15 +2,37 @@
   <div class="setup-card">
 
     <!-- ============================================================== -->
-    <!-- STEP: Choose method                                             -->
+    <!-- Silent auto-recovery (validateDevice) in flight                 -->
     <!-- ============================================================== -->
-    @if (step() === 'choose') {
+    @if (isValidating()) {
       <div class="setup-header">
         <div class="setup-header__icon">
-          <i class="pi pi-cog"></i>
+          <i class="pi pi-spin pi-spinner"></i>
         </div>
-        <h1 class="setup-header__title">Configurar dispositivo</h1>
-        <p class="setup-header__sub">Primera vez en este equipo</p>
+        <h1 class="setup-header__title">Verificando dispositivo…</h1>
+        <p class="setup-header__sub">Un momento</p>
+      </div>
+    }
+
+    <!-- ============================================================== -->
+    <!-- STEP: Choose method                                             -->
+    <!-- ============================================================== -->
+    @if (!isValidating() && step() === 'choose') {
+      <div class="setup-header">
+        <div class="setup-header__icon">
+          @if (isUnbound()) {
+            <i class="pi pi-exclamation-triangle"></i>
+          } @else {
+            <i class="pi pi-cog"></i>
+          }
+        </div>
+        @if (isUnbound()) {
+          <h1 class="setup-header__title">Dispositivo no vinculado</h1>
+          <p class="setup-header__sub">Ingresa el código de activación</p>
+        } @else {
+          <h1 class="setup-header__title">Configurar dispositivo</h1>
+          <p class="setup-header__sub">Primera vez en este equipo</p>
+        }
       </div>
 
       <div class="setup-options">
@@ -41,7 +63,7 @@
     <!-- ============================================================== -->
     <!-- STEP: Email + Password                                          -->
     <!-- ============================================================== -->
-    @if (step() === 'email') {
+    @if (!isValidating() && step() === 'email') {
       <div class="setup-header">
         <button class="setup-back" (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
@@ -97,7 +119,7 @@
     <!-- ============================================================== -->
     <!-- STEP: Activation code                                           -->
     <!-- ============================================================== -->
-    @if (step() === 'code') {
+    @if (!isValidating() && step() === 'code') {
       <div class="setup-header">
         <button class="setup-back" (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
@@ -140,7 +162,7 @@
     <!-- ============================================================== -->
     <!-- STEP: Select branch (email flow)                                -->
     <!-- ============================================================== -->
-    @if (step() === 'branch') {
+    @if (!isValidating() && step() === 'branch') {
       <div class="setup-header">
         <h1 class="setup-header__title">Elige la sucursal</h1>
         <p class="setup-header__sub">{{ businessName }}</p>
@@ -160,7 +182,7 @@
     <!-- ============================================================== -->
     <!-- STEP: Select mode + device name (email flow)                    -->
     <!-- ============================================================== -->
-    @if (step() === 'mode') {
+    @if (!isValidating() && step() === 'mode') {
       <div class="setup-header">
         <h1 class="setup-header__title">Configura el dispositivo</h1>
         <p class="setup-header__sub">{{ selectedBranchName }}</p>
@@ -201,7 +223,19 @@
           </p>
         }
 
-        <button class="setup-btn" (click)="saveEmailSetup()">
+        @if (error()) {
+          <p class="setup-error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ error() }}
+          </p>
+        }
+
+        <button
+          class="setup-btn"
+          [disabled]="isLoading()"
+          (click)="saveEmailSetup()"
+        >
+          @if (isLoading()) { <i class="pi pi-spin pi-spinner"></i> }
           Configurar dispositivo
         </button>
       </div>
@@ -210,7 +244,7 @@
     <!-- ============================================================== -->
     <!-- STEP: Device name only (code flow)                              -->
     <!-- ============================================================== -->
-    @if (step() === 'code-name') {
+    @if (!isValidating() && step() === 'code-name') {
       <div class="setup-header">
         <h1 class="setup-header__title">Dispositivo activado</h1>
         <p class="setup-header__sub">{{ activateData?.businessName }} — {{ activateData?.branchName }}</p>
@@ -239,7 +273,19 @@
           ¿Modo incorrecto? Pide un nuevo código a tu administrador.
         </p>
 
-        <button class="setup-btn" (click)="saveCodeSetup()">
+        @if (error()) {
+          <p class="setup-error">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ error() }}
+          </p>
+        }
+
+        <button
+          class="setup-btn"
+          [disabled]="isLoading()"
+          (click)="saveCodeSetup()"
+        >
+          @if (isLoading()) { <i class="pi pi-spin pi-spinner"></i> }
           Activar dispositivo
         </button>
       </div>

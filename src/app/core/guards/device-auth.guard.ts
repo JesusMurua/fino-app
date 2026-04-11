@@ -41,6 +41,9 @@ export const deviceAuthGuard: CanActivateFn = (route: ActivatedRouteSnapshot) =>
     if (userRoleId && allowedRoles.includes(userRoleId)) return true;
   }
 
-  // 3. Neither — the device needs to be provisioned first
-  return router.createUrlTree(['/setup']);
+  // 3. Neither — the device needs to be provisioned first.
+  //    `reason=unbound` lets the setup screen show a distinctive
+  //    "Dispositivo no vinculado" state instead of the generic
+  //    first-time setup copy.
+  return router.createUrlTree(['/setup'], { queryParams: { reason: 'unbound' } });
 };

@@ -1,6 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
@@ -47,13 +47,14 @@ interface ActivateResponse {
   templateUrl: './setup.component.html',
   styleUrl: './setup.component.scss',
 })
-export class SetupComponent {
+export class SetupComponent implements OnInit {
 
   //#region Injections
 
   private readonly api = inject(ApiService);
   private readonly configService = inject(ConfigService);
   private readonly deviceService = inject(DeviceService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   //#endregion
@@ -68,6 +69,20 @@ export class SetupComponent {
 
   /** Loading state for API calls */
   readonly isLoading = signal(false);
+
+  /**
+   * True while the auto-recovery `validateDevice()` call is in flight at
+   * boot. Used to hide the main UI so the user does not see a flash of
+   * the choose-method screen before we decide whether to redirect away.
+   */
+  readonly isValidating = signal(true);
+
+  /**
+   * True when the setup screen was reached because the `deviceAuthGuard`
+   * rebounced an unauthenticated infrastructure device. The template
+   * swaps the header to a distinctive "Dispositivo no vinculado" state.
+   */
+  readonly isUnbound = signal(false);
 
   /** Email login form */
   email = '';
@@ -109,6 +124,75 @@ export class SetupComponent {
   getActivateModeBadge(): string {
     if (!this.activateData) return '';
     return this.modeLabels[this.activateData.mode] ?? this.activateData.mode;
+  }
+
+  //#endregion
+
+  //#region Lifecycle
+
+  /**
+   * Runs a silent auto-recovery on boot:
+   *
+   *   1. Read `?reason=unbound` to switch the header to the "device not
+   *      linked" variant when the guard rebounced us here.
+   *   2. Call `DeviceService.validateDevice()` — if the backend still
+   *      recognizes our stable UUID, the local config + device token are
+   *      hydrated in place. Navigate straight to the mode-specific entry
+   *      point so the user never has to re-enter an activation code.
+   *   3. Otherwise, reveal the normal choose-method UI.
+   *
+   * For infrastructure modes (`kitchen`, `kiosk`) the auto-redirect is
+   * only honored when a valid device token was actually persisted by
+   * `validateDevice()` — otherwise `deviceAuthGuard` would rebound the
+   * user back here in an infinite loop.
+   */
+  async ngOnInit(): Promise<void> {
+    if (this.route.snapshot.queryParamMap.get('reason') === 'unbound') {
+      this.isUnbound.set(true);
+    }
+
+    try {
+      const recovered = await this.deviceService.validateDevice();
+      if (recovered && this.canAutoRedirect()) {
+        this.navigateByMode();
+        return;
+      }
+    } catch {
+      // Silent — fall through to the normal setup UI
+    } finally {
+      this.isValidating.set(false);
+    }
+  }
+
+  /**
+   * Returns true when the recovered config is safe to auto-redirect.
+   * Infrastructure modes MUST have a valid device token, otherwise the
+   * `deviceAuthGuard` on `/kitchen` / `/kiosk` will immediately rebound
+   * back to `/setup` and create a navigation loop.
+   */
+  private canAutoRedirect(): boolean {
+    const mode = this.configService.deviceConfig$.getValue().mode;
+    const needsDeviceToken = mode === 'kitchen' || mode === 'kiosk';
+    if (needsDeviceToken) {
+      return this.deviceService.hasValidDeviceToken();
+    }
+    return true;
+  }
+
+  /** Navigates to the mode-specific entry point after successful recovery */
+  private navigateByMode(): void {
+    const mode = this.configService.deviceConfig$.getValue().mode;
+    switch (mode) {
+      case 'kiosk':
+        this.router.navigate(['/kiosk/welcome']);
+        break;
+      case 'kitchen':
+        this.router.navigate(['/kitchen']);
+        break;
+      default:
+        this.router.navigate(['/pin']);
+        break;
+    }
   }
 
   //#endregion
@@ -203,28 +287,33 @@ export class SetupComponent {
     this.step.set('mode');
   }
 
-  /** Step 2A final: Register device in backend, save config, and redirect */
+  /**
+   * Step 2A final: Register device in the backend, persist the device
+   * token, and only then navigate. `registerDevice` writes the local
+   * config AND the device token atomically on success, so we no longer
+   * pre-save anything here — a half-provisioned state is a worse outcome
+   * than making the user retry.
+   */
   async saveEmailSetup(): Promise<void> {
+    if (this.isLoading()) return;
+
     const name = this.deviceName.trim() || 'POS Principal';
 
-    const config: DeviceConfig = {
-      businessId:   this.businessId,
-      branchId:     this.selectedBranchId,
-      businessName: this.businessName,
-      branchName:   this.selectedBranchName,
-      mode:         this.selectedMode,
-      deviceName:   name,
-      configuredAt: new Date().toISOString(),
-    };
-
-    this.configService.saveDeviceConfig(config);
-
-    // Register in backend (best-effort — local config is already saved)
-    this.deviceService
-      .registerDevice(this.selectedBranchId, this.selectedMode, name)
-      .catch(() => console.warn('[SetupComponent] Backend device registration failed — will retry on next validate'));
-
-    this.router.navigate(['/pin']);
+    this.error.set('');
+    this.isLoading.set(true);
+    try {
+      await this.deviceService.registerDevice(
+        this.selectedBranchId,
+        this.selectedMode,
+        name,
+      );
+      this.navigateByMode();
+    } catch (err) {
+      console.error('[SetupComponent] Email-flow device registration failed:', err);
+      this.error.set('No se pudo vincular el dispositivo. Verifica tu conexión e intenta de nuevo.');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   //#endregion
@@ -253,30 +342,37 @@ export class SetupComponent {
     }
   }
 
-  /** Step 2B final: Register device in backend, save config, and redirect */
+  /**
+   * Step 2B final: Register device in the backend, persist the device
+   * token, and only then navigate. The fire-and-forget pattern used to
+   * race `router.navigate` against the async `registerDevice` call —
+   * on slow networks the guard on `/kitchen` / `/kiosk` would rebound
+   * the user back here because the device token was not yet in
+   * localStorage. Awaiting the registration fixes the race at the cost
+   * of a spinner; a failed call is surfaced as an error so the user can
+   * retry instead of being stranded in a half-provisioned state.
+   */
   async saveCodeSetup(): Promise<void> {
     if (!this.activateData) return;
+    if (this.isLoading()) return;
 
     const name = this.deviceName.trim() || 'POS Principal';
 
-    const config: DeviceConfig = {
-      businessId:   this.activateData.businessId,
-      branchId:     this.activateData.branchId,
-      businessName: this.activateData.businessName,
-      branchName:   this.activateData.branchName,
-      mode:         this.activateData.mode,
-      deviceName:   name,
-      configuredAt: new Date().toISOString(),
-    };
-
-    this.configService.saveDeviceConfig(config);
-
-    // Register in backend (best-effort — local config is already saved)
-    this.deviceService
-      .registerDevice(this.activateData.branchId, this.activateData.mode, name)
-      .catch(() => console.warn('[SetupComponent] Backend device registration failed — will retry on next validate'));
-
-    this.router.navigate(['/pin']);
+    this.error.set('');
+    this.isLoading.set(true);
+    try {
+      await this.deviceService.registerDevice(
+        this.activateData.branchId,
+        this.activateData.mode,
+        name,
+      );
+      this.navigateByMode();
+    } catch (err) {
+      console.error('[SetupComponent] Code-flow device registration failed:', err);
+      this.error.set('No se pudo vincular el dispositivo. Verifica tu conexión e intenta de nuevo.');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   //#endregion
