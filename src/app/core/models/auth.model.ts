@@ -33,6 +33,27 @@ export interface AuthUser {
   features?: string[];
 }
 
+/**
+ * Shape of the JSON body for POST /api/auth/register.
+ *
+ * Singular `businessTypeId` by design — the initial registration handshake
+ * commits one giro for pricing and catalog seeding. Multi-giro support is
+ * negotiated later by the onboarding wizard via PUT /api/business/type
+ * with an array payload. Do not add `businessTypes: number[]` here.
+ */
+export interface RegisterRequest {
+  businessName: string;
+  ownerName: string;
+  email: string;
+  password: string;
+  /** Numeric business type FK — use BusinessTypeId enum */
+  businessTypeId: BusinessTypeId;
+  /** Numeric plan FK — use PlanTypeId enum */
+  planTypeId: PlanTypeId;
+  /** ISO 3166-1 alpha-2 country code (e.g. 'MX') — drives tax engine defaults */
+  countryCode: string;
+}
+
 /** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
 export interface LoginResponse {
   token: string;
