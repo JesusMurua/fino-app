@@ -8,6 +8,14 @@ import { ConfigService } from './config.service';
 /** localStorage key for the stable device UUID */
 const DEVICE_UUID_KEY = 'kaja_device_uuid';
 
+/**
+ * localStorage key for the long-lived device JWT emitted by the backend
+ * on `POST /api/devices/register`. Represents the machine, not the human
+ * behind it — used by infrastructure screens (KDS, Kiosk) to talk to the
+ * API and SignalR without requiring a user to enter a PIN.
+ */
+const DEVICE_TOKEN_KEY = 'pos_device_token';
+
 /** Heartbeat interval: 5 minutes */
 const HEARTBEAT_INTERVAL_MS = 300_000;
 
@@ -21,6 +29,8 @@ interface DeviceRegisterResponse {
   businessName: string;
   mode: DeviceConfig['mode'];
   name: string;
+  /** Long-lived device JWT — present when the backend supports infra auth */
+  deviceToken?: string;
 }
 
 /** Response from GET /api/devices/validate/{uuid} */
@@ -34,6 +44,8 @@ interface DeviceValidateResponse {
   mode: DeviceConfig['mode'];
   name: string;
   isActive: boolean;
+  /** Refreshed device JWT — rotated periodically by the backend */
+  deviceToken?: string;
 }
 
 /**
@@ -79,7 +91,10 @@ export class DeviceService implements OnDestroy {
 
   /**
    * Registers this device with the backend.
-   * On success, persists the returned config to ConfigService.
+   * On success, persists the returned config to ConfigService and — when
+   * the backend returned a `deviceToken` — stores it as the long-lived
+   * infrastructure JWT used by KDS / Kiosk devices.
+   *
    * @param branchId Branch this device belongs to
    * @param mode Operating mode (cashier, kitchen, tables, kiosk, admin)
    * @param name Human-readable device name
@@ -104,6 +119,10 @@ export class DeviceService implements OnDestroy {
       configuredAt: new Date().toISOString(),
     };
     this.configService.saveDeviceConfig(config);
+
+    if (response.deviceToken) {
+      this.saveDeviceToken(response.deviceToken);
+    }
 
     return response;
   }
@@ -136,6 +155,10 @@ export class DeviceService implements OnDestroy {
         configuredAt: this.configService.deviceConfig$.getValue().configuredAt || new Date().toISOString(),
       };
       this.configService.saveDeviceConfig(config);
+
+      if (response.deviceToken) {
+        this.saveDeviceToken(response.deviceToken);
+      }
 
       return true;
     } catch {
@@ -181,6 +204,58 @@ export class DeviceService implements OnDestroy {
       );
     } catch {
       // Best-effort — silently ignore failures
+    }
+  }
+
+  //#endregion
+
+  //#region Device Token
+
+  /**
+   * Persists the long-lived device JWT in localStorage. Called internally
+   * after a successful `registerDevice` or `validateDevice` when the
+   * backend returned a token. Public so the setup/activation-code flows
+   * can also call it directly if needed.
+   * @param token Raw JWT string — should have `type: 'device'` claim
+   */
+  saveDeviceToken(token: string): void {
+    localStorage.setItem(DEVICE_TOKEN_KEY, token);
+  }
+
+  /**
+   * Returns the stored device token, or `null` if none is set.
+   * Does NOT validate the token — use `hasValidDeviceToken()` when a
+   * freshness check matters (guards, SignalR reconnect).
+   */
+  getDeviceToken(): string | null {
+    return localStorage.getItem(DEVICE_TOKEN_KEY);
+  }
+
+  /**
+   * Removes the device token from localStorage. Called when a device is
+   * explicitly un-provisioned. User logout does NOT call this — the
+   * device token is tied to the physical machine, not to any human.
+   */
+  clearDeviceToken(): void {
+    localStorage.removeItem(DEVICE_TOKEN_KEY);
+  }
+
+  /**
+   * Returns `true` when a device token is present and its JWT `exp`
+   * claim is still in the future. Malformed tokens and tokens without
+   * an `exp` are treated as invalid.
+   */
+  hasValidDeviceToken(): boolean {
+    const token = this.getDeviceToken();
+    if (!token) return false;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return false;
+      return Date.now() / 1000 < payload.exp;
+    } catch {
+      return false;
     }
   }
 

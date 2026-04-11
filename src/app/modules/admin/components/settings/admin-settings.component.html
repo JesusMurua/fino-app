@@ -374,67 +374,6 @@
           </div>
         </section>
 
-        <!-- Activation code card — Owner/Manager only -->
-        @if (authService.currentUser()?.roleId === UserRoleId.Owner || authService.currentUser()?.roleId === UserRoleId.Manager) {
-          <section class="settings-card">
-            <div class="settings-card-header">
-              <div class="card-icon"><i class="pi pi-key"></i></div>
-              <div>
-                <div class="card-title">Agregar otro dispositivo</div>
-                <div class="card-subtitle">Código de 6 dígitos válido por 24 horas</div>
-              </div>
-            </div>
-
-            <div class="settings-form">
-              <div class="form-field">
-                <label class="form-field__label">Sucursal</label>
-                <p-dropdown
-                  [options]="branches()"
-                  optionLabel="name"
-                  optionValue="id"
-                  [(ngModel)]="codeBranchId"
-                  placeholder="Seleccionar sucursal"
-                  styleClass="w-full"
-                />
-              </div>
-
-              <div class="form-field">
-                <label class="form-field__label">Modo del dispositivo</label>
-                <p-dropdown
-                  [options]="modes"
-                  optionLabel="label"
-                  optionValue="value"
-                  [(ngModel)]="codeMode"
-                  styleClass="w-full"
-                />
-              </div>
-            </div>
-
-            @if (activationCode()) {
-              <div class="activation-code">
-                <span class="activation-code__value">{{ activationCode() }}</span>
-                <span class="activation-code__summary">
-                  Código para: <strong>{{ codeBranchLabel() }}</strong>
-                  — Modo: <strong>{{ codeModeLabel() }}</strong>
-                </span>
-                <span class="activation-code__hint">Ingresa este código en el nuevo dispositivo</span>
-              </div>
-            }
-
-            <div class="settings-card__footer">
-              <button
-                type="button"
-                class="btn-primary"
-                [disabled]="generatingCode() || !codeBranchId"
-                (click)="generateActivationCode()"
-              >
-                @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
-                Generar código
-              </button>
-            </div>
-          </section>
-        }
-
       </div>
     }
 

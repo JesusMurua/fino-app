@@ -713,7 +713,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     try {
       const amountCents = Math.round(this.sessionAmountPesos() * 100);
       const user = this.authService.currentUser();
-      await this.cashRegisterService.openSession(this.authService.branchId, {
+      await this.cashRegisterService.openSession({
         initialAmountCents: amountCents,
         openedBy: user?.name ?? 'Cajero',
       });

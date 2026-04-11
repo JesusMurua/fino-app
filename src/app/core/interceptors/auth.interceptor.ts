@@ -3,8 +3,10 @@ import { inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { tap } from 'rxjs';
 
-import { AUTH_TOKEN_KEY } from '../models';
+import { AUTH_TOKEN_KEY, DeviceConfig } from '../models';
 import { AuthService } from '../services/auth.service';
+import { ConfigService } from '../services/config.service';
+import { DeviceService } from '../services/device.service';
 
 /** Public endpoints that must never receive a Bearer token */
 const PUBLIC_PATHS = ['/api/auth/pin-login', '/api/auth/email-login'];
@@ -13,9 +15,19 @@ const PUBLIC_PATHS = ['/api/auth/pin-login', '/api/auth/email-login'];
 const PUBLIC_ROUTES = ['/register', '/setup', '/onboarding', '/login'];
 
 /**
+ * Device modes that prefer the long-lived device token over the user
+ * token. Admin-mode devices still use the user token because back
+ * office API calls need the human context (who created this report).
+ */
+const DEVICE_TOKEN_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk'];
+
+/**
  * Functional HTTP interceptor (Angular 18+).
  *
  * - Attaches Authorization: Bearer {token} to every request except public auth endpoints
+ * - On infrastructure devices (mode: kitchen / kiosk) the long-lived
+ *   device token is preferred over the user token, so the machine can
+ *   talk to the API without a human being logged in
  * - On 401 response → calls AuthService.logout() to clear state and redirect to /pin
  *   (skipped on public routes where 401 is expected)
  */
@@ -24,6 +36,8 @@ export const authInterceptor: HttpInterceptorFn = (
   next: HttpHandlerFn,
 ) => {
   const authService = inject(AuthService);
+  const configService = inject(ConfigService);
+  const deviceService = inject(DeviceService);
 
   const isPublic = PUBLIC_PATHS.some(path => req.url.includes(path));
 
@@ -34,11 +48,10 @@ export const authInterceptor: HttpInterceptorFn = (
   });
 
   if (!isPublic) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    // Only attach real JWTs — never send offline session markers to the backend
-    if (token && !token.startsWith('offline-session-')) {
+    const bearer = resolveBearerToken(configService, deviceService);
+    if (bearer) {
       request = request.clone({
-        setHeaders: { Authorization: `Bearer ${token}`, 'X-Timezone': timezone },
+        setHeaders: { Authorization: `Bearer ${bearer}`, 'X-Timezone': timezone },
       });
     }
   }
@@ -70,3 +83,38 @@ export const authInterceptor: HttpInterceptorFn = (
     }),
   );
 };
+
+/**
+ * Resolves which bearer token this request should carry.
+ *
+ * Zero-fallback policy for infrastructure devices:
+ *   - If the device mode is one of `DEVICE_TOKEN_MODES` (kitchen /
+ *     kiosk), we commit to the device token. A valid token is returned
+ *     verbatim; anything else resolves to `null` so the request fires
+ *     without an Authorization header. The resulting 401 is the
+ *     intended signal — it tells the backend and the frontend that
+ *     the machine has lost its identity and must be re-provisioned.
+ *     Under NO circumstance does an infrastructure device borrow a
+ *     human user's token.
+ *
+ *   - For every other mode (cashier / tables / admin) we keep the
+ *     existing user-token flow, skipping the `offline-session-*`
+ *     marker that must never hit the API.
+ */
+function resolveBearerToken(
+  configService: ConfigService,
+  deviceService: DeviceService,
+): string | null {
+  const mode = configService.deviceConfig$.getValue().mode;
+
+  if (DEVICE_TOKEN_MODES.includes(mode)) {
+    return deviceService.hasValidDeviceToken()
+      ? deviceService.getDeviceToken()
+      : null;
+  }
+
+  const userToken = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!userToken) return null;
+  if (userToken.startsWith('offline-session-')) return null;
+  return userToken;
+}

@@ -81,6 +81,12 @@ export const adminRoutes: Routes = [
             .then(m => m.AdminUsersComponent),
       },
       {
+        path: 'devices',
+        loadComponent: () =>
+          import('./components/devices/admin-devices.component')
+            .then(m => m.AdminDevicesComponent),
+      },
+      {
         path: 'cash',
         redirectTo: 'registers',
         pathMatch: 'full',

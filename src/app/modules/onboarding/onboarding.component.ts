@@ -10,6 +10,7 @@ import { environment } from '../../../environments/environment';
 import { DeviceConfig, ZoneType } from '../../core/models';
 import { BusinessTypeId, UserRoleId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
+import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
 import { ConfigService } from '../../core/services/config.service';
 
@@ -197,6 +198,7 @@ export class OnboardingComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly businessService = inject(BusinessService);
   private readonly configService = inject(ConfigService);
+  private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly router = inject(Router);
 
   readonly currentStep = signal(1);
@@ -657,8 +659,15 @@ export class OnboardingComponent implements OnInit {
 
     this.isSubmitting.set(false);
 
-    // 7. Owners go straight to /admin — floor staff go to /pin
-    this.router.navigate([this.isOwnerOrManager() ? '/admin' : '/pin']);
+    // 7. Delegate the post-onboarding landing to DeviceRoutingService so
+    //    the "who goes where" rule lives in a single place. Owners and
+    //    Managers always land on /admin; floor roles are resolved by
+    //    their role + current device mode.
+    const roleId = this.authService.currentUser()?.roleId;
+    const dest = roleId
+      ? this.deviceRoutingService.getPostLoginRoute(roleId)
+      : '/pin';
+    this.router.navigate([dest]);
   }
 
   //#endregion

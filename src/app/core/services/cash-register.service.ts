@@ -176,11 +176,13 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Opens a new cash register session.
-   * @param branchId Branch to open session for
+   * Opens a new cash register session. The target register is resolved
+   * from the device's linked register — callers no longer need to pass
+   * a branch id because the backend derives scope from `cashRegisterId`.
+   *
    * @param request Opening details (initial amount, opened by)
    */
-  async openSession(branchId: number, request: OpenSessionRequest): Promise<CashRegisterSession> {
+  async openSession(request: OpenSessionRequest): Promise<CashRegisterSession> {
     const registerId = this._linkedRegister()?.id;
     if (!registerId) {
       throw new Error('Cannot open session: Device is not linked to a physical register.');
