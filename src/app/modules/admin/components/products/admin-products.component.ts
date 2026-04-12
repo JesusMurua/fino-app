@@ -19,7 +19,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
-import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, SAT_UNIT_OPTIONS } from '../../../../core/models';
+import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, ProductModifierGroup, SAT_UNIT_OPTIONS } from '../../../../core/models';
 import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -267,7 +267,12 @@ export class AdminProductsComponent implements OnInit {
       currentStock: product.currentStock ?? 0,
       lowStockThreshold: product.lowStockThreshold ?? 0,
       sizes:  product.sizes.map(s => ({ label: s.label, priceDeltaCents: s.priceDeltaCents })),
-      extras: product.extras.map(e => ({ label: e.label, priceCents: e.priceCents })),
+      // Flatten every modifier group's extras into the flat admin form.
+      // NOTE: editing multi-group rules requires a dedicated UI — out of scope
+      // for Phase 11.3 frontend adaptation. See AUDIT-030 (future FDD).
+      extras: (product.modifierGroups ?? [])
+        .flatMap(g => g.extras)
+        .map(e => ({ label: e.label, priceCents: e.priceCents })),
       satProductCode: product.satProductCode ?? '',
       satUnitCode: product.satUnitCode ?? 'H87',
       taxRate: product.taxRate ?? 16,
@@ -298,6 +303,22 @@ export class AdminProductsComponent implements OnInit {
     const sizes  = this.form.sizes.filter(s => s.label.trim());
     const extras = this.form.extras.filter(e => e.label.trim());
 
+    // Wrap the flat admin-form extras into a single default modifier group.
+    // A richer editor (multiple groups with min/max/required) is tracked
+    // outside Phase 11.3 scope.
+    const defaultGroupId = this.editingProduct?.modifierGroups?.[0]?.id ?? 1;
+    const modifierGroups: ProductModifierGroup[] = extras.length > 0
+      ? [{
+          id: defaultGroupId,
+          name: 'Extras',
+          sortOrder: 0,
+          isRequired: false,
+          minSelectable: 0,
+          maxSelectable: 0,
+          extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
+        }]
+      : [];
+
     const payload = {
       name: this.form.name.trim(),
       barcode: this.form.barcode.trim() || undefined,
@@ -309,7 +330,7 @@ export class AdminProductsComponent implements OnInit {
       currentStock: this.form.trackStock ? this.form.currentStock : 0,
       lowStockThreshold: this.form.trackStock ? this.form.lowStockThreshold : 0,
       sizes:  sizes.map((s, i) => ({ id: i + 1, label: s.label.trim(), priceDeltaCents: s.priceDeltaCents })),
-      extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
+      modifierGroups,
       satProductCode: this.form.satProductCode.trim() || undefined,
       satUnitCode: this.form.satUnitCode || undefined,
       taxRate: this.form.taxRate,

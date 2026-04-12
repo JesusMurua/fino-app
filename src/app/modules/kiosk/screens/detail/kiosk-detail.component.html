@@ -85,29 +85,40 @@
           <div class="kd__divider"></div>
         }
 
-        <!-- Extras selection -->
-        @if (p.extras.length > 0) {
-          <section class="kd__section">
-            <h2 class="kd__section-title">Extras</h2>
-            <div class="kd__extras" formArrayName="extras">
-              @for (extra of p.extras; track extra.id; let i = $index) {
-                <label class="kd__extra-pill" [for]="'kextra-' + extra.id">
-                  <p-checkbox
-                    [formControlName]="i"
-                    [binary]="true"
-                    [inputId]="'kextra-' + extra.id"
-                  />
-                  <span class="kd__extra-label">{{ extra.label }}</span>
-                  @if (extra.priceCents > 0) {
-                    <span class="kd__extra-price">+ {{ extra.priceCents | price }}</span>
-                  } @else {
-                    <span class="kd__extra-price kd__extra-price--free">Gratis</span>
-                  }
-                </label>
+        <!-- Modifier groups -->
+        @for (group of sortedGroups(); track group.id) {
+          @if (group.extras.length > 0) {
+            <section class="kd__section">
+              <div class="kd__section-header">
+                <h2 class="kd__section-title">{{ group.name }}</h2>
+                <span class="kd__section-rule">{{ groupRuleLabel(group) }}</span>
+              </div>
+              @if (groupErrorLabel(group); as err) {
+                <p class="kd__section-error">{{ err }}</p>
               }
-            </div>
-          </section>
-          <div class="kd__divider"></div>
+              <div class="kd__extras" [formGroup]="form.controls.groups">
+                <div [formArrayName]="group.id.toString()">
+                  @for (extra of group.extras; track extra.id; let i = $index) {
+                    <label class="kd__extra-pill" [for]="'kextra-' + extra.id">
+                      <p-checkbox
+                        [formControlName]="i"
+                        [binary]="true"
+                        [inputId]="'kextra-' + extra.id"
+                        [disabled]="!canSelectMore(group) && !groupArray(group.id)?.controls?.[i]?.value"
+                      />
+                      <span class="kd__extra-label">{{ extra.label }}</span>
+                      @if (extra.priceCents > 0) {
+                        <span class="kd__extra-price">+ {{ extra.priceCents | price }}</span>
+                      } @else {
+                        <span class="kd__extra-price kd__extra-price--free">Gratis</span>
+                      }
+                    </label>
+                  }
+                </div>
+              </div>
+            </section>
+            <div class="kd__divider"></div>
+          }
         }
 
         <!-- Notes -->
@@ -138,6 +149,7 @@
         <button
           type="button"
           class="kd__add-btn"
+          [disabled]="form.invalid"
           (click)="onAddToCart()"
         >
           <i class="pi pi-plus"></i>

@@ -44,29 +44,40 @@
         <div class="detail-divider"></div>
       }
 
-      <!-- Extras selection -->
-      @if (p.extras.length > 0) {
-        <section class="detail-section">
-          <h2 class="detail-section__title">Extras</h2>
-          <div class="detail-extras" formArrayName="extras">
-            @for (extra of p.extras; track extra.id; let i = $index) {
-              <label class="extra-option" [for]="'extra-' + extra.id">
-                <p-checkbox
-                  [formControlName]="i"
-                  [binary]="true"
-                  [inputId]="'extra-' + extra.id"
-                />
-                <span class="extra-option__label">{{ extra.label }}</span>
-                @if (extra.priceCents > 0) {
-                  <span class="extra-option__price">+ {{ extra.priceCents | price }}</span>
-                } @else {
-                  <span class="extra-option__price extra-option__price--free">Gratis</span>
-                }
-              </label>
+      <!-- Modifier groups -->
+      @for (group of sortedGroups(); track group.id) {
+        @if (group.extras.length > 0) {
+          <section class="detail-section">
+            <div class="detail-section__header">
+              <h2 class="detail-section__title">{{ group.name }}</h2>
+              <span class="detail-section__rule">{{ groupRuleLabel(group) }}</span>
+            </div>
+            @if (groupErrorLabel(group); as err) {
+              <p class="detail-section__error">{{ err }}</p>
             }
-          </div>
-        </section>
-        <div class="detail-divider"></div>
+            <div class="detail-extras" [formGroup]="form.controls.groups">
+              <div [formArrayName]="group.id.toString()">
+                @for (extra of group.extras; track extra.id; let i = $index) {
+                  <label class="extra-option" [for]="'extra-' + extra.id">
+                    <p-checkbox
+                      [formControlName]="i"
+                      [binary]="true"
+                      [inputId]="'extra-' + extra.id"
+                      [disabled]="!canSelectMore(group) && !groupArray(group.id)?.controls?.[i]?.value"
+                    />
+                    <span class="extra-option__label">{{ extra.label }}</span>
+                    @if (extra.priceCents > 0) {
+                      <span class="extra-option__price">+ {{ extra.priceCents | price }}</span>
+                    } @else {
+                      <span class="extra-option__price extra-option__price--free">Gratis</span>
+                    }
+                  </label>
+                }
+              </div>
+            </div>
+          </section>
+          <div class="detail-divider"></div>
+        }
       }
 
       <!-- Notes -->
@@ -99,6 +110,7 @@
           size="large"
           styleClass="detail-footer__add-btn"
           type="button"
+          [disabled]="form.invalid"
           (onClick)="onAddToCart()"
         />
       </div>
