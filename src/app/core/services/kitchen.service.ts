@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDestroy, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
@@ -33,7 +33,7 @@ export type KdsConnectionState = 'connected' | 'reconnecting' | 'disconnected';
  * - Filters out Receipt tickets — KDS only shows Kitchen jobs
  */
 @Injectable({ providedIn: 'root' })
-export class KitchenService implements OnDestroy {
+export class KitchenService {
     //#region Properties
 
     /** Active kitchen-only print jobs for the KDS display */
@@ -69,10 +69,6 @@ export class KitchenService implements OnDestroy {
         private readonly api: ApiService,
         private readonly db: DatabaseService,
     ) { }
-
-    ngOnDestroy(): void {
-        this.stop();
-    }
 
     //#endregion
 

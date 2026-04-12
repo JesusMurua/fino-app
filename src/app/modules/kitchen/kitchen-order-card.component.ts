@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, computed, EventEmitter, input, Input, Output } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 
@@ -15,7 +15,9 @@ export class KitchenOrderCardComponent {
 
   //#region Inputs
 
-  @Input({ required: true }) job!: PrintJobDto;
+  /** The print job — signal input so `parsedItems` is memoized via computed(). */
+  readonly job = input.required<PrintJobDto>();
+
   @Input({ required: true }) now!: Date;
   @Input() isFading = false;
 
@@ -28,20 +30,20 @@ export class KitchenOrderCardComponent {
 
   //#endregion
 
-  //#region Computed
+  //#region Derived
 
-  /** Items parsed from the job's JSON structuredContent */
-  get parsedItems(): PrintJobItem[] {
+  /** Parsed once when `job` changes — not on every CD cycle */
+  readonly parsedItems = computed<PrintJobItem[]>(() => {
     try {
-      return JSON.parse(this.job.structuredContent) as PrintJobItem[];
+      return JSON.parse(this.job().structuredContent) as PrintJobItem[];
     } catch {
       return [];
     }
-  }
+  });
 
   /** Elapsed time in seconds since the job was created */
   get elapsedSeconds(): number {
-    return Math.floor((this.now.getTime() - new Date(this.job.createdAt).getTime()) / 1000);
+    return Math.floor((this.now.getTime() - new Date(this.job().createdAt).getTime()) / 1000);
   }
 
   /** Formatted elapsed time as "M:SS" */
@@ -62,12 +64,11 @@ export class KitchenOrderCardComponent {
   //#region Actions
 
   onDone(): void {
-    this.markDone.emit(this.job.id);
+    this.markDone.emit(this.job().id);
   }
 
-  /** Emits the job ID when the user taps "Preparar" to begin preparation. */
   onPrepare(): void {
-    this.onStart.emit(this.job.id);
+    this.onStart.emit(this.job().id);
   }
 
   //#endregion

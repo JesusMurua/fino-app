@@ -2,7 +2,7 @@
 <div
   class="kds-card"
   [ngClass]="{
-    'kds-card--in-progress': job.status === 'InProgress',
+    'kds-card--in-progress': job().status === 'InProgress',
     'kds-card--overdue': isOverdue,
     'kds-card--fading': isFading
   }"
@@ -11,8 +11,8 @@
   <!-- Card header: order number + ticket type badge + elapsed timer -->
   <div class="kds-card__header">
     <div class="flex align-items-center gap-2">
-      <span class="kds-card__number">#{{ job.orderNumber }}</span>
-      <span class="kds-card__type-badge">{{ job.ticketType === 'Receipt' ? 'Caja' : 'Cocina' }}</span>
+      <span class="kds-card__number">#{{ job().orderNumber }}</span>
+      <span class="kds-card__type-badge">Cocina</span>
     </div>
     <span class="kds-card__timer" [class.kds-card__timer--overdue]="isOverdue">
       @if (isOverdue) {
@@ -24,7 +24,7 @@
 
   <!-- Items list: one row per item, extras expanded individually -->
   <ul class="kds-card__items">
-    @for (item of parsedItems; track item.id) {
+    @for (item of parsedItems(); track item.id) {
       <li class="kds-card__item">
         <span class="kds-card__qty">{{ item.quantity }}×</span>
         <div class="kds-card__item-body">
@@ -49,14 +49,14 @@
   <!-- Action footer -->
   @if (!isFading) {
     <div class="flex justify-content-end gap-2 px-3 pb-3 mt-3">
-      @if (job.status === 'Pending') {
+      @if (job().status === 'Pending') {
         <p-button
           label="Start"
           icon="pi pi-play"
           (onClick)="onPrepare()"
         />
       }
-      @if (job.status === 'InProgress') {
+      @if (job().status === 'InProgress') {
         <p-button
           label="Complete"
           icon="pi pi-check"
