@@ -268,7 +268,9 @@ export class CartPanelComponent implements OnInit {
     );
 
     if (success) {
-      this.activeTableName.set(event.tableName);
+      // activeTableName (computed) reflects the change automatically once
+      // TableAssignmentService patches the active order via
+      // OrderContextService.updateTableAssignment().
       this.messageService.add({
         severity: 'success',
         summary: `Orden asignada a ${event.tableName}`,
