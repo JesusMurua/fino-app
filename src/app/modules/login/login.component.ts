@@ -6,6 +6,7 @@ import { PasswordModule } from 'primeng/password';
 
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
+import { DeviceService } from '../../core/services/device.service';
 
 @Component({
   selector: 'app-login',
@@ -23,14 +24,20 @@ export class LoginComponent {
   readonly isLoading = signal(false);
   readonly hasError = signal(false);
   readonly errorMessage = signal('');
+
+  /** True when this device has been provisioned — shows "Volver al PIN" */
+  readonly isDeviceBound: boolean;
   //#endregion
 
   //#region Constructor
   constructor(
     private readonly authService: AuthService,
     private readonly deviceRoutingService: DeviceRoutingService,
+    private readonly deviceService: DeviceService,
     private readonly router: Router,
-  ) {}
+  ) {
+    this.isDeviceBound = this.deviceService.getDeviceToken() !== null;
+  }
   //#endregion
 
   //#region Auth

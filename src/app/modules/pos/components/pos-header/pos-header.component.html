@@ -97,16 +97,18 @@
       </button>
     }
 
-    <button
-      type="button"
-      class="pos-header__settings"
-      aria-label="Recibir mercancía"
-      pTooltip="Recibir mercancía"
-      tooltipPosition="bottom"
-      (click)="openPinDialog()"
-    >
-      <i class="pi pi-box"></i>
-    </button>
+    @if (showInventoryButton()) {
+      <button
+        type="button"
+        class="pos-header__settings"
+        aria-label="Recibir mercancía"
+        pTooltip="Recibir mercancía"
+        tooltipPosition="bottom"
+        (click)="openPinDialog()"
+      >
+        <i class="pi pi-box"></i>
+      </button>
+    }
 
     @if (showTablesButton()) {
       <button
@@ -177,7 +179,7 @@
 >
   <div class="pin-overlay">
 
-    <p class="pin-overlay__subtitle">Ingresa PIN de dueño o gerente</p>
+    <p class="pin-overlay__subtitle">Ingresa PIN de administrador o gerente</p>
 
     <!-- Dots -->
     <div

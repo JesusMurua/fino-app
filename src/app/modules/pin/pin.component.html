@@ -87,10 +87,12 @@
 
     }
 
-    <!-- Owner login link -->
-    <a routerLink="/login" class="pin-owner-link">
-      ¿Eres el dueño? Iniciar sesión
-    </a>
+    <!-- Admin login link — only shown on unbound devices -->
+    @if (!isDeviceBound()) {
+      <a routerLink="/login" class="pin-owner-link">
+        ¿Eres administrador? Iniciar sesión
+      </a>
+    }
 
   </div>
 

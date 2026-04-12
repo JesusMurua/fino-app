@@ -25,8 +25,9 @@ import {
   Order,
   Supplier,
 } from '../../../../core/models';
-import { UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
+import { FeatureKey, UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
 import { SyncStatusId } from '../../../../core/enums';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -100,6 +101,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   readonly deliveryService = inject(DeliveryService);
   readonly pwaService = inject(PwaService);
   readonly syncService = inject(SyncService);
+  private readonly tenantContext = inject(TenantContextService);
 
   private readonly destroy$ = new Subject<void>();
 
@@ -139,6 +141,12 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     const roleId = this.authService.currentUser()?.roleId;
     return roleId ? (USER_ROLE_LABELS[roleId] ?? String(roleId)) : '';
   });
+
+  /** True when the tenant uses inventory (RecipeInventory feature or any trackStock product) */
+  readonly showInventoryButton = computed(() =>
+    this.tenantContext.hasAnyFeature([FeatureKey.RecipeInventory, FeatureKey.MultiWarehouseInventory])
+    || this.productService.products().some(p => p.trackStock),
+  );
 
   /** First letter of each word in the user's name (max 2) */
   readonly initials = computed(() => {
