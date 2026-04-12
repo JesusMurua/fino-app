@@ -90,11 +90,13 @@
   }
 
   .pos-right-pane {
+    display: flex;
+    flex-direction: column;
     border-left: none;
     border-top: 1px solid $color-border-soft;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.02);
-    max-height: 45vh;
-    overflow-y: auto;
+    max-height: 50vh;
+    overflow: hidden;  // Cart panel manages its own scroll internally
   }
 
   .pos-products {

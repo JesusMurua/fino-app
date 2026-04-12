@@ -105,6 +105,9 @@
     display: flex;
     flex-direction: column;
     gap: $space-3;
+    flex-shrink: 0;
+    background: #FFFFFF;
+    z-index: 10;
   }
 
   &__total-row {

@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
@@ -72,6 +73,7 @@ interface VerifyPinResponse {
     DialogModule,
     ConfirmDialogModule,
     DropdownModule,
+    OverlayPanelModule,
     InputNumberModule,
     InputTextModule,
     InputTextareaModule,
@@ -136,6 +138,13 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   readonly userRoleLabel = computed(() => {
     const roleId = this.authService.currentUser()?.roleId;
     return roleId ? (USER_ROLE_LABELS[roleId] ?? String(roleId)) : '';
+  });
+
+  /** First letter of each word in the user's name (max 2) */
+  readonly initials = computed(() => {
+    const name = this.userName();
+    if (!name) return '?';
+    return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
   });
 
   //#endregion
@@ -269,6 +278,10 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   openAdmin(): void {
     this.router.navigate(['/pin']);
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 
   //#endregion

@@ -1,14 +1,33 @@
 <header class="pos-header">
 
-  <!-- Brand: logo + business name + location -->
+  <!-- Brand: branch name + user avatar menu -->
   <div class="pos-header__brand">
     <div class="pos-header__logo" aria-hidden="true">
       <i class="pi pi-home"></i>
     </div>
-    <div class="pos-header__info">
-      <span class="pos-header__name">{{ branchName() }}</span>
-      <span class="pos-header__location">{{ userName() }} · {{ userRoleLabel() }}</span>
-    </div>
+    <span class="pos-header__name">{{ branchName() }}</span>
+
+    <!-- User avatar — opens profile overlay on tap -->
+    <button
+      type="button"
+      class="pos-header__avatar"
+      (click)="userMenu.toggle($event)"
+      [attr.aria-label]="'Menú de usuario: ' + userName()"
+    >
+      {{ initials() }}
+    </button>
+
+    <p-overlayPanel #userMenu styleClass="pos-header__user-menu">
+      <div class="user-menu">
+        <span class="user-menu__name">{{ userName() }}</span>
+        <span class="user-menu__role">{{ userRoleLabel() }}</span>
+        <div class="user-menu__divider"></div>
+        <button type="button" class="user-menu__logout" (click)="logout(); userMenu.hide()">
+          <i class="pi pi-sign-out"></i>
+          Cerrar sesión
+        </button>
+      </div>
+    </p-overlayPanel>
   </div>
 
   <!-- Right side: order number + connection status + settings -->
