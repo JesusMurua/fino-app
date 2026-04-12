@@ -1,13 +1,16 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
 
 import { DeviceConfig } from '../../../../core/models';
+import { FeatureKey } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 
 /** Mode option for the activation-code dropdown */
 interface ModeOption {
@@ -32,6 +35,7 @@ interface ModeOption {
   standalone: true,
   imports: [
     FormsModule,
+    ButtonModule,
     DropdownModule,
     TableModule,
   ],
@@ -45,6 +49,7 @@ export class AdminDevicesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly branchService = inject(BranchService);
   private readonly messageService = inject(MessageService);
+  private readonly tenantContext = inject(TenantContextService);
 
   //#endregion
 
@@ -62,16 +67,25 @@ export class AdminDevicesComponent implements OnInit {
   codeMode: DeviceConfig['mode'] = 'cashier';
 
   /**
-   * All four operating modes the backend supports. No filtering by
-   * branch flags — the admin may legitimately provision any mode on
-   * any branch, and mode/branch coherence is validated server-side.
+   * Device mode options, filtered dynamically by the tenant's active
+   * features. Cashier is always available; the rest require specific
+   * plan features per the business-rules-matrix.
    */
-  readonly modes: readonly ModeOption[] = [
-    { value: 'cashier', label: '💳 Cajero',  icon: '💳' },
-    { value: 'tables',  label: '🪑 Mesas',   icon: '🪑' },
-    { value: 'kitchen', label: '👨‍🍳 Cocina',  icon: '👨‍🍳' },
-    { value: 'kiosk',   label: '📱 Kiosko',  icon: '📱' },
-  ];
+  readonly modes = computed<ModeOption[]>(() => {
+    const modes: ModeOption[] = [
+      { value: 'cashier', label: 'Cajero',  icon: 'pi pi-credit-card' },
+    ];
+    if (this.tenantContext.hasAnyFeature([FeatureKey.TableMap, FeatureKey.WaiterApp])) {
+      modes.push({ value: 'tables', label: 'Mesas', icon: 'pi pi-th-large' });
+    }
+    if (this.tenantContext.hasAnyFeature([FeatureKey.KdsBasic, FeatureKey.RealtimeKds])) {
+      modes.push({ value: 'kitchen', label: 'Cocina', icon: 'pi pi-box' });
+    }
+    if (this.tenantContext.hasFeature(FeatureKey.KioskMode)) {
+      modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
+    }
+    return modes;
+  });
 
   //#endregion
 
@@ -152,7 +166,7 @@ export class AdminDevicesComponent implements OnInit {
 
   /** Display label for the currently selected mode */
   codeModeLabel(): string {
-    return this.modes.find(m => m.value === this.codeMode)?.label ?? this.codeMode;
+    return this.modes().find(m => m.value === this.codeMode)?.label ?? this.codeMode;
   }
 
   //#endregion

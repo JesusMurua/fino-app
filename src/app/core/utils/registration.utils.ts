@@ -37,9 +37,14 @@ const GIRO_SLUG_MAP: Record<string, BusinessTypeId> = {
   papeleria:         BusinessTypeId.Papeleria,
   farmacia:          BusinessTypeId.Farmacia,
 
-  // Services
-  services:  BusinessTypeId.Servicios,
-  servicios: BusinessTypeId.Servicios,
+  // Services — canonical + sub-giro aliases from the landing
+  services:                  BusinessTypeId.Servicios,
+  servicios:                 BusinessTypeId.Servicios,
+  'servicios-especializados': BusinessTypeId.Servicios,
+  'specialized-services':    BusinessTypeId.Servicios,
+  estetica:                  BusinessTypeId.Servicios,
+  consultorio:               BusinessTypeId.Servicios,
+  taller:                    BusinessTypeId.Servicios,
 
   // Generic fallback
   general: BusinessTypeId.General,

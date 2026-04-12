@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { ButtonModule } from 'primeng/button';
@@ -10,12 +11,13 @@ import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 
 import { DashboardChartsDto, DashboardOrderRow, DashboardSummary } from '../../../../core/models';
-import { KitchenStatusId } from '../../../../core/enums';
+import { FeatureKey, KitchenStatusId } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { ReportService } from '../../../../core/services/report.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 @Component({
@@ -30,6 +32,7 @@ import { PricePipe } from '../../../../shared/pipes/price.pipe';
     MessageModule,
     SkeletonModule,
     PricePipe,
+    RouterLink,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -43,6 +46,12 @@ export class DashboardComponent implements OnInit {
   private readonly reportService  = inject(ReportService);
   readonly catalogService         = inject(CatalogService);
   private readonly configService  = inject(ConfigService);
+  private readonly tenantContext   = inject(TenantContextService);
+
+  /** True when the tenant's plan includes advanced charts */
+  readonly hasAdvancedReports = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.AdvancedReports),
+  );
 
   /** Current POS experience — determines which dashboard sections are shown */
   readonly posExperience = this.configService.posExperience;
@@ -334,6 +343,11 @@ export class DashboardComponent implements OnInit {
 
   /** Loads BI chart datasets for the selected date range */
   async loadChartData(): Promise<void> {
+    if (!this.hasAdvancedReports()) {
+      this.chartData.set(null);
+      return;
+    }
+
     this.isLoadingCharts.set(true);
     this.chartError.set(null);
 

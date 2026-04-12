@@ -43,7 +43,7 @@
           <label class="form-field__label" for="device-mode">Modo del dispositivo</label>
           <p-dropdown
             inputId="device-mode"
-            [options]="modes"
+            [options]="modes()"
             optionLabel="label"
             optionValue="value"
             [(ngModel)]="codeMode"
@@ -66,15 +66,13 @@
       }
 
       <div class="settings-card__footer">
-        <button
-          type="button"
-          class="btn-primary"
+        <p-button
+          label="Generar código"
+          icon="pi pi-qrcode"
           [disabled]="generatingCode() || !codeBranchId"
-          (click)="generateActivationCode()"
-        >
-          @if (generatingCode()) { <i class="pi pi-spin pi-spinner"></i> }
-          Generar código
-        </button>
+          [loading]="generatingCode()"
+          (onClick)="generateActivationCode()"
+        />
       </div>
     </section>
 
