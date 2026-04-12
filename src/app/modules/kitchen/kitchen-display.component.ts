@@ -12,6 +12,7 @@ import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
 import { KitchenService } from '../../core/services/kitchen.service';
+import { PrinterDestinationService } from '../../core/services/printer-destination.service';
 import { NotificationToggleComponent } from '../../shared/components/notification-toggle/notification-toggle.component';
 import { KitchenOrderCardComponent } from './kitchen-order-card.component';
 
@@ -27,20 +28,28 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 	//#region Properties
 
 	private readonly kitchenService = inject(KitchenService);
+	private readonly printerDestinationService = inject(PrinterDestinationService);
 	private readonly route = inject(ActivatedRoute);
 
 	readonly pendingJobs = this.kitchenService.pendingJobs;
+	readonly connectionState = this.kitchenService.connectionState;
 
-	/** Destination name derived from the first job — shown in the header. */
-	readonly destinationName = computed(
-		() => this.pendingJobs()[0]?.destinationName ?? 'KDS',
-	);
+	/** Route-level destination ID — parsed once on init */
+	private destinationId: number | null = null;
+
+	/** Destination name read from PrinterDestinationService — always accurate */
+	readonly destinationName = computed(() => {
+		if (this.destinationId === null) return 'KDS';
+		const dest = this.printerDestinationService.activeDestinations()
+			.find(d => d.id === this.destinationId);
+		return dest?.name ?? this.pendingJobs()[0]?.destinationName ?? 'KDS';
+	});
 
 	/** Current time — updated every second for the header clock and elapsed timers */
 	readonly now = signal(new Date());
 
 	/** Set of job IDs currently fading out after being marked done */
-	readonly fadingOut = signal<Set<string>>(new Set());
+	readonly fadingOut = signal<Set<number>>(new Set());
 
 	/** Whether the device is online — controls offline banner */
 	readonly isOnline = signal(navigator.onLine);
@@ -57,10 +66,11 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 		window.addEventListener('online', this.onOnline);
 		window.addEventListener('offline', this.onOffline);
 
-		const destinationIdParam =
-			this.route.snapshot.paramMap.get('destinationId');
-		if (destinationIdParam) {
-			this.kitchenService.startPolling(+destinationIdParam);
+		const param = this.route.snapshot.paramMap.get('destinationId');
+		if (param) {
+			this.destinationId = +param;
+			this.printerDestinationService.loadFromLocal();
+			this.kitchenService.start(this.destinationId);
 		}
 
 		this.clockTimerId = setInterval(() => this.now.set(new Date()), 1000);
@@ -80,34 +90,31 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 	//#region Actions
 
 	/**
-	 * Fades the job card out for 3 seconds, then marks it as printed.
-	 * @param jobId The print job UUID emitted by the card
+	 * Persists the status change immediately (offline-safe), then
+	 * triggers the 3-second fade-out animation.
+	 * @param jobId The print job numeric ID emitted by the card
 	 */
-	async onMarkDone(jobId: string): Promise<void> {
-		this.fadingOut.update((s) => {
+	async onMarkDone(jobId: number): Promise<void> {
+		await this.kitchenService.markAsPrinted(jobId);
+
+		this.fadingOut.update(s => {
 			s.add(jobId);
 			return new Set(s);
 		});
 
-		setTimeout(async () => {
-			await this.kitchenService.markAsPrinted(jobId);
-			this.fadingOut.update((s) => {
+		setTimeout(() => {
+			this.fadingOut.update(s => {
 				s.delete(jobId);
 				return new Set(s);
 			});
 		}, 3000);
 	}
 
-	isFading(jobId: string): boolean {
+	isFading(jobId: number): boolean {
 		return this.fadingOut().has(jobId);
 	}
 
-	/**
-	 * Delegates to the service to mark a job as InProgress.
-	 * Triggered by the card's (onStart) output event.
-	 * @param jobId The print job UUID emitted by the card
-	 */
-	async onMarkInProgress(jobId: string): Promise<void> {
+	async onMarkInProgress(jobId: number): Promise<void> {
 		await this.kitchenService.markAsInProgress(jobId);
 	}
 

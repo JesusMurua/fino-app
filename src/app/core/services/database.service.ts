@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -41,7 +41,8 @@ export class DatabaseService extends Dexie {
   employeeHashes!: Table<EmployeeHash, number>;
   customers!: Table<Customer, number>;
   printerDestinations!: Table<PrinterDestination, number>;
-  pendingPrintJobs!: Table<PrintJobDto, string>;
+  pendingPrintJobs!: Table<PrintJobDto, number>;
+  pendingPrintJobUpdates!: Table<PrintJobUpdateRecord, number>;
   cashRegisters!: Table<CashRegister, number>;
   //#endregion
 
@@ -218,6 +219,16 @@ export class DatabaseService extends Dexie {
     // Add sortOrder index to printerDestinations (fixes SchemaError on KeyPath sortOrder)
     this.version(22).stores({
       printerDestinations: '++id, isDefault, isActive, sortOrder',
+    });
+
+    // Phase 12.1: Re-key pendingPrintJobs as numeric (backend uses int PK),
+    // add offline sync queue for KDS status transitions.
+    this.version(23).stores({
+      pendingPrintJobs:       'id, destinationId, status',
+      pendingPrintJobUpdates: '++id, printJobId, status',
+    }).upgrade(tx => {
+      // Clear stale string-keyed rows — they'll be re-fetched from the API
+      return tx.table('pendingPrintJobs').clear();
     });
   }
   //#endregion

@@ -19,7 +19,8 @@ export interface PrintJobItem {
  * One PrintJob per destination per order.
  */
 export interface PrintJobDto {
-  id: string;
+  /** Backend auto-increment integer — NOT a UUID (the order has the UUID). */
+  id: number;
   orderNumber: number;
   destinationId: number;
   destinationName: string;
@@ -29,4 +30,16 @@ export interface PrintJobDto {
   createdAt: string;
   /** JSON-serialized PrintJobItem[] filtered to this destination. */
   structuredContent: string;
+}
+
+/** Queued status transition for a PrintJob — written to Dexie when offline */
+export interface PrintJobUpdateRecord {
+  /** Auto-increment local ID */
+  id?: number;
+  /** The backend print job ID to patch */
+  printJobId: number;
+  /** Target status to apply when connectivity returns */
+  status: 'InProgress' | 'Printed';
+  /** ISO 8601 timestamp of when the chef performed the action */
+  createdAt: string;
 }
