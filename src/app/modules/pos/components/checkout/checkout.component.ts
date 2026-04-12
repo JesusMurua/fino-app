@@ -199,14 +199,23 @@ export class CheckoutComponent implements OnInit {
     if (items.length === 0) return 0;
     const totalBeforeDiscount = items.reduce((s, i) => s + i.totalPriceCents, 0);
     const totalAfterDiscount = this.totalWithDiscount();
-    // Prorate discount across items proportionally, then extract tax per item
-    return items.reduce((sum, item) => {
-      const itemShare = totalBeforeDiscount > 0
-        ? Math.round(item.totalPriceCents * totalAfterDiscount / totalBeforeDiscount)
-        : 0;
+    if (totalBeforeDiscount === 0) return 0;
+
+    // Prorate totalAfterDiscount across items; last item absorbs rounding
+    // remainder so Σ(shares) === totalAfterDiscount exactly (no cent drift).
+    const shares: number[] = new Array(items.length);
+    let allocated = 0;
+    for (let i = 0; i < items.length - 1; i++) {
+      const share = Math.round(items[i].totalPriceCents * totalAfterDiscount / totalBeforeDiscount);
+      shares[i] = share;
+      allocated += share;
+    }
+    shares[items.length - 1] = totalAfterDiscount - allocated;
+
+    return items.reduce((sum, item, idx) => {
       const rate = item.taxRate ?? DEFAULT_TAX_RATE;
       const isTaxIncluded = item.product.isTaxIncluded !== false;
-      return sum + calculateItemTax(itemShare, 0, rate, isTaxIncluded);
+      return sum + calculateItemTax(shares[idx], 0, rate, isTaxIncluded);
     }, 0);
   });
 
@@ -244,7 +253,8 @@ export class CheckoutComponent implements OnInit {
 
   /** True when total paid covers the order total */
   readonly canConfirm = computed(() => {
-    if (this.totalWithDiscount() === 0) return false;
+    // Zero-total orders (100%-off promos, giveaways) are already covered.
+    if (this.totalWithDiscount() === 0) return true;
     return this.totalPaidCents() >= this.totalWithDiscount();
   });
 
@@ -405,13 +415,26 @@ export class CheckoutComponent implements OnInit {
 
   /**
    * Adds the dialog payment to pendingPayments and closes the dialog.
+   * Only Cash is allowed to overpay (generates change); all other methods
+   * are capped to the remaining balance to prevent phantom change.
    */
   confirmAddPayment(): void {
     const amountCents = Math.round(this.dialogAmountPesos * 100);
     if (amountCents <= 0) return;
 
+    const method = this.dialogMethod();
+    if (method !== PaymentMethod.Cash && amountCents > this.remainingCents()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Monto excede el saldo',
+        detail: 'Solo los pagos en efectivo pueden generar cambio.',
+        life: 3000,
+      });
+      return;
+    }
+
     const payment: OrderPayment = {
-      method: this.dialogMethod(),
+      method,
       paymentStatusId: PaymentStatus.Completed,
       amountCents,
       reference: this.dialogReference.trim() || undefined,
@@ -620,6 +643,9 @@ export class CheckoutComponent implements OnInit {
    */
   async confirmPayment(): Promise<void> {
     this.showKitchenConfirm.set(false);
+    // Re-guard: the session may have been closed from another tab while
+    // the kitchen confirmation dialog was open.
+    if (!this.requireOpenSession()) return;
     if (this.isProcessing() || !this.canConfirm()) return;
 
     this.isProcessing.set(true);

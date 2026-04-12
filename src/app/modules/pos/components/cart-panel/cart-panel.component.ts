@@ -10,6 +10,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
 import { KitchenStatusId, SyncStatusId } from '../../../../core/enums';
+import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
@@ -172,12 +173,17 @@ export class CartPanelComponent implements OnInit {
 
     const { tableId, tableName } = JSON.parse(raw);
 
+    // subtotalCents is the raw pre-discount sum (per order.model.ts contract).
+    // totalCents reflects promo discounts applied by CartService.
+    const subtotalCents = items.reduce((sum, i) => sum + i.totalPriceCents, 0);
+
     const order: Order = {
       id: crypto.randomUUID(),
       orderNumber: this.syncService.consumeOrderNumber(),
       items,
       totalCents: this.cartService.totalCents(),
-      subtotalCents: this.cartService.totalCents(),
+      subtotalCents,
+      taxAmountCents: calculateOrderTaxFromSnapshot(items),
       payments: [],
       paidCents: 0,
       changeCents: 0,
