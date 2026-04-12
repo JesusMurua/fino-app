@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
@@ -26,18 +26,15 @@ export class LoginComponent {
   readonly errorMessage = signal('');
 
   /** True when this device has been provisioned — shows "Volver al PIN" */
-  readonly isDeviceBound: boolean;
+  readonly isDeviceBound = inject(DeviceService).getDeviceToken() !== null;
   //#endregion
 
   //#region Constructor
   constructor(
     private readonly authService: AuthService,
     private readonly deviceRoutingService: DeviceRoutingService,
-    private readonly deviceService: DeviceService,
     private readonly router: Router,
-  ) {
-    this.isDeviceBound = this.deviceService.getDeviceToken() !== null;
-  }
+  ) {}
   //#endregion
 
   //#region Auth
