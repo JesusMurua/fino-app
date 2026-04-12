@@ -1,11 +1,76 @@
 import { Injectable, Injector, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Order } from '../models';
-import { KitchenStatusId, OrderSource, SyncStatusId } from '../enums';
+import { Order, OrderPayment, PaymentMethod, PaymentTransactionStatus } from '../models';
+import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
+
+// ---------------------------------------------------------------------------
+// Pull DTOs — wire format of GET /api/orders/pull and GET /api/orders/:id
+// Shared with CheckoutComponent.loadOrderFromApi so the HTTP layer is typed.
+// ---------------------------------------------------------------------------
+
+/** Shape of a single order payment as returned by the backend pull endpoint */
+export interface OrderPaymentPullDto {
+  id?: number;
+  method: PaymentMethod;
+  amountCents: number;
+  reference?: string | null;
+  paymentProvider?: string | null;
+  externalTransactionId?: string | null;
+  transactionStatus?: PaymentTransactionStatus;
+  authorizedAt?: string | null;
+  paymentMetadata?: Record<string, unknown>;
+}
+
+/** Shape of a single order line as returned by the backend pull endpoint */
+export interface OrderItemPullDto {
+  id: string | number;
+  productId?: number;
+  productName: string;
+  quantity: number;
+  unitPriceCents: number;
+  discountCents?: number;
+  promotionId?: number;
+  promotionName?: string;
+  sizeName?: string;
+  extras?: string[];
+  notes?: string | null;
+}
+
+/**
+ * Flat order DTO as returned by the backend pull endpoint.
+ * Accepted by mapPullDto() and used to type HTTP responses in checkout.
+ */
+export interface OrderPullDto {
+  id: string;
+  orderNumber: number;
+  branchId: number;
+  totalCents: number;
+  subtotalCents: number;
+  paidCents: number;
+  changeCents: number;
+  createdAt: string;
+  kitchenStatusId?: KitchenStatusId;
+  cancellationReason?: string;
+  cancelledAt?: string | null;
+  tableId?: number;
+  tableName?: string;
+  cashRegisterSessionId?: number | null;
+  orderSource?: OrderSource;
+  externalOrderId?: string;
+  deliveryStatus?: DeliveryStatus;
+  deliveryCustomerName?: string;
+  estimatedPickupAt?: string;
+  orderDiscountCents?: number;
+  totalDiscountCents?: number;
+  orderPromotionId?: number;
+  orderPromotionName?: string;
+  payments?: OrderPaymentPullDto[];
+  items?: OrderItemPullDto[];
+}
 
 /** Maximum retries before an order is marked PermanentlyFailed */
 const MAX_RETRIES = 10;
@@ -200,7 +265,7 @@ export class SyncService implements OnDestroy {
       const since = todayStart.toISOString();
 
       const remoteDtos = await firstValueFrom(
-        this.api.get<any[]>(`/orders/pull?since=${since}`),
+        this.api.get<OrderPullDto[]>(`/orders/pull?since=${since}`),
       );
 
       await this.mergeRemoteOrders(remoteDtos);
@@ -224,7 +289,7 @@ export class SyncService implements OnDestroy {
     try {
       const params = this.lastPullAt ? `?since=${this.lastPullAt}` : '';
       const remoteDtos = await firstValueFrom(
-        this.api.get<any[]>(`/orders/pull${params}`),
+        this.api.get<OrderPullDto[]>(`/orders/pull${params}`),
       );
 
       const mergedCount = await this.mergeRemoteOrders(remoteDtos);
@@ -250,7 +315,7 @@ export class SyncService implements OnDestroy {
    * @param remoteDtos Array of order DTOs from GET /api/orders/pull
    * @returns Number of orders actually written to Dexie
    */
-  private async mergeRemoteOrders(remoteDtos: any[]): Promise<number> {
+  private async mergeRemoteOrders(remoteDtos: OrderPullDto[]): Promise<number> {
     if (remoteDtos.length === 0) return 0;
 
     let mergedCount = 0;
@@ -291,7 +356,7 @@ export class SyncService implements OnDestroy {
    *     items: [{ id, productName, quantity, unitPriceCents }],
    *     payments: [] }
    */
-  mapPullDto(dto: any): Order {
+  mapPullDto(dto: OrderPullDto): Order {
     return {
       id: dto.id,
       orderNumber: dto.orderNumber,
@@ -320,9 +385,10 @@ export class SyncService implements OnDestroy {
       totalDiscountCents: dto.totalDiscountCents ?? 0,
       orderPromotionId: dto.orderPromotionId,
       orderPromotionName: dto.orderPromotionName,
-      payments: (dto.payments ?? []).map((p: any) => ({
+      payments: (dto.payments ?? []).map<OrderPayment>(p => ({
         id: p.id,
         method: p.method,
+        paymentStatusId: PaymentStatus.Completed,
         amountCents: p.amountCents,
         reference: p.reference ?? undefined,
         paymentProvider: p.paymentProvider ?? undefined,
@@ -331,17 +397,25 @@ export class SyncService implements OnDestroy {
         authorizedAt: p.authorizedAt ? new Date(p.authorizedAt) : undefined,
         paymentMetadata: p.paymentMetadata ?? undefined,
       })),
-      items: (dto.items ?? []).map((item: any) => ({
+      items: (dto.items ?? []).map(item => ({
         id: String(item.id),
-        product: { id: item.productId ?? 0, name: item.productName, price: 0, categoryId: 0, isAvailable: true, priceCents: item.unitPriceCents },
+        product: {
+          id: item.productId ?? 0,
+          name: item.productName,
+          priceCents: item.unitPriceCents,
+          categoryId: 0,
+          isAvailable: true,
+          sizes: [],
+          extras: [],
+        },
         quantity: item.quantity,
         unitPriceCents: item.unitPriceCents,
         totalPriceCents: item.unitPriceCents * item.quantity,
         discountCents: item.discountCents ?? 0,
         promotionId: item.promotionId,
         promotionName: item.promotionName,
-        size: item.sizeName ? { label: item.sizeName, priceDeltaCents: 0 } : undefined,
-        extras: (item.extras ?? []).map((name: string) => ({ id: 0, name, priceCents: 0 })),
+        size: item.sizeName ? { id: 0, label: item.sizeName, priceDeltaCents: 0 } : undefined,
+        extras: (item.extras ?? []).map(name => ({ id: 0, label: name, priceCents: 0 })),
         notes: item.notes ?? undefined,
       })),
     };

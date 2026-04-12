@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { DeviceConfig } from '../models';
 import { CartService } from './cart.service';
 import { ConfigService } from './config.service';
+import { OrderContextService } from './order-context.service';
 
 /** Inactivity threshold before auto-lock (5 minutes) */
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
@@ -58,6 +59,7 @@ export class IdleService implements OnDestroy {
   //#region Constructor
 
   private readonly configService = inject(ConfigService);
+  private readonly orderContextService = inject(OrderContextService);
 
   constructor(
     private readonly router: Router,
@@ -145,8 +147,7 @@ export class IdleService implements OnDestroy {
 
     // Clear transient state so next user starts fresh
     await this.cartService.clearCart();
-    sessionStorage.removeItem('activeTable');
-    sessionStorage.removeItem('addingToOrder');
+    this.orderContextService.clearAllContext();
 
     this.router.navigate(['/pin']);
 

@@ -8,6 +8,7 @@ import { ConfigService } from '../../core/services/config.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { OrderContextService } from '../../core/services/order-context.service';
 import { ProductService } from '../../core/services/product.service';
 import { PromotionService } from '../../core/services/promotion.service';
 import { SyncService } from '../../core/services/sync.service';
@@ -87,6 +88,7 @@ export class PinComponent implements OnInit {
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
   private readonly promotionService = inject(PromotionService);
+  private readonly orderContextService = inject(OrderContextService);
   private readonly syncService = inject(SyncService);
   private readonly tableService = inject(TableService);
 
@@ -213,8 +215,7 @@ export class PinComponent implements OnInit {
   private async cleanupPreviousSession(): Promise<void> {
     await this.cartService.clearCart();
     this.promotionService.clearCoupon();
-    sessionStorage.removeItem('activeTable');
-    sessionStorage.removeItem('addingToOrder');
+    this.orderContextService.clearAllContext();
   }
 
   //#endregion

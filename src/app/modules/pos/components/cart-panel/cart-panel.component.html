@@ -2,13 +2,13 @@
 
   <!-- Header -->
   <div class="cart-panel__header">
-    @if (addingToOrder) {
-      <span class="cart-panel__title cart-panel__title--adding">Agregando a Orden #{{ addingToOrder.orderNumber }}</span>
+    @if (addingToOrder(); as adding) {
+      <span class="cart-panel__title cart-panel__title--adding">Agregando a Orden #{{ adding.orderNumber }}</span>
     } @else {
       <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
     }
-    @if (activeTableDisplay() || activeTableName()) {
-      <span class="cart-panel__table-badge">{{ activeTableDisplay() || activeTableName() }}</span>
+    @if (activeTableName()) {
+      <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
     }
     @if (itemCount() > 0) {
       <span class="cart-panel__badge">{{ itemCount() }}</span>
@@ -211,9 +211,9 @@
     }
 
     @if (showSendToKitchen()) {
-      @if (addingToOrder) {
+      @if (addingToOrder(); as adding) {
         <p-button
-          [label]="isProcessing() ? 'Enviando...' : 'Agregar a Orden #' + addingToOrder.orderNumber"
+          [label]="isProcessing() ? 'Enviando...' : 'Agregar a Orden #' + adding.orderNumber"
           icon="pi pi-plus"
           styleClass="w-full btn-kitchen"
           size="large"
@@ -257,7 +257,7 @@
       />
     }
 
-    @if (itemCount() > 0 && !addingToOrder) {
+    @if (itemCount() > 0 && !addingToOrder()) {
       <button
         type="button"
         class="btn-cancel"

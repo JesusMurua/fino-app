@@ -23,6 +23,7 @@ import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../c
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
+import { OrderContextService } from '../../core/services/order-context.service';
 import { SyncService } from '../../core/services/sync.service';
 import { ZoneService } from '../../core/services/zone.service';
 import { PricePipe } from '../../shared/pipes/price.pipe';
@@ -61,6 +62,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
+  private readonly orderContextService = inject(OrderContextService);
   readonly currentUser = this.authService.currentUser;
 
   /** Expose enums for template */
@@ -439,10 +441,10 @@ export class TablesComponent implements OnInit, OnDestroy {
    */
   onTableClick(table: RestaurantTable): void {
     if (table.tableStatusId === TableStatus.Available) {
-      sessionStorage.setItem('activeTable', JSON.stringify({
+      this.orderContextService.setActiveTable({
         tableId: table.id,
         tableName: table.name,
-      }));
+      });
       this.router.navigate(['/pos']);
     } else {
       this.selectedTable.set(table);
@@ -511,14 +513,14 @@ export class TablesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    sessionStorage.setItem('activeTable', JSON.stringify({
+    this.orderContextService.setActiveTable({
       tableId: table.id,
       tableName: table.name,
-    }));
-    sessionStorage.setItem('addingToOrder', JSON.stringify({
+    });
+    this.orderContextService.setAddingToOrder({
       orderId: order.id,
       orderNumber: order.orderNumber,
-    }));
+    });
 
     this.showTableDialog.set(false);
     this.router.navigate(['/pos']);
@@ -539,14 +541,14 @@ export class TablesComponent implements OnInit, OnDestroy {
     if (!table) return;
 
     this.pendingReopenTableId = table.id;
-    sessionStorage.setItem('activeTable', JSON.stringify({
+    this.orderContextService.setActiveTable({
       tableId: table.id,
       tableName: table.name,
-    }));
-    sessionStorage.setItem('addingToOrder', JSON.stringify({
+    });
+    this.orderContextService.setAddingToOrder({
       orderId: order.id,
       orderNumber: order.orderNumber,
-    }));
+    });
 
     this.showTableDialog.set(false);
     this.router.navigate(['/pos']);
@@ -557,10 +559,10 @@ export class TablesComponent implements OnInit, OnDestroy {
     const table = this.selectedTable();
     if (!table) return;
 
-    sessionStorage.setItem('activeTable', JSON.stringify({
+    this.orderContextService.setActiveTable({
       tableId: table.id,
       tableName: table.name,
-    }));
+    });
 
     this.showTableDialog.set(false);
     this.router.navigate(['/pos']);
