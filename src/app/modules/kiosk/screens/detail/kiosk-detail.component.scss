@@ -207,11 +207,32 @@
   gap: $space-3;
 }
 
+.kd__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
 .kd__section-title {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
   color: $color-text-title;
+}
+
+.kd__section-rule {
+  font-size: 14px;
+  font-weight: 400;
+  color: $color-text-sub;
+  white-space: nowrap;
+}
+
+.kd__section-error {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #DC2626;
 }
 
 .kd__optional {

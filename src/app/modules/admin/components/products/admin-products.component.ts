@@ -1,7 +1,14 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import {
+  FormArray,
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { Subscription, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
@@ -19,7 +26,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 
-import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductImage, ProductImportPreview, ProductImportResult, ProductModifierGroup, SAT_UNIT_OPTIONS } from '../../../../core/models';
+import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductExtra, ProductImage, ProductImportPreview, ProductImportResult, ProductModifierGroup, SAT_UNIT_OPTIONS } from '../../../../core/models';
 import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -38,11 +45,28 @@ interface ProductSizeForm {
   priceDeltaCents: number;
 }
 
-/** Editable row for a product extra inside the form */
-interface ProductExtraForm {
-  label: string;
-  priceCents: number;
-}
+/**
+ * Reactive form for a single modifier extra (nested inside a group).
+ * `pricePesos` holds the UI-friendly decimal amount; we convert to
+ * `priceCents` integer on save.
+ */
+type ModifierExtraForm = FormGroup<{
+  id:         FormControl<number | null>;
+  label:      FormControl<string>;
+  pricePesos: FormControl<number>;
+  sortOrder:  FormControl<number>;
+}>;
+
+/** Reactive form for a single modifier group */
+type ModifierGroupForm = FormGroup<{
+  id:            FormControl<number | null>;
+  name:          FormControl<string>;
+  sortOrder:     FormControl<number>;
+  isRequired:    FormControl<boolean>;
+  minSelectable: FormControl<number>;
+  maxSelectable: FormControl<number>;
+  extras:        FormArray<ModifierExtraForm>;
+}>;
 
 /** Shape of the product form used in the create/edit dialog */
 interface ProductForm {
@@ -56,7 +80,6 @@ interface ProductForm {
   currentStock: number;
   lowStockThreshold: number;
   sizes: ProductSizeForm[];
-  extras: ProductExtraForm[];
   satProductCode: string;
   satUnitCode: string;
   taxRate: number;
@@ -86,6 +109,7 @@ interface DiscountForm {
     CurrencyPipe,
     DatePipe,
     FormsModule,
+    ReactiveFormsModule,
     DialogModule,
     DropdownModule,
     InputNumberModule,
@@ -117,6 +141,20 @@ export class AdminProductsComponent implements OnInit {
   form: ProductForm = this.emptyProductForm();
   dialogTabIndex = 0;
   showImageTab = false;
+
+  /**
+   * Reactive form wrapper for modifier groups. A trivial root FormGroup
+   * with a single `groups` FormArray is needed so the template can bind
+   * via `[formGroup]` + `formArrayName`.
+   */
+  readonly modifierGroupsRoot = new FormGroup<{ groups: FormArray<ModifierGroupForm> }>({
+    groups: new FormArray<ModifierGroupForm>([]),
+  });
+
+  /** Convenience accessor — every consumer reads the FormArray, not the wrapper */
+  get modifierGroupsForm(): FormArray<ModifierGroupForm> {
+    return this.modifierGroupsRoot.controls.groups;
+  }
 
   // ---- SAT catalog options for fiscal dropdowns ----
   readonly satUnitOptions = SAT_UNIT_OPTIONS;
@@ -248,6 +286,7 @@ export class AdminProductsComponent implements OnInit {
   openCreate(): void {
     this.editingProduct = null;
     this.form = this.emptyProductForm();
+    this.modifierGroupsForm.clear();
     this.productImages.set([]);
     this.dialogTabIndex = 0;
     this.showImageTab = false;
@@ -267,17 +306,21 @@ export class AdminProductsComponent implements OnInit {
       currentStock: product.currentStock ?? 0,
       lowStockThreshold: product.lowStockThreshold ?? 0,
       sizes:  product.sizes.map(s => ({ label: s.label, priceDeltaCents: s.priceDeltaCents })),
-      // Flatten every modifier group's extras into the flat admin form.
-      // NOTE: editing multi-group rules requires a dedicated UI — out of scope
-      // for Phase 11.3 frontend adaptation. See AUDIT-030 (future FDD).
-      extras: (product.modifierGroups ?? [])
-        .flatMap(g => g.extras)
-        .map(e => ({ label: e.label, priceCents: e.priceCents })),
       satProductCode: product.satProductCode ?? '',
       satUnitCode: product.satUnitCode ?? 'H87',
       taxRate: product.taxRate ?? 16,
       printingDestinationId: product.printingDestinationId ?? null,
     };
+
+    // Rebuild the reactive modifier groups form from the product's
+    // full hierarchy — no flattening, no data loss.
+    this.modifierGroupsForm.clear();
+    const sortedGroups = [...(product.modifierGroups ?? [])]
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    for (const group of sortedGroups) {
+      this.modifierGroupsForm.push(this.buildGroupForm(group));
+    }
+
     this.productImages.set(product.images ?? []);
     this.dialogTabIndex = 0;
     this.showImageTab = false;
@@ -299,25 +342,38 @@ export class AdminProductsComponent implements OnInit {
   /** Saves product locally in Dexie and syncs to API (best-effort) */
   async saveProduct(): Promise<void> {
     if (!this.form.name.trim() || !this.form.categoryId) return;
+    if (this.modifierGroupsForm.invalid) {
+      this.modifierGroupsForm.markAllAsTouched();
+      return;
+    }
 
-    const sizes  = this.form.sizes.filter(s => s.label.trim());
-    const extras = this.form.extras.filter(e => e.label.trim());
+    const sizes = this.form.sizes.filter(s => s.label.trim());
 
-    // Wrap the flat admin-form extras into a single default modifier group.
-    // A richer editor (multiple groups with min/max/required) is tracked
-    // outside Phase 11.3 scope.
-    const defaultGroupId = this.editingProduct?.modifierGroups?.[0]?.id ?? 1;
-    const modifierGroups: ProductModifierGroup[] = extras.length > 0
-      ? [{
-          id: defaultGroupId,
-          name: 'Extras',
-          sortOrder: 0,
-          isRequired: false,
-          minSelectable: 0,
-          maxSelectable: 0,
-          extras: extras.map((e, i) => ({ id: i + 1, label: e.label.trim(), priceCents: e.priceCents })),
-        }]
-      : [];
+    // Read the reactive modifier groups tree and translate to the
+    // ProductModifierGroup shape the backend expects.
+    const modifierGroups: ProductModifierGroup[] = this.modifierGroupsForm.controls
+      .map((groupCtrl, gi) => {
+        const raw = groupCtrl.getRawValue();
+        const extras: ProductExtra[] = raw.extras
+          .filter(e => e.label.trim().length > 0)
+          .map((e, ei) => ({
+            id: e.id ?? 0,
+            label: e.label.trim(),
+            priceCents: Math.round((e.pricePesos || 0) * 100),
+          }));
+        return {
+          id: raw.id ?? 0,
+          name: raw.name.trim(),
+          sortOrder: raw.sortOrder ?? gi,
+          isRequired: raw.isRequired,
+          minSelectable: raw.minSelectable ?? 0,
+          maxSelectable: raw.maxSelectable ?? 0,
+          extras,
+        };
+      })
+      // Drop groups with empty names or no extras — they are meaningless
+      // to both the POS UI and the backend.
+      .filter(g => g.name.length > 0 && g.extras.length > 0);
 
     const payload = {
       name: this.form.name.trim(),
@@ -784,20 +840,83 @@ export class AdminProductsComponent implements OnInit {
     this.form.sizes[index].priceDeltaCents = Math.round((pesos ?? 0) * 100);
   }
 
-  addExtra(): void {
-    this.form.extras.push({ label: '', priceCents: 0 });
+  //#region Modifier Groups — reactive form helpers
+
+  /** Builds a reactive FormGroup for a single modifier group */
+  private buildGroupForm(group?: ProductModifierGroup): ModifierGroupForm {
+    const extrasArray = new FormArray<ModifierExtraForm>(
+      (group?.extras ?? []).map(e => this.buildExtraForm(e)),
+    );
+    return new FormGroup({
+      id:            new FormControl<number | null>(group?.id ?? null),
+      name:          new FormControl(group?.name ?? '', {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      sortOrder:     new FormControl(group?.sortOrder ?? 0, { nonNullable: true }),
+      isRequired:    new FormControl(group?.isRequired ?? false, { nonNullable: true }),
+      minSelectable: new FormControl(group?.minSelectable ?? 0, { nonNullable: true }),
+      maxSelectable: new FormControl(group?.maxSelectable ?? 0, { nonNullable: true }),
+      extras:        extrasArray,
+    });
   }
 
-  removeExtra(index: number): void {
-    this.form.extras.splice(index, 1);
+  /** Builds a reactive FormGroup for a single extra inside a group */
+  private buildExtraForm(extra?: ProductExtra): ModifierExtraForm {
+    return new FormGroup({
+      id:         new FormControl<number | null>(extra?.id ?? null),
+      label:      new FormControl(extra?.label ?? '', {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      pricePesos: new FormControl((extra?.priceCents ?? 0) / 100, { nonNullable: true }),
+      sortOrder:  new FormControl(0, { nonNullable: true }),
+    });
   }
 
-  onExtraPriceChange(index: number, pesos: number | null): void {
-    this.form.extras[index].priceCents = Math.round((pesos ?? 0) * 100);
+  /** Appends a new empty group to the end of the list */
+  addGroup(): void {
+    this.modifierGroupsForm.push(this.buildGroupForm({
+      id: 0,
+      name: '',
+      sortOrder: this.modifierGroupsForm.length,
+      isRequired: false,
+      minSelectable: 0,
+      maxSelectable: 0,
+      extras: [],
+    }));
   }
+
+  /** Removes the group at the given index */
+  removeGroup(groupIndex: number): void {
+    this.modifierGroupsForm.removeAt(groupIndex);
+  }
+
+  /** Returns the FormArray of extras for a given group — used by the template */
+  extrasArrayForGroup(groupIndex: number): FormArray<ModifierExtraForm> {
+    return this.modifierGroupsForm.at(groupIndex).controls.extras;
+  }
+
+  /** Appends a new empty extra to the specified group */
+  addExtraToGroup(groupIndex: number): void {
+    this.extrasArrayForGroup(groupIndex).push(this.buildExtraForm());
+  }
+
+  /** Removes an extra by (group, extra) index tuple */
+  removeExtraFromGroup(groupIndex: number, extraIndex: number): void {
+    this.extrasArrayForGroup(groupIndex).removeAt(extraIndex);
+  }
+
+  /** Total number of extras across all groups — used for the tab badge */
+  totalExtrasCount(): number {
+    return this.modifierGroupsForm.controls
+      .reduce((sum, g) => sum + g.controls.extras.length, 0);
+  }
+
+  //#endregion
 
   private emptyProductForm(): ProductForm {
-    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], extras: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16, printingDestinationId: null };
+    return { name: '', barcode: '', description: '', priceCents: 0, categoryId: null, isAvailable: true, trackStock: false, currentStock: 0, lowStockThreshold: 0, sizes: [], satProductCode: '', satUnitCode: 'H87', taxRate: 16, printingDestinationId: null };
   }
 
   private emptyCatForm(): CategoryForm {

@@ -569,19 +569,19 @@
     </p-tabPanel>
 
     <!-- ================================================================ -->
-    <!-- TAB 3 — Precios y extras                                          -->
+    <!-- TAB 3 — Precios y modificadores                                   -->
     <!-- ================================================================ -->
     <p-tabPanel>
       <ng-template pTemplate="header">
-        <span>Precios y extras</span>
-        @if (form.sizes.length > 0 || form.extras.length > 0) {
-          <span class="tab-badge">{{ form.sizes.length + form.extras.length }}</span>
+        <span>Precios y modificadores</span>
+        @if (form.sizes.length > 0 || modifierGroupsForm.length > 0) {
+          <span class="tab-badge">{{ form.sizes.length + totalExtrasCount() }}</span>
         }
       </ng-template>
 
       <div class="product-form product-form--scrollable">
 
-        <p class="form-hint">Los tamaños y extras son opcionales. Solo agrégalos si tu producto los necesita.</p>
+        <p class="form-hint">Los tamaños y modificadores son opcionales. Solo agrégalos si tu producto los necesita.</p>
 
         <!-- Sizes -->
         <div class="form-section">
@@ -596,6 +596,7 @@
                 type="text"
                 pInputText
                 [(ngModel)]="size.label"
+                [ngModelOptions]="{ standalone: true }"
                 placeholder="Ej. Chico, Grande"
                 class="variant-row__name"
               />
@@ -605,6 +606,7 @@
                 locale="es-MX"
                 [min]="0"
                 [ngModel]="size.priceDeltaCents / 100"
+                [ngModelOptions]="{ standalone: true }"
                 (onInput)="onSizePriceChange($index, $event.value)"
                 styleClass="variant-row__price"
                 placeholder="+$0.00"
@@ -626,46 +628,109 @@
           </button>
         </div>
 
-        <!-- Extras -->
-        <div class="form-section">
+        <!-- Modifier groups (reactive form) -->
+        <div class="form-section" [formGroup]="modifierGroupsRoot">
           <div class="form-section__header">
-            <span class="form-section__title">Extras</span>
-            <span class="form-section__hint">Precio $0 = gratis</span>
+            <span class="form-section__title">Grupos de modificadores</span>
+            <span class="form-section__hint">Agrupa los extras con reglas de selección</span>
           </div>
 
-          @for (extra of form.extras; track $index) {
-            <div class="variant-row">
-              <input
-                type="text"
-                pInputText
-                [(ngModel)]="extra.label"
-                placeholder="Ej. Sin cebolla, Queso extra"
-                class="variant-row__name"
-              />
-              <p-inputNumber
-                mode="currency"
-                currency="MXN"
-                locale="es-MX"
-                [min]="0"
-                [ngModel]="extra.priceCents / 100"
-                (onInput)="onExtraPriceChange($index, $event.value)"
-                styleClass="variant-row__price"
-                placeholder="$0.00"
-              />
-              <button
-                type="button"
-                class="btn-icon btn-icon--danger"
-                aria-label="Eliminar extra"
-                (click)="removeExtra($index)"
-              >
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          }
+          <div formArrayName="groups">
+            @for (groupCtrl of modifierGroupsForm.controls; track $index; let gi = $index) {
+              <div class="modifier-group" [formGroupName]="gi">
+                <div class="modifier-group__header">
+                  <input
+                    type="text"
+                    pInputText
+                    formControlName="name"
+                    placeholder="Nombre del grupo (ej. Proteína, Salsas)"
+                    class="modifier-group__name-input"
+                  />
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--danger"
+                    aria-label="Eliminar grupo"
+                    (click)="removeGroup(gi)"
+                  >
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
 
-          <button type="button" class="btn-add-variant" (click)="addExtra()">
+                @if (groupCtrl.controls.name.touched && groupCtrl.controls.name.invalid) {
+                  <p class="modifier-group__error">El nombre del grupo es obligatorio</p>
+                }
+
+                <div class="modifier-group__rules">
+                  <label class="modifier-group__field">
+                    <span class="modifier-group__field-label">Mín.</span>
+                    <p-inputNumber
+                      formControlName="minSelectable"
+                      [min]="0"
+                      [showButtons]="true"
+                      styleClass="modifier-group__field-input"
+                    />
+                  </label>
+                  <label class="modifier-group__field">
+                    <span class="modifier-group__field-label">Máx.</span>
+                    <p-inputNumber
+                      formControlName="maxSelectable"
+                      [min]="0"
+                      [showButtons]="true"
+                      styleClass="modifier-group__field-input"
+                    />
+                  </label>
+                  <label class="modifier-group__field modifier-group__field--switch">
+                    <span class="modifier-group__field-label">Obligatorio</span>
+                    <p-inputSwitch formControlName="isRequired" />
+                  </label>
+                </div>
+
+                <div class="modifier-group__extras" formArrayName="extras">
+                  @for (extraCtrl of extrasArrayForGroup(gi).controls; track $index; let ei = $index) {
+                    <div class="variant-row" [formGroupName]="ei">
+                      <input
+                        type="text"
+                        pInputText
+                        formControlName="label"
+                        placeholder="Ej. Queso extra, Sin cebolla"
+                        class="variant-row__name"
+                      />
+                      <p-inputNumber
+                        formControlName="pricePesos"
+                        mode="currency"
+                        currency="MXN"
+                        locale="es-MX"
+                        [min]="0"
+                        styleClass="variant-row__price"
+                        placeholder="$0.00"
+                      />
+                      <button
+                        type="button"
+                        class="btn-icon btn-icon--danger"
+                        aria-label="Eliminar extra"
+                        (click)="removeExtraFromGroup(gi, ei)"
+                      >
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  }
+
+                  <button
+                    type="button"
+                    class="btn-add-variant btn-add-variant--nested"
+                    (click)="addExtraToGroup(gi)"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Agregar extra al grupo
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <button type="button" class="btn-add-variant" (click)="addGroup()">
             <i class="pi pi-plus"></i>
-            Agregar extra
+            Agregar grupo de modificadores
           </button>
         </div>
 
