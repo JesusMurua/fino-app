@@ -16,6 +16,25 @@
         <i class="pi pi-box"></i>
       </div>
       <span class="kds-header__title">{{ destinationName() }}</span>
+      @switch (connectionState()) {
+        @case ('connected') {
+          <span class="kds-status kds-status--connected" title="Conectado en tiempo real">
+            <i class="pi pi-circle-fill"></i>
+          </span>
+        }
+        @case ('reconnecting') {
+          <span class="kds-status kds-status--reconnecting" title="Reconectando…">
+            <i class="pi pi-spin pi-spinner"></i>
+            Reconectando
+          </span>
+        }
+        @case ('disconnected') {
+          <span class="kds-status kds-status--disconnected" title="Sin conexión en tiempo real — modo polling activo">
+            <i class="pi pi-circle-fill"></i>
+            Polling
+          </span>
+        }
+      }
     </div>
     <div class="kds-header__actions">
       <app-notification-toggle variant="compact" />

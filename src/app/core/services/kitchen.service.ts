@@ -10,22 +10,37 @@ import { DatabaseService } from './database.service';
 import { DeviceService } from './device.service';
 import { KitchenAudioService } from './kitchen-audio.service';
 
+/** How often the fallback polling fires when SignalR is down (15 s) */
+const POLL_INTERVAL_MS = 15_000;
+
+/** How often to retry connecting SignalR while in polling mode (60 s) */
+const HUB_RETRY_INTERVAL_MS = 60_000;
+
+/** Connection health exposed to the UI */
+export type KdsConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+
 /**
  * Manages pending print jobs for the KDS (Kitchen Display System).
  *
  * - Fetches jobs from GET /api/print-jobs/pending?destination={id}
  * - Falls back to Dexie `pendingPrintJobs` when offline
  * - Real-time updates via SignalR hub `/hubs/kds`
+ * - Fallback HTTP polling every 15 s when SignalR is dead
+ * - Periodically retries SignalR (60 s) while in polling mode
  * - Plays an audio beep on each new PrintJobCreated event
  * - Provides optimistic updates for markAsInProgress() and markAsPrinted()
  * - Queues failed status transitions in Dexie and drains them on reconnect
+ * - Filters out Receipt tickets — KDS only shows Kitchen jobs
  */
 @Injectable({ providedIn: 'root' })
 export class KitchenService implements OnDestroy {
     //#region Properties
 
-    /** Active print jobs for the KDS display */
+    /** Active kitchen-only print jobs for the KDS display */
     readonly pendingJobs = signal<PrintJobDto[]>([]);
+
+    /** SignalR connection health — drives the UI indicator in the header */
+    readonly connectionState = signal<KdsConnectionState>('disconnected');
 
     /** Destination currently connected — used by refresh() */
     private currentDestinationId: number | null = null;
@@ -35,6 +50,12 @@ export class KitchenService implements OnDestroy {
 
     /** True while syncPendingUpdates is running — prevents concurrent drains */
     private isSyncing = false;
+
+    /** Fallback polling timer — active only when SignalR is dead */
+    private pollingTimerId: ReturnType<typeof setInterval> | null = null;
+
+    /** Periodic SignalR retry timer — active only while in polling mode */
+    private hubRetryTimerId: ReturnType<typeof setInterval> | null = null;
 
     //#endregion
 
@@ -60,7 +81,7 @@ export class KitchenService implements OnDestroy {
     /**
      * Loads jobs immediately and opens a SignalR connection to receive
      * real-time PrintJobCreated events for the given destination.
-     * Call from the KDS component on init when a destinationId is present.
+     * If SignalR fails, falls back to HTTP polling automatically.
      * @param destinationId The printer destination to display jobs for
      */
     start(destinationId: number): void {
@@ -70,22 +91,17 @@ export class KitchenService implements OnDestroy {
     }
 
     /**
-     * @deprecated Use start() instead. Kept as alias during migration.
-     */
-    startPolling(destinationId: number): void {
-        this.start(destinationId);
-    }
-
-    /**
-     * Closes the SignalR connection and clears the jobs signal.
+     * Closes the SignalR connection, stops polling, and clears state.
      * Call from the KDS component on destroy.
      */
     stop(): void {
+        this.stopPolling();
         if (this.hubConnection) {
             void this.hubConnection.stop();
             this.hubConnection = null;
         }
         this.pendingJobs.set([]);
+        this.connectionState.set('disconnected');
         this.currentDestinationId = null;
     }
 
@@ -101,8 +117,6 @@ export class KitchenService implements OnDestroy {
 
     /**
      * Advances a job to InProgress with offline-first semantics.
-     * UI updates optimistically; if the API call fails, the transition
-     * is queued in Dexie and will be retried on reconnect.
      * @param id The print job numeric ID
      */
     async markAsInProgress(id: number): Promise<void> {
@@ -120,8 +134,6 @@ export class KitchenService implements OnDestroy {
 
     /**
      * Removes a job from the display with offline-first semantics.
-     * UI updates optimistically; if the API call fails, the transition
-     * is queued in Dexie and will be retried on reconnect.
      * @param id The print job numeric ID
      */
     async markAsPrinted(id: number): Promise<void> {
@@ -139,10 +151,6 @@ export class KitchenService implements OnDestroy {
 
     //#region Offline Sync Queue
 
-    /**
-     * Inserts a status transition into the offline queue and shows
-     * a non-blocking info toast so the chef knows the change was saved.
-     */
     private async queueOfflineUpdate(
         printJobId: number,
         status: 'InProgress' | 'Printed',
@@ -160,12 +168,6 @@ export class KitchenService implements OnDestroy {
         });
     }
 
-    /**
-     * Drains every queued status transition, patching the backend one
-     * by one. Successfully synced rows are deleted from Dexie.
-     * Failures remain in the queue for the next attempt.
-     * Called after every job reload and on SignalR reconnect.
-     */
     async syncPendingUpdates(): Promise<void> {
         if (this.isSyncing) return;
         this.isSyncing = true;
@@ -191,24 +193,14 @@ export class KitchenService implements OnDestroy {
 
     //#endregion
 
-    //#region Private Helpers
-
-    /** Displays an error Toast if MessageService is available */
-    private showError(detail: string): void {
-        this.messageService?.add({
-            severity: 'error',
-            summary: 'Error',
-            detail,
-            life: 4000,
-        });
-    }
+    //#region SignalR + Fallback Polling
 
     /**
-     * Opens a SignalR connection to /hubs/kds for the given destination.
-     * On `PrintJobCreated` events, refreshes the job list and plays a beep.
+     * Opens a SignalR connection. On success sets `connected` and kills
+     * any active polling. On failure or permanent close, falls back to
+     * HTTP polling and periodically retries SignalR.
      */
     private async connectHub(destinationId: number): Promise<void> {
-        // Tear down any existing connection before reconnecting
         if (this.hubConnection) {
             await this.hubConnection.stop().catch(() => undefined);
             this.hubConnection = null;
@@ -224,6 +216,7 @@ export class KitchenService implements OnDestroy {
             .configureLogging(LogLevel.Warning)
             .build();
 
+        // Real-time event: refresh + beep
         this.hubConnection.on('PrintJobCreated', () => {
             if (this.currentDestinationId !== null) {
                 void this.loadPendingPrintJobs(this.currentDestinationId);
@@ -231,38 +224,87 @@ export class KitchenService implements OnDestroy {
             this.kitchenAudio.playNewOrderBeep();
         });
 
+        this.hubConnection.onreconnecting(() => {
+            this.connectionState.set('reconnecting');
+        });
+
         this.hubConnection.onreconnected(() => {
+            this.connectionState.set('connected');
+            this.stopPolling();
             if (this.currentDestinationId !== null) {
                 void this.loadPendingPrintJobs(this.currentDestinationId);
             }
             void this.syncPendingUpdates();
         });
 
+        // SignalR gave up after its default 4 retries — fall back to polling
+        this.hubConnection.onclose(() => {
+            this.connectionState.set('disconnected');
+            this.startFallbackPolling();
+        });
+
         try {
             await this.hubConnection.start();
+            this.connectionState.set('connected');
+            this.stopPolling();
         } catch (error) {
             console.warn('[KitchenService] SignalR connection failed:', error);
+            this.connectionState.set('disconnected');
+            this.startFallbackPolling();
         }
     }
 
-    /** True when the SignalR hub is connected */
-    get isHubConnected(): boolean {
-        return this.hubConnection?.state === HubConnectionState.Connected;
+    /**
+     * Starts the fallback HTTP polling loop AND a slower SignalR retry loop.
+     * Both are cleared when SignalR reconnects or the service stops.
+     */
+    private startFallbackPolling(): void {
+        if (this.pollingTimerId !== null) return;
+
+        this.pollingTimerId = setInterval(() => {
+            if (this.currentDestinationId !== null) {
+                void this.loadPendingPrintJobs(this.currentDestinationId);
+            }
+        }, POLL_INTERVAL_MS);
+
+        this.hubRetryTimerId = setInterval(() => {
+            if (this.currentDestinationId !== null) {
+                void this.connectHub(this.currentDestinationId);
+            }
+        }, HUB_RETRY_INTERVAL_MS);
     }
 
+    /** Clears both the polling and the hub-retry timers */
+    private stopPolling(): void {
+        if (this.pollingTimerId !== null) {
+            clearInterval(this.pollingTimerId);
+            this.pollingTimerId = null;
+        }
+        if (this.hubRetryTimerId !== null) {
+            clearInterval(this.hubRetryTimerId);
+            this.hubRetryTimerId = null;
+        }
+    }
+
+    //#endregion
+
+    //#region Private Helpers
+
     /**
-     * Fetches pending jobs from the API and caches them in Dexie.
-     * On any failure (offline, timeout), falls back to Dexie local data.
-     * After loading, drains any queued offline transitions.
-     * @param destinationId The printer destination to query
+     * Fetches pending jobs from the API, filters to Kitchen-only tickets,
+     * caches in Dexie, and drains any queued offline transitions.
+     * On failure, falls back to Dexie local data.
      */
     private async loadPendingPrintJobs(destinationId: number): Promise<void> {
         try {
-            const jobs = await firstValueFrom(
+            const allJobs = await firstValueFrom(
                 this.api.get<PrintJobDto[]>(
                     `/print-jobs/pending?destination=${destinationId}`,
                 ),
             );
+
+            // KDS only shows kitchen tickets — filter out receipts
+            const jobs = allJobs.filter(j => j.ticketType === 'Kitchen');
 
             // Refresh the local cache for this destination
             await this.db.pendingPrintJobs
@@ -275,17 +317,16 @@ export class KitchenService implements OnDestroy {
 
             this.pendingJobs.set(jobs);
         } catch {
-            // Offline fallback: show locally cached jobs
+            // Offline fallback: show locally cached jobs (already filtered on write)
             const local = await this.db.pendingPrintJobs
                 .where('destinationId')
                 .equals(destinationId)
-                .filter((j) => j.status === 'Pending' || j.status === 'InProgress')
+                .filter(j => j.status === 'Pending' || j.status === 'InProgress')
                 .toArray();
 
             this.pendingJobs.set(local);
         }
 
-        // Drain queued transitions after every load attempt
         void this.syncPendingUpdates();
     }
 

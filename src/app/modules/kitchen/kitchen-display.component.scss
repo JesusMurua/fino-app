@@ -86,6 +86,38 @@
 }
 
 // -----------------------------------------------------------------------
+// Connection state indicator
+// -----------------------------------------------------------------------
+
+.kds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+
+  i { font-size: 8px; }
+
+  &--connected {
+    color: $color-primary;
+    i { font-size: 8px; }
+  }
+
+  &--reconnecting {
+    color: #D97706;
+    background: #FEF3C7;
+    i { font-size: 12px; }
+  }
+
+  &--disconnected {
+    color: #DC2626;
+    background: #FEF2F2;
+  }
+}
+
+// -----------------------------------------------------------------------
 // Grid
 // -----------------------------------------------------------------------
 
