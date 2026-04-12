@@ -2,10 +2,12 @@ import { Routes } from '@angular/router';
 
 import { FeatureKey } from '../../core/enums';
 import { featureGuard } from '../../core/guards/feature.guard';
+import { posEntryGuard } from '../../core/guards/pos-entry.guard';
 
 export const posRoutes: Routes = [
   {
     path: '',
+    canActivate: [posEntryGuard],
     loadComponent: () =>
       import('./pages/restaurant-hub/restaurant-hub.component')
         .then(m => m.RestaurantHubComponent),

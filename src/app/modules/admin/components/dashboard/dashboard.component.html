@@ -281,7 +281,20 @@
       </span>
     </div>
 
-    @if (chartError()) {
+    @if (!hasAdvancedReports()) {
+      <div class="charts-section__upsell">
+        <i class="pi pi-lock charts-section__upsell-icon"></i>
+        <p class="charts-section__upsell-title">Gráficas avanzadas</p>
+        <p class="charts-section__upsell-text">
+          Las gráficas de ventas, productos top y métodos de pago están disponibles
+          a partir del plan Pro.
+        </p>
+        <a routerLink="/admin/upgrade" class="charts-section__upsell-link">
+          <i class="pi pi-arrow-up-right"></i>
+          Ver planes
+        </a>
+      </div>
+    } @else if (chartError()) {
       <p-message
         severity="error"
         [text]="chartError()!"

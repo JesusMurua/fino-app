@@ -50,7 +50,7 @@ export class DeviceRoutingService {
 
   //#endregion
 
-  //#region Private Helpers
+  //#region POS Route Resolution
 
   /**
    * Resolves the POS route variant based on the business type's posExperience.
@@ -59,8 +59,10 @@ export class DeviceRoutingService {
    *   1. configService.posExperience() — loaded from Dexie/API during preload
    *   2. Fallback: derive from authService.businessTypeId() using static catalog
    *   3. Last resort: /pos (Restaurant default)
+   *
+   * Public so the POS entry guard can reuse the same logic.
    */
-  private resolvePosRoute(): string {
+  resolvePosRoute(): string {
     let experience = this.configService.posExperience();
 
     if (!experience) {

@@ -395,10 +395,14 @@ export class OnboardingComponent implements OnInit {
     }
   }
 
-  /** Skips step 3 (product) */
+  /** Skips step 3 (product). Completes onboarding when already on the last step. */
   skipStep(): void {
     this.skipProduct.set(true);
-    this.nextStep();
+    if (this.currentStep() >= this.totalSteps()) {
+      this.completeOnboarding();
+    } else {
+      this.nextStep();
+    }
   }
 
   /** Whether the current step has valid data to proceed */

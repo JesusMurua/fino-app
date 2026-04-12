@@ -453,6 +453,53 @@
     justify-content: center;
     margin-top: -$space-2;
   }
+
+  &__upsell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-7 $space-5;
+    background: #F9FAFB;
+    border: 1px dashed #D1D5DB;
+    border-radius: $radius-card;
+    text-align: center;
+  }
+
+  &__upsell-icon {
+    font-size: 32px;
+    color: $color-text-sub;
+  }
+
+  &__upsell-title {
+    margin: 0;
+    font-size: $font-size-title;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__upsell-text {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    max-width: 400px;
+  }
+
+  &__upsell-link {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-3 $space-5;
+    background: $color-primary;
+    color: white;
+    border-radius: $radius-button;
+    font-weight: 600;
+    font-size: $font-size-base;
+    text-decoration: none;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.9; }
+  }
 }
 
 .charts-row {
