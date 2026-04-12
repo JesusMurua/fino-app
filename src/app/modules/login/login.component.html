@@ -59,11 +59,13 @@
 
     </form>
 
-    <!-- Back to PIN -->
-    <a routerLink="/pin" class="login-back-link">
-      <i class="pi pi-arrow-left"></i>
-      <span>Volver al PIN</span>
-    </a>
+    <!-- Back to PIN — only shown when the device is provisioned -->
+    @if (isDeviceBound) {
+      <a routerLink="/pin" class="login-back-link">
+        <i class="pi pi-arrow-left"></i>
+        <span>Volver al PIN</span>
+      </a>
+    }
 
     <!-- Register link -->
     <a routerLink="/register" class="login-register-link">

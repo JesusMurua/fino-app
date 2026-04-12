@@ -7,6 +7,7 @@ import { CashRegisterService } from '../../core/services/cash-register.service';
 import { ConfigService } from '../../core/services/config.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { InventoryService } from '../../core/services/inventory.service';
+import { DeviceService } from '../../core/services/device.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { OrderContextService } from '../../core/services/order-context.service';
 import { ProductService } from '../../core/services/product.service';
@@ -53,6 +54,9 @@ export class PinComponent implements OnInit {
 
   /** True when the device has no network connection */
   readonly isDeviceOffline = signal(!navigator.onLine);
+
+  /** True when this device has been provisioned with a device token */
+  readonly isDeviceBound = signal(inject(DeviceService).getDeviceToken() !== null);
 
   /** Number of consecutive failed attempts */
   readonly failedAttempts = signal(0);

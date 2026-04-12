@@ -45,12 +45,31 @@
     font-weight: 700;
     color: $color-text-title;
     line-height: 1.2;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  &__location {
-    font-size: 12px;
-    color: $color-text-sub;
-    line-height: 1.2;
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: $color-primary;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.85; }
+    &:active { transform: scale(0.95); }
   }
 
   // -----------------------------------------------------------------------
@@ -1033,5 +1052,50 @@
 
     &:hover { color: #111827; }
     &:disabled { cursor: not-allowed; opacity: 0.5; }
+  }
+}
+
+// -----------------------------------------------------------------------
+// User avatar overlay menu
+// -----------------------------------------------------------------------
+.user-menu {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 180px;
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__role {
+    font-size: $font-size-label;
+    color: $color-text-sub;
+  }
+
+  &__divider {
+    height: 1px;
+    background: $color-border-soft;
+    margin: $space-2 0;
+  }
+
+  &__logout {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 0;
+    border: none;
+    background: none;
+    font-size: $font-size-base;
+    font-family: inherit;
+    color: #DC2626;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    i { font-size: 14px; }
+
+    &:hover { opacity: 0.7; }
   }
 }

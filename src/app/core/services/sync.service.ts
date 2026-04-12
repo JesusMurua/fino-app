@@ -524,6 +524,7 @@ export class SyncService implements OnDestroy {
       changeCents: order.changeCents ?? 0,
       payments: (order.payments ?? []).map(p => ({
         method: p.method,
+        paymentStatusId: p.paymentStatusId,
         amountCents: p.amountCents,
         reference: p.reference ?? null,
         paymentProvider: p.paymentProvider ?? null,

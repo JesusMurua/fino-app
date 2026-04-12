@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
@@ -6,6 +6,7 @@ import { PasswordModule } from 'primeng/password';
 
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
+import { DeviceService } from '../../core/services/device.service';
 
 @Component({
   selector: 'app-login',
@@ -23,6 +24,9 @@ export class LoginComponent {
   readonly isLoading = signal(false);
   readonly hasError = signal(false);
   readonly errorMessage = signal('');
+
+  /** True when this device has been provisioned — shows "Volver al PIN" */
+  readonly isDeviceBound = inject(DeviceService).getDeviceToken() !== null;
   //#endregion
 
   //#region Constructor
