@@ -23,8 +23,8 @@ export class KitchenOrderCardComponent {
 
   //#region Outputs
 
-  @Output() markDone = new EventEmitter<string>();
-  @Output() onStart = new EventEmitter<string>();
+  @Output() markDone = new EventEmitter<number>();
+  @Output() onStart = new EventEmitter<number>();
 
   //#endregion
 

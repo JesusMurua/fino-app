@@ -40,7 +40,7 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 	readonly now = signal(new Date());
 
 	/** Set of job IDs currently fading out after being marked done */
-	readonly fadingOut = signal<Set<string>>(new Set());
+	readonly fadingOut = signal<Set<number>>(new Set());
 
 	/** Whether the device is online — controls offline banner */
 	readonly isOnline = signal(navigator.onLine);
@@ -80,34 +80,38 @@ export class KitchenDisplayComponent implements OnInit, OnDestroy {
 	//#region Actions
 
 	/**
-	 * Fades the job card out for 3 seconds, then marks it as printed.
-	 * @param jobId The print job UUID emitted by the card
+	 * Persists the status change immediately (offline-safe), then
+	 * triggers the 3-second fade-out animation. The PATCH is queued
+	 * in Dexie if offline, so no data is lost even if the tab closes.
+	 * @param jobId The print job numeric ID emitted by the card
 	 */
-	async onMarkDone(jobId: string): Promise<void> {
-		this.fadingOut.update((s) => {
+	async onMarkDone(jobId: number): Promise<void> {
+		// Persist first — survives tab close / power loss
+		await this.kitchenService.markAsPrinted(jobId);
+
+		this.fadingOut.update(s => {
 			s.add(jobId);
 			return new Set(s);
 		});
 
-		setTimeout(async () => {
-			await this.kitchenService.markAsPrinted(jobId);
-			this.fadingOut.update((s) => {
+		setTimeout(() => {
+			this.fadingOut.update(s => {
 				s.delete(jobId);
 				return new Set(s);
 			});
 		}, 3000);
 	}
 
-	isFading(jobId: string): boolean {
+	isFading(jobId: number): boolean {
 		return this.fadingOut().has(jobId);
 	}
 
 	/**
 	 * Delegates to the service to mark a job as InProgress.
 	 * Triggered by the card's (onStart) output event.
-	 * @param jobId The print job UUID emitted by the card
+	 * @param jobId The print job numeric ID emitted by the card
 	 */
-	async onMarkInProgress(jobId: string): Promise<void> {
+	async onMarkInProgress(jobId: number): Promise<void> {
 		await this.kitchenService.markAsInProgress(jobId);
 	}
 

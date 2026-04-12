@@ -18,6 +18,7 @@ import { KitchenAudioService } from './kitchen-audio.service';
  * - Real-time updates via SignalR hub `/hubs/kds`
  * - Plays an audio beep on each new PrintJobCreated event
  * - Provides optimistic updates for markAsInProgress() and markAsPrinted()
+ * - Queues failed status transitions in Dexie and drains them on reconnect
  */
 @Injectable({ providedIn: 'root' })
 export class KitchenService implements OnDestroy {
@@ -31,6 +32,9 @@ export class KitchenService implements OnDestroy {
 
     /** Active SignalR connection to the /hubs/kds endpoint */
     private hubConnection: HubConnection | null = null;
+
+    /** True while syncPendingUpdates is running — prevents concurrent drains */
+    private isSyncing = false;
 
     //#endregion
 
@@ -59,10 +63,17 @@ export class KitchenService implements OnDestroy {
      * Call from the KDS component on init when a destinationId is present.
      * @param destinationId The printer destination to display jobs for
      */
-    startPolling(destinationId: number): void {
+    start(destinationId: number): void {
         this.currentDestinationId = destinationId;
         void this.loadPendingPrintJobs(destinationId);
         void this.connectHub(destinationId);
+    }
+
+    /**
+     * @deprecated Use start() instead. Kept as alias during migration.
+     */
+    startPolling(destinationId: number): void {
+        this.start(destinationId);
     }
 
     /**
@@ -89,51 +100,92 @@ export class KitchenService implements OnDestroy {
     }
 
     /**
-     * Updates a job to InProgress status with optimistic UI.
-     * Reverts the local state and shows a Toast if the API call fails.
-     * @param id The print job UUID
+     * Advances a job to InProgress with offline-first semantics.
+     * UI updates optimistically; if the API call fails, the transition
+     * is queued in Dexie and will be retried on reconnect.
+     * @param id The print job numeric ID
      */
-    async markAsInProgress(id: string): Promise<void> {
-        const snapshot = this.pendingJobs();
-
-        this.pendingJobs.update((jobs) =>
-            jobs.map((j) =>
-                j.id === id ? { ...j, status: 'InProgress' as const } : j,
-            ),
+    async markAsInProgress(id: number): Promise<void> {
+        this.pendingJobs.update(jobs =>
+            jobs.map(j => j.id === id ? { ...j, status: 'InProgress' as const } : j),
         );
         await this.db.pendingPrintJobs.update(id, { status: 'InProgress' });
 
         try {
-            const numericId = parseInt(id, 10);
-            await firstValueFrom(this.api.patch(`/print-jobs/${numericId}/in-progress`, {}));
+            await firstValueFrom(this.api.patch(`/print-jobs/${id}/in-progress`, {}));
         } catch {
-            this.pendingJobs.set(snapshot);
-            await this.db.pendingPrintJobs.update(id, { status: 'Pending' });
-            this.showError('Could not update status — reverted to Pending.');
+            await this.queueOfflineUpdate(id, 'InProgress');
         }
     }
 
     /**
-     * Removes a job from the display (optimistic) and notifies the backend.
-     * Reverts the local state and shows a Toast if the API call fails.
-     * @param id The print job UUID
+     * Removes a job from the display with offline-first semantics.
+     * UI updates optimistically; if the API call fails, the transition
+     * is queued in Dexie and will be retried on reconnect.
+     * @param id The print job numeric ID
      */
-    async markAsPrinted(id: string): Promise<void> {
-        const snapshot = this.pendingJobs();
-        const removedJob = snapshot.find((j) => j.id === id);
-
-        this.pendingJobs.update((jobs) => jobs.filter((j) => j.id !== id));
+    async markAsPrinted(id: number): Promise<void> {
+        this.pendingJobs.update(jobs => jobs.filter(j => j.id !== id));
         await this.db.pendingPrintJobs.delete(id);
 
         try {
-            const numericId = parseInt(id, 10);
-            await firstValueFrom(this.api.patch(`/print-jobs/${numericId}/printed`, {}));
+            await firstValueFrom(this.api.patch(`/print-jobs/${id}/printed`, {}));
         } catch {
-            this.pendingJobs.set(snapshot);
-            if (removedJob) {
-                await this.db.pendingPrintJobs.put(removedJob);
+            await this.queueOfflineUpdate(id, 'Printed');
+        }
+    }
+
+    //#endregion
+
+    //#region Offline Sync Queue
+
+    /**
+     * Inserts a status transition into the offline queue and shows
+     * a non-blocking info toast so the chef knows the change was saved.
+     */
+    private async queueOfflineUpdate(
+        printJobId: number,
+        status: 'InProgress' | 'Printed',
+    ): Promise<void> {
+        await this.db.pendingPrintJobUpdates.add({
+            printJobId,
+            status,
+            createdAt: new Date().toISOString(),
+        });
+        this.messageService?.add({
+            severity: 'info',
+            summary: 'Guardado offline',
+            detail: 'Se sincronizará automáticamente.',
+            life: 3000,
+        });
+    }
+
+    /**
+     * Drains every queued status transition, patching the backend one
+     * by one. Successfully synced rows are deleted from Dexie.
+     * Failures remain in the queue for the next attempt.
+     * Called after every job reload and on SignalR reconnect.
+     */
+    async syncPendingUpdates(): Promise<void> {
+        if (this.isSyncing) return;
+        this.isSyncing = true;
+
+        try {
+            const pending = await this.db.pendingPrintJobUpdates.toArray();
+            for (const record of pending) {
+                const endpoint = record.status === 'InProgress'
+                    ? `/print-jobs/${record.printJobId}/in-progress`
+                    : `/print-jobs/${record.printJobId}/printed`;
+
+                try {
+                    await firstValueFrom(this.api.patch(endpoint, {}));
+                    await this.db.pendingPrintJobUpdates.delete(record.id!);
+                } catch {
+                    // Still offline — leave in queue for next attempt
+                }
             }
-            this.showError('Could not complete order — restored to list.');
+        } finally {
+            this.isSyncing = false;
         }
     }
 
@@ -166,20 +218,12 @@ export class KitchenService implements OnDestroy {
 
         this.hubConnection = new HubConnectionBuilder()
             .withUrl(hubUrl, {
-                // KDS machines authenticate to the hub EXCLUSIVELY with
-                // their long-lived device token. If the token is missing
-                // or expired the factory returns an empty string, the
-                // handshake fails with 401, and the catch block below
-                // surfaces the connection error — the fix is to
-                // re-provision the device, never to borrow a human's
-                // session.
                 accessTokenFactory: () => this.deviceService.getDeviceToken() ?? '',
             })
             .withAutomaticReconnect()
             .configureLogging(LogLevel.Warning)
             .build();
 
-        // Real-time event: a new print job was created for this destination
         this.hubConnection.on('PrintJobCreated', () => {
             if (this.currentDestinationId !== null) {
                 void this.loadPendingPrintJobs(this.currentDestinationId);
@@ -187,11 +231,11 @@ export class KitchenService implements OnDestroy {
             this.kitchenAudio.playNewOrderBeep();
         });
 
-        // After automatic reconnect, refresh state in case events were missed
         this.hubConnection.onreconnected(() => {
             if (this.currentDestinationId !== null) {
                 void this.loadPendingPrintJobs(this.currentDestinationId);
             }
+            void this.syncPendingUpdates();
         });
 
         try {
@@ -209,6 +253,7 @@ export class KitchenService implements OnDestroy {
     /**
      * Fetches pending jobs from the API and caches them in Dexie.
      * On any failure (offline, timeout), falls back to Dexie local data.
+     * After loading, drains any queued offline transitions.
      * @param destinationId The printer destination to query
      */
     private async loadPendingPrintJobs(destinationId: number): Promise<void> {
@@ -239,6 +284,9 @@ export class KitchenService implements OnDestroy {
 
             this.pendingJobs.set(local);
         }
+
+        // Drain queued transitions after every load attempt
+        void this.syncPendingUpdates();
     }
 
     //#endregion
