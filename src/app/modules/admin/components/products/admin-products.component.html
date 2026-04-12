@@ -321,6 +321,7 @@
   [contentStyle]="{ padding: '0', overflow: 'hidden', 'max-height': 'calc(85vh - 120px)' }"
   [draggable]="false"
 >
+  <div [formGroup]="productForm">
   <p-tabView styleClass="product-dialog-tabs" [(activeIndex)]="dialogTabIndex">
 
     <!-- ================================================================ -->
@@ -335,7 +336,7 @@
             id="pf-name"
             type="text"
             pInputText
-            [(ngModel)]="form.name"
+            formControlName="name"
             placeholder="Ej. Torta de Milanesa"
             class="form-field__input"
           />
@@ -348,7 +349,7 @@
               id="pf-barcode"
               type="text"
               pInputText
-              [(ngModel)]="form.barcode"
+              formControlName="barcode"
               placeholder="Ej. 7501234567890"
               class="form-field__input"
             />
@@ -371,8 +372,7 @@
             currency="MXN"
             locale="es-MX"
             [min]="0"
-            [ngModel]="form.priceCents / 100"
-            (onInput)="onPriceChange($event.value)"
+            formControlName="pricePesos"
             styleClass="form-field__input"
           />
         </div>
@@ -384,7 +384,7 @@
             [options]="categories()"
             optionLabel="name"
             optionValue="id"
-            [(ngModel)]="form.categoryId"
+            formControlName="categoryId"
             placeholder="Seleccionar categoría"
             styleClass="form-field__input"
             [appendTo]="'body'"
@@ -396,32 +396,32 @@
           <textarea
             id="pf-desc"
             pInputTextarea
-            [(ngModel)]="form.description"
+            formControlName="description"
             [maxlength]="1000"
             rows="3"
             placeholder="Describe el producto, ingredientes, etc."
             class="form-field__input form-field__textarea"
           ></textarea>
-          <span class="form-hint">{{ form.description.length }} / 1000</span>
+          <span class="form-hint">{{ (productForm.controls.description.value || '').length }} / 1000</span>
         </div>
 
         <div class="form-field form-field--row">
           <label class="form-field__label" for="pf-active">Disponible</label>
-          <p-inputSwitch inputId="pf-active" [(ngModel)]="form.isAvailable" />
+          <p-inputSwitch inputId="pf-active" formControlName="isAvailable" />
         </div>
 
         <div class="form-field form-field--row">
           <label class="form-field__label" for="pf-track-stock">Controlar stock</label>
-          <p-inputSwitch inputId="pf-track-stock" [(ngModel)]="form.trackStock" />
+          <p-inputSwitch inputId="pf-track-stock" formControlName="trackStock" />
         </div>
 
-        @if (form.trackStock) {
+        @if (productForm.controls.trackStock.value) {
           <div class="form-row">
             <div class="form-field">
               <label class="form-field__label" for="pf-stock">Stock inicial</label>
               <p-inputNumber
                 inputId="pf-stock"
-                [(ngModel)]="form.currentStock"
+                formControlName="currentStock"
                 [min]="0"
                 placeholder="0"
                 styleClass="w-full"
@@ -431,7 +431,7 @@
               <label class="form-field__label" for="pf-threshold">Alerta mínima</label>
               <p-inputNumber
                 inputId="pf-threshold"
-                [(ngModel)]="form.lowStockThreshold"
+                formControlName="lowStockThreshold"
                 [min]="0"
                 placeholder="0"
                 styleClass="w-full"
@@ -452,7 +452,7 @@
               [options]="printingDestinationOptions()"
               optionLabel="name"
               optionValue="id"
-              [(ngModel)]="form.printingDestinationId"
+              formControlName="printingDestinationId"
               placeholder="Sin impresión de cocina"
               [showClear]="true"
               styleClass="form-field__input"
@@ -477,7 +477,7 @@
             id="pf-sat-code"
             type="text"
             pInputText
-            [(ngModel)]="form.satProductCode"
+            formControlName="satProductCode"
             placeholder="Ej. 90101500 (Alimentos)"
             class="w-full"
           />
@@ -488,7 +488,7 @@
             <label class="form-field__label" for="pf-sat-unit">Unidad SAT</label>
             <p-dropdown
               inputId="pf-sat-unit"
-              [(ngModel)]="form.satUnitCode"
+              formControlName="satUnitCode"
               [options]="satUnitOptions"
               optionValue="clave"
               optionLabel="descripcion"
@@ -500,7 +500,7 @@
             <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
             <p-dropdown
               inputId="pf-tax-rate"
-              [(ngModel)]="form.taxRate"
+              formControlName="taxRate"
               [options]="ivaRateOptions"
               optionValue="value"
               optionLabel="label"
@@ -569,19 +569,19 @@
     </p-tabPanel>
 
     <!-- ================================================================ -->
-    <!-- TAB 3 — Precios y extras                                          -->
+    <!-- TAB 3 — Precios y modificadores                                   -->
     <!-- ================================================================ -->
     <p-tabPanel>
       <ng-template pTemplate="header">
-        <span>Precios y extras</span>
-        @if (form.sizes.length > 0 || form.extras.length > 0) {
-          <span class="tab-badge">{{ form.sizes.length + form.extras.length }}</span>
+        <span>Precios y modificadores</span>
+        @if (sizesForm.length > 0 || modifierGroupsForm.length > 0) {
+          <span class="tab-badge">{{ sizesForm.length + totalExtrasCount() }}</span>
         }
       </ng-template>
 
       <div class="product-form product-form--scrollable">
 
-        <p class="form-hint">Los tamaños y extras son opcionales. Solo agrégalos si tu producto los necesita.</p>
+        <p class="form-hint">Los tamaños y modificadores son opcionales. Solo agrégalos si tu producto los necesita.</p>
 
         <!-- Sizes -->
         <div class="form-section">
@@ -590,35 +590,36 @@
             <span class="form-section__hint">Precio = base + cargo extra</span>
           </div>
 
-          @for (size of form.sizes; track $index) {
-            <div class="variant-row">
-              <input
-                type="text"
-                pInputText
-                [(ngModel)]="size.label"
-                placeholder="Ej. Chico, Grande"
-                class="variant-row__name"
-              />
-              <p-inputNumber
-                mode="currency"
-                currency="MXN"
-                locale="es-MX"
-                [min]="0"
-                [ngModel]="size.priceDeltaCents / 100"
-                (onInput)="onSizePriceChange($index, $event.value)"
-                styleClass="variant-row__price"
-                placeholder="+$0.00"
-              />
-              <button
-                type="button"
-                class="btn-icon btn-icon--danger"
-                aria-label="Eliminar tamaño"
-                (click)="removeSize($index)"
-              >
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          }
+          <div formArrayName="sizes">
+            @for (sizeCtrl of sizesForm.controls; track $index; let si = $index) {
+              <div class="variant-row" [formGroupName]="si">
+                <input
+                  type="text"
+                  pInputText
+                  formControlName="label"
+                  placeholder="Ej. Chico, Grande"
+                  class="variant-row__name"
+                />
+                <p-inputNumber
+                  mode="currency"
+                  currency="MXN"
+                  locale="es-MX"
+                  [min]="0"
+                  formControlName="priceDeltaPesos"
+                  styleClass="variant-row__price"
+                  placeholder="+$0.00"
+                />
+                <button
+                  type="button"
+                  class="btn-icon btn-icon--danger"
+                  aria-label="Eliminar tamaño"
+                  (click)="removeSize(si)"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+            }
+          </div>
 
           <button type="button" class="btn-add-variant" (click)="addSize()">
             <i class="pi pi-plus"></i>
@@ -626,46 +627,113 @@
           </button>
         </div>
 
-        <!-- Extras -->
+        <!-- Modifier groups -->
         <div class="form-section">
           <div class="form-section__header">
-            <span class="form-section__title">Extras</span>
-            <span class="form-section__hint">Precio $0 = gratis</span>
+            <span class="form-section__title">Grupos de modificadores</span>
+            <span class="form-section__hint">Agrupa los extras con reglas de selección</span>
           </div>
 
-          @for (extra of form.extras; track $index) {
-            <div class="variant-row">
-              <input
-                type="text"
-                pInputText
-                [(ngModel)]="extra.label"
-                placeholder="Ej. Sin cebolla, Queso extra"
-                class="variant-row__name"
-              />
-              <p-inputNumber
-                mode="currency"
-                currency="MXN"
-                locale="es-MX"
-                [min]="0"
-                [ngModel]="extra.priceCents / 100"
-                (onInput)="onExtraPriceChange($index, $event.value)"
-                styleClass="variant-row__price"
-                placeholder="$0.00"
-              />
-              <button
-                type="button"
-                class="btn-icon btn-icon--danger"
-                aria-label="Eliminar extra"
-                (click)="removeExtra($index)"
-              >
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          }
+          <div formArrayName="modifierGroups">
+            @for (groupCtrl of modifierGroupsForm.controls; track $index; let gi = $index) {
+              <div class="modifier-group" [formGroupName]="gi">
+                <div class="modifier-group__header">
+                  <input
+                    type="text"
+                    pInputText
+                    formControlName="name"
+                    placeholder="Nombre del grupo (ej. Proteína, Salsas)"
+                    class="modifier-group__name-input"
+                  />
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--danger"
+                    aria-label="Eliminar grupo"
+                    (click)="removeGroup(gi)"
+                  >
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </div>
 
-          <button type="button" class="btn-add-variant" (click)="addExtra()">
+                @if (groupCtrl.controls.name.touched && groupCtrl.controls.name.invalid) {
+                  <p class="modifier-group__error">El nombre del grupo es obligatorio</p>
+                }
+
+                <div class="modifier-group__rules">
+                  <label class="modifier-group__field">
+                    <span class="modifier-group__field-label">Mín.</span>
+                    <p-inputNumber
+                      formControlName="minSelectable"
+                      [min]="0"
+                      [showButtons]="true"
+                      styleClass="modifier-group__field-input"
+                    />
+                  </label>
+                  <label class="modifier-group__field">
+                    <span class="modifier-group__field-label">Máx.</span>
+                    <p-inputNumber
+                      formControlName="maxSelectable"
+                      [min]="0"
+                      [showButtons]="true"
+                      styleClass="modifier-group__field-input"
+                    />
+                  </label>
+                  <label class="modifier-group__field modifier-group__field--switch">
+                    <span class="modifier-group__field-label">Obligatorio</span>
+                    <p-inputSwitch formControlName="isRequired" />
+                  </label>
+                </div>
+
+                @if (groupCtrl.errors?.['minMax']) {
+                  <p class="modifier-group__error">El mínimo no puede superar al máximo</p>
+                }
+
+                <div class="modifier-group__extras" formArrayName="extras">
+                  @for (extraCtrl of extrasArrayForGroup(gi).controls; track $index; let ei = $index) {
+                    <div class="variant-row" [formGroupName]="ei">
+                      <input
+                        type="text"
+                        pInputText
+                        formControlName="label"
+                        placeholder="Ej. Queso extra, Sin cebolla"
+                        class="variant-row__name"
+                      />
+                      <p-inputNumber
+                        formControlName="pricePesos"
+                        mode="currency"
+                        currency="MXN"
+                        locale="es-MX"
+                        [min]="0"
+                        styleClass="variant-row__price"
+                        placeholder="$0.00"
+                      />
+                      <button
+                        type="button"
+                        class="btn-icon btn-icon--danger"
+                        aria-label="Eliminar extra"
+                        (click)="removeExtraFromGroup(gi, ei)"
+                      >
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  }
+
+                  <button
+                    type="button"
+                    class="btn-add-variant btn-add-variant--nested"
+                    (click)="addExtraToGroup(gi)"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Agregar extra al grupo
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <button type="button" class="btn-add-variant" (click)="addGroup()">
             <i class="pi pi-plus"></i>
-            Agregar extra
+            Agregar grupo de modificadores
           </button>
         </div>
 
@@ -673,6 +741,7 @@
     </p-tabPanel>
 
   </p-tabView>
+  </div>
 
   <ng-template pTemplate="footer">
     <button type="button" class="btn-ghost" (click)="closeDialog()">Cancelar</button>

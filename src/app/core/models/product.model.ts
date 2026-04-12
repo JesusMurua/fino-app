@@ -11,12 +11,32 @@ export interface ProductSize {
 
 /**
  * An optional add-on for a product (e.g. extra cheese, extra sauce).
+ * Always belongs to a ProductModifierGroup.
  */
 export interface ProductExtra {
   id: number;
   label: string;
   /** Price of this extra in cents */
   priceCents: number;
+}
+
+/**
+ * A modifier group wraps a set of extras with selection rules
+ * (e.g. "Choose your protein — required, exactly 1" or "Toppings — max 3").
+ */
+export interface ProductModifierGroup {
+  id: number;
+  name: string;
+  /** Display order within the product detail page */
+  sortOrder: number;
+  /** When true, the user must pick at least one extra from this group */
+  isRequired: boolean;
+  /** Minimum number of selections (0 for free pick) */
+  minSelectable: number;
+  /** Maximum number of selections (0 or undefined for unlimited) */
+  maxSelectable: number;
+  /** Extras available within the group */
+  extras: ProductExtra[];
 }
 
 /**
@@ -56,7 +76,8 @@ export interface Product {
   /** Alert threshold — stock at or below this triggers low-stock warning */
   lowStockThreshold?: number;
   sizes: ProductSize[];
-  extras: ProductExtra[];
+  /** Modifier groups — replaces the legacy flat extras list */
+  modifierGroups?: ProductModifierGroup[];
   /** SAT product/service code (c_ClaveProdServ) for CFDI invoicing */
   satProductCode?: string;
   /** SAT unit code (c_ClaveUnidad) for CFDI invoicing (e.g. "H87" = Pieza) */

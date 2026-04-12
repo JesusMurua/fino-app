@@ -170,7 +170,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
       categoryId: 0,
       isAvailable: true,
       sizes: [],
-      extras: [],
+      modifierGroups: [],
     };
 
     const item: CartItem = {

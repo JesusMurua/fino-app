@@ -60,11 +60,11 @@ export class KioskDataService {
           this.api.get<Category[]>(`/categories/public?branchId=${branchId}`),
         ]),
       );
-      // Normalize sizes/extras — the public endpoint may omit these arrays
+      // Normalize sizes/modifierGroups — the public endpoint may omit these arrays
       const products = rawProducts.map(p => ({
         ...p,
         sizes: p.sizes ?? [],
-        extras: p.extras ?? [],
+        modifierGroups: p.modifierGroups ?? [],
       }));
       await this.productService.seedCatalog(products, categories);
       console.info('[KioskDataService] Catalog loaded from public API');

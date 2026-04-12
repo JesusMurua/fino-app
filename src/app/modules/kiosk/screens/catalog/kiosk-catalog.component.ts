@@ -66,7 +66,8 @@ export class KioskCatalogComponent implements OnInit {
     // Products with sizes or extras require the detail screen for customization.
     // Products without any customization options are added directly to the cart
     // for a faster self-service experience.
-    const hasCustomization = product.sizes.length > 0 || product.extras.length > 0;
+    const hasCustomization = product.sizes.length > 0
+      || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
 
     if (hasCustomization) {
       this.router.navigate(['/kiosk/detail', product.id]);

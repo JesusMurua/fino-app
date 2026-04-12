@@ -59,8 +59,16 @@
 .detail-section {
   padding: $space-4;
 
-  &__title {
+  &__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $space-3;
     margin: 0 0 $space-3;
+  }
+
+  &__title {
+    margin: 0;
     font-size: $font-size-base;
     font-weight: 700;
     color: $color-text-title;
@@ -70,6 +78,20 @@
     font-weight: 400;
     font-size: $font-size-label;
     color: $color-text-sub;
+  }
+
+  &__rule {
+    font-size: $font-size-label;
+    font-weight: 400;
+    color: $color-text-sub;
+    white-space: nowrap;
+  }
+
+  &__error {
+    margin: 0 0 $space-3;
+    font-size: $font-size-label;
+    font-weight: 700;
+    color: #DC2626;
   }
 }
 

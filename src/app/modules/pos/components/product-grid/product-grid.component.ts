@@ -119,7 +119,8 @@ export class ProductGridComponent implements OnInit, OnDestroy {
     this.productService.findByBarcode(code).subscribe({
       next: (product) => {
         if (product) {
-          const hasOptions = product.sizes.length > 0 || product.extras.length > 0;
+          const hasOptions = product.sizes.length > 0
+            || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
           if (hasOptions) {
             this.router.navigate(['/pos/add-meal', product.id]);
           } else {
@@ -161,7 +162,8 @@ export class ProductGridComponent implements OnInit, OnDestroy {
    * Products without sizes or extras are added directly to the cart.
    */
   onProductSelected(product: Product): void {
-    const hasOptions = product.sizes.length > 0 || product.extras.length > 0;
+    const hasOptions = product.sizes.length > 0
+            || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
 
     if (hasOptions) {
       this.router.navigate(['/pos/add-meal', product.id]);

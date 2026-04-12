@@ -406,7 +406,7 @@ export class SyncService implements OnDestroy {
           categoryId: 0,
           isAvailable: true,
           sizes: [],
-          extras: [],
+          modifierGroups: [],
         },
         quantity: item.quantity,
         unitPriceCents: item.unitPriceCents,
