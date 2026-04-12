@@ -13,7 +13,7 @@ import { environment } from '../../../../../environments/environment';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
-import { CartItem, Customer, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, PAYMENT_METHOD_OPTIONS, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
+import { CartItem, CUSTOMER_PAYMENT_OPTIONS, DiscountPreset, InvoiceRequest, Order, OrderPayment, PaymentMethod, ALL_PAYMENT_METHOD_OPTIONS, PaymentMethodOption, getPaymentLabel } from '../../../../core/models';
 import { KitchenStatusId, PaymentStatus, SyncStatusId, TableStatus } from '../../../../core/enums';
 import { DEFAULT_TAX_RATE, calculateItemTax } from '../../../../core/utils/tax.utils';
 import { CartService } from '../../../../core/services/cart.service';
@@ -29,7 +29,8 @@ import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { ProductService } from '../../../../core/services/product.service';
-import { SyncService } from '../../../../core/services/sync.service';
+import { OrderContextService } from '../../../../core/services/order-context.service';
+import { OrderPullDto, SyncService } from '../../../../core/services/sync.service';
 import { TableService } from '../../../../core/services/table.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PromotionService } from '../../../../core/services/promotion.service';
@@ -132,13 +133,22 @@ export class CheckoutComponent implements OnInit {
   /** Whether the discount section is expanded */
   readonly showDiscountSection = signal(false);
 
-  // ---- Table context (from /tables navigation state) ----
-  readonly tableId = signal<number | null>(null);
-  readonly tableName = signal<string | null>(null);
+  // ---- Table context (delegated to OrderContextService SSOT) ----
+  readonly tableId = computed(() => this.orderContextService.activeTable()?.tableId ?? null);
+  readonly tableName = computed(() => this.orderContextService.activeTableName());
 
   // ---- Existing order context (charging a table order from /orders) ----
-  /** When set, checkout updates an existing order instead of creating a new one */
-  readonly existingOrderId = signal<string | null>(null);
+  /**
+   * Full Order loaded from Dexie/API when charging an existing table order.
+   * Single source of truth — all derived state (id, totals) reads from this.
+   */
+  readonly loadedOrder = signal<Order | null>(null);
+
+  /** Convenience: id of the loaded order (null for brand-new orders) */
+  readonly existingOrderId = computed(() => this.loadedOrder()?.id ?? null);
+
+  /** Convenience: total of the loaded order (0 when there is no loaded order) */
+  readonly existingTotalCents = computed(() => this.loadedOrder()?.totalCents ?? 0);
 
   /** Pre-generated UUID for new orders — used by provider intents before the order is saved */
   readonly preGeneratedOrderId = crypto.randomUUID();
@@ -162,7 +172,6 @@ export class CheckoutComponent implements OnInit {
   });
 
   /** Subtotal after promo discounts, before manual discount */
-  readonly existingTotalCents = signal(0);
   readonly subtotalCents = computed(() =>
     this.existingOrderId() ? this.existingTotalCents() : this.cartService.totalCents()
   );
@@ -337,6 +346,7 @@ export class CheckoutComponent implements OnInit {
     private readonly tableService: TableService,
     private readonly productService: ProductService,
     private readonly promotionService: PromotionService,
+    private readonly orderContextService: OrderContextService,
     private readonly db: DatabaseService,
     private readonly http: HttpClient,
     private readonly route: ActivatedRoute,
@@ -361,13 +371,8 @@ export class CheckoutComponent implements OnInit {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // Read table context from sessionStorage
-    const activeTable = sessionStorage.getItem('activeTable');
-    if (activeTable) {
-      const { tableId, tableName } = JSON.parse(activeTable);
-      this.tableId.set(tableId);
-      this.tableName.set(tableName ?? null);
-    }
+    // Table context is read reactively from OrderContextService.activeTable() —
+    // no sessionStorage access needed here.
 
     // Check if charging an existing table order
     const orderId = this.route.snapshot.queryParamMap.get('orderId');
@@ -586,18 +591,15 @@ export class CheckoutComponent implements OnInit {
       this.pendingPayments.set(order.payments);
     }
 
-    this.existingOrderId.set(order.id);
-    this.cartItems.set(order.items as CartItem[]);
-    this.existingTotalCents.set(order.totalCents);
-    this.tableId.set(order.tableId ?? null);
-    this.tableName.set(order.tableName ?? null);
+    this.loadedOrder.set(order);
+    this.cartItems.set(order.items);
 
-    // Set table context in sessionStorage for releaseTable/keepTable
+    // Publish table context via SSOT so release/keep flows can read it.
     if (order.tableId && order.tableName) {
-      sessionStorage.setItem('activeTable', JSON.stringify({
+      this.orderContextService.setActiveTable({
         tableId: order.tableId,
         tableName: order.tableName,
-      }));
+      });
     }
   }
 
@@ -605,7 +607,7 @@ export class CheckoutComponent implements OnInit {
   private async loadOrderFromApi(orderId: string): Promise<Order | undefined> {
     try {
       const dto = await firstValueFrom(
-        this.http.get<any>(`${environment.apiUrl}/orders/${orderId}`),
+        this.http.get<OrderPullDto>(`${environment.apiUrl}/orders/${orderId}`),
       );
       if (!dto) return undefined;
       return this.syncService.mapPullDto(dto);
@@ -750,7 +752,7 @@ export class CheckoutComponent implements OnInit {
     await this.cartService.clearCart();
     this.promotionService.clearCoupon();
     this.customerService.clearSelection();
-    sessionStorage.removeItem('addingToOrder');
+    this.orderContextService.clearAddingToOrder();
     // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
     // NOT removed here so the table release prompt still works on the confirmed step.
   }
@@ -779,24 +781,21 @@ export class CheckoutComponent implements OnInit {
 
   /** Releases the table — awaits full HTTP response before navigating */
   async releaseTable(): Promise<void> {
-    const raw = sessionStorage.getItem('activeTable');
-    sessionStorage.removeItem('activeTable');
+    const tableId = this.orderContextService.activeTable()?.tableId ?? null;
+    this.orderContextService.clearActiveTable();
 
-    if (raw) {
-      const { tableId } = JSON.parse(raw);
-      if (tableId) {
-        const token = localStorage.getItem('pos_auth_token');
-        try {
-          await firstValueFrom(
-            this.http.patch(
-              `${environment.apiUrl}/table/${tableId}/status`,
-              { tableStatusId: TableStatus.Available },
-              { headers: { Authorization: `Bearer ${token}` } },
-            )
-          );
-        } catch (e) {
-          console.error('Error liberando mesa:', e);
-        }
+    if (tableId) {
+      const token = localStorage.getItem('pos_auth_token');
+      try {
+        await firstValueFrom(
+          this.http.patch(
+            `${environment.apiUrl}/table/${tableId}/status`,
+            { tableStatusId: TableStatus.Available },
+            { headers: { Authorization: `Bearer ${token}` } },
+          )
+        );
+      } catch (e) {
+        console.error('Error liberando mesa:', e);
       }
     }
 
@@ -805,7 +804,7 @@ export class CheckoutComponent implements OnInit {
 
   /** Keeps the table occupied and navigates back to tables */
   keepTable(): void {
-    sessionStorage.removeItem('activeTable');
+    this.orderContextService.clearActiveTable();
     this.router.navigate(['/tables']);
   }
 

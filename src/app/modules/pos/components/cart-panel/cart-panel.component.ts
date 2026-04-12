@@ -41,7 +41,6 @@ export class CartPanelComponent implements OnInit {
   readonly itemCount = this.cartService.itemCount;
   readonly cartEvaluation = this.cartService.cartEvaluation;
   readonly nextOrderNumber = this.syncService.nextOrderNumber;
-  readonly activeTableName = signal<string | null>(null);
 
   /** Guards against double-tap on kitchen/checkout actions */
   readonly isProcessing = signal(false);
@@ -55,8 +54,8 @@ export class CartPanelComponent implements OnInit {
   // ---- Rejected promos toggle ----
   readonly showRejected = signal(false);
 
-  /** Context when adding items to an existing table order */
-  addingToOrder: { orderId: string; orderNumber: number } | null = null;
+  /** Context when adding items to an existing table order — SSOT in OrderContextService */
+  readonly addingToOrder = this.orderContextService.addingToOrder;
 
   /** True when the business has a kitchen — determines button label */
   readonly showSendToKitchen = computed(() => this.configService.hasKitchen());
@@ -68,8 +67,8 @@ export class CartPanelComponent implements OnInit {
   /** True when a table can be assigned to the active order */
   readonly canAssignTable = this.orderContextService.canAssignTable;
 
-  /** Display name of the assigned table from OrderContextService */
-  readonly activeTableDisplay = this.orderContextService.activeTableName;
+  /** Display name of the active table — unified signal across all sources */
+  readonly activeTableName = this.orderContextService.activeTableName;
   //#endregion
 
   //#region Constructor
@@ -91,17 +90,12 @@ export class CartPanelComponent implements OnInit {
 
   //#region Lifecycle
   ngOnInit(): void {
-    const activeTable = sessionStorage.getItem('activeTable');
-    if (activeTable) {
-      const { tableName } = JSON.parse(activeTable);
-      this.activeTableName.set(tableName);
-    }
-
-    const addingTo = sessionStorage.getItem('addingToOrder');
-    if (addingTo) {
-      this.addingToOrder = JSON.parse(addingTo);
-      // Load the full order into OrderContextService for table assignment
-      this.loadActiveOrder(this.addingToOrder!.orderId);
+    // activeTable and addingToOrder are hydrated reactively from OrderContextService.
+    // We only need to load the full order into the context service so the table
+    // assignment dialog can bind to orderContextService.activeOrder().
+    const ctx = this.orderContextService.addingToOrder();
+    if (ctx) {
+      this.loadActiveOrder(ctx.orderId);
     }
   }
 
@@ -153,7 +147,7 @@ export class CartPanelComponent implements OnInit {
 
     this.isProcessing.set(true);
     try {
-      if (this.addingToOrder) {
+      if (this.addingToOrder()) {
         await this.addItemsToExistingOrder(newItems);
       } else {
         await this.createKitchenOrder(newItems);
@@ -165,13 +159,11 @@ export class CartPanelComponent implements OnInit {
 
   /** Creates a new kitchen order for the active table */
   private async createKitchenOrder(items: CartItem[]): Promise<void> {
-    const raw = sessionStorage.getItem('activeTable');
-    if (!raw) {
+    const table = this.orderContextService.activeTable();
+    if (!table) {
       this.messageService.add({ severity: 'warn', summary: 'Selecciona una mesa primero', life: 3000 });
       return;
     }
-
-    const { tableId, tableName } = JSON.parse(raw);
 
     // subtotalCents is the raw pre-discount sum (per order.model.ts contract).
     // totalCents reflects promo discounts applied by CartService.
@@ -190,8 +182,8 @@ export class CartPanelComponent implements OnInit {
       paymentProvider: null,
       syncStatusId: SyncStatusId.Pending,
       kitchenStatusId: KitchenStatusId.Pending,
-      tableId: tableId ?? undefined,
-      tableName: tableName ?? undefined,
+      tableId: table.tableId,
+      tableName: table.tableName,
       customerId: this.customerService.selectedCustomer()?.id,
       customerName: this.customerService.selectedCustomer()?.name,
       createdAt: new Date(),
@@ -202,7 +194,7 @@ export class CartPanelComponent implements OnInit {
     await this.syncService.saveOrder(order);
     this.orderContextService.setActiveOrder(order);
     await this.cartService.clearCart();
-    sessionStorage.removeItem('activeTable');
+    this.orderContextService.clearActiveTable();
 
     this.messageService.add({ severity: 'success', summary: 'Orden enviada a cocina', life: 3000 });
     setTimeout(() => this.router.navigate(['/tables']), 500);
@@ -210,7 +202,10 @@ export class CartPanelComponent implements OnInit {
 
   /** Adds new items to an existing table order */
   private async addItemsToExistingOrder(newItems: CartItem[]): Promise<void> {
-    const existing = await this.db.orders.get(this.addingToOrder!.orderId);
+    const ctx = this.orderContextService.addingToOrder();
+    if (!ctx) return;
+
+    const existing = await this.db.orders.get(ctx.orderId);
     if (!existing) {
       this.messageService.add({ severity: 'error', summary: 'Orden no encontrada', life: 3000 });
       return;
@@ -224,13 +219,10 @@ export class CartPanelComponent implements OnInit {
 
     await this.syncService.saveOrder(existing);
     await this.cartService.clearCart();
-    sessionStorage.removeItem('addingToOrder');
-    sessionStorage.removeItem('activeTable');
+    this.orderContextService.clearAddingToOrder();
+    this.orderContextService.clearActiveTable();
 
-    const num = this.addingToOrder!.orderNumber;
-    this.addingToOrder = null;
-
-    this.messageService.add({ severity: 'success', summary: `Items agregados a Orden #${num}`, life: 3000 });
+    this.messageService.add({ severity: 'success', summary: `Items agregados a Orden #${ctx.orderNumber}`, life: 3000 });
     setTimeout(() => this.router.navigate(['/tables']), 500);
   }
 
@@ -239,9 +231,8 @@ export class CartPanelComponent implements OnInit {
    * Clears context and navigates back to tables.
    */
   async onCancelAddingItems(): Promise<void> {
-    sessionStorage.removeItem('addingToOrder');
-    sessionStorage.removeItem('activeTable');
-    this.addingToOrder = null;
+    this.orderContextService.clearAddingToOrder();
+    this.orderContextService.clearActiveTable();
     await this.cartService.clearCart();
     this.router.navigate(['/tables']);
   }
