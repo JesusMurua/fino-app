@@ -1,475 +1,701 @@
 @use '../../../../../styles/variables' as *;
 
-// ==========================================================================
-// Quick POS — Sidebar-first grid layout
-// ==========================================================================
+// =============================================================================
+// Quick POS — Enterprise redesign, 3 breakpoints (mobile / tablet / desktop)
+// =============================================================================
 
-.quick-layout {
+// ---- Breakpoint helpers ---------------------------------------------------
+// Mobile  : default (<768px)
+// Tablet  : 768px – 1023px
+// Desktop : ≥1024px
+$bp-tablet:  768px;
+$bp-desktop: 1024px;
+
+// ---- Bill color palette (background, accent) ------------------------------
+$bills: (
+  b20:   (#3b82f6, #93c5fd),
+  b50:   (#db2777, #f9a8d4),
+  b100:  (#dc2626, #fca5a5),
+  b200:  (#16a34a, #86efac),
+  b500:  (#475569, #94a3b8),
+  b1000: (#065f46, #6ee7b7),
+);
+
+// ---------------------------------------------------------------------------
+// Shell — single grid container, areas reflow per breakpoint
+// ---------------------------------------------------------------------------
+.quick-shell {
   display: grid;
-  grid-template-columns: 1fr $cart-panel-width;
   height: 100dvh;
   overflow: hidden;
   background: $color-bg-page;
+
+  // Mobile: stacked single column
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "header"
+    "input"
+    "cart"
+    "footer";
 }
 
-// --------------------------------------------------------------------------
-// LEFT PANE — Header + Quick form + Catalog search
-// --------------------------------------------------------------------------
-.quick-left-pane {
+.zone-header { grid-area: header; }
+.zone-input  { grid-area: input;  }
+.zone-cart   { grid-area: cart;   }
+.zone-footer { grid-area: footer; }
+
+// ---------------------------------------------------------------------------
+// Mobile: input area sticks to top, cart fills middle, footer fixed bottom
+// ---------------------------------------------------------------------------
+.zone-input {
+  padding: 14px 16px 12px;
+  background: $color-bg-page;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  padding-bottom: $space-4;
+  align-content: flex-start;
+  flex-shrink: 0;
 }
 
-// --------------------------------------------------------------------------
-// Quick Product Form
-// --------------------------------------------------------------------------
-.quick-form {
+.zone-cart {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 8px;
+  background: $color-bg-page;
+}
+
+.zone-footer {
   flex-shrink: 0;
-  padding: 0 $space-4 $space-3;
+  padding: 14px 16px 16px;
+  background: #ffffff;
+  border-top: 0.5px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  &__title {
-    font-size: 18px;
-    font-weight: 800;
-    color: $color-text-title;
-    margin: 0 0 $space-3;
-    display: flex;
+// ---------------------------------------------------------------------------
+// Input zone — title, fields, add button, recents, catalog
+// ---------------------------------------------------------------------------
+.input-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: $color-text-title;
+
+  &__icon {
+    display: inline-flex;
     align-items: center;
-    gap: $space-2;
-
-    i {
-      color: $color-primary;
-      font-size: 20px;
-    }
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.8px solid #16a34a;
+    color: #16a34a;
+    font-size: 11px;
   }
+}
 
-  &__fields {
-    display: flex;
-    gap: $space-3;
-    margin-bottom: $space-3;
+.input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.input-field {
+  background: #f8fafc;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: $color-text-title;
+  outline: none;
+  transition: border-color 0.15s;
+
+  &::placeholder { color: #94a3b8; }
+  &:focus { border-color: #16a34a; }
+
+  &--desc { flex: 1; min-width: 0; }
+  &--price {
+    width: 100%;
+    padding-left: 22px;
+    text-align: right;
+    font-weight: 700;
   }
+}
 
-  &__description {
-    flex: 1;
-    height: 52px;
-    padding: 0 $space-4;
-    border: none;
-    border-radius: $radius-card;
-    font-size: 17px;
-    outline: none;
-    background: #FFFFFF;
-    box-shadow: $shadow-card;
-    color: $color-text-title;
-    font-family: inherit;
-    transition: box-shadow 0.2s;
-
-    &:focus {
-      box-shadow: $shadow-card-hover, 0 0 0 2px rgba($color-primary, 0.15);
-    }
-
-    &::placeholder { color: #94A3B8; }
-  }
-
-  &__price-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: 140px;
-    flex-shrink: 0;
-  }
+.input-price {
+  position: relative;
+  width: 96px;
+  flex-shrink: 0;
 
   &__currency {
     position: absolute;
-    left: 14px;
-    font-size: 18px;
-    font-weight: 600;
-    color: $color-text-sub;
-    pointer-events: none;
-  }
-
-  &__price {
-    width: 100%;
-    height: 52px;
-    padding: 0 $space-4 0 32px;
-    border: none;
-    border-radius: $radius-card;
-    font-size: 18px;
-    font-weight: 600;
-    text-align: right;
-    outline: none;
-    background: #FFFFFF;
-    box-shadow: $shadow-card;
-    color: $color-text-title;
-    font-family: inherit;
-    transition: box-shadow 0.2s;
-
-    &:focus {
-      box-shadow: $shadow-card-hover, 0 0 0 2px rgba($color-primary, 0.15);
-    }
-
-    &::placeholder { color: #CBD5E1; font-weight: 400; }
-  }
-
-  &__add-btn {
-    width: 100%;
-    height: 52px;
-    border: none;
-    border-radius: $radius-button;
-    background: $color-primary;
-    color: white;
-    font-size: 15px;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
     font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.03em;
-    font-family: inherit;
-    transition: background 0.15s;
-
-    &:hover { background: #15803D; }
-    &:active { background: #166534; }
-    &:disabled { background: #E2E8F0; color: #94A3B8; cursor: not-allowed; }
+    color: #94a3b8;
+    pointer-events: none;
   }
 }
 
-// --------------------------------------------------------------------------
-// Catalog Search (secondary)
-// --------------------------------------------------------------------------
-.quick-catalog {
-  flex-shrink: 0;
-  padding: 0 $space-4 $space-3;
-  border-top: 1px solid $color-border-soft;
-  padding-top: $space-3;
+.btn-add {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 13px;
+  background: #16a34a;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
 
-  &__search {
-    position: relative;
-    display: flex;
-    align-items: center;
+  &:active { opacity: 0.85; }
+
+  &--disabled,
+  &:disabled {
+    opacity: 0.35;
+    pointer-events: none;
   }
+}
+
+// Recents — hidden on mobile, visible tablet+
+.recent-block { display: none; margin-top: 16px; }
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+
+  &:hover { border-color: #16a34a; }
+  &:active { background: #f0fdf4; }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  &__add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: #16a34a;
+    font-size: 11px;
+  }
+}
+
+// Catalog — hidden on mobile/tablet, visible desktop only
+.catalog-block { display: none; margin-top: 16px; }
+
+.catalog-search {
+  position: relative;
 
   &__icon {
     position: absolute;
-    left: $space-3;
-    font-size: 14px;
-    color: #94A3B8;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #94a3b8;
     pointer-events: none;
   }
 
   &__input {
     width: 100%;
-    height: 40px;
-    padding: 0 $space-3 0 36px;
-    border: none;
-    border-radius: $radius-button;
-    font-size: 14px;
+    background: #f8fafc;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 12px 12px 34px;
+    font-size: 13px;
+    font-family: inherit;
+    color: $color-text-title;
     outline: none;
-    background: #FFFFFF;
-    box-shadow: $shadow-panel;
-    color: $color-text-title;
-    font-family: inherit;
-    transition: box-shadow 0.15s;
+    transition: border-color 0.15s;
 
-    &:focus {
-      box-shadow: $shadow-card, 0 0 0 2px rgba($color-primary, 0.15);
-    }
-
-    &::placeholder { color: #94A3B8; }
-  }
-
-  &__results {
-    display: flex;
-    gap: $space-2;
-    overflow-x: auto;
-    padding-top: $space-2;
-    -webkit-overflow-scrolling: touch;
-
-    scrollbar-width: none;
-    &::-webkit-scrollbar { display: none; }
-  }
-
-  &__chip {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    height: 40px;
-    padding: 0 $space-3;
-    border: none;
-    border-radius: $radius-pill;
-    background: #FFFFFF;
-    box-shadow: $shadow-panel;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: inherit;
-    transition: all 0.15s;
-
-    &:hover { box-shadow: $shadow-card; }
-    &:active { transform: scale(0.96); background: $color-primary-light; }
-  }
-
-  &__chip-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: $color-text-title;
-  }
-
-  &__chip-price {
-    font-size: 13px;
-    font-weight: 700;
-    color: $color-primary;
+    &::placeholder { color: #94a3b8; }
+    &:focus { border-color: #16a34a; }
   }
 }
 
-// --------------------------------------------------------------------------
-// RIGHT PANE — Full-height cart sidebar
-// --------------------------------------------------------------------------
-.quick-right-pane {
+.catalog-results {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: #FFFFFF;
-  border-left: 1px solid $color-border-soft;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.02);
-  z-index: 10;
-  overflow: hidden;
+  gap: 6px;
+  margin-top: 8px;
 }
 
-.quick-cart {
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: $space-4 $space-4 $space-2;
-    flex-shrink: 0;
-
-    h2 {
-      font-size: 20px;
-      font-weight: 800;
-      color: $color-text-title;
-      margin: 0;
-    }
-  }
-
-  &__clear {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: none;
-    border-radius: 10px;
-    background: transparent;
-    color: $color-text-sub;
-    cursor: pointer;
-    font-size: 14px;
-
-    &:hover { background: #FEF2F2; color: #DC2626; }
-  }
-
-  &__items {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 $space-4;
-  }
-}
-
-.quick-cart-item {
+.catalog-chip {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: $space-2 0;
-  border-bottom: 1px solid #E2E8F0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #ffffff;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s;
 
-  &__info {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
+  &:hover { border-color: #16a34a; }
+  &:active { background: #f0fdf4; }
 
   &__name {
-    font-size: 14px;
-    font-weight: 600;
-    color: $color-text-title;
     flex: 1;
     min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #0f172a;
+    text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-right: $space-2;
   }
 
-  &__subtotal {
-    font-size: 14px;
+  &__price {
+    font-size: 13px;
     font-weight: 700;
-    color: $color-text-title;
+    color: #16a34a;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Section label (CARRITO · N PRODUCTOS, Recientes, etc.)
+// ---------------------------------------------------------------------------
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+// ---------------------------------------------------------------------------
+// Cart
+// ---------------------------------------------------------------------------
+.cart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 8px;
+}
+
+.cart-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+
+  &:hover { background: #fef2f2; color: #dc2626; }
+}
+
+.cart-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid #f1f5f9;
+
+  &:last-child { border-bottom: none; }
+
+  &__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
     white-space: nowrap;
   }
 
   &__controls {
     display: flex;
     align-items: center;
-    gap: $space-2;
-  }
-
-  &__qty {
-    font-size: 15px;
-    font-weight: 700;
-    color: $color-text-title;
-    min-width: 24px;
-    text-align: center;
+    gap: 8px;
   }
 }
 
-.quick-qty-btn {
-  display: flex;
+.qty-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 10px;
-  background: #F1F5F9;
-  color: $color-text-title;
+  width: 30px;
+  height: 30px;
+  border: 0.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.12s;
 
-  &:hover { background: #E2E8F0; }
-  &:active { background: #CBD5E1; }
+  &:hover { background: #e2e8f0; }
+  &:active { background: #cbd5e1; }
 }
 
-.quick-remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
+.qty-value {
+  min-width: 22px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.remove-btn {
   margin-left: auto;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: $color-text-sub;
-  cursor: pointer;
-  font-size: 13px;
-
-  &:hover { background: #FEF2F2; color: #DC2626; }
-}
-
-.quick-cart-empty {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: $space-7 $space-4;
-  color: $color-text-sub;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
 
-  p { font-size: $font-size-base; margin: 0; }
+  &:hover { background: #fef2f2; color: #dc2626; }
 }
 
-// --------------------------------------------------------------------------
-// Footer — Total, Bills, Cobrar
-// --------------------------------------------------------------------------
-.quick-footer {
-  flex-shrink: 0;
-  padding: $space-3 $space-4 $space-4;
-  border-top: 1px solid #E2E8F0;
+.cart-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
-.quick-total {
+// ---------------------------------------------------------------------------
+// Footer — total, bills, change, cobrar
+// ---------------------------------------------------------------------------
+.total {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  margin-bottom: $space-3;
+  justify-content: space-between;
+  margin-bottom: 14px;
 
-  span:first-child {
-    font-size: 16px;
+  &__label {
+    font-size: 13px;
     font-weight: 500;
-    color: $color-text-sub;
+    color: #64748b;
   }
 
   &__amount {
     font-size: 28px;
     font-weight: 800;
-    color: $color-text-title;
-    letter-spacing: -0.02em;
+    color: #0f172a;
+    letter-spacing: -1px;
+    line-height: 1;
   }
 }
 
-.quick-bills {
+.bills {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: $space-2;
-  margin-bottom: $space-3;
+  gap: 7px;
+  margin-bottom: 12px;
 }
 
-.quick-bill-btn {
-  height: 48px;
+.bill {
+  position: relative;
+  overflow: hidden;
+  height: 62px;
   border: none;
-  border-radius: $radius-button;
-  background: #F1F5F9;
-  font-size: 15px;
-  font-weight: 600;
-  color: $color-text-title;
+  border-radius: 12px;
   cursor: pointer;
+  padding: 0;
   font-family: inherit;
-  transition: all 0.1s;
+  transition: transform 0.12s, box-shadow 0.12s;
 
-  &:active { transform: scale(0.96); }
-  &:hover { background: #E2E8F0; }
+  &:active { transform: scale(0.93); }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    &:active { transform: none; }
+  }
 
   &--active {
-    background: $color-primary;
-    color: white;
-    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
-
-    &:hover { background: #15803D; }
+    box-shadow: 0 0 0 2px #16a34a, 0 4px 12px rgba(22, 163, 74, 0.25);
   }
-}
 
-.quick-change {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: $space-3;
-  padding: $space-2 $space-3;
-  background: $color-primary-light;
-  border-radius: 10px;
+  &__circle {
+    position: absolute;
+    right: -20px;
+    top: -20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #ffffff;
+    opacity: 0.09;
+  }
 
-  span:first-child {
-    font-size: $font-size-base;
-    font-weight: 500;
-    color: $color-text-sub;
+  &__stripe {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    opacity: 0.5;
+  }
+
+  &__stripe-thin {
+    position: absolute;
+    right: 6px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    opacity: 0.22;
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  &__mxn {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #ffffff;
+    opacity: 0.55;
   }
 
   &__amount {
     font-size: 20px;
-    font-weight: 800;
-    color: $color-primary;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  &--b1000 .bill__amount { font-size: 16px; }
+}
+
+// Apply background + accent stripe colors per denomination
+@each $name, $colors in $bills {
+  $bg:     nth($colors, 1);
+  $accent: nth($colors, 2);
+  .bill--#{$name} {
+    background: $bg;
+    .bill__stripe,
+    .bill__stripe-thin { background: $accent; }
   }
 }
 
-.quick-cobrar-btn {
-  width: 100%;
-  height: 60px;
-  border: none;
-  border-radius: $radius-card;
-  background: $color-primary;
-  color: white;
-  font-size: 20px;
-  font-weight: 800;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  font-family: inherit;
-  transition: background 0.15s;
+.change {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border-radius: 10px;
 
-  &:hover { background: #15803D; }
-  &:active { background: #166534; }
+  span:first-child {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  &__amount {
+    font-size: 18px;
+    font-weight: 800;
+    color: #16a34a;
+  }
+}
+
+.btn-cobrar {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+
+  &:active { opacity: 0.85; }
 
   &:disabled {
-    background: #E2E8F0;
-    color: #94A3B8;
+    background: #e2e8f0;
+    color: #94a3b8;
     cursor: not-allowed;
+    &:active { opacity: 1; }
   }
 }
 
-// Payment Dialog
+// ---------------------------------------------------------------------------
+// Tablet (768px – 1023px) — 2-column grid, recents shown
+// ---------------------------------------------------------------------------
+@media (min-width: #{$bp-tablet}) {
+  .quick-shell {
+    grid-template-columns: 1fr 260px;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "header header"
+      "input  cart"
+      "input  footer";
+  }
+
+  .zone-input {
+    padding: 16px 18px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .zone-cart {
+    padding: 12px 16px 0;
+    border-left: 0.5px solid #e5e7eb;
+    background: #ffffff;
+  }
+
+  .zone-footer {
+    padding: 12px 16px 14px;
+    border-left: 0.5px solid #e5e7eb;
+    border-top: 0.5px solid #f1f5f9;
+  }
+
+  .recent-block { display: block; }
+
+  .total__amount { font-size: 22px; }
+
+  .bills {
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .bill {
+    height: 50px;
+    border-radius: 10px;
+
+    &__content { padding: 6px 8px; }
+    &__amount { font-size: 17px; }
+    &--b1000 .bill__amount { font-size: 14px; }
+  }
+
+  .btn-cobrar {
+    padding: 13px;
+    font-size: 13px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Desktop (≥1024px) — wider right column, catalog block visible
+// ---------------------------------------------------------------------------
+@media (min-width: #{$bp-desktop}) {
+  .quick-shell {
+    grid-template-columns: 1fr 300px;
+  }
+
+  .zone-input  { padding: 18px 22px; }
+  .zone-cart   { padding: 14px 18px 0; }
+  .zone-footer { padding: 14px 18px 16px; }
+
+  .catalog-block { display: block; }
+
+  .total__amount { font-size: 26px; }
+
+  .bills { gap: 6px; }
+
+  .bill {
+    height: 56px;
+    border-radius: 12px;
+
+    &__content { padding: 7px 10px; }
+    &__amount { font-size: 19px; }
+    &--b1000 .bill__amount { font-size: 15px; }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Payment dialog (preserved from previous design)
+// ---------------------------------------------------------------------------
 .quick-pay-dialog {
   display: flex;
   flex-direction: column;
@@ -499,25 +725,5 @@
     display: flex;
     justify-content: flex-end;
     gap: $space-3;
-  }
-}
-
-// --------------------------------------------------------------------------
-// Responsive — portrait tablets
-// --------------------------------------------------------------------------
-@media (max-width: #{$breakpoint-md}) {
-  .quick-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
-  }
-
-  .quick-right-pane {
-    display: flex;
-    flex-direction: column;
-    border-left: none;
-    border-top: 1px solid $color-border-soft;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.02);
-    max-height: 50vh;
-    overflow: hidden;  // Internal scroll handled by .quick-cart__items
   }
 }

@@ -1,96 +1,113 @@
 <p-toast />
 
-<!-- Quick POS Layout: Sidebar-first grid -->
-<div class="quick-layout">
+<!-- Quick POS — Responsive 3-tier grid (mobile / tablet / desktop) -->
+<div class="quick-shell">
 
-  <!-- LEFT PANE: Header + Quick form + Catalog search -->
-  <div class="quick-left-pane">
+  <!-- Header (full width across all breakpoints) -->
+  <app-pos-header class="zone-header" />
 
-    <!-- Integrated header -->
-    <app-pos-header />
+  <!-- Input zone — quick form + (recents on tablet+) + (catalog on desktop) -->
+  <section class="zone-input">
+    <h2 class="input-title">
+      <span class="input-title__icon"><i class="pi pi-plus"></i></span>
+      Cobro rápido
+    </h2>
 
-    <!-- Quick Product Form -->
-    <section class="quick-form">
-      <h2 class="quick-form__title">
-        <i class="pi pi-plus-circle"></i>
-        Producto rápido
-      </h2>
-      <div class="quick-form__fields">
+    <div class="input-row">
+      <input
+        #descriptionInput
+        type="text"
+        placeholder="¿Qué vendiste?"
+        class="input-field input-field--desc"
+        [value]="quickDescription()"
+        (input)="onDescriptionInput($event)"
+        (keydown.enter)="addQuickItem()"
+      />
+      <div class="input-price">
+        <span class="input-price__currency">$</span>
         <input
-          #descriptionInput
           type="text"
-          placeholder="¿Qué vendiste?"
-          class="quick-form__description"
-          [value]="quickDescription()"
-          (input)="onDescriptionInput($event)"
+          inputmode="decimal"
+          placeholder="0"
+          class="input-field input-field--price"
+          [value]="quickPricePesos()"
+          (input)="onPriceInput($event)"
           (keydown.enter)="addQuickItem()"
         />
-        <div class="quick-form__price-wrapper">
-          <span class="quick-form__currency">$</span>
-          <input
-            type="text"
-            inputmode="decimal"
-            placeholder="0.00"
-            class="quick-form__price"
-            [value]="quickPricePesos()"
-            (input)="onPriceInput($event)"
-            (keydown.enter)="addQuickItem()"
-          />
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="btn-add"
+      [class.btn-add--disabled]="!canAddQuick()"
+      [disabled]="!canAddQuick()"
+      (click)="addQuickItem()"
+    >
+      AGREGAR AL CARRITO
+    </button>
+
+    <!-- Recent items (tablet + desktop only — hidden on mobile via CSS) -->
+    @if (recentItems().length > 0) {
+      <div class="recent-block">
+        <span class="section-label">Recientes</span>
+        <div class="recent-list">
+          @for (item of recentItems(); track $index) {
+            <button
+              type="button"
+              class="recent-row"
+              (click)="addRecentItem(item)"
+            >
+              <span class="recent-row__name">{{ item.name }}</span>
+              <span class="recent-row__price">{{ item.priceCents | price }}</span>
+              <span class="recent-row__add"><i class="pi pi-plus"></i></span>
+            </button>
+          }
         </div>
       </div>
-      <button
-        type="button"
-        class="quick-form__add-btn"
-        [disabled]="!canAddQuick()"
-        (click)="addQuickItem()"
-      >
-        AGREGAR AL CARRITO
-      </button>
-    </section>
+    }
 
-    <!-- Catalog Search (secondary — only if catalog has products) -->
+    <!-- Catalog search (desktop only — hidden on mobile/tablet via CSS) -->
     @if (hasCatalog()) {
-      <section class="quick-catalog">
-        <div class="quick-catalog__search">
-          <i class="pi pi-search quick-catalog__icon"></i>
+      <div class="catalog-block">
+        <div class="catalog-search">
+          <i class="pi pi-search catalog-search__icon"></i>
           <input
             type="text"
             placeholder="Buscar producto del catálogo..."
-            class="quick-catalog__input"
+            class="catalog-search__input"
             [value]="catalogSearch()"
             (input)="onCatalogSearchInput($event)"
           />
         </div>
-
         @if (catalogResults().length > 0) {
-          <div class="quick-catalog__results">
+          <div class="catalog-results">
             @for (product of catalogResults(); track product.id) {
               <button
                 type="button"
-                class="quick-catalog__chip"
+                class="catalog-chip"
                 (click)="addCatalogProduct(product)"
               >
-                <span class="quick-catalog__chip-name">{{ product.name }}</span>
-                <span class="quick-catalog__chip-price">{{ product.priceCents | price }}</span>
+                <span class="catalog-chip__name">{{ product.name }}</span>
+                <span class="catalog-chip__price">{{ product.priceCents | price }}</span>
               </button>
             }
           </div>
         }
-      </section>
+      </div>
     }
+  </section>
 
-  </div>
-
-  <!-- RIGHT PANE: Cart -->
-  <div class="quick-right-pane">
-
-    <!-- Cart header -->
-    <div class="quick-cart__header">
-      <h2>Carrito</h2>
+  <!-- Cart zone — scrollable list -->
+  <div class="zone-cart">
+    <div class="cart-header">
+      <span class="section-label">
+        Carrito · {{ cartItemCount() }} {{ cartItemCount() === 1 ? 'PRODUCTO' : 'PRODUCTOS' }}
+      </span>
       @if (cartItems().length > 0) {
         <button
           type="button"
-          class="quick-cart__clear"
+          class="cart-clear"
           (click)="clearCart()"
           aria-label="Vaciar carrito"
         >
@@ -99,93 +116,88 @@
       }
     </div>
 
-    <!-- Cart items (scrollable) -->
-    <div class="quick-cart__items">
+    <div class="cart-list">
       @for (item of cartItems(); track item.id) {
-        <div class="quick-cart-item">
-          <div class="quick-cart-item__info">
-            <span class="quick-cart-item__name">{{ item.product.name }}</span>
-            <span class="quick-cart-item__subtotal">{{ item.totalPriceCents | price }}</span>
+        <div class="cart-item">
+          <div class="cart-item__top">
+            <span class="cart-item__name">{{ item.product.name }}</span>
+            <span class="cart-item__price">{{ item.totalPriceCents | price }}</span>
           </div>
-          <div class="quick-cart-item__controls">
+          <div class="cart-item__controls">
             <button
               type="button"
-              class="quick-qty-btn"
+              class="qty-btn"
               (click)="updateQuantity(item.id, -1)"
               aria-label="Disminuir cantidad"
-            >
-              <i class="pi pi-minus"></i>
-            </button>
-            <span class="quick-cart-item__qty">{{ item.quantity }}</span>
+            >−</button>
+            <span class="qty-value">{{ item.quantity }}</span>
             <button
               type="button"
-              class="quick-qty-btn"
+              class="qty-btn"
               (click)="updateQuantity(item.id, 1)"
               aria-label="Aumentar cantidad"
-            >
-              <i class="pi pi-plus"></i>
-            </button>
+            >+</button>
             <button
               type="button"
-              class="quick-remove-btn"
+              class="remove-btn"
               (click)="removeItem(item.id)"
               aria-label="Eliminar producto"
-            >
-              <i class="pi pi-times"></i>
-            </button>
+            >×</button>
           </div>
         </div>
       } @empty {
-        <div class="quick-cart-empty">
-          <p>Agrega productos al carrito</p>
-        </div>
+        <div class="cart-empty">Agrega productos al carrito</div>
       }
     </div>
+  </div>
 
-    <!-- Footer: Total + Bills + Cobrar -->
-    <div class="quick-footer">
-      <div class="quick-total">
-        <span>Total</span>
-        <span class="quick-total__amount">{{ cartTotal() | price }}</span>
-      </div>
+  <!-- Footer zone — total + bills + cobrar (always visible) -->
+  <div class="zone-footer">
+    <div class="total">
+      <span class="total__label">Total a cobrar</span>
+      <span class="total__amount">{{ cartTotal() | price }}</span>
+    </div>
 
-      @if (cartItems().length > 0) {
-        <div class="quick-bills">
-          @for (bill of bills; track bill.cents) {
-            <button
-              type="button"
-              class="quick-bill-btn"
-              [class.quick-bill-btn--active]="amountTendered() === bill.cents"
-              (click)="selectBill(bill.cents)"
-            >
-              {{ bill.label }}
-            </button>
-          }
-        </div>
-
-        @if (amountTendered() > 0) {
-          <div class="quick-change">
-            <span>Cambio:</span>
-            <span class="quick-change__amount">{{ change() | price }}</span>
+    <div class="bills">
+      @for (bill of bills; track bill.cents) {
+        <button
+          type="button"
+          class="bill bill--{{ bill.modifier }}"
+          [class.bill--active]="amountTendered() === bill.cents"
+          [disabled]="cartItems().length === 0"
+          (click)="selectBill(bill.cents)"
+        >
+          <div class="bill__circle"></div>
+          <div class="bill__stripe"></div>
+          <div class="bill__stripe-thin"></div>
+          <div class="bill__content">
+            <span class="bill__mxn">MXN</span>
+            <span class="bill__amount">{{ bill.label }}</span>
           </div>
-        }
+        </button>
       }
-
-      <button
-        type="button"
-        class="quick-cobrar-btn"
-        [disabled]="cartItems().length === 0"
-        (click)="openPayDialog()"
-      >
-        COBRAR {{ cartTotal() | price }}
-      </button>
     </div>
 
+    @if (amountTendered() > 0 && cartItems().length > 0) {
+      <div class="change">
+        <span>Cambio</span>
+        <span class="change__amount">{{ change() | price }}</span>
+      </div>
+    }
+
+    <button
+      type="button"
+      class="btn-cobrar"
+      [disabled]="cartItems().length === 0"
+      (click)="openPayDialog()"
+    >
+      COBRAR {{ cartTotal() | price }}
+    </button>
   </div>
 
 </div>
 
-<!-- Payment Confirmation Dialog -->
+<!-- Payment Confirmation Dialog (unchanged) -->
 <p-dialog
   header="Confirmar cobro"
   [visible]="showPayDialog()"
