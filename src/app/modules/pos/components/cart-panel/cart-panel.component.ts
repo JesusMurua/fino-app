@@ -165,6 +165,12 @@ export class CartPanelComponent implements OnInit {
       return;
     }
 
+    const sessionId = this.cashRegisterService.activeSession()?.id;
+    if (sessionId == null) {
+      this.messageService.add({ severity: 'error', summary: 'Caja cerrada', detail: 'Abre un turno antes de enviar a cocina.', life: 4000 });
+      return;
+    }
+
     // subtotalCents is the raw pre-discount sum (per order.model.ts contract).
     // totalCents reflects promo discounts applied by CartService.
     const subtotalCents = items.reduce((sum, i) => sum + i.totalPriceCents, 0);
@@ -188,7 +194,7 @@ export class CartPanelComponent implements OnInit {
       customerName: this.customerService.selectedCustomer()?.name,
       createdAt: new Date(),
       branchId: this.authService.branchId,
-      cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
+      cashRegisterSessionId: sessionId,
     };
 
     await this.syncService.saveOrder(order);

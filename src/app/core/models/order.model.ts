@@ -142,7 +142,12 @@ export interface Order {
   tableId?: number;
   /** Snapshot of the table name at order creation */
   tableName?: string;
-  /** Cash register session active when the order was created */
+  /**
+   * Cash register session active when the order was created.
+   * Required by the backend (CASH_SESSION_REQUIRED) for direct POS flows;
+   * optional in the type to accommodate kiosk-deferred-payment and pulled
+   * DTOs from the API. Runtime enforcement lives in `SyncService.saveOrder`.
+   */
   cashRegisterSessionId?: number;
   /** CRM customer linked to this order */
   customerId?: number;

@@ -655,6 +655,8 @@ export class CheckoutComponent implements OnInit {
       const payments = this.pendingPayments();
       const discount = this.discountCents();
       const paidCents = payments.reduce((s, p) => s + p.amountCents, 0);
+      // Safe: requireOpenSession() above guarantees an active session at this point.
+      const activeSessionId = this.cashRegisterService.activeSession()!.id;
       let order: Order;
 
       if (this.existingOrderId()) {
@@ -676,7 +678,7 @@ export class CheckoutComponent implements OnInit {
           totalCents: finalTotal,
           taxAmountCents: this.taxAmountCents(),
           syncStatusId: SyncStatusId.Pending,
-          cashRegisterSessionId: existing.cashRegisterSessionId ?? this.cashRegisterService.activeSession()?.id,
+          cashRegisterSessionId: existing.cashRegisterSessionId ?? activeSessionId,
         };
 
         await this.db.orders.put(order);
@@ -702,7 +704,7 @@ export class CheckoutComponent implements OnInit {
           createdAt: new Date(),
           syncStatusId: SyncStatusId.Pending,
           branchId: this.authService.branchId,
-          cashRegisterSessionId: this.cashRegisterService.activeSession()?.id,
+          cashRegisterSessionId: activeSessionId,
           customerId: this.customerService.selectedCustomer()?.id,
           customerName: this.customerService.selectedCustomer()?.name,
           tableId: this.tableId() ?? undefined,

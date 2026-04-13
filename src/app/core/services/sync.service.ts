@@ -200,6 +200,13 @@ export class SyncService implements OnDestroy {
    * @param order The completed order to persist
    */
   async saveOrder(order: Order): Promise<void> {
+    // Money rule: kitchen-only orders (kiosk, send-to-kitchen) ship with
+    // payments: [] and may have no session. Only block when actual money
+    // changes hands without an open cash register session.
+    const hasPayments = (order.payments?.length ?? 0) > 0;
+    if (hasPayments && order.cashRegisterSessionId == null) {
+      throw new Error('No se puede guardar una orden con pagos registrados sin una sesión de caja activa');
+    }
     await this.db.orders.put({ ...order, syncStatusId: SyncStatusId.Pending, retryCount: 0 });
     this.pendingCount.update(n => n + 1);
 
@@ -537,7 +544,7 @@ export class SyncService implements OnDestroy {
       createdAt: order.createdAt,
       tableId: order.tableId ?? null,
       tableName: order.tableName ?? null,
-      cashRegisterSessionId: order.cashRegisterSessionId ?? null,
+      cashRegisterSessionId: order.cashRegisterSessionId,
       subtotalCents: order.subtotalCents ?? null,
       orderDiscountCents: order.orderDiscountCents ?? 0,
       totalDiscountCents: order.totalDiscountCents ?? 0,

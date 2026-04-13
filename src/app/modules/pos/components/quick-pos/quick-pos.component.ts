@@ -11,6 +11,7 @@ import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { PosHeaderComponent } from '../pos-header/pos-header.component';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { PrintService } from '../../../../core/services/print.service';
@@ -48,6 +49,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
   private readonly authService = inject(AuthService);
+  private readonly cashRegisterService = inject(CashRegisterService);
   private readonly productService = inject(ProductService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
@@ -377,6 +379,17 @@ export class QuickPosComponent implements OnInit, OnDestroy {
 
   /** Confirms payment and persists the order using existing SyncService pattern */
   async confirmPayment(): Promise<void> {
+    const sessionId = this.cashRegisterService.activeSession()?.id;
+    if (sessionId == null) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Caja cerrada',
+        detail: 'Abre un turno de caja antes de cobrar.',
+        life: 4000,
+      });
+      return;
+    }
+
     this.showPayDialog.set(false);
 
     const totalCents = this.cartTotal();
@@ -402,6 +415,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
       createdAt: new Date(),
       syncStatusId: SyncStatusId.Pending,
       branchId: this.authService.branchId,
+      cashRegisterSessionId: sessionId,
     };
 
     await this.syncService.saveOrder(order);

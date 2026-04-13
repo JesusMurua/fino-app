@@ -1,126 +1,192 @@
 @use '../../../../../styles/variables' as *;
 
+// =============================================================================
+// pos-header — Responsive 3-tier (mobile / tablet / desktop)
+// =============================================================================
+
+$bp-tablet:  768px;
+$bp-desktop: 1024px;
+
+// -----------------------------------------------------------------------------
+// MOBILE BASE (<768px)
+// -----------------------------------------------------------------------------
 .pos-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 $space-4;
-  background: transparent;
+  gap: 10px;
+  height: 52px;
+  padding: 0 12px;
+  background: #ffffff;
+  border-bottom: 0.5px solid #e5e7eb;
   flex-shrink: 0;
+  overflow: hidden;
+  min-width: 0;
 
-  // -----------------------------------------------------------------------
-  // Brand (left side)
-  // -----------------------------------------------------------------------
+  // ---- Brand (logo + info) ----
   &__brand {
     display: flex;
     align-items: center;
-    gap: $space-3;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  &__brand-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.1;
   }
 
   &__logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     background: $color-primary;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 
-    i {
-      color: white;
-      font-size: 18px;
-    }
-  }
-
-  &__info {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
+    i { color: white; font-size: 16px; }
   }
 
   &__name {
-    font-size: 15px;
-    font-weight: 700;
-    color: $color-text-title;
-    line-height: 1.2;
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: $color-primary;
-    color: white;
     font-size: 13px;
     font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: opacity 0.15s;
-
-    &:hover { opacity: 0.85; }
-    &:active { transform: scale(0.95); }
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
   }
 
-  // -----------------------------------------------------------------------
-  // Right side
-  // -----------------------------------------------------------------------
+  // ---- Connection status (hidden mobile, shown tablet+) ----
+  &__status {
+    display: none;
+    align-items: center;
+    gap: 4px;
+
+    &-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #9CA3AF;
+      transition: background 0.3s;
+    }
+
+    &-label {
+      font-size: 10px;
+      color: $color-text-sub;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+
+    &--online {
+      .pos-header__status-dot  { background: $color-primary; }
+      .pos-header__status-label { color: $color-primary; }
+    }
+
+    &--offline {
+      .pos-header__status-dot  { background: #DC2626; }
+      .pos-header__status-label { color: #DC2626; }
+    }
+  }
+
+  // ---- Right side ----
   &__right {
     display: flex;
     align-items: center;
-    gap: $space-4;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
-  &__order-num {
-    font-size: 14px;
-    font-weight: 700;
-    color: $color-text-sub;
+  // ---- Divider (hidden by default on mobile) ----
+  &__divider {
+    display: none;
   }
 
-  // -----------------------------------------------------------------------
-  // Settings button
-  // -----------------------------------------------------------------------
-  &__settings {
+  // ---- Sync indicator — compact on mobile ----
+  &__sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    background: none;
+    cursor: default;
+
+    &--active  { color: $color-text-sub; }
+    &--pending { color: #D97706; }
+    &--error   {
+      color: #DC2626;
+      cursor: pointer;
+      &:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
+      .pos-header__sync-badge { background: #DC2626; }
+    }
+  }
+
+  &__sync-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #fef2f2;
+    border: 0.5px solid #fecaca;
+    border-radius: 8px;
+    padding: 5px 8px;
+
+    &.pos-header__sync--pending { background: #fffbeb; border-color: #fde68a; }
+    &.pos-header__sync--active  { background: #f8fafc; border-color: #e5e7eb; }
+  }
+
+  &__sync-text { display: none; }
+
+  &__sync-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #D97706;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  &__sync-spin { animation: sync-rotate 1s linear infinite; }
+
+  // ---- Generic icon button ----
+  &__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: #f8fafc;
+    border: 0.5px solid #e5e7eb;
     color: $color-text-sub;
     cursor: pointer;
+    flex-shrink: 0;
+    font-size: 14px;
     transition: background 0.15s, color 0.15s;
-    font-size: 16px;
 
-    &:hover {
-      background: #F3F4F6;
-      color: $color-text-title;
-    }
-
-    &:focus-visible {
-      outline: 2px solid $color-primary;
-      outline-offset: 2px;
-    }
+    &:hover { background: #f1f5f9; color: $color-text-title; }
+    &:active { background: #e2e8f0; }
+    &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
   }
 
-  // -----------------------------------------------------------------------
-  // Delivery badge on header button
-  // -----------------------------------------------------------------------
-  &__delivery-btn {
-    position: relative;
-  }
+  // ---- Notify button "Activar" ----
+  &__notify-label { display: none; }
+
+  // ---- Delivery badge ----
+  &__delivery-btn { position: relative; }
 
   &__delivery-badge {
     position: absolute;
@@ -129,113 +195,45 @@
     background: #EF4444;
     color: #fff;
     border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid white;
+    border: 1.5px solid white;
     animation: badge-pop 0.3s ease;
   }
 
-  @keyframes badge-pop {
-    0%   { transform: scale(0); }
-    80%  { transform: scale(1.2); }
-    100% { transform: scale(1); }
-  }
-
-  // -----------------------------------------------------------------------
-  // Sync queue indicator
-  // -----------------------------------------------------------------------
-  &__sync {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    border: none;
-    background: none;
-    font-family: inherit;
-    padding: 4px 8px;
-    border-radius: 8px;
-    cursor: default;
-
-    &--active {
-      color: $color-text-sub;
-    }
-
-    &--pending {
-      color: #D97706;
-    }
-
-    &--error {
-      color: #DC2626;
-      cursor: pointer;
-      transition: background 0.15s;
-
-      &:hover { background: #FEF2F2; }
-      &:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
-
-      .pos-header__sync-badge {
-        background: #DC2626;
-      }
-    }
-
-    &-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      border-radius: 10px;
-      background: #D97706;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    &-spin {
-      animation: sync-rotate 1s linear infinite;
-    }
-  }
-
-  @keyframes sync-rotate {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-
-  // -----------------------------------------------------------------------
-  // Notification permission button
-  // -----------------------------------------------------------------------
-  &__notify-btn {
+  // ---- Avatar ----
+  &__avatar {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    width: 32px;
     height: 32px;
-    padding: 0 $space-3;
-    border: 1px solid #D1D5DB;
-    border-radius: 8px;
-    background: transparent;
-    color: $color-text-sub;
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: 50%;
+    border: none;
+    background: $color-primary;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
 
-    i { font-size: 14px; }
-
-    &:hover {
-      background: #F3F4F6;
-      color: $color-text-title;
-    }
+    &:hover { opacity: 0.9; }
+    &:active { transform: scale(0.95); }
   }
 
-  // -----------------------------------------------------------------------
-  // Kiosk mode warning banner
-  // -----------------------------------------------------------------------
+  // ---- User chip (hidden mobile/tablet, visible desktop) ----
+  &__user-chip {
+    display: none;
+  }
+
+  // ---- Banners (kept from original) ----
   &__kiosk-banner {
     display: flex;
     align-items: center;
@@ -247,7 +245,6 @@
     color: #92400E;
 
     i { font-size: 14px; flex-shrink: 0; }
-
     strong { font-weight: 700; }
   }
 
@@ -260,9 +257,6 @@
     &:hover { text-decoration: underline; }
   }
 
-  // -----------------------------------------------------------------------
-  // Cash session warning banner
-  // -----------------------------------------------------------------------
   &__no-session {
     display: flex;
     align-items: center;
@@ -277,37 +271,277 @@
 
     i { font-size: 12px; flex-shrink: 0; }
   }
+}
 
-  // -----------------------------------------------------------------------
-  // Connection status indicator
-  // -----------------------------------------------------------------------
-  &__status {
+@keyframes badge-pop {
+  0%   { transform: scale(0); }
+  80%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes sync-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// -----------------------------------------------------------------------------
+// TABLET (768px – 1023px)
+// -----------------------------------------------------------------------------
+@media (min-width: #{$bp-tablet}) and (max-width: #{$bp-desktop - 1px}) {
+  .pos-header {
+    height: 54px;
+    padding: 0 16px;
+    gap: 10px;
+
+    &__logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      i { font-size: 17px; }
+    }
+
+    &__name {
+      font-size: 13px;
+      max-width: 180px;
+    }
+
+    &__status {
+      display: flex;
+      margin-top: 1px;
+    }
+
+    &__right { gap: 8px; }
+
+    &__divider {
+      display: block;
+      width: 0.5px;
+      height: 20px;
+      background: #e5e7eb;
+      flex-shrink: 0;
+    }
+
+    // Show short text: omit "órdenes" word, keep "con error" / "pendientes"
+    &__sync-text { display: inline; }
+    &__sync-text--long { display: none; }
+
+    &__notify-label {
+      display: inline;
+      font-size: 11px;
+      font-weight: 500;
+      color: #64748b;
+      margin-left: 4px;
+    }
+
+    &__notify-btn {
+      width: auto;
+      padding: 0 10px;
+    }
+
+    &__icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+
+    &__avatar {
+      width: 34px;
+      height: 34px;
+      font-size: 12px;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// DESKTOP (≥1024px)
+// -----------------------------------------------------------------------------
+@media (min-width: #{$bp-desktop}) {
+  .pos-header {
+    height: 56px;
+    padding: 0 24px;
+    gap: 12px;
+
+    &__logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      i { font-size: 18px; }
+    }
+
+    &__name {
+      font-size: 14px;
+      max-width: 200px;
+    }
+
+    &__status {
+      display: flex;
+      margin-top: 1px;
+    }
+
+    &__right { gap: 8px; }
+
+    &__divider {
+      display: block;
+      width: 0.5px;
+      height: 22px;
+      background: #e5e7eb;
+      flex-shrink: 0;
+    }
+
+    // Full text: "N órdenes con error"
+    &__sync-text,
+    &__sync-text--long { display: inline; }
+
+    &__notify-label {
+      display: inline;
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748b;
+      margin-left: 4px;
+    }
+
+    &__notify-btn {
+      width: auto;
+      padding: 0 10px;
+    }
+
+    &__icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    // Standalone avatar hidden — replaced by chip
+    &__avatar--standalone { display: none; }
+
+    &__user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px 4px 4px;
+      border: 0.5px solid #e5e7eb;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: inherit;
+      transition: background 0.15s;
+
+      &:hover { background: #f8fafc; }
+      &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
+
+      .pos-header__avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 10px;
+      }
+    }
+
+    &__user-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.15;
+    }
+
+    &__user-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+    }
+
+    &__user-role {
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    &__chevron {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+  }
+}
+
+// =============================================================================
+// User overlay panel (PrimeNG OverlayPanel content)
+// =============================================================================
+:host ::ng-deep .pos-header__user-overlay {
+  &.p-overlaypanel {
+    border-radius: 14px !important;
+    border: 0.5px solid #e5e7eb !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
+    min-width: 220px;
+  }
+  .p-overlaypanel-content {
+    padding: 16px !important;
+  }
+}
+
+.pos-header__user-panel {
+  display: flex;
+  flex-direction: column;
+
+  &__header {
     display: flex;
     align-items: center;
-    gap: $space-1;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
 
-    &-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #9CA3AF;
-      transition: background 0.3s;
-    }
+  &__avatar-lg {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: $color-primary;
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
 
-    &-label {
-      font-size: 12px;
-      color: $color-text-sub;
-      transition: color 0.3s;
-    }
+  &__name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+  }
 
-    &--online {
-      .pos-header__status-dot  { background: $color-primary; }
-      .pos-header__status-label { color: $color-primary; }
-    }
+  &__role {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 1px;
+  }
 
-    &--offline {
-      .pos-header__status-dot  { background: #DC2626; }
-      .pos-header__status-label { color: #DC2626; }
+  &__divider {
+    height: 0.5px;
+    background: #f1f5f9;
+    margin: 12px 0;
+  }
+
+  &__logout {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    cursor: pointer;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    transition: background 0.15s;
+
+    &:hover { background: #fef2f2; }
+
+    i { font-size: 13px; color: #dc2626; }
+
+    span {
+      font-size: 13px;
+      color: #dc2626;
+      font-weight: 500;
     }
   }
 }
