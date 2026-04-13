@@ -1,60 +1,12 @@
 <header class="pos-header">
 
-  <!-- Brand: branch name + user avatar menu -->
+  <!-- Brand: logo + branch name + connection status -->
   <div class="pos-header__brand">
     <div class="pos-header__logo" aria-hidden="true">
       <i class="pi pi-home"></i>
     </div>
-    <span class="pos-header__name">{{ branchName() }}</span>
-
-    <!-- User avatar — opens profile overlay on tap -->
-    <button
-      type="button"
-      class="pos-header__avatar"
-      (click)="userMenu.toggle($event)"
-      [attr.aria-label]="'Menú de usuario: ' + userName()"
-    >
-      {{ initials() }}
-    </button>
-
-    <p-overlayPanel #userMenu styleClass="pos-header__user-menu">
-      <div class="user-menu">
-        <span class="user-menu__name">{{ userName() }}</span>
-        <span class="user-menu__role">{{ userRoleLabel() }}</span>
-        <div class="user-menu__divider"></div>
-        <button type="button" class="user-menu__logout" (click)="logout(); userMenu.hide()">
-          <i class="pi pi-sign-out"></i>
-          Cerrar sesión
-        </button>
-      </div>
-    </p-overlayPanel>
-  </div>
-
-  <!-- Right side: order number + connection status + settings -->
-  <div class="pos-header__right">
-    <!-- Sync status indicator -->
-    @if (syncService.permanentlyFailedCount() > 0) {
-      <button
-        type="button"
-        class="pos-header__sync pos-header__sync--error"
-        aria-label="Ver órdenes con error de sincronización"
-        (click)="openSyncCenter()"
-      >
-        <i class="pi pi-exclamation-triangle"></i>
-        <span class="pos-header__sync-badge">{{ syncService.permanentlyFailedCount() }}</span>
-        <span>{{ syncService.permanentlyFailedCount() === 1 ? 'orden con error' : 'órdenes con error' }}</span>
-      </button>
-    } @else if (syncService.isSyncing()) {
-      <div class="pos-header__sync pos-header__sync--active">
-        <i class="pi pi-sync pos-header__sync-spin"></i>
-        <span>Sincronizando...</span>
-      </div>
-    } @else if (syncService.pendingCount() > 0) {
-      <div class="pos-header__sync pos-header__sync--pending">
-        <span class="pos-header__sync-badge">{{ syncService.pendingCount() }}</span>
-        <span>{{ syncService.pendingCount() === 1 ? 'orden pendiente' : 'órdenes pendientes' }}</span>
-      </div>
-    } @else {
+    <div class="pos-header__brand-info">
+      <span class="pos-header__name">{{ branchName() }}</span>
       <div
         class="pos-header__status"
         [class.pos-header__status--online]="isOnline()"
@@ -64,25 +16,60 @@
         <span class="pos-header__status-dot"></span>
         <span class="pos-header__status-label">{{ isOnline() ? 'En línea' : 'Sin conexión' }}</span>
       </div>
-    }
+    </div>
+  </div>
 
-    @if (pwaService.notificationStatus() === 'default') {
+  <!-- Right side: sync indicator + actions + user -->
+  <div class="pos-header__right">
+
+    <!-- Sync status indicator -->
+    @if (syncService.permanentlyFailedCount() > 0) {
       <button
         type="button"
-        class="pos-header__notify-btn"
+        class="pos-header__sync pos-header__sync--error pos-header__sync-compact"
+        aria-label="Ver órdenes con error de sincronización"
+        (click)="openSyncCenter()"
+      >
+        <i class="pi pi-exclamation-triangle"></i>
+        <span class="pos-header__sync-badge">{{ syncService.permanentlyFailedCount() }}</span>
+        <span class="pos-header__sync-text">
+          <span class="pos-header__sync-text--long">{{ syncService.permanentlyFailedCount() === 1 ? 'orden' : 'órdenes' }} </span>con error
+        </span>
+      </button>
+    } @else if (syncService.isSyncing()) {
+      <div class="pos-header__sync pos-header__sync--active pos-header__sync-compact">
+        <i class="pi pi-sync pos-header__sync-spin"></i>
+        <span class="pos-header__sync-text">Sincronizando...</span>
+      </div>
+    } @else if (syncService.pendingCount() > 0) {
+      <div class="pos-header__sync pos-header__sync--pending pos-header__sync-compact">
+        <span class="pos-header__sync-badge">{{ syncService.pendingCount() }}</span>
+        <span class="pos-header__sync-text">
+          <span class="pos-header__sync-text--long">{{ syncService.pendingCount() === 1 ? 'orden' : 'órdenes' }} </span>pendiente{{ syncService.pendingCount() === 1 ? '' : 's' }}
+        </span>
+      </div>
+    }
+
+    <!-- Divider: separates sync from action group -->
+    <div class="pos-header__divider" aria-hidden="true"></div>
+
+    @if (pwaService.notificationStatus() === 'default' && configService.hasKitchen()) {
+      <button
+        type="button"
+        class="pos-header__icon-btn pos-header__notify-btn"
         (click)="enableNotifications()"
         pTooltip="Activar notificaciones"
         tooltipPosition="bottom"
       >
         <i class="pi pi-bell"></i>
-        <span>Activar</span>
+        <span class="pos-header__notify-label">Activar</span>
       </button>
     }
 
     @if (configService.hasDelivery()) {
       <button
         type="button"
-        class="pos-header__settings pos-header__delivery-btn"
+        class="pos-header__icon-btn pos-header__delivery-btn"
         aria-label="Órdenes delivery"
         pTooltip="Delivery"
         tooltipPosition="bottom"
@@ -100,7 +87,7 @@
     @if (showInventoryButton()) {
       <button
         type="button"
-        class="pos-header__settings"
+        class="pos-header__icon-btn pos-header__inventory-btn"
         aria-label="Recibir mercancía"
         pTooltip="Recibir mercancía"
         tooltipPosition="bottom"
@@ -113,7 +100,7 @@
     @if (showTablesButton()) {
       <button
         type="button"
-        class="pos-header__settings"
+        class="pos-header__icon-btn pos-header__tables-btn"
         aria-label="Ver mesas"
         (click)="openTables()"
       >
@@ -123,7 +110,7 @@
     @if (showOrdersButton()) {
       <button
         type="button"
-        class="pos-header__settings"
+        class="pos-header__icon-btn pos-header__orders-btn"
         aria-label="Ver órdenes activas"
         (click)="openOrders()"
       >
@@ -131,14 +118,59 @@
       </button>
     }
 
+    <!-- Divider: separates action group from user/settings -->
+    <div class="pos-header__divider" aria-hidden="true"></div>
+
+    <!-- Standalone avatar (mobile/tablet) -->
     <button
       type="button"
-      class="pos-header__settings"
+      class="pos-header__avatar pos-header__avatar--standalone"
+      (click)="userMenu.toggle($event)"
+      [attr.aria-label]="'Menú de usuario: ' + userName()"
+    >
+      {{ initials() }}
+    </button>
+
+    <!-- User chip (desktop only — hidden via CSS on mobile/tablet) -->
+    <button
+      type="button"
+      class="pos-header__user-chip"
+      (click)="userMenu.toggle($event)"
+      [attr.aria-label]="'Menú de usuario: ' + userName()"
+    >
+      <span class="pos-header__avatar">{{ initials() }}</span>
+      <span class="pos-header__user-info">
+        <span class="pos-header__user-name">{{ userName() }}</span>
+        <span class="pos-header__user-role">{{ userRoleLabel() }}</span>
+      </span>
+      <i class="pi pi-chevron-down pos-header__chevron"></i>
+    </button>
+
+    <button
+      type="button"
+      class="pos-header__icon-btn pos-header__settings-btn"
       aria-label="Acceder al back office"
       (click)="openAdmin()"
     >
       <i class="pi pi-cog"></i>
     </button>
+
+    <p-overlayPanel #userMenu styleClass="pos-header__user-overlay">
+      <div class="pos-header__user-panel">
+        <div class="pos-header__user-panel__header">
+          <div class="pos-header__user-panel__avatar-lg">{{ initials() }}</div>
+          <div>
+            <div class="pos-header__user-panel__name">{{ userName() }}</div>
+            <div class="pos-header__user-panel__role">{{ userRoleLabel() }}</div>
+          </div>
+        </div>
+        <div class="pos-header__user-panel__divider"></div>
+        <button type="button" class="pos-header__user-panel__logout" (click)="logout(); userMenu.hide()">
+          <i class="pi pi-sign-out"></i>
+          <span>Cerrar sesión</span>
+        </button>
+      </div>
+    </p-overlayPanel>
   </div>
 
 </header>
