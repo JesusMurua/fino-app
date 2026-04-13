@@ -7,8 +7,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { CashRegister } from '../../../../core/models';
+import { FeatureKey } from '../../../../core/enums';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DeviceService } from '../../../../core/services/device.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 
 /** Shape of the register form used in create/edit dialog */
 interface RegisterForm {
@@ -36,6 +38,7 @@ export class AdminRegistersComponent implements OnInit {
   private readonly cashRegisterService = inject(CashRegisterService);
   private readonly deviceService = inject(DeviceService);
   private readonly messageService = inject(MessageService);
+  private readonly tenantContext = inject(TenantContextService);
 
   //#endregion
 
@@ -56,6 +59,16 @@ export class AdminRegistersComponent implements OnInit {
   /** Computed: register linked to this device (if any) */
   readonly linkedToThisDevice = computed(() =>
     this.registers().find(r => r.deviceUuid === this.currentDeviceUuid) ?? null,
+  );
+
+  /**
+   * True when the user can add a NEW cash register.
+   *   - Always true if the tenant has the MultiTill feature.
+   *   - Otherwise true only when zero registers exist yet (every business
+   *     needs to create their first one — that's Core, not Premium).
+   */
+  readonly canAddRegister = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.MultiTill) || this.registers().length === 0,
   );
 
   //#endregion

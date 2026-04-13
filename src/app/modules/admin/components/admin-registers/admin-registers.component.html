@@ -3,14 +3,21 @@
   <!-- Header -->
   <div class="admin-registers__header">
     <h1 class="admin-registers__title">Cajas Físicas</h1>
-    <button
-      type="button"
-      class="btn-primary"
-      (click)="openCreateDialog()"
-    >
-      <i class="pi pi-plus"></i>
-      Nueva caja
-    </button>
+    @if (canAddRegister()) {
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="openCreateDialog()"
+      >
+        <i class="pi pi-plus"></i>
+        Nueva caja
+      </button>
+    } @else {
+      <span class="admin-registers__upgrade-hint" title="Disponible en plan Pro">
+        <i class="pi pi-lock"></i>
+        Cajas adicionales requieren plan Pro
+      </span>
+    }
   </div>
 
   <!-- Device UUID info strip -->

@@ -257,13 +257,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Whether to show kitchen toggle in branch dialog */
   readonly showKitchenToggle = computed(() => {
     const type = this.authService.businessTypeId();
+    if (type === null) return false;
     return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar,
-            BusinessTypeId.FoodTruck, BusinessTypeId.Taqueria].includes(type);
+            BusinessTypeId.Taqueria].includes(type);
   });
 
   /** Whether to show tables toggle in branch dialog */
   readonly showTablesToggle = computed(() => {
     const type = this.authService.businessTypeId();
+    if (type === null) return false;
     return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar].includes(type);
   });
 
@@ -277,20 +279,24 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly currentGiroInfo = computed(() => {
     const giro = this.authService.businessTypeId();
     const map: Record<BusinessTypeId, { icon: string; name: string; description: string }> = {
-      [BusinessTypeId.Restaurant]: { icon: '🍽️', name: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
-      [BusinessTypeId.Cafe]:       { icon: '☕',  name: 'Café / Barra',  description: 'Comandas rápidas, barra' },
-      [BusinessTypeId.Bar]:        { icon: '🍺',  name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
-      [BusinessTypeId.Retail]:     { icon: '🛒',  name: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
-      [BusinessTypeId.FoodTruck]:  { icon: '🚚',  name: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
-      [BusinessTypeId.General]:    { icon: '⚙️',  name: 'General',       description: 'Cualquier negocio' },
-      [BusinessTypeId.Taqueria]:   { icon: '🌮',  name: 'Taquería',      description: 'Cobro rápido, con cocina' },
-      [BusinessTypeId.Abarrotes]:  { icon: '🛒',  name: 'Abarrotes',     description: 'Tiendita de barrio' },
-      [BusinessTypeId.Ferreteria]: { icon: '🔧',  name: 'Ferretería',    description: 'Materiales y herramientas' },
-      [BusinessTypeId.Papeleria]:  { icon: '📝',  name: 'Papelería',     description: 'Útiles y copias' },
-      [BusinessTypeId.Farmacia]:   { icon: '💊',  name: 'Farmacia',      description: 'Medicinas y salud' },
-      [BusinessTypeId.Servicios]:  { icon: '🏪',  name: 'Servicios',     description: 'Salones, talleres, oficios' },
+      // 4 macro categories — match `.claude/business-rules-matrix.md`
+      [BusinessTypeId.Restaurant]: { icon: '🍽️', name: 'Restaurantes y Bares',     description: 'Mesas, cocina, mesero, kiosko' },
+      [BusinessTypeId.Cafe]:       { icon: '☕',  name: 'Comida Rápida y Cafés',   description: 'Comandas rápidas, barra, food trucks' },
+      [BusinessTypeId.Retail]:     { icon: '🛒',  name: 'Tiendas y Comercios',      description: 'Inventario, código de barras, fiado' },
+      [BusinessTypeId.Servicios]:  { icon: '🛠️', name: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
+
+      // Sub-types — display their own identity, users recognize the label
+      [BusinessTypeId.Bar]:        { icon: '🍺', name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+      [BusinessTypeId.Taqueria]:   { icon: '🌮', name: 'Taquería',      description: 'Cobro rápido, con cocina' },
+      [BusinessTypeId.Abarrotes]:  { icon: '🛒', name: 'Abarrotes',     description: 'Tiendita de barrio' },
+      [BusinessTypeId.Ferreteria]: { icon: '🔧', name: 'Ferretería',    description: 'Materiales y herramientas' },
+      [BusinessTypeId.Papeleria]:  { icon: '📝', name: 'Papelería',     description: 'Útiles y copias' },
+      [BusinessTypeId.Farmacia]:   { icon: '💊', name: 'Farmacia',      description: 'Medicinas y salud' },
     };
-    return map[giro] ?? { icon: '⚙️', name: String(giro), description: '' };
+    // Null = tenant context not yet hydrated. Return a neutral placeholder
+    // rather than throwing — this computed drives a read-only display.
+    if (giro === null) return { icon: '…', name: 'Cargando…', description: '' };
+    return map[giro];
   });
 
   //#endregion

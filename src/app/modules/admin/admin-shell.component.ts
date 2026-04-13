@@ -108,7 +108,7 @@ export class AdminShellComponent implements OnInit {
     { path: 'customers',    icon: 'pi-id-card',    label: 'Clientes',      feature: FeatureKey.CustomerBase },
     { path: 'users',        icon: 'pi-users',      label: 'Usuarios' },
     { path: 'devices',      icon: 'pi-tablet',     label: 'Dispositivos' },
-    { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas',         feature: FeatureKey.MultiTill },
+    { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas' },
     { path: 'invoicing',    icon: 'pi-receipt',    label: 'Facturación',   feature: FeatureKey.CfdiInvoicing },
     { path: 'reservations', icon: 'pi-calendar',   label: 'Reservaciones', feature: FeatureKey.TableMap },
     { path: 'settings',     icon: 'pi-cog',        label: 'Configuración' },

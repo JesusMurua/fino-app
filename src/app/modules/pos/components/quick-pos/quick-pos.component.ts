@@ -15,15 +15,21 @@ import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { PrintService } from '../../../../core/services/print.service';
 
-/** Bill denominations in MXN (in centavos) */
+/** Bill denominations in MXN (in centavos) — modifier maps to SCSS color theme */
 const BILL_DENOMINATIONS = [
-  { label: '$20',   cents: 2000 },
-  { label: '$50',   cents: 5000 },
-  { label: '$100',  cents: 10000 },
-  { label: '$200',  cents: 20000 },
-  { label: '$500',  cents: 50000 },
-  { label: '$1000', cents: 100000 },
+  { label: '$20',   cents: 2000,   modifier: 'b20'   },
+  { label: '$50',   cents: 5000,   modifier: 'b50'   },
+  { label: '$100',  cents: 10000,  modifier: 'b100'  },
+  { label: '$200',  cents: 20000,  modifier: 'b200'  },
+  { label: '$500',  cents: 50000,  modifier: 'b500'  },
+  { label: '$1000', cents: 100000, modifier: 'b1000' },
 ];
+
+/** Lightweight descriptor for the recent-items quick re-add list */
+interface RecentItem {
+  name: string;
+  priceCents: number;
+}
 
 /** Sentinel product ID for free-form quick items (no catalog product) */
 const QUICK_ITEM_PRODUCT_ID = 0;
@@ -86,6 +92,11 @@ export class QuickPosComponent implements OnInit, OnDestroy {
       .filter(p => p.isAvailable && p.name.toLowerCase().includes(term))
       .slice(0, 10);
   });
+
+  // ---- Recent items (tablet+desktop) ----
+
+  /** Last items added in this session, newest first, capped at 5 (deduped by name+price) */
+  readonly recentItems = signal<RecentItem[]>([]);
 
   // ---- Cart ----
 
@@ -184,11 +195,44 @@ export class QuickPosComponent implements OnInit, OnDestroy {
     };
 
     this.cartItems.set([...this.cartItems(), item]);
+    this.pushRecent({ name: description, priceCents });
 
     // Clear form and re-focus
     this.quickDescription.set('');
     this.quickPricePesos.set('');
     this.descriptionInput()?.nativeElement.focus();
+  }
+
+  /** Re-adds a recent item to the cart with quantity 1 (no merge — always a new line) */
+  addRecentItem(item: RecentItem): void {
+    const virtualProduct: Product = {
+      id: QUICK_ITEM_PRODUCT_ID,
+      name: item.name,
+      priceCents: item.priceCents,
+      categoryId: 0,
+      isAvailable: true,
+      sizes: [],
+      modifierGroups: [],
+    };
+    const cartItem: CartItem = {
+      id: crypto.randomUUID(),
+      product: virtualProduct,
+      quantity: 1,
+      extras: [],
+      unitPriceCents: item.priceCents,
+      totalPriceCents: item.priceCents,
+      discountCents: 0,
+    };
+    this.cartItems.set([...this.cartItems(), cartItem]);
+    this.pushRecent(item);
+  }
+
+  /** Pushes an item to the recents list (newest first, deduped, capped at 5) */
+  private pushRecent(item: RecentItem): void {
+    const filtered = this.recentItems().filter(
+      r => !(r.name === item.name && r.priceCents === item.priceCents),
+    );
+    this.recentItems.set([item, ...filtered].slice(0, 5));
   }
 
   /** Parses the peso string input into centavos */
@@ -233,6 +277,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
       this.cartItems.set([...items, item]);
     }
 
+    this.pushRecent({ name: product.name, priceCents: calcUnitPriceCents(product) });
     this.catalogSearch.set('');
     this.messageService.add({
       severity: 'success',

@@ -42,18 +42,19 @@ export const DEVICE_MODES: DeviceModeCatalog[] = [
 
 /** Offline fallback — business type catalog with feature flags */
 export const BUSINESS_TYPES: BusinessTypeCatalog[] = [
-  { id: 1, code: 'Restaurant', name: 'Restaurante', hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
-  { id: 2, code: 'Retail',     name: 'Abarrotes',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 2 },
-  { id: 3, code: 'Cafe',       name: 'Café',         hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 3 },
-  { id: 4, code: 'Bar',        name: 'Bar',           hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 4 },
-  { id: 5, code: 'FoodTruck',  name: 'Food Truck',   hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 5 },
-  { id: 6, code: 'General',    name: 'General',       hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 6 },
-  { id: 7,  code: 'Taqueria',   name: 'Taquería',     hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 5 },
-  { id: 8,  code: 'Abarrotes',  name: 'Abarrotes',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 7 },
-  { id: 9,  code: 'Ferreteria', name: 'Ferretería',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 8 },
-  { id: 10, code: 'Papeleria',  name: 'Papelería',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 9 },
-  { id: 11, code: 'Farmacia',   name: 'Farmacia',     hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 10 },
-  { id: 12, code: 'Servicios',  name: 'Servicios',    hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 12 },
+  // 4 macro categories — match `.claude/business-rules-matrix.md`
+  { id: 1,  code: 'Restaurant', name: 'Restaurantes y Bares',     hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
+  { id: 3,  code: 'Cafe',       name: 'Comida Rápida y Cafés',   hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 2 },
+  { id: 2,  code: 'Retail',     name: 'Tiendas y Comercios',      hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 3 },
+  { id: 12, code: 'Servicios',  name: 'Servicios Especializados', hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 4 },
+
+  // Sub-types — kept so the JWT / URL handshake can still resolve them
+  { id: 4,  code: 'Bar',        name: 'Bar',          hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 5 },
+  { id: 7,  code: 'Taqueria',   name: 'Taquería',     hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 7 },
+  { id: 8,  code: 'Abarrotes',  name: 'Abarrotes',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 8 },
+  { id: 9,  code: 'Ferreteria', name: 'Ferretería',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 9 },
+  { id: 10, code: 'Papeleria',  name: 'Papelería',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 10 },
+  { id: 11, code: 'Farmacia',   name: 'Farmacia',     hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 11 },
 ];
 
 /** Offline fallback — zone type catalog */

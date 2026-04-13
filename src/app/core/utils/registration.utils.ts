@@ -25,8 +25,6 @@ const GIRO_SLUG_MAP: Record<string, BusinessTypeId> = {
   cafe:        BusinessTypeId.Cafe,
 
   // Quick service
-  'food-truck': BusinessTypeId.FoodTruck,
-  foodtruck:    BusinessTypeId.FoodTruck,
   taqueria:     BusinessTypeId.Taqueria,
 
   // Retail
@@ -38,16 +36,13 @@ const GIRO_SLUG_MAP: Record<string, BusinessTypeId> = {
   farmacia:          BusinessTypeId.Farmacia,
 
   // Services — canonical + sub-giro aliases from the landing
-  services:                  BusinessTypeId.Servicios,
-  servicios:                 BusinessTypeId.Servicios,
+  services:                   BusinessTypeId.Servicios,
+  servicios:                  BusinessTypeId.Servicios,
   'servicios-especializados': BusinessTypeId.Servicios,
-  'specialized-services':    BusinessTypeId.Servicios,
-  estetica:                  BusinessTypeId.Servicios,
-  consultorio:               BusinessTypeId.Servicios,
-  taller:                    BusinessTypeId.Servicios,
-
-  // Generic fallback
-  general: BusinessTypeId.General,
+  'specialized-services':     BusinessTypeId.Servicios,
+  estetica:                   BusinessTypeId.Servicios,
+  consultorio:                BusinessTypeId.Servicios,
+  taller:                     BusinessTypeId.Servicios,
 };
 
 /**
@@ -71,8 +66,13 @@ const PLAN_SLUG_MAP: Record<string, PlanTypeId> = {
  * the user's intent across the onboarding wizard.
  */
 export interface RegistrationIntent {
-  /** Resolved business type FK */
-  businessTypeId: BusinessTypeId;
+  /**
+   * Resolved business type FK. `null` when the URL had no `giro` param
+   * (user must then pick one from the dropdown). If the URL DID provide
+   * a giro but it did not match any known slug, `parseRegistrationIntent`
+   * throws — this field is never a silent fallback.
+   */
+  businessTypeId: BusinessTypeId | null;
   /** Resolved plan FK */
   planTypeId: PlanTypeId;
   /** Normalized ISO country code, upper-case — defaults to 'MX' */
@@ -92,21 +92,23 @@ export interface RegistrationIntent {
 
 /**
  * Resolves a giro slug from the landing URL to a `BusinessTypeId`.
- * Unknown slugs fall back to `General` with a console warning so the
- * user can still register but the mismatch is visible during debugging.
+ * Fail-fast policy — no default fallback: an empty or unknown slug
+ * throws, the caller is responsible for catching the error and
+ * stopping the flow before any other state is built.
  *
  * @param slug Raw query-param value (may be null or mixed-case)
- * @returns The matched `BusinessTypeId`, or `General` as the safe fallback
+ * @throws Error when the slug is missing or does not match any known giro
  */
 export function resolveBusinessTypeSlug(slug: string | null | undefined): BusinessTypeId {
-  if (!slug) return BusinessTypeId.General;
+  if (!slug) {
+    throw new Error('Invalid or missing business type slug. Cannot proceed.');
+  }
   const key = slug.trim().toLowerCase();
   const mapped = GIRO_SLUG_MAP[key];
-  if (mapped !== undefined) return mapped;
-  console.warn(
-    `[registration.utils] Unknown giro slug "${slug}" — falling back to General.`,
-  );
-  return BusinessTypeId.General;
+  if (mapped === undefined) {
+    throw new Error(`Invalid or missing business type slug. Cannot proceed.`);
+  }
+  return mapped;
 }
 
 /**
@@ -141,8 +143,16 @@ export function parseRegistrationIntent(
   const planRaw = params['plan'] ?? null;
   const countryRaw = params['country'] ?? null;
 
+  // Fail-fast: if a giro slug IS provided but does not match any known
+  // value, `resolveBusinessTypeSlug` throws and the caller must catch it.
+  // If no slug was provided at all, `businessTypeId` is left null so the
+  // register form can render the dropdown.
+  const businessTypeId: BusinessTypeId | null = giroRaw
+    ? resolveBusinessTypeSlug(giroRaw)
+    : null;
+
   return {
-    businessTypeId: resolveBusinessTypeSlug(giroRaw),
+    businessTypeId,
     planTypeId: resolvePlanSlug(planRaw),
     countryCode: (countryRaw?.trim().toUpperCase()) || 'MX',
     planSlug: planRaw ? planRaw.trim().toLowerCase() : null,

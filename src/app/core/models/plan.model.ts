@@ -7,7 +7,8 @@ import { BusinessTypeId, PlanTypeId } from '../enums';
  */
 export interface PlanInfo {
   planTypeId: PlanTypeId;
-  businessTypeId: BusinessTypeId;
+  /** Null until the user logs in and the tenant context is hydrated */
+  businessTypeId: BusinessTypeId | null;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
   isOnTrial: boolean;

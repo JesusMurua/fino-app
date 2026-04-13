@@ -34,20 +34,24 @@ export enum PlanTypeId {
   Enterprise = 4,
 }
 
-/** Business vertical — maps to BusinessTypeCatalog in backend */
+/**
+ * Business vertical — maps to BusinessTypeCatalog in backend.
+ * Strictly the 4 macro categories from `.claude/business-rules-matrix.md`
+ * plus their explicit sub-types. "General" and "FoodTruck" have been
+ * eradicated — any unknown business type must fail-fast at the slug
+ * resolver, never fall through to a generic default.
+ */
 export enum BusinessTypeId {
   Restaurant = 1,
-  Retail = 2,
-  Cafe = 3,
-  Bar = 4,
-  FoodTruck = 5,
-  General = 6,
-  Taqueria = 7,
-  Abarrotes = 8,
+  Retail     = 2,
+  Cafe       = 3,
+  Bar        = 4,
+  Taqueria   = 7,
+  Abarrotes  = 8,
   Ferreteria = 9,
-  Papeleria = 10,
-  Farmacia = 11,
-  Servicios = 12,
+  Papeleria  = 10,
+  Farmacia   = 11,
+  Servicios  = 12,
 }
 
 /** Promotion type — maps to PromotionTypeCatalog in backend */
@@ -83,18 +87,19 @@ export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {
 };
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {
-  [BusinessTypeId.Restaurant]: 'Restaurante',
-  [BusinessTypeId.Retail]:     'Abarrotes / Tienda',
-  [BusinessTypeId.Cafe]:       'Café',
+  // 4 macro categories — match `.claude/business-rules-matrix.md`
+  [BusinessTypeId.Restaurant]: 'Restaurantes y Bares',
+  [BusinessTypeId.Cafe]:       'Comida Rápida y Cafés',
+  [BusinessTypeId.Retail]:     'Tiendas y Comercios',
+  [BusinessTypeId.Servicios]:  'Servicios Especializados',
+
+  // Sub-types — kept for badge rendering when JWT/URL brings a sub-giro
   [BusinessTypeId.Bar]:        'Bar',
-  [BusinessTypeId.FoodTruck]:  'Food Truck',
-  [BusinessTypeId.General]:    'General',
   [BusinessTypeId.Taqueria]:   'Taquería',
   [BusinessTypeId.Abarrotes]:  'Abarrotes',
   [BusinessTypeId.Ferreteria]: 'Ferretería',
   [BusinessTypeId.Papeleria]:  'Papelería',
   [BusinessTypeId.Farmacia]:   'Farmacia',
-  [BusinessTypeId.Servicios]:  'Servicios',
 };
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionTypeId, string> = {

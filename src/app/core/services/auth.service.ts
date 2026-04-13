@@ -61,9 +61,14 @@ export class AuthService {
     this.loadUserFromStorage()?.planTypeId ?? PlanTypeId.Free,
   );
 
-  /** Current business vertical — restored from storage on init */
-  readonly businessTypeId = signal<BusinessTypeId>(
-    this.loadUserFromStorage()?.businessTypeId ?? BusinessTypeId.General,
+  /**
+   * Current business vertical — restored from storage on init.
+   * `null` until a user logs in (or storage hydration completes).
+   * Callers that require a concrete giro must handle null explicitly;
+   * there is no fallback to a generic default.
+   */
+  readonly businessTypeId = signal<BusinessTypeId | null>(
+    this.loadUserFromStorage()?.businessTypeId ?? null,
   );
 
   /** Trial end date as ISO string — null if no trial */
@@ -264,6 +269,11 @@ export class AuthService {
       // Feature keys are inherited from the previously stored user so
       // gating stays functional offline until the next real login.
       const previous = this.loadUserFromStorage();
+      const giro = this.businessTypeId();
+      if (giro === null) {
+        // Fail-fast: offline re-auth needs a previous session's business type.
+        throw new Error('[AuthService] Offline re-auth without a stored business type.');
+      }
       const user: AuthUser = {
         token: `offline-session-${Date.now()}`,
         roleId: match.roleId,
@@ -273,7 +283,7 @@ export class AuthService {
         branches: [{ id: branchId, name: '' }],
         currentBranchId: branchId,
         planTypeId: this.planTypeId(),
-        businessTypeId: this.businessTypeId(),
+        businessTypeId: giro,
         trialEndsAt: this.trialEndsAt() ?? undefined,
         features: previous?.features ?? [],
       };
@@ -336,7 +346,7 @@ export class AuthService {
     this.currentUser.set(null);
     this.activeBranchId.set(0);
     this.planTypeId.set(PlanTypeId.Free);
-    this.businessTypeId.set(BusinessTypeId.General);
+    this.businessTypeId.set(null);
     this.trialEndsAt.set(null);
     this.tenantContext.clear();
 
@@ -539,13 +549,14 @@ export class AuthService {
       this.tenantContext.clear();
       return;
     }
+    const giro = this.businessTypeId();
+    if (giro === null) {
+      // Fail-fast: a logged-in user must always have a concrete business type.
+      throw new Error('[AuthService] syncTenantContext called with a null business type.');
+    }
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
-    this.tenantContext.setContext(
-      this.planTypeId(),
-      this.businessTypeId(),
-      features,
-    );
+    this.tenantContext.setContext(this.planTypeId(), giro, features);
   }
 
   //#endregion
