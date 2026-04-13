@@ -142,8 +142,12 @@ export interface Order {
   tableId?: number;
   /** Snapshot of the table name at order creation */
   tableName?: string;
-  /** Cash register session active when the order was created */
-  cashRegisterSessionId?: number;
+  /**
+   * Cash register session active when the order was created.
+   * Required by the backend (CASH_SESSION_REQUIRED) — must be assigned at
+   * Order construction time from `CashRegisterService.activeSession()?.id`.
+   */
+  cashRegisterSessionId: number;
   /** CRM customer linked to this order */
   customerId?: number;
   /** Snapshot of the customer name at order creation */

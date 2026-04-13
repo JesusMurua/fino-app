@@ -13,6 +13,7 @@ import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
 import { NotificationToggleComponent } from '../../../../shared/components/notification-toggle/notification-toggle.component';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableService } from '../../../../core/services/table.service';
@@ -61,6 +62,7 @@ export class WaiterPosComponent implements OnInit, OnDestroy {
 
   private readonly destroy$ = new Subject<void>();
   private readonly authService = inject(AuthService);
+  private readonly cashRegisterService = inject(CashRegisterService);
   private readonly productService = inject(ProductService);
   private readonly syncService = inject(SyncService);
   private readonly tableService = inject(TableService);
@@ -325,6 +327,17 @@ export class WaiterPosComponent implements OnInit, OnDestroy {
     const table = this.selectedTable();
     if (!table || this.cartItems().length === 0 || this.isSending()) return;
 
+    const sessionId = this.cashRegisterService.activeSession()?.id;
+    if (sessionId == null) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Caja cerrada',
+        detail: 'Abre un turno de caja antes de enviar a cocina.',
+        life: 4000,
+      });
+      return;
+    }
+
     this.isSending.set(true);
 
     const order: Order = {
@@ -341,6 +354,7 @@ export class WaiterPosComponent implements OnInit, OnDestroy {
       kitchenStatusId: KitchenStatusId.Pending,
       createdAt: new Date(),
       branchId: this.authService.branchId,
+      cashRegisterSessionId: sessionId,
       tableId: table.id,
       tableName: table.name,
     };
