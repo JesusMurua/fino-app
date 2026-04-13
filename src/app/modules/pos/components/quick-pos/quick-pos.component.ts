@@ -115,13 +115,18 @@ export class QuickPosComponent implements OnInit, OnDestroy {
 
   // ---- Payment ----
 
-  /** Amount tendered by customer in centavos */
-  readonly amountTendered = signal(0);
+  /** Amount received from customer in centavos — accumulates with each bill tap */
+  readonly receivedAmount = signal(0);
 
-  /** Change to return in centavos */
-  readonly change = computed(() =>
-    Math.max(0, this.amountTendered() - this.cartTotal())
-  );
+  /** Free-form amount typed by the cashier (raw string in pesos) */
+  readonly customAmountInput = signal('');
+
+  /** Change to return in centavos (0 when nothing has been received yet) */
+  readonly changeAmount = computed(() => {
+    const received = this.receivedAmount();
+    if (received === 0) return 0;
+    return Math.max(0, received - this.cartTotal());
+  });
 
   /** Whether the payment confirmation dialog is visible */
   readonly showPayDialog = signal(false);
@@ -318,25 +323,56 @@ export class QuickPosComponent implements OnInit, OnDestroy {
   /** Clears the entire cart */
   clearCart(): void {
     this.cartItems.set([]);
-    this.amountTendered.set(0);
+    this.resetReceived();
   }
 
   //#endregion
 
   //#region Payment Methods
 
-  /** Sets the tendered amount from a bill denomination button */
-  selectBill(cents: number): void {
-    this.amountTendered.set(cents);
+  /** Adds a bill denomination to the running received amount (accumulates) */
+  addBillAmount(cents: number): void {
+    this.receivedAmount.update(prev => prev + cents);
+    this.customAmountInput.set('');
   }
 
-  /** Opens the payment confirmation dialog */
+  /** Updates the received amount from the free-form custom-amount input */
+  onCustomAmountInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    this.customAmountInput.set(raw);
+    const pesos = parseFloat(raw);
+    if (!isNaN(pesos) && pesos > 0) {
+      this.receivedAmount.set(Math.round(pesos * 100));
+    } else if (raw.trim() === '') {
+      this.receivedAmount.set(0);
+    }
+  }
+
+  /** Resets the received amount and the custom-amount input together */
+  resetReceived(): void {
+    this.receivedAmount.set(0);
+    this.customAmountInput.set('');
+  }
+
+  /**
+   * Opens the payment confirmation dialog.
+   * If no amount has been received yet, the dialog opens with an empty
+   * editable Recibido field so the cashier can type it inside the dialog.
+   */
   openPayDialog(): void {
     if (this.cartItems().length === 0) return;
-    if (this.amountTendered() === 0) {
-      this.amountTendered.set(this.cartTotal());
-    }
     this.showPayDialog.set(true);
+  }
+
+  /** Updates the received amount from the dialog's editable Recibido field */
+  onDialogReceivedInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const pesos = parseFloat(raw);
+    if (!isNaN(pesos) && pesos > 0) {
+      this.receivedAmount.set(Math.round(pesos * 100));
+    } else if (raw.trim() === '') {
+      this.receivedAmount.set(0);
+    }
   }
 
   /** Confirms payment and persists the order using existing SyncService pattern */
@@ -344,7 +380,7 @@ export class QuickPosComponent implements OnInit, OnDestroy {
     this.showPayDialog.set(false);
 
     const totalCents = this.cartTotal();
-    const paidCents = Math.max(this.amountTendered(), totalCents);
+    const paidCents = Math.max(this.receivedAmount(), totalCents);
     const orderNumber = this.syncService.consumeOrderNumber();
 
     const payment: OrderPayment = {

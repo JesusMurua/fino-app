@@ -8,10 +8,7 @@
 
   <!-- Input zone — quick form + (recents on tablet+) + (catalog on desktop) -->
   <section class="zone-input">
-    <h2 class="input-title">
-      <span class="input-title__icon"><i class="pi pi-plus"></i></span>
-      Cobro rápido
-    </h2>
+    <h2 class="input-title">Cobro rápido</h2>
 
     <div class="input-row">
       <input
@@ -163,9 +160,8 @@
         <button
           type="button"
           class="bill bill--{{ bill.modifier }}"
-          [class.bill--active]="amountTendered() === bill.cents"
           [disabled]="cartItems().length === 0"
-          (click)="selectBill(bill.cents)"
+          (click)="addBillAmount(bill.cents)"
         >
           <div class="bill__circle"></div>
           <div class="bill__stripe"></div>
@@ -178,10 +174,35 @@
       }
     </div>
 
-    @if (amountTendered() > 0 && cartItems().length > 0) {
-      <div class="change">
+    <div class="custom-amount">
+      <span class="custom-amount__prefix">$</span>
+      <input
+        type="number"
+        inputmode="decimal"
+        placeholder="Otro monto"
+        class="custom-amount__input"
+        min="0"
+        [value]="customAmountInput()"
+        (input)="onCustomAmountInput($event)"
+      />
+    </div>
+
+    @if (receivedAmount() > 0 && cartItems().length > 0) {
+      <div class="received-row">
+        <div class="received-row__info">
+          <span class="received-row__label">Recibido</span>
+          <span class="received-row__amount">{{ receivedAmount() | price }}</span>
+        </div>
+        <button
+          type="button"
+          class="received-row__reset"
+          (click)="resetReceived()"
+          aria-label="Limpiar monto recibido"
+        >×</button>
+      </div>
+      <div class="change-row">
         <span>Cambio</span>
-        <span class="change__amount">{{ change() | price }}</span>
+        <span class="change-row__amount">{{ changeAmount() | price }}</span>
       </div>
     }
 
@@ -212,13 +233,21 @@
       <span>Total:</span>
       <strong>{{ cartTotal() | price }}</strong>
     </div>
-    <div class="quick-pay-dialog__row">
+    <div class="quick-pay-dialog__row quick-pay-dialog__row--received">
       <span>Recibido:</span>
-      <strong>{{ amountTendered() | price }}</strong>
+      <input
+        type="number"
+        inputmode="decimal"
+        placeholder="0.00"
+        class="quick-pay-dialog__received-input"
+        min="0"
+        [value]="receivedAmount() > 0 ? (receivedAmount() / 100).toFixed(2) : ''"
+        (input)="onDialogReceivedInput($event)"
+      />
     </div>
     <div class="quick-pay-dialog__row quick-pay-dialog__row--change">
       <span>Cambio:</span>
-      <strong>{{ change() | price }}</strong>
+      <strong>{{ changeAmount() | price }}</strong>
     </div>
   </div>
 
@@ -234,7 +263,7 @@
         label="Confirmar"
         severity="success"
         (onClick)="confirmPayment()"
-        [disabled]="amountTendered() < cartTotal()"
+        [disabled]="receivedAmount() < cartTotal()"
       />
     </div>
   </ng-template>

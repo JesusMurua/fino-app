@@ -66,7 +66,7 @@ $bills: (
 
 .zone-footer {
   flex-shrink: 0;
-  padding: 14px 16px 16px;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top: 0.5px solid #e5e7eb;
   display: flex;
@@ -78,31 +78,23 @@ $bills: (
 // Input zone — title, fields, add button, recents, catalog
 // ---------------------------------------------------------------------------
 .input-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin: 0 0 12px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: $color-text-title;
-
-  &__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1.8px solid #16a34a;
-    color: #16a34a;
-    font-size: 11px;
-  }
 }
 
 .input-row {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
+
+  @media (max-width: 479px) {
+    flex-direction: column;
+
+    .input-price { width: 100%; }
+    .input-field--price { text-align: left; padding-left: 22px; }
+  }
 }
 
 .input-field {
@@ -110,7 +102,7 @@ $bills: (
   border: 0.5px solid #e5e7eb;
   border-radius: 12px;
   padding: 13px 14px;
-  font-size: 13px;
+  font-size: 16px;
   font-family: inherit;
   color: $color-text-title;
   outline: none;
@@ -152,7 +144,7 @@ $bills: (
   padding: 13px;
   background: #16a34a;
   color: white;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -362,7 +354,7 @@ $bills: (
   &__name {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: #0f172a;
     overflow: hidden;
@@ -371,7 +363,7 @@ $bills: (
   }
 
   &__price {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
     color: #0f172a;
     white-space: nowrap;
@@ -394,7 +386,7 @@ $bills: (
   border-radius: 8px;
   background: #f1f5f9;
   color: #0f172a;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -408,7 +400,7 @@ $bills: (
 .qty-value {
   min-width: 22px;
   text-align: center;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -466,9 +458,13 @@ $bills: (
 
 .bills {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   margin-bottom: 12px;
+
+  @media (max-width: 380px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .bill {
@@ -527,7 +523,7 @@ $bills: (
     position: relative;
     z-index: 1;
     height: 100%;
-    padding: 8px 10px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -544,7 +540,7 @@ $bills: (
   }
 
   &__amount {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 900;
     color: #ffffff;
     letter-spacing: -0.5px;
@@ -565,23 +561,108 @@ $bills: (
   }
 }
 
-.change {
+.custom-amount {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: #f0fdf4;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 0.5px solid #e5e7eb;
   border-radius: 10px;
+  padding: 10px 12px;
+  transition: border-color 0.15s;
 
-  span:first-child {
-    font-size: 13px;
-    font-weight: 500;
+  &:focus-within { border-color: #16a34a; }
+
+  &__prefix {
+    font-size: 15px;
+    font-weight: 600;
     color: #64748b;
   }
 
+  &__input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    outline: none;
+    font-family: inherit;
+
+    &::placeholder { color: #94a3b8; font-weight: 400; }
+
+    /* Hide native number spinners */
+    -moz-appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+}
+
+.received-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 4px;
+  border-top: 0.5px solid #f1f5f9;
+
+  &__info {
+    display: flex;
+    justify-content: space-between;
+    flex: 1;
+    align-items: center;
+  }
+
+  &__label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
   &__amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  &__reset {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: none;
     font-size: 18px;
-    font-weight: 800;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 12px;
+    line-height: 1;
+    font-family: inherit;
+
+    &:active { background: #e2e8f0; }
+  }
+}
+
+.change-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 6px;
+
+  span:first-child {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  &__amount {
+    font-size: 15px;
+    font-weight: 700;
     color: #16a34a;
   }
 }
@@ -636,7 +717,7 @@ $bills: (
   }
 
   .zone-footer {
-    padding: 12px 16px 14px;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
     border-left: 0.5px solid #e5e7eb;
     border-top: 0.5px solid #f1f5f9;
   }
@@ -675,7 +756,7 @@ $bills: (
 
   .zone-input  { padding: 18px 22px; }
   .zone-cart   { padding: 14px 18px 0; }
-  .zone-footer { padding: 14px 18px 16px; }
+  .zone-footer { padding: 14px 18px calc(16px + env(safe-area-inset-bottom)); }
 
   .catalog-block { display: block; }
 
@@ -718,6 +799,31 @@ $bills: (
         font-size: 24px;
         font-weight: 800;
       }
+    }
+  }
+
+  &__received-input {
+    width: 140px;
+    padding: 8px 12px;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f8fafc;
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: right;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+
+    &::placeholder { color: #94a3b8; font-weight: 400; }
+    &:focus { border-color: #16a34a; }
+
+    -moz-appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
   }
 
