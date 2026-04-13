@@ -524,6 +524,7 @@ export class SyncService implements OnDestroy {
       changeCents: order.changeCents ?? 0,
       payments: (order.payments ?? []).map(p => ({
         method: p.method,
+        status: this.mapStatusIdToString(p.paymentStatusId),
         paymentStatusId: p.paymentStatusId,
         amountCents: p.amountCents,
         reference: p.reference ?? null,
@@ -558,6 +559,22 @@ export class SyncService implements OnDestroy {
         notes: item.notes ?? null,
       })),
     };
+  }
+
+  /**
+   * Maps a numeric PaymentStatus enum to the lowercase string token expected
+   * by the backend (matched against `ToLowerInvariant()` on the API side).
+   * The `status` string is required by the C# DTO contract; `paymentStatusId`
+   * is preserved alongside as redundant metadata.
+   */
+  private mapStatusIdToString(statusId: PaymentStatus): string {
+    switch (statusId) {
+      case PaymentStatus.Pending:   return 'pending';
+      case PaymentStatus.Completed: return 'completed';
+      case PaymentStatus.Failed:    return 'failed';
+      case PaymentStatus.Refunded:  return 'refunded';
+      default:                      return 'pending';
+    }
   }
 
   /**
