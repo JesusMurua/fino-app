@@ -97,12 +97,6 @@ const QUICK_SERVICE_FEATURES: readonly FeatureKey[] = [
   FeatureKey.LoyaltyCrm, FeatureKey.MultiTill, FeatureKey.AdvancedReports,
 ];
 
-const QUICK_SERVICE_NO_KDS_FEATURES: readonly FeatureKey[] = [
-  FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
-  FeatureKey.KdsBasic, FeatureKey.KioskMode, FeatureKey.MultiTill,
-  FeatureKey.AdvancedReports,
-];
-
 const RETAIL_FEATURES: readonly FeatureKey[] = [
   FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
   FeatureKey.CustomerCredit, FeatureKey.MultiWarehouseInventory,
@@ -120,12 +114,9 @@ export const GIRO_FEATURE_MAP: Record<BusinessTypeId, readonly FeatureKey[]> = {
   [BusinessTypeId.Restaurant]: FOOD_AND_BEVERAGE_FEATURES,
   [BusinessTypeId.Bar]:        FOOD_AND_BEVERAGE_FEATURES,
 
-  // Quick service with full KDS workflow
+  // Quick service
   [BusinessTypeId.Cafe]:     QUICK_SERVICE_FEATURES,
   [BusinessTypeId.Taqueria]: QUICK_SERVICE_FEATURES,
-
-  // Quick service without full KDS (no real-time coordination)
-  [BusinessTypeId.FoodTruck]: QUICK_SERVICE_NO_KDS_FEATURES,
 
   // Retail verticals
   [BusinessTypeId.Retail]:     RETAIL_FEATURES,
@@ -136,7 +127,4 @@ export const GIRO_FEATURE_MAP: Record<BusinessTypeId, readonly FeatureKey[]> = {
 
   // Specialized services
   [BusinessTypeId.Servicios]: SERVICES_FEATURES,
-
-  // Generic fallback — treated like a stripped-down retail vertical
-  [BusinessTypeId.General]: RETAIL_FEATURES,
 };

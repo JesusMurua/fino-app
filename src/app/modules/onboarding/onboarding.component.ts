@@ -38,18 +38,16 @@ const GIRO_INFO_MAP: Record<BusinessTypeId, GiroInfo> = {
   [BusinessTypeId.Restaurant]: { icon: '🍽️', label: 'Restaurantes y Bares',     description: 'Mesas, cocina, mesero, kiosko' },
   [BusinessTypeId.Cafe]:       { icon: '☕',  label: 'Comida Rápida y Cafés',   description: 'Comandas rápidas, barra, food trucks' },
   [BusinessTypeId.Retail]:     { icon: '🛒',  label: 'Tiendas y Comercios',     description: 'Inventario, código de barras, fiado' },
-  [BusinessTypeId.Servicios]:  { icon: '🛠️',  label: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
+  [BusinessTypeId.Servicios]:  { icon: '🛠️', label: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
 
-  // Sub-types and back-end fallbacks — kept so badges still render correctly
-  // when the JWT or the URL handshake brings a sub-giro instead of a macro.
-  [BusinessTypeId.Bar]:        { icon: '🍺',  label: 'Bar / Cantina',  description: 'Mesas + barra, consumo corrido' },
-  [BusinessTypeId.FoodTruck]:  { icon: '🚚',  label: 'Food Truck',     description: 'Cobro rápido, sin mesas' },
-  [BusinessTypeId.Taqueria]:   { icon: '🌮',  label: 'Taquería',       description: 'Cobro rápido, con cocina' },
-  [BusinessTypeId.Abarrotes]:  { icon: '🛒',  label: 'Abarrotes',      description: 'Tiendita de barrio' },
-  [BusinessTypeId.Ferreteria]: { icon: '🔧',  label: 'Ferretería',     description: 'Materiales y herramientas' },
-  [BusinessTypeId.Papeleria]:  { icon: '📝',  label: 'Papelería',      description: 'Útiles y copias' },
-  [BusinessTypeId.Farmacia]:   { icon: '💊',  label: 'Farmacia',       description: 'Medicinas y salud' },
-  [BusinessTypeId.General]:    { icon: '🛠️',  label: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
+  // Sub-types — kept so badges still render when the JWT or the URL
+  // handshake resolves to a sub-giro instead of a macro.
+  [BusinessTypeId.Bar]:        { icon: '🍺', label: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+  [BusinessTypeId.Taqueria]:   { icon: '🌮', label: 'Taquería',      description: 'Cobro rápido, con cocina' },
+  [BusinessTypeId.Abarrotes]:  { icon: '🛒', label: 'Abarrotes',     description: 'Tiendita de barrio' },
+  [BusinessTypeId.Ferreteria]: { icon: '🔧', label: 'Ferretería',    description: 'Materiales y herramientas' },
+  [BusinessTypeId.Papeleria]:  { icon: '📝', label: 'Papelería',     description: 'Útiles y copias' },
+  [BusinessTypeId.Farmacia]:   { icon: '💊', label: 'Farmacia',      description: 'Medicinas y salud' },
 };
 
 /**
@@ -110,15 +108,13 @@ const ZONE_SUGGESTIONS: Record<number, ZoneDraft[]> = {
 type PricingGroup = 'restaurant' | 'standard' | 'general';
 type BillingCycle = 'monthly' | 'annual';
 
-/** Maps businessType → pricing group */
-const PRICING_GROUP_MAP: Record<number, PricingGroup> = {
+/** Maps businessType → pricing group (Stripe pricing key, unrelated to BusinessTypeId names) */
+const PRICING_GROUP_MAP: Record<BusinessTypeId, PricingGroup> = {
   [BusinessTypeId.Restaurant]: 'restaurant',
   [BusinessTypeId.Bar]:        'restaurant',
   [BusinessTypeId.Cafe]:       'standard',
-  [BusinessTypeId.FoodTruck]:  'standard',
   [BusinessTypeId.Taqueria]:   'standard',
   [BusinessTypeId.Retail]:     'general',
-  [BusinessTypeId.General]:    'general',
   [BusinessTypeId.Abarrotes]:  'standard',
   [BusinessTypeId.Ferreteria]: 'standard',
   [BusinessTypeId.Papeleria]:  'standard',
@@ -172,14 +168,12 @@ const PLAN_NAMES: Record<string, string> = {
 };
 
 /** Which device modes are relevant per giro */
-const MODES_BY_GIRO: Record<number, string[]> = {
+const MODES_BY_GIRO: Record<BusinessTypeId, string[]> = {
   [BusinessTypeId.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
   [BusinessTypeId.Bar]:        ['cashier', 'tables', 'kitchen', 'kiosk'],
   [BusinessTypeId.Cafe]:       ['cashier', 'kitchen', 'kiosk'],
-  [BusinessTypeId.Retail]:     ['cashier'],
-  [BusinessTypeId.FoodTruck]:  ['cashier', 'kiosk'],
-  [BusinessTypeId.General]:    ['cashier'],
   [BusinessTypeId.Taqueria]:   ['cashier', 'kiosk'],
+  [BusinessTypeId.Retail]:     ['cashier'],
   [BusinessTypeId.Abarrotes]:  ['cashier'],
   [BusinessTypeId.Ferreteria]: ['cashier'],
   [BusinessTypeId.Papeleria]:  ['cashier'],
@@ -225,8 +219,12 @@ export class OnboardingComponent implements OnInit {
   readonly selectedGiros = signal<BusinessTypeId[]>([]);
   readonly customGiroText = signal('');
 
-  /** Primary giro (first selected) — used for pricing, modes, and zone suggestions */
-  readonly primaryGiro = computed(() => this.selectedGiros()[0] ?? BusinessTypeId.General);
+  /**
+   * Primary giro (first selected) — used for pricing, modes, and zone suggestions.
+   * Null until the user picks at least one giro. Callers that require a giro
+   * must guard against null; there is no default fallback.
+   */
+  readonly primaryGiro = computed<BusinessTypeId | null>(() => this.selectedGiros()[0] ?? null);
 
   /** Whether "Otra tienda" (Retail) is selected, requiring a custom description */
   readonly showCustomGiroInput = computed(() => this.selectedGiros().includes(BusinessTypeId.Retail));
@@ -281,7 +279,7 @@ export class OnboardingComponent implements OnInit {
     const giros = this.selectedGiros();
     const allowedSet = new Set<string>();
     for (const g of giros) {
-      for (const m of MODES_BY_GIRO[g] ?? ['cashier']) allowedSet.add(m);
+      for (const m of MODES_BY_GIRO[g]) allowedSet.add(m);
     }
     if (allowedSet.size === 0) allowedSet.add('cashier');
     return MODE_OPTIONS.filter(m => allowedSet.has(m.value));
@@ -292,10 +290,16 @@ export class OnboardingComponent implements OnInit {
   readonly checkoutLoading = signal(false);
   readonly checkoutError = signal('');
 
-  /** Pricing group derived from selected business type */
-  readonly pricingGroup = computed<PricingGroup>(() =>
-    PRICING_GROUP_MAP[this.primaryGiro()] ?? 'general'
-  );
+  /**
+   * Pricing group derived from selected business type.
+   * Defaults to 'standard' when no giro is picked yet — this keeps the
+   * price row rendering during the wizard; once the user selects a giro
+   * the real group takes over.
+   */
+  readonly pricingGroup = computed<PricingGroup>(() => {
+    const giro = this.primaryGiro();
+    return giro !== null ? PRICING_GROUP_MAP[giro] : 'standard';
+  });
 
   /** Display name for the pending plan */
   readonly pendingPlanName = computed(() =>

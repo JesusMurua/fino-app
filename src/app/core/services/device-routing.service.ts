@@ -67,9 +67,10 @@ export class DeviceRoutingService {
 
     if (!experience) {
       const btId = this.authService.businessTypeId();
-      const btCode = BusinessTypeId[btId]; // e.g. 'Restaurant'
-      const catalog = this.catalogService.getBusinessType(btCode);
-      experience = catalog?.posExperience;
+      if (btId !== null) {
+        const catalog = this.catalogService.getBusinessType(BusinessTypeId[btId]);
+        experience = catalog?.posExperience;
+      }
     }
 
     switch (experience) {

@@ -123,10 +123,13 @@ export class ConfigService {
         this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
       );
 
-      // Resolve business type catalog from CatalogService using JWT business type
+      // Resolve business type catalog from CatalogService using JWT business type.
+      // If auth hydration hasn't completed yet, keep the preloaded catalog — this
+      // method runs in a background refresh and never as the source of truth.
       const btId = this.authService.businessTypeId();
-      const btCode = BusinessTypeId[btId]; // e.g. 'Restaurant'
-      const btCatalog = this.catalogService.getBusinessType(btCode) ?? config.businessTypeCatalog;
+      const btCatalog = btId !== null
+        ? (this.catalogService.getBusinessType(BusinessTypeId[btId]) ?? config.businessTypeCatalog)
+        : config.businessTypeCatalog;
 
       config = {
         ...config,

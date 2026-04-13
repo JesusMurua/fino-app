@@ -14,23 +14,21 @@ import { AuthService } from '../../core/services/auth.service';
 import { RegistrationIntent, parseRegistrationIntent } from '../../core/utils/registration.utils';
 
 /** Icon used next to each giro in the read-only badge (landing-driven flow) */
-const GIRO_BADGE_ICON: Partial<Record<BusinessTypeId, string>> = {
+const GIRO_BADGE_ICON: Record<BusinessTypeId, string> = {
   [BusinessTypeId.Restaurant]: '🍽️',
   [BusinessTypeId.Cafe]:       '☕',
-  [BusinessTypeId.Bar]:        '🍺',
   [BusinessTypeId.Retail]:     '🛒',
-  [BusinessTypeId.FoodTruck]:  '🚚',
+  [BusinessTypeId.Servicios]:  '🛠️',
+  [BusinessTypeId.Bar]:        '🍺',
   [BusinessTypeId.Taqueria]:   '🌮',
   [BusinessTypeId.Abarrotes]:  '🛒',
   [BusinessTypeId.Ferreteria]: '🔧',
   [BusinessTypeId.Papeleria]:  '📝',
   [BusinessTypeId.Farmacia]:   '💊',
-  [BusinessTypeId.Servicios]:  '🛠️',
-  [BusinessTypeId.General]:    '🛠️',
 };
 
 /** Typed error surfaced to the template — avoids substring matching on messages */
-type RegisterErrorCode = 'email_taken' | 'generic' | null;
+type RegisterErrorCode = 'email_taken' | 'invalid_giro' | 'generic' | null;
 
 /** Custom validator: password fields must match */
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -71,14 +69,12 @@ export class RegisterComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly errorCode = signal<RegisterErrorCode>(null);
 
-  /** Parsed intent from the landing handshake — never null after ngOnInit */
-  private intent: RegistrationIntent = {
-    businessTypeId: BusinessTypeId.General,
-    planTypeId: 0 as unknown as number,
-    countryCode: 'MX',
-    planSlug: null,
-    giroSlug: null,
-  };
+  /**
+   * Parsed intent from the landing handshake — null until ngOnInit resolves it.
+   * When the URL carries an invalid giro slug, `parseRegistrationIntent` throws
+   * and `intent` stays null while `errorCode` is set to `'invalid_giro'`.
+   */
+  private intent: RegistrationIntent | null = null;
 
   /** Whether the landing provided a `?giro=` — drives badge vs dropdown */
   readonly hasGiroFromUrl = signal(false);
@@ -86,10 +82,11 @@ export class RegisterComponent implements OnInit {
   /** Badge display info for the pre-selected giro */
   readonly giroBadge = computed(() => {
     if (!this.hasGiroFromUrl()) return null;
-    const id = this.form.getRawValue().businessTypeId ?? this.intent.businessTypeId;
+    const id = this.form.getRawValue().businessTypeId ?? this.intent?.businessTypeId ?? null;
+    if (id === null) return null;
     return {
-      icon: GIRO_BADGE_ICON[id] ?? '⚙️',
-      label: BUSINESS_TYPE_LABELS[id] ?? 'Negocio',
+      icon: GIRO_BADGE_ICON[id],
+      label: BUSINESS_TYPE_LABELS[id],
     };
   });
 
@@ -113,7 +110,7 @@ export class RegisterComponent implements OnInit {
     email:           ['', [Validators.required, Validators.email]],
     password:        ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword: ['', Validators.required],
-    businessTypeId:  [BusinessTypeId.Restaurant, Validators.required],
+    businessTypeId:  this.fb.control<BusinessTypeId | null>(null, Validators.required),
   }, { validators: passwordMatchValidator });
 
   //#endregion
@@ -121,9 +118,19 @@ export class RegisterComponent implements OnInit {
   //#region Lifecycle
 
   ngOnInit(): void {
-    this.intent = parseRegistrationIntent(this.route.snapshot.queryParams);
+    try {
+      this.intent = parseRegistrationIntent(this.route.snapshot.queryParams);
+    } catch {
+      // Fail-fast: unknown giro slug from the landing — block the form
+      // and surface an error. The user must go back to the landing and
+      // pick a valid giro.
+      this.errorCode.set('invalid_giro');
+      return;
+    }
     this.hasGiroFromUrl.set(this.intent.giroSlug !== null);
-    this.form.patchValue({ businessTypeId: this.intent.businessTypeId });
+    if (this.intent.businessTypeId !== null) {
+      this.form.patchValue({ businessTypeId: this.intent.businessTypeId });
+    }
   }
 
   //#endregion
@@ -144,9 +151,10 @@ export class RegisterComponent implements OnInit {
   /** Human-readable error message for the template */
   readonly errorMessage = computed(() => {
     switch (this.errorCode()) {
-      case 'email_taken': return 'Este correo ya tiene una cuenta.';
-      case 'generic':     return 'Error al crear la cuenta. Intenta de nuevo.';
-      default:            return '';
+      case 'email_taken':  return 'Este correo ya tiene una cuenta.';
+      case 'invalid_giro': return 'El giro indicado en la URL no es válido. Regresa a la página de planes y elige uno.';
+      case 'generic':      return 'Error al crear la cuenta. Intenta de nuevo.';
+      default:             return '';
     }
   });
 
@@ -163,7 +171,7 @@ export class RegisterComponent implements OnInit {
    *   5. navigate to the onboarding wizard
    */
   async submit(): Promise<void> {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.intent === null) {
       this.form.markAllAsTouched();
       return;
     }
@@ -172,12 +180,21 @@ export class RegisterComponent implements OnInit {
     this.errorCode.set(null);
 
     const { businessName, ownerName, email, password, businessTypeId } = this.form.getRawValue();
+    // Validators.required guarantees businessTypeId is set at this point;
+    // if the URL handshake brought one, it was patched into the form during ngOnInit.
+    const resolvedBusinessTypeId = businessTypeId ?? this.intent.businessTypeId;
+    if (resolvedBusinessTypeId === null) {
+      this.isLoading.set(false);
+      this.form.markAllAsTouched();
+      return;
+    }
+
     const payload: RegisterRequest = {
       businessName: businessName!.trim(),
       ownerName:    ownerName!.trim(),
       email:        email!.trim(),
       password:     password!,
-      businessTypeId: businessTypeId ?? this.intent.businessTypeId,
+      businessTypeId: resolvedBusinessTypeId,
       planTypeId:   this.intent.planTypeId,
       countryCode:  this.intent.countryCode,
     };
@@ -208,7 +225,7 @@ export class RegisterComponent implements OnInit {
    * the failure is visible in the console rather than silently dropped.
    */
   private persistPendingPlan(): void {
-    if (!this.intent.planSlug) return;
+    if (!this.intent?.planSlug) return;
     const branchId = this.authService.branchId;
     if (branchId <= 0) {
       console.warn('[Register] Cannot persist pending plan — no active branch id.');

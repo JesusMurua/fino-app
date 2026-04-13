@@ -19,7 +19,7 @@ export class TenantContextService {
   //#region Backing signals
 
   private readonly _currentPlan = signal<PlanTypeId>(PlanTypeId.Free);
-  private readonly _currentGiro = signal<BusinessTypeId>(BusinessTypeId.General);
+  private readonly _currentGiro = signal<BusinessTypeId | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
 
   //#endregion
@@ -64,10 +64,22 @@ export class TenantContextService {
    * hide-vs-lock distinction in the UI: features that are not
    * applicable to a giro are hidden, features that are applicable
    * but not yet unlocked are shown with a padlock.
+   *
+   * Fail-fast: throws when the tenant's giro has not been loaded yet.
+   * Callers that may run before auth hydration must guard with
+   * `currentGiro() !== null` first.
+   *
    * @param feature Feature key to check
+   * @throws Error when `currentGiro()` is null
    */
   isApplicableToGiro(feature: FeatureKey): boolean {
     const giro = this._currentGiro();
+    if (giro === null) {
+      throw new Error(
+        '[TenantContextService] isApplicableToGiro called before tenant context was loaded. ' +
+        'Business type is null — cannot read feature map.',
+      );
+    }
     return GIRO_FEATURE_MAP[giro].includes(feature);
   }
 
@@ -96,7 +108,7 @@ export class TenantContextService {
   /** Clears the tenant context — called on logout */
   clear(): void {
     this._currentPlan.set(PlanTypeId.Free);
-    this._currentGiro.set(BusinessTypeId.General);
+    this._currentGiro.set(null);
     this._activeFeatures.set(new Set());
   }
 

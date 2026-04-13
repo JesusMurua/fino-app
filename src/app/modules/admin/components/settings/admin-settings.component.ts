@@ -257,13 +257,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Whether to show kitchen toggle in branch dialog */
   readonly showKitchenToggle = computed(() => {
     const type = this.authService.businessTypeId();
+    if (type === null) return false;
     return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar,
-            BusinessTypeId.FoodTruck, BusinessTypeId.Taqueria].includes(type);
+            BusinessTypeId.Taqueria].includes(type);
   });
 
   /** Whether to show tables toggle in branch dialog */
   readonly showTablesToggle = computed(() => {
     const type = this.authService.businessTypeId();
+    if (type === null) return false;
     return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar].includes(type);
   });
 
@@ -283,19 +285,18 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       [BusinessTypeId.Retail]:     { icon: '🛒',  name: 'Tiendas y Comercios',      description: 'Inventario, código de barras, fiado' },
       [BusinessTypeId.Servicios]:  { icon: '🛠️', name: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
 
-      // Sub-types — display the macro label for consistency
-      [BusinessTypeId.Bar]:        { icon: '🍺',  name: 'Bar / Cantina',  description: 'Mesas + barra, consumo corrido' },
-      [BusinessTypeId.FoodTruck]:  { icon: '🚚',  name: 'Food Truck',     description: 'Cobro rápido, sin mesas' },
-      [BusinessTypeId.Taqueria]:   { icon: '🌮',  name: 'Taquería',       description: 'Cobro rápido, con cocina' },
-      [BusinessTypeId.Abarrotes]:  { icon: '🛒',  name: 'Abarrotes',      description: 'Tiendita de barrio' },
-      [BusinessTypeId.Ferreteria]: { icon: '🔧',  name: 'Ferretería',     description: 'Materiales y herramientas' },
-      [BusinessTypeId.Papeleria]:  { icon: '📝',  name: 'Papelería',      description: 'Útiles y copias' },
-      [BusinessTypeId.Farmacia]:   { icon: '💊',  name: 'Farmacia',       description: 'Medicinas y salud' },
-
-      // Generic backstop — surface as Servicios Especializados for consistency
-      [BusinessTypeId.General]:    { icon: '🛠️', name: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
+      // Sub-types — display their own identity, users recognize the label
+      [BusinessTypeId.Bar]:        { icon: '🍺', name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
+      [BusinessTypeId.Taqueria]:   { icon: '🌮', name: 'Taquería',      description: 'Cobro rápido, con cocina' },
+      [BusinessTypeId.Abarrotes]:  { icon: '🛒', name: 'Abarrotes',     description: 'Tiendita de barrio' },
+      [BusinessTypeId.Ferreteria]: { icon: '🔧', name: 'Ferretería',    description: 'Materiales y herramientas' },
+      [BusinessTypeId.Papeleria]:  { icon: '📝', name: 'Papelería',     description: 'Útiles y copias' },
+      [BusinessTypeId.Farmacia]:   { icon: '💊', name: 'Farmacia',      description: 'Medicinas y salud' },
     };
-    return map[giro] ?? { icon: '🛠️', name: 'Servicios Especializados', description: '' };
+    // Null = tenant context not yet hydrated. Return a neutral placeholder
+    // rather than throwing — this computed drives a read-only display.
+    if (giro === null) return { icon: '…', name: 'Cargando…', description: '' };
+    return map[giro];
   });
 
   //#endregion
