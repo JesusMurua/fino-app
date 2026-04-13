@@ -83,18 +83,23 @@ export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {
 };
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {
-  [BusinessTypeId.Restaurant]: 'Restaurante',
-  [BusinessTypeId.Retail]:     'Abarrotes / Tienda',
-  [BusinessTypeId.Cafe]:       'Café',
+  // 4 macro categories — match `.claude/business-rules-matrix.md`
+  [BusinessTypeId.Restaurant]: 'Restaurantes y Bares',
+  [BusinessTypeId.Cafe]:       'Comida Rápida y Cafés',
+  [BusinessTypeId.Retail]:     'Tiendas y Comercios',
+  [BusinessTypeId.Servicios]:  'Servicios Especializados',
+
+  // Sub-types — kept for badge rendering when JWT/URL brings a sub-giro
   [BusinessTypeId.Bar]:        'Bar',
   [BusinessTypeId.FoodTruck]:  'Food Truck',
-  [BusinessTypeId.General]:    'General',
   [BusinessTypeId.Taqueria]:   'Taquería',
   [BusinessTypeId.Abarrotes]:  'Abarrotes',
   [BusinessTypeId.Ferreteria]: 'Ferretería',
   [BusinessTypeId.Papeleria]:  'Papelería',
   [BusinessTypeId.Farmacia]:   'Farmacia',
-  [BusinessTypeId.Servicios]:  'Servicios',
+
+  // Generic backstop — only reached when an unknown slug falls through
+  [BusinessTypeId.General]:    'Servicios Especializados',
 };
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionTypeId, string> = {

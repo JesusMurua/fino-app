@@ -34,28 +34,33 @@ const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 interface GiroInfo { icon: string; label: string; description: string }
 
 const GIRO_INFO_MAP: Record<BusinessTypeId, GiroInfo> = {
-  [BusinessTypeId.Restaurant]: { icon: '🍽️', label: 'Restaurante',   description: 'Mesas, cocina, mesero, kiosko' },
-  [BusinessTypeId.Cafe]:       { icon: '☕',  label: 'Café / Barra',  description: 'Comandas rápidas, barra' },
-  [BusinessTypeId.Bar]:        { icon: '🍺',  label: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
-  [BusinessTypeId.Retail]:     { icon: '🛒',  label: 'Abarrotes / Tienda', description: 'Escáner, códigos de barras' },
-  [BusinessTypeId.FoodTruck]:  { icon: '🚚',  label: 'Food Truck',    description: 'Cobro rápido, sin mesas' },
-  [BusinessTypeId.General]:    { icon: '⚙️',  label: 'General',       description: 'Cualquier negocio' },
-  [BusinessTypeId.Taqueria]:   { icon: '🌮',  label: 'Taquería',      description: 'Cobro rápido, con cocina' },
-  [BusinessTypeId.Abarrotes]:  { icon: '🛒',  label: 'Abarrotes',     description: 'Tiendita de barrio' },
-  [BusinessTypeId.Ferreteria]: { icon: '🔧',  label: 'Ferretería',    description: 'Materiales y herramientas' },
-  [BusinessTypeId.Papeleria]:  { icon: '📝',  label: 'Papelería',     description: 'Útiles y copias' },
-  [BusinessTypeId.Farmacia]:   { icon: '💊',  label: 'Farmacia',      description: 'Medicinas y salud' },
-  [BusinessTypeId.Servicios]:  { icon: '🏪',  label: 'Servicios',     description: 'Salones, talleres, oficios' },
+  // 4 macro categories — these are the official options exposed in the UI grid
+  [BusinessTypeId.Restaurant]: { icon: '🍽️', label: 'Restaurantes y Bares',     description: 'Mesas, cocina, mesero, kiosko' },
+  [BusinessTypeId.Cafe]:       { icon: '☕',  label: 'Comida Rápida y Cafés',   description: 'Comandas rápidas, barra, food trucks' },
+  [BusinessTypeId.Retail]:     { icon: '🛒',  label: 'Tiendas y Comercios',     description: 'Inventario, código de barras, fiado' },
+  [BusinessTypeId.Servicios]:  { icon: '🛠️',  label: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
+
+  // Sub-types and back-end fallbacks — kept so badges still render correctly
+  // when the JWT or the URL handshake brings a sub-giro instead of a macro.
+  [BusinessTypeId.Bar]:        { icon: '🍺',  label: 'Bar / Cantina',  description: 'Mesas + barra, consumo corrido' },
+  [BusinessTypeId.FoodTruck]:  { icon: '🚚',  label: 'Food Truck',     description: 'Cobro rápido, sin mesas' },
+  [BusinessTypeId.Taqueria]:   { icon: '🌮',  label: 'Taquería',       description: 'Cobro rápido, con cocina' },
+  [BusinessTypeId.Abarrotes]:  { icon: '🛒',  label: 'Abarrotes',      description: 'Tiendita de barrio' },
+  [BusinessTypeId.Ferreteria]: { icon: '🔧',  label: 'Ferretería',     description: 'Materiales y herramientas' },
+  [BusinessTypeId.Papeleria]:  { icon: '📝',  label: 'Papelería',      description: 'Útiles y copias' },
+  [BusinessTypeId.Farmacia]:   { icon: '💊',  label: 'Farmacia',       description: 'Medicinas y salud' },
+  [BusinessTypeId.General]:    { icon: '🛠️',  label: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
 };
 
-/** Main giro options displayed in step 1 grid (no JWT pre-selection) */
+/**
+ * Main giro options displayed in step 1 grid when there is no JWT pre-selection.
+ * Strictly the 4 macro categories defined in `.claude/business-rules-matrix.md`.
+ */
 const GIRO_OPTIONS: { value: BusinessTypeId; icon: string; label: string; description: string }[] = [
   { value: BusinessTypeId.Restaurant, ...GIRO_INFO_MAP[BusinessTypeId.Restaurant] },
   { value: BusinessTypeId.Cafe,       ...GIRO_INFO_MAP[BusinessTypeId.Cafe] },
-  { value: BusinessTypeId.Bar,        ...GIRO_INFO_MAP[BusinessTypeId.Bar] },
   { value: BusinessTypeId.Retail,     ...GIRO_INFO_MAP[BusinessTypeId.Retail] },
-  { value: BusinessTypeId.FoodTruck,  ...GIRO_INFO_MAP[BusinessTypeId.FoodTruck] },
-  { value: BusinessTypeId.General,    ...GIRO_INFO_MAP[BusinessTypeId.General] },
+  { value: BusinessTypeId.Servicios,  ...GIRO_INFO_MAP[BusinessTypeId.Servicios] },
 ];
 
 /** BusinessTypes in the retail group — show sub-options */

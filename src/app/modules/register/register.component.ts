@@ -25,8 +25,8 @@ const GIRO_BADGE_ICON: Partial<Record<BusinessTypeId, string>> = {
   [BusinessTypeId.Ferreteria]: '🔧',
   [BusinessTypeId.Papeleria]:  '📝',
   [BusinessTypeId.Farmacia]:   '💊',
-  [BusinessTypeId.Servicios]:  '🏪',
-  [BusinessTypeId.General]:    '⚙️',
+  [BusinessTypeId.Servicios]:  '🛠️',
+  [BusinessTypeId.General]:    '🛠️',
 };
 
 /** Typed error surfaced to the template — avoids substring matching on messages */
@@ -93,15 +93,15 @@ export class RegisterComponent implements OnInit {
     };
   });
 
-  /** Dropdown options when the landing did not pre-select a giro */
+  /**
+   * Dropdown options when the landing did not pre-select a giro.
+   * Strictly the 4 macro categories defined in `.claude/business-rules-matrix.md`.
+   */
   readonly businessTypeOptions = [
-    { label: 'Restaurante',        value: BusinessTypeId.Restaurant },
-    { label: 'Café',               value: BusinessTypeId.Cafe },
-    { label: 'Bar',                value: BusinessTypeId.Bar },
-    { label: 'Abarrotes / Retail', value: BusinessTypeId.Retail },
-    { label: 'Food Truck',         value: BusinessTypeId.FoodTruck },
-    { label: 'Servicios',          value: BusinessTypeId.Servicios },
-    { label: 'General',            value: BusinessTypeId.General },
+    { label: 'Restaurantes y Bares',     value: BusinessTypeId.Restaurant },
+    { label: 'Comida Rápida y Cafés',   value: BusinessTypeId.Cafe },
+    { label: 'Tiendas y Comercios',      value: BusinessTypeId.Retail },
+    { label: 'Servicios Especializados', value: BusinessTypeId.Servicios },
   ];
 
   /** Landing URL for the "back to plans" link */

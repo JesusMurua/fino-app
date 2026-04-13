@@ -92,9 +92,10 @@ export const adminRoutes: Routes = [
         pathMatch: 'full',
       },
       {
+        // Core: every business with a POS has at least 1 cash register
+        // and needs to open/close shifts. MultiTill is enforced granularly
+        // inside the component on the "Nueva caja" button only.
         path: 'registers',
-        canActivate: [featureGuard],
-        data: { requiredFeature: FeatureKey.MultiTill },
         loadComponent: () =>
           import('./components/cajas-container/cajas-container.component')
             .then(m => m.CajasContainerComponent),

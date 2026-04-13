@@ -19,6 +19,20 @@
     color: $color-text-title;
   }
 
+  &__upgrade-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-3;
+    background: #F1F5F9;
+    border: 1px dashed #CBD5E1;
+    border-radius: 8px;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+
+    i { font-size: 12px; }
+  }
+
   // ---- Device info strip ----
   &__device-info {
     display: flex;
