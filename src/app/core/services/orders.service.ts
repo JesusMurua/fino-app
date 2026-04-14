@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
-import { catchError, EMPTY, firstValueFrom } from 'rxjs';
+import { catchError, EMPTY, firstValueFrom, Observable } from 'rxjs';
 
-import { Order } from '../models';
+import { Order, OrphanedOrderDto, ReconcileOrderRequest } from '../models';
 import { KitchenStatusId, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
@@ -128,6 +128,26 @@ export class OrdersService implements OnDestroy {
         return EMPTY;
       }),
     ).subscribe();
+  }
+
+  //#endregion
+
+  //#region Orphaned Orders (Reconciliation)
+
+  /**
+   * Fetches orders that have no `cashRegisterSessionId` for the given branch.
+   * Used by the reconciliation tab in the Cajas module.
+   */
+  getOrphanedOrders(branchId: number): Observable<OrphanedOrderDto[]> {
+    return this.api.get<OrphanedOrderDto[]>(`/orders/orphaned?branchId=${branchId}`);
+  }
+
+  /**
+   * Assigns an orphaned order to a cash register session.
+   * Returns the raw API response — caller decides how to refresh local state.
+   */
+  reconcileOrder(orderId: string, payload: ReconcileOrderRequest): Observable<unknown> {
+    return this.api.patch<unknown>(`/orders/${orderId}/reconcile`, payload);
   }
 
   //#endregion
