@@ -28,7 +28,6 @@
     [scrollable]="true"
     scrollHeight="flex"
     dataKey="id"
-    [emptyMessage]="'No hay órdenes huérfanas'"
   >
     <ng-template pTemplate="header">
       <tr>
@@ -89,3 +88,102 @@
   </p-table>
 
 </section>
+
+<!-- Reconciliation dialog -->
+<p-dialog
+  header="Reconciliar orden"
+  [visible]="showReconcileDialog()"
+  (visibleChange)="$event ? null : closeDialog()"
+  [modal]="true"
+  [closable]="!isReconciling()"
+  [draggable]="false"
+  [style]="{ width: '92vw', maxWidth: '480px' }"
+>
+  @if (selectedOrder(); as order) {
+    <div class="reconcile-dialog">
+
+      <!-- Order summary -->
+      <div class="reconcile-dialog__summary">
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Folio</span>
+          <strong>{{ order.folioNumber || '#' + order.orderNumber }}</strong>
+        </div>
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Total</span>
+          <strong class="reconcile-dialog__total">{{ order.totalCents | price }}</strong>
+        </div>
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Estado</span>
+          <span
+            class="orphaned-orders__badge"
+            [ngClass]="order.isPaid ? 'orphaned-orders__badge--paid' : 'orphaned-orders__badge--unpaid'"
+          >
+            {{ order.isPaid ? 'Pagado' : 'No Pagado' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Session selector -->
+      <div class="reconcile-dialog__field">
+        <label class="reconcile-dialog__label">Sesión de caja destino</label>
+        <p-dropdown
+          [options]="sessionOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedSessionId()"
+          (ngModelChange)="selectedSessionId.set($event)"
+          placeholder="Selecciona una sesión..."
+          [filter]="true"
+          filterPlaceholder="Buscar..."
+          [loading]="isLoadingSessions()"
+          [disabled]="isLoadingSessions() || isReconciling()"
+          [appendTo]="'body'"
+          styleClass="reconcile-dialog__dropdown"
+        />
+        <small class="reconcile-dialog__hint">
+          Las sesiones abiertas suman al corte actual; las cerradas ajustan un corte histórico.
+        </small>
+      </div>
+
+      <!-- Optional note -->
+      <div class="reconcile-dialog__field">
+        <label class="reconcile-dialog__label">Nota (opcional)</label>
+        <textarea
+          pInputTextarea
+          rows="2"
+          placeholder="Motivo de la reconciliación..."
+          [ngModel]="reconciliationNote()"
+          (ngModelChange)="reconciliationNote.set($event)"
+          [disabled]="isReconciling()"
+          class="reconcile-dialog__textarea"
+        ></textarea>
+      </div>
+
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      class="reconcile-dialog__btn reconcile-dialog__btn--ghost"
+      [disabled]="isReconciling()"
+      (click)="closeDialog()"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="reconcile-dialog__btn reconcile-dialog__btn--primary"
+      [disabled]="!canConfirm()"
+      (click)="confirmReconciliation()"
+    >
+      @if (isReconciling()) {
+        <i class="pi pi-spin pi-spinner"></i>
+        Reconciliando...
+      } @else {
+        <i class="pi pi-check"></i>
+        Confirmar Reconciliación
+      }
+    </button>
+  </ng-template>
+</p-dialog>
