@@ -13,6 +13,7 @@ export * from './discount-preset.model';
 export * from './inventory.model';
 export * from './invoice.model';
 export * from './order.model';
+export * from './orphaned-order.model';
 export * from './payment.model';
 export * from './plan.model';
 export * from './product-import.model';

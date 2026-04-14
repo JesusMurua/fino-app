@@ -6,6 +6,7 @@ import { FeatureKey } from '../../../../core/enums';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { CashRegisterComponent } from '../cash-register/cash-register.component';
 import { AdminRegistersComponent } from '../admin-registers/admin-registers.component';
+import { OrphanedOrdersComponent } from '../orphaned-orders/orphaned-orders.component';
 
 /**
  * Unified container for cash register management.
@@ -20,6 +21,7 @@ import { AdminRegistersComponent } from '../admin-registers/admin-registers.comp
     TooltipModule,
     CashRegisterComponent,
     AdminRegistersComponent,
+    OrphanedOrdersComponent,
   ],
   templateUrl: './cajas-container.component.html',
   styleUrl: './cajas-container.component.scss',

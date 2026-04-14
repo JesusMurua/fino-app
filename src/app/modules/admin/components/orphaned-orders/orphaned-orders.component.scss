@@ -1,0 +1,237 @@
+@use '../../../../../styles/variables' as *;
+
+.orphaned-orders {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4 0;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $space-4;
+  }
+
+  &__title {
+    margin: 0 0 $space-1;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: $color-text-sub;
+    max-width: 540px;
+  }
+
+  &__refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: $color-text-sub;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover:not(:disabled) {
+      background: #f8fafc;
+      color: $color-text-title;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    i { font-size: 13px; }
+  }
+
+  &__folio {
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__total {
+    font-weight: 700;
+    color: $color-primary;
+  }
+
+  &__methods {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+
+  &__muted { color: #cbd5e1; }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+
+    &--paid {
+      background: #f0fdf4;
+      color: $color-primary;
+    }
+
+    &--unpaid {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  }
+
+  &__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    background: $color-primary;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.9; }
+    &:active { opacity: 0.8; }
+
+    i { font-size: 11px; }
+  }
+
+  &__empty {
+    text-align: center;
+    padding: $space-7 $space-4;
+    color: $color-text-sub;
+
+    i {
+      display: block;
+      font-size: 32px;
+      color: $color-primary;
+      opacity: 0.5;
+      margin-bottom: $space-2;
+    }
+  }
+}
+
+// =============================================================================
+// Reconciliation dialog
+// =============================================================================
+.reconcile-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  &__summary {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    padding: $space-3 $space-4;
+    background: #f8fafc;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+  }
+
+  &__summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+
+    strong {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+  }
+
+  &__total {
+    color: $color-primary !important;
+    font-size: 16px !important;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__hint {
+    font-size: 11px;
+    color: $color-text-sub;
+    line-height: 1.4;
+  }
+
+  &__dropdown {
+    width: 100%;
+  }
+
+  &__textarea {
+    width: 100%;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px 12px;
+    border: 0.5px solid #e5e7eb;
+    background: #f8fafc;
+    color: #0f172a;
+    resize: vertical;
+
+    &:focus { outline: none; border-color: $color-primary; }
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    i { font-size: 12px; }
+
+    &--ghost {
+      background: transparent;
+      border: 0.5px solid #e5e7eb;
+      color: $color-text-sub;
+
+      &:hover:not(:disabled) { background: #f8fafc; color: $color-text-title; }
+    }
+
+    &--primary {
+      background: $color-primary;
+      color: #ffffff;
+
+      &:hover:not(:disabled) { opacity: 0.9; }
+      &:active:not(:disabled) { opacity: 0.8; }
+    }
+  }
+}

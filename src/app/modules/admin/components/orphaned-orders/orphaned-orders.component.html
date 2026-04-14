@@ -1,0 +1,189 @@
+<p-toast />
+
+<section class="orphaned-orders">
+
+  <header class="orphaned-orders__header">
+    <div>
+      <h2 class="orphaned-orders__title">Ventas Huérfanas</h2>
+      <p class="orphaned-orders__subtitle">
+        Órdenes registradas sin un turno de caja asignado. Reconcílialas para incluirlas en los cortes.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="orphaned-orders__refresh"
+      [disabled]="isLoading()"
+      (click)="loadOrphanedOrders()"
+    >
+      <i class="pi pi-refresh"></i>
+      Actualizar
+    </button>
+  </header>
+
+  <p-table
+    [value]="orders()"
+    [loading]="isLoading()"
+    [rowHover]="true"
+    styleClass="orphaned-orders__table p-datatable-sm"
+    [scrollable]="true"
+    scrollHeight="flex"
+    dataKey="id"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="min-width: 7rem">Folio</th>
+        <th style="min-width: 12rem">Fecha</th>
+        <th style="min-width: 6rem">Artículos</th>
+        <th style="min-width: 8rem">Total</th>
+        <th style="min-width: 8rem">Estado</th>
+        <th style="min-width: 12rem">Pagos</th>
+        <th style="min-width: 8rem"></th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-order>
+      <tr>
+        <td class="orphaned-orders__folio">
+          {{ order.folioNumber || '#' + order.orderNumber }}
+        </td>
+        <td>{{ order.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>{{ order.itemCount }}</td>
+        <td class="orphaned-orders__total">{{ order.totalCents | price }}</td>
+        <td>
+          <span
+            class="orphaned-orders__badge"
+            [ngClass]="order.isPaid ? 'orphaned-orders__badge--paid' : 'orphaned-orders__badge--unpaid'"
+          >
+            {{ order.isPaid ? 'Pagado' : 'No Pagado' }}
+          </span>
+        </td>
+        <td class="orphaned-orders__methods">
+          @if (order.paymentMethods?.length) {
+            {{ order.paymentMethods.join(', ') }}
+          } @else {
+            <span class="orphaned-orders__muted">—</span>
+          }
+        </td>
+        <td>
+          <button
+            type="button"
+            class="orphaned-orders__action"
+            (click)="onReconcileClick(order)"
+          >
+            <i class="pi pi-link"></i>
+            Reconciliar
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7" class="orphaned-orders__empty">
+          <i class="pi pi-check-circle"></i>
+          <span>No hay órdenes huérfanas en esta sucursal</span>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</section>
+
+<!-- Reconciliation dialog -->
+<p-dialog
+  header="Reconciliar orden"
+  [visible]="showReconcileDialog()"
+  (visibleChange)="$event ? null : closeDialog()"
+  [modal]="true"
+  [closable]="!isReconciling()"
+  [draggable]="false"
+  [style]="{ width: '92vw', maxWidth: '480px' }"
+>
+  @if (selectedOrder(); as order) {
+    <div class="reconcile-dialog">
+
+      <!-- Order summary -->
+      <div class="reconcile-dialog__summary">
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Folio</span>
+          <strong>{{ order.folioNumber || '#' + order.orderNumber }}</strong>
+        </div>
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Total</span>
+          <strong class="reconcile-dialog__total">{{ order.totalCents | price }}</strong>
+        </div>
+        <div class="reconcile-dialog__summary-row">
+          <span class="reconcile-dialog__label">Estado</span>
+          <span
+            class="orphaned-orders__badge"
+            [ngClass]="order.isPaid ? 'orphaned-orders__badge--paid' : 'orphaned-orders__badge--unpaid'"
+          >
+            {{ order.isPaid ? 'Pagado' : 'No Pagado' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Session selector -->
+      <div class="reconcile-dialog__field">
+        <label class="reconcile-dialog__label">Sesión de caja destino</label>
+        <p-dropdown
+          [options]="sessionOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedSessionId()"
+          (ngModelChange)="selectedSessionId.set($event)"
+          placeholder="Selecciona una sesión..."
+          [filter]="true"
+          filterPlaceholder="Buscar..."
+          [loading]="isLoadingSessions()"
+          [disabled]="isLoadingSessions() || isReconciling()"
+          [appendTo]="'body'"
+          styleClass="reconcile-dialog__dropdown"
+        />
+        <small class="reconcile-dialog__hint">
+          Las sesiones abiertas suman al corte actual; las cerradas ajustan un corte histórico.
+        </small>
+      </div>
+
+      <!-- Optional note -->
+      <div class="reconcile-dialog__field">
+        <label class="reconcile-dialog__label">Nota (opcional)</label>
+        <textarea
+          pInputTextarea
+          rows="2"
+          placeholder="Motivo de la reconciliación..."
+          [ngModel]="reconciliationNote()"
+          (ngModelChange)="reconciliationNote.set($event)"
+          [disabled]="isReconciling()"
+          class="reconcile-dialog__textarea"
+        ></textarea>
+      </div>
+
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      class="reconcile-dialog__btn reconcile-dialog__btn--ghost"
+      [disabled]="isReconciling()"
+      (click)="closeDialog()"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="reconcile-dialog__btn reconcile-dialog__btn--primary"
+      [disabled]="!canConfirm()"
+      (click)="confirmReconciliation()"
+    >
+      @if (isReconciling()) {
+        <i class="pi pi-spin pi-spinner"></i>
+        Reconciliando...
+      } @else {
+        <i class="pi pi-check"></i>
+        Confirmar Reconciliación
+      }
+    </button>
+  </ng-template>
+</p-dialog>
