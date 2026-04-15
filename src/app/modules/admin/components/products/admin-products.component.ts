@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   AbstractControl,
   FormArray,
@@ -12,9 +11,8 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { Subscription } from 'rxjs';
 
-import { environment } from '../../../../../environments/environment';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -27,12 +25,14 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Category, DiscountPreset, InventoryItem, InventoryMovement, IVA_RATE_OPTIONS, Product, ProductConsumption, ProductExtra, ProductImage, ProductImportPreview, ProductImportResult, ProductModifierGroup, SAT_UNIT_OPTIONS } from '../../../../core/models';
 import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
-import { ProductService } from '../../../../core/services/product.service';
+import { ProductService, SaveProductDto } from '../../../../core/services/product.service';
+import { ProductCategoryService } from '../../../../core/services/product-category.service';
 import { DiscountService } from '../../../../core/services/discount.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { InventoryConsumptionService } from '../../../../core/services/inventory-consumption.service';
@@ -148,10 +148,11 @@ interface DiscountForm {
     PricePipe,
     RadioButtonModule,
     ConfirmDialogModule,
+    ToastModule,
   ],
   templateUrl: './admin-products.component.html',
   styleUrl: './admin-products.component.scss',
-  providers: [ConfirmationService],
+  providers: [ConfirmationService, MessageService],
 })
 export class AdminProductsComponent implements OnInit {
 
@@ -160,6 +161,8 @@ export class AdminProductsComponent implements OnInit {
   readonly products = signal<Product[]>([]);
   readonly categories = signal<Category[]>([]);
   readonly isLoading = signal(true);
+  readonly savingProduct = signal(false);
+  readonly savingCategory = signal(false);
 
   // ---- Product dialog ----
   dialogVisible = false;
@@ -266,7 +269,8 @@ export class AdminProductsComponent implements OnInit {
     private readonly productImportService: ProductImportService,
     private readonly inventoryService: InventoryService,
     private readonly consumptionService: InventoryConsumptionService,
-    private readonly http: HttpClient,
+    private readonly categoryService: ProductCategoryService,
+    private readonly messageService: MessageService,
     private readonly authService: AuthService,
     private readonly scannerService: ScannerService,
     readonly printerDestinationService: PrinterDestinationService,
@@ -391,8 +395,12 @@ export class AdminProductsComponent implements OnInit {
 
   //#region Product CRUD
 
-  /** Saves product locally in Dexie and syncs to API (best-effort) */
-  async saveProduct(): Promise<void> {
+  /**
+   * Saves the product with strict pessimistic UI: the backend call must
+   * succeed before the local cache is updated. On failure the dialog
+   * stays open so the user can retry or edit.
+   */
+  saveProduct(): void {
     if (this.productForm.invalid) {
       this.productForm.markAllAsTouched();
       return;
@@ -433,7 +441,7 @@ export class AdminProductsComponent implements OnInit {
       })
       .filter(g => g.name.length > 0 && g.extras.length > 0);
 
-    const payload = {
+    const dto: SaveProductDto = {
       name: raw.name.trim(),
       barcode: raw.barcode.trim() || undefined,
       description: raw.description.trim() || undefined,
@@ -451,31 +459,33 @@ export class AdminProductsComponent implements OnInit {
       printingDestinationId: raw.printingDestinationId,
     };
 
-    if (this.editingProduct) {
-      const updated: Product = { ...this.editingProduct, ...payload, images: this.productImages() };
-      await this.db.products.put(updated);
+    const isEdit = !!this.editingProduct;
+    const save$ = isEdit
+      ? this.productService.updateProduct(this.editingProduct!.id, dto, this.editingProduct!)
+      : this.productService.createProduct(dto);
 
-      // Sync to API (best-effort)
-      try {
-        await firstValueFrom(
-          this.http.put(`${environment.apiUrl}/products/${this.editingProduct.id}`, payload)
-        );
-      } catch (e) { console.warn('API sync failed for product update:', e); }
-    } else {
-      const maxId = Math.max(0, ...this.products().map(p => p.id));
-      const newProduct: Product = { id: maxId + 1, ...payload };
-      await this.db.products.add(newProduct);
-
-      // Sync to API (best-effort) — API may assign a real ID
-      try {
-        await firstValueFrom(
-          this.http.post(`${environment.apiUrl}/products`, { ...payload, branchId: this.authService.branchId })
-        );
-      } catch (e) { console.warn('API sync failed for product create:', e); }
-    }
-
-    this.dialogVisible = false;
-    await this.loadData();
+    this.savingProduct.set(true);
+    save$.subscribe({
+      next: async () => {
+        this.savingProduct.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: isEdit ? 'Producto actualizado' : 'Producto creado',
+          life: 3000,
+        });
+        this.dialogVisible = false;
+        await this.loadData();
+      },
+      error: (err) => {
+        this.savingProduct.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: this.errorSummary(err),
+          detail: 'No se pudo guardar el producto. Revisa los datos e inténtalo de nuevo.',
+          life: 5000,
+        });
+      },
+    });
   }
 
   /** Handles image file selection and uploads to the API */
@@ -550,32 +560,51 @@ export class AdminProductsComponent implements OnInit {
 
   //#region Category CRUD
 
-  async saveCategory(): Promise<void> {
+  /**
+   * Saves the category with strict pessimistic UI: the backend must confirm
+   * before the local cache is updated. Dialog stays open on failure.
+   */
+  saveCategory(): void {
     if (!this.catForm.name.trim()) return;
 
-    if (this.editingCategory) {
-      const updated: Category = {
-        ...this.editingCategory,
-        name: this.catForm.name.trim(),
-        icon: this.catForm.icon,
-        isActive: this.catForm.isActive,
-      };
-      await this.db.categories.put(updated);
-    } else {
-      const maxId   = Math.max(0, ...this.categories().map(c => c.id));
-      const maxSort = Math.max(0, ...this.categories().map(c => c.sortOrder));
-      const newCategory: Category = {
-        id:        maxId + 1,
-        name:      this.catForm.name.trim(),
-        icon:      this.catForm.icon,
-        isActive:  this.catForm.isActive,
-        sortOrder: maxSort + 1,
-      };
-      await this.db.categories.add(newCategory);
-    }
+    const isEdit = !!this.editingCategory;
+    const save$ = isEdit
+      ? this.categoryService.update(this.editingCategory!.id, {
+          name: this.catForm.name.trim(),
+          icon: this.catForm.icon,
+          sortOrder: this.editingCategory!.sortOrder,
+          isActive: this.catForm.isActive,
+        })
+      : this.categoryService.create({
+          name: this.catForm.name.trim(),
+          icon: this.catForm.icon,
+          sortOrder: Math.max(0, ...this.categories().map(c => c.sortOrder)) + 1,
+          isActive: this.catForm.isActive,
+        });
 
-    this.catDialogVisible = false;
-    await this.loadData();
+    this.savingCategory.set(true);
+    save$.subscribe({
+      next: async () => {
+        this.savingCategory.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: isEdit ? 'Categoría actualizada' : 'Categoría creada',
+          life: 3000,
+        });
+        this.catDialogVisible = false;
+        await this.loadData();
+      },
+      error: (err) => {
+        this.savingCategory.set(false);
+        this.catError.set('No se pudo guardar la categoría.');
+        this.messageService.add({
+          severity: 'error',
+          summary: this.errorSummary(err),
+          detail: 'No se pudo guardar la categoría. Revisa los datos e inténtalo de nuevo.',
+          life: 5000,
+        });
+      },
+    });
   }
 
   async toggleCategoryActive(cat: Category): Promise<void> {
@@ -829,18 +858,26 @@ export class AdminProductsComponent implements OnInit {
     this.productMovements.set([]);
     this.showMovementDialog.set(true);
     this.loadingMovements.set(true);
-    try {
-      const data = await firstValueFrom(
-        this.http.get<InventoryMovement[]>(
-          `${environment.apiUrl}/products/${product.id}/movements`
-        )
-      );
-      this.productMovements.set(data);
-    } catch {
-      this.productMovements.set([]);
-    } finally {
-      this.loadingMovements.set(false);
-    }
+    this.productService.getProductMovements(product.id).subscribe({
+      next: (data) => {
+        this.productMovements.set(data);
+        this.loadingMovements.set(false);
+      },
+      error: () => {
+        this.productMovements.set([]);
+        this.loadingMovements.set(false);
+      },
+    });
+  }
+
+  /** Maps an HTTP error status code to a user-friendly summary */
+  private errorSummary(err: unknown): string {
+    const status = (err as { status?: number })?.status;
+    if (status === 401 || status === 403) return 'Error de permisos';
+    if (status === 409) return 'Conflicto: el registro ya existe';
+    if (status === 422 || status === 400) return 'Datos inválidos';
+    if (!status) return 'Sin conexión con el servidor';
+    return 'Error al guardar';
   }
 
   /** Returns display label for movement type */

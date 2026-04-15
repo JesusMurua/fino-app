@@ -1,14 +1,33 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, firstValueFrom, forkJoin, of, throwError } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, of, switchMap, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
-import { Category, Product, ProductImage } from '../models';
+import { Category, InventoryMovement, Product, ProductExtra, ProductImage, ProductModifierGroup, ProductSize } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
 import { InventoryService } from './inventory.service';
+
+/** Payload for creating or updating a product (shared shape) */
+export interface SaveProductDto {
+  name: string;
+  barcode?: string;
+  description?: string;
+  priceCents: number;
+  categoryId: number;
+  isAvailable: boolean;
+  trackStock: boolean;
+  currentStock: number;
+  lowStockThreshold: number;
+  sizes: ProductSize[];
+  modifierGroups: ProductModifierGroup[];
+  satProductCode?: string;
+  satUnitCode?: string;
+  taxRate: number;
+  printingDestinationId: number | null;
+}
 
 /**
  * Manages the product catalog state using Angular signals.
@@ -99,7 +118,9 @@ export class ProductService {
   /**
    * Replaces the local product and category cache with fresh data.
    * Clears existing Dexie tables first so only the active branch's
-   * catalog remains after a revalidation or branch switch.
+   * catalog remains after a revalidation or branch switch. Safe now
+   * that all writes go through the pessimistic-UI flow — Dexie never
+   * holds unsynced records that a server refetch could wipe.
    * @param products Products fetched from API
    * @param categories Categories fetched from API
    */
@@ -185,6 +206,66 @@ export class ProductService {
   }
   //#endregion
 
+  //#region Product CRUD Methods
+
+  /**
+   * Creates a product on the backend and, on success, persists it locally
+   * using the server-assigned ID. Signals are refreshed for the POS view.
+   * @param dto Product fields submitted by the user
+   */
+  createProduct(dto: SaveProductDto): Observable<Product> {
+    const payload = { ...dto, branchId: this.authService.branchId };
+    return this.api.post<Product>('/products', payload).pipe(
+      switchMap(created => from(this.persistProduct({ ...dto, ...created } as Product))),
+    );
+  }
+
+  /**
+   * Updates a product on the backend and mirrors the change in Dexie.
+   * @param id Server-assigned product ID
+   * @param dto Updated product fields
+   * @param existing Current product (used to preserve fields not in the DTO, e.g. images)
+   */
+  updateProduct(id: number, dto: SaveProductDto, existing: Product): Observable<Product> {
+    return this.api.put<Product>(`/products/${id}`, dto).pipe(
+      switchMap(updated => from(this.persistProduct({ ...existing, ...dto, ...updated, id } as Product))),
+    );
+  }
+
+  /**
+   * Deletes a product on the backend and removes it from Dexie on success.
+   * @param id Server-assigned product ID
+   */
+  deleteProduct(id: number): Observable<void> {
+    return this.api.delete<void>(`/products/${id}`).pipe(
+      switchMap(() => from(this.removeProductLocal(id))),
+    );
+  }
+
+  /**
+   * Loads the stock movement history for a product.
+   * @param productId Product to query
+   */
+  getProductMovements(productId: number): Observable<InventoryMovement[]> {
+    return this.api.get<InventoryMovement[]>(`/products/${productId}/movements`);
+  }
+
+  /**
+   * Re-reads the catalog from Dexie and refreshes the reactive signals.
+   * Called by write operations after they sync to IndexedDB so that any
+   * consumer (POS grid, admin table) sees the change immediately.
+   */
+  async refreshSignalsFromDexie(): Promise<void> {
+    const [products, categories] = await Promise.all([
+      this.db.products.toArray(),
+      this.db.categories.orderBy('sortOrder').toArray(),
+    ]);
+    this._products.set(products);
+    this._categories.set(categories.filter(c => c.isActive));
+  }
+
+  //#endregion
+
   //#region Barcode Methods
 
   /**
@@ -240,6 +321,19 @@ export class ProductService {
   //#endregion
 
   //#region Private Helpers
+
+  /** Writes a server-confirmed product to Dexie and refreshes signals */
+  private async persistProduct(product: Product): Promise<Product> {
+    await this.db.products.put(product);
+    await this.refreshSignalsFromDexie();
+    return product;
+  }
+
+  /** Removes a product from Dexie and refreshes signals */
+  private async removeProductLocal(productId: number): Promise<void> {
+    await this.db.products.delete(productId);
+    await this.refreshSignalsFromDexie();
+  }
 
   /**
    * Marks products as unavailable (in-memory only) if their inventory
