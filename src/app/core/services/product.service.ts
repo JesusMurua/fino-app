@@ -228,7 +228,7 @@ export class ProductService {
    */
   updateProduct(id: number, dto: SaveProductDto, existing: Product): Observable<Product> {
     return this.api.put<Product>(`/products/${id}`, dto).pipe(
-      switchMap(updated => from(this.persistProduct({ ...existing, ...dto, ...updated, id } as Product))),
+      switchMap(updated => from(this.persistProduct({ ...existing, ...dto, ...updated, id: updated?.id ?? id } as Product))),
     );
   }
 

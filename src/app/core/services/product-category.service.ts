@@ -63,7 +63,7 @@ export class ProductCategoryService {
    */
   update(id: number, dto: UpdateCategoryDto): Observable<Category> {
     return this.api.put<Category>(`/categories/${id}`, dto).pipe(
-      switchMap(updated => from(this.persistAndRefresh({ id, ...dto, ...updated } as Category))),
+      switchMap(updated => from(this.persistAndRefresh({ ...dto, ...updated, id } as Category))),
     );
   }
 
