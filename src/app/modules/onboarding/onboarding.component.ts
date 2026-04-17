@@ -438,7 +438,16 @@ export class OnboardingComponent implements OnInit {
 
   /**
    * Starts Stripe checkout for the selected paid plan.
-   * Calls POST /api/subscription/checkout and redirects to Stripe.
+   *
+   * Reconciles local auth state BEFORE handing off to Stripe:
+   *   1. Calls `POST /business/complete-onboarding` so the backend
+   *      marks the tenant as onboarded and returns a fresh JWT.
+   *   2. Injects the new JWT via `handleLoginSuccess` so `authGuard`
+   *      sees `onboardingStatusId=3` when Stripe redirects back.
+   *   3. Only then opens the Stripe Checkout Session.
+   *
+   * Without step 1, the user returns from Stripe with a stale JWT and
+   * the `authGuard` bounces them back to /onboarding.
    */
   async startCheckout(): Promise<void> {
     const plan = this.selectedPlan();
@@ -451,11 +460,13 @@ export class OnboardingComponent implements OnInit {
     const origin = window.location.origin;
 
     try {
+      await this.finalizeOnboarding();
+
       const response = await firstValueFrom(
         this.http.post<{ url: string }>(`${environment.apiUrl}/subscription/checkout`, {
           priceId,
           successUrl: `${origin}/admin?checkout=success`,
-          cancelUrl: `${origin}/onboarding`,
+          cancelUrl:  `${origin}/admin?checkout=canceled`,
         }),
       );
       window.location.href = response.url;
@@ -478,15 +489,34 @@ export class OnboardingComponent implements OnInit {
   //#region Completion
 
   /**
-   * Closes the onboarding wizard with a single call to
-   * `POST /business/complete-onboarding` and lands the Owner on /admin.
-   *
-   * Hardware binding is handled by `terminalGuard` on operational routes,
-   * so the Back Office session finishes without persisting any DeviceConfig.
+   * Closes the onboarding wizard and lands the Owner on /admin.
+   * Used by the trial path (non-paying users); Stripe flow uses
+   * `finalizeOnboarding()` directly to avoid navigating before the
+   * external redirect.
    */
   async completeOnboarding(): Promise<void> {
     this.isSubmitting.set(true);
 
+    await this.finalizeOnboarding();
+
+    this.isSubmitting.set(false);
+
+    const roleId = this.authService.currentUser()?.roleId;
+    const dest = roleId
+      ? this.deviceRoutingService.getPostLoginRoute(roleId)
+      : '/admin';
+    this.router.navigate([dest]);
+  }
+
+  /**
+   * Persists the "onboarding complete" state without navigating.
+   *
+   * Calls `POST /business/complete-onboarding`, absorbs the fresh JWT
+   * via `handleLoginSuccess`, and writes the local fallback flag. The
+   * backend call is best-effort — if it fails, the localStorage flag
+   * still lets `isOnboardingComplete` return true on the next guard pass.
+   */
+  private async finalizeOnboarding(): Promise<void> {
     const branchId = this.authService.branchId;
 
     try {
@@ -498,14 +528,6 @@ export class OnboardingComponent implements OnInit {
 
     localStorage.setItem(`${ONBOARDING_KEY_PREFIX}${branchId}`, 'true');
     localStorage.removeItem(`pending-plan-${branchId}`);
-
-    this.isSubmitting.set(false);
-
-    const roleId = this.authService.currentUser()?.roleId;
-    const dest = roleId
-      ? this.deviceRoutingService.getPostLoginRoute(roleId)
-      : '/admin';
-    this.router.navigate([dest]);
   }
 
   //#endregion
