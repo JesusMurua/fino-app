@@ -1,32 +1,17 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { DeviceConfig, ZoneType } from '../../core/models';
-import { BusinessTypeId, UserRoleId } from '../../core/enums';
+import { DeviceConfig } from '../../core/models';
+import { BusinessTypeId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
 import { ConfigService } from '../../core/services/config.service';
-
-/** Draft zone to be created during onboarding */
-interface ZoneDraft {
-  name: string;
-  type: ZoneType;
-  checked: boolean;
-}
-
-/** Draft product to be created during onboarding */
-interface ProductDraft {
-  name: string;
-  priceCents: number;
-  categoryName: string;
-}
 
 const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 
@@ -51,7 +36,7 @@ const GIRO_INFO_MAP: Record<BusinessTypeId, GiroInfo> = {
 };
 
 /**
- * Main giro options displayed in step 1 grid when there is no JWT pre-selection.
+ * Main giro options displayed in step 2 grid when there is no JWT pre-selection.
  * Strictly the 4 macro categories defined in `.claude/business-rules-matrix.md`.
  */
 const GIRO_OPTIONS: { value: BusinessTypeId; icon: string; label: string; description: string }[] = [
@@ -76,37 +61,19 @@ const RETAIL_SUB_OPTIONS: { value: BusinessTypeId; icon: string; label: string }
   { value: BusinessTypeId.Retail,     icon: '🏪', label: 'Otra tienda' },
 ];
 
-/** Device mode options */
-const MODE_OPTIONS: { value: string; icon: string; label: string; description: string }[] = [
-  { value: 'cashier', icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro' },
-  { value: 'tables',  icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros' },
-  { value: 'kitchen', icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS' },
-  { value: 'kiosk',   icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes' },
-];
-
-/** Zone suggestions per giro */
-const ZONE_SUGGESTIONS: Record<number, ZoneDraft[]> = {
-  [BusinessTypeId.Restaurant]: [
-    { name: 'Salón', type: ZoneType.Salon, checked: true },
-    { name: 'Terraza', type: ZoneType.Other, checked: true },
-  ],
-  [BusinessTypeId.Bar]: [
-    { name: 'Salón', type: ZoneType.Salon, checked: true },
-    { name: 'Barra', type: ZoneType.BarSeats, checked: true },
-    { name: 'Terraza', type: ZoneType.Other, checked: false },
-  ],
-  [BusinessTypeId.Cafe]: [
-    { name: 'Salón', type: ZoneType.Salon, checked: true },
-    { name: 'Terraza', type: ZoneType.Other, checked: false },
-  ],
-};
-
 // ---------------------------------------------------------------------------
 // Pricing — real Stripe price IDs
 // ---------------------------------------------------------------------------
 
 type PricingGroup = 'restaurant' | 'standard' | 'general';
 type BillingCycle = 'monthly' | 'annual';
+type PlanSlug = 'free' | 'basic' | 'pro' | 'enterprise';
+
+/** All plan slugs shown in the grid — rendered in this order */
+const PLAN_ORDER: PlanSlug[] = ['free', 'basic', 'pro', 'enterprise'];
+
+/** Plans that require a Stripe checkout (Free routes through the trial action) */
+const PAID_PLANS: PlanSlug[] = ['basic', 'pro', 'enterprise'];
 
 /** Maps businessType → pricing group (Stripe pricing key, unrelated to BusinessTypeId names) */
 const PRICING_GROUP_MAP: Record<BusinessTypeId, PricingGroup> = {
@@ -161,30 +128,33 @@ const DISPLAY_PRICES: Record<string, Record<PricingGroup, Record<BillingCycle, n
 };
 
 /** Plan display names in Spanish */
-const PLAN_NAMES: Record<string, string> = {
-  basic: 'Básico',
-  pro: 'Pro',
+const PLAN_NAMES: Record<PlanSlug, string> = {
+  free:       'Gratis',
+  basic:      'Básico',
+  pro:        'Pro',
   enterprise: 'Enterprise',
 };
 
-/** Which device modes are relevant per giro */
-const MODES_BY_GIRO: Record<BusinessTypeId, string[]> = {
-  [BusinessTypeId.Restaurant]: ['cashier', 'tables', 'kitchen', 'kiosk'],
-  [BusinessTypeId.Bar]:        ['cashier', 'tables', 'kitchen', 'kiosk'],
-  [BusinessTypeId.Cafe]:       ['cashier', 'kitchen', 'kiosk'],
-  [BusinessTypeId.Taqueria]:   ['cashier', 'kiosk'],
-  [BusinessTypeId.Retail]:     ['cashier'],
-  [BusinessTypeId.Abarrotes]:  ['cashier'],
-  [BusinessTypeId.Ferreteria]: ['cashier'],
-  [BusinessTypeId.Papeleria]:  ['cashier'],
-  [BusinessTypeId.Farmacia]:   ['cashier'],
-  [BusinessTypeId.Servicios]:  ['cashier'],
+/** Short tagline shown under each plan's header */
+const PLAN_TAGLINES: Record<PlanSlug, string> = {
+  free:       'Comienza sin tarjeta',
+  basic:      'Para negocios que arrancan',
+  pro:        'La opción recomendada',
+  enterprise: 'Para operaciones de alto volumen',
+};
+
+/** Feature bullets surfaced in each plan card */
+const PLAN_FEATURES: Record<PlanSlug, string[]> = {
+  free:       ['1 sucursal', 'Ventas básicas', 'Reportes simples'],
+  basic:      ['1 sucursal', 'Catálogo ilimitado', 'Reportes diarios'],
+  pro:        ['Multi-sucursal', 'Inventario avanzado', 'Soporte prioritario'],
+  enterprise: ['Sucursales ilimitadas', 'API y roles avanzados', 'Gerente de cuenta'],
 };
 
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, InputNumberModule, InputTextModule],
+  imports: [FormsModule, InputTextModule],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.scss',
 })
@@ -192,7 +162,6 @@ export class OnboardingComponent implements OnInit {
 
   //#region Properties
 
-  private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly businessService = inject(BusinessService);
@@ -200,29 +169,26 @@ export class OnboardingComponent implements OnInit {
   private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly router = inject(Router);
 
+  /** Enterprise handoff wizard is fixed at 3 steps: Identity → Business → Plan */
+  readonly totalSteps = 3;
+
   readonly currentStep = signal(1);
   readonly isSubmitting = signal(false);
-
-  /** True when the current user is an Owner or Manager (cloud-only role) */
-  readonly isOwnerOrManager = computed(() => {
-    const roleId = this.authService.currentUser()?.roleId;
-    return roleId === UserRoleId.Owner || roleId === UserRoleId.Manager;
-  });
-
-  /** Owners skip step 4 (device mode) — it's auto-configured as 'admin' */
-  readonly totalSteps = computed(() => this.isOwnerOrManager() ? 3 : 4);
 
   readonly giroOptions = GIRO_OPTIONS;
   readonly retailSubOptions = RETAIL_SUB_OPTIONS;
 
-  // Step 1 — Giro (multi-select)
+  // Step 1 — Identity
+  /** Display name of the authenticated owner (from register handshake) */
+  readonly ownerName = computed(() => this.authService.currentUser()?.name ?? '');
+
+  // Step 2 — Giro (multi-select)
   readonly selectedGiros = signal<BusinessTypeId[]>([]);
   readonly customGiroText = signal('');
 
   /**
-   * Primary giro (first selected) — used for pricing, modes, and zone suggestions.
-   * Null until the user picks at least one giro. Callers that require a giro
-   * must guard against null; there is no default fallback.
+   * Primary giro (first selected) — drives pricing group.
+   * Null until the user picks at least one giro.
    */
   readonly primaryGiro = computed<BusinessTypeId | null>(() => this.selectedGiros()[0] ?? null);
 
@@ -251,74 +217,60 @@ export class OnboardingComponent implements OnInit {
     return GIRO_INFO_MAP[giro] ?? null;
   });
 
-  // Step 2 — Zones or Folio
-  zones: ZoneDraft[] = [];
-  newZoneName = '';
-  folioPrefix = '';
-  /** True if any selected giro supports zones (Restaurant, Bar, Cafe) */
-  readonly isZoneStep = computed(() => {
-    const zoneGiros: BusinessTypeId[] = [BusinessTypeId.Restaurant, BusinessTypeId.Bar, BusinessTypeId.Cafe];
-    return this.selectedGiros().some(g => zoneGiros.includes(g));
-  });
-
-  // Step 3 — First product
-  readonly productForm = this.fb.group({
-    name:         ['', Validators.required],
-    pricePesos:   [0, [Validators.required, Validators.min(1)]],
-    categoryName: [''],
-  });
-  readonly skipProduct = signal(false);
-
-  // Step 4 — Device
-  readonly deviceName = signal('');
-  readonly selectedMode = signal('cashier');
-  readonly pendingPlan = signal<string | null>(null);
-
-  /** Device modes: union of all selected giros' allowed modes */
-  readonly filteredModes = computed(() => {
-    const giros = this.selectedGiros();
-    const allowedSet = new Set<string>();
-    for (const g of giros) {
-      for (const m of MODES_BY_GIRO[g]) allowedSet.add(m);
-    }
-    if (allowedSet.size === 0) allowedSet.add('cashier');
-    return MODE_OPTIONS.filter(m => allowedSet.has(m.value));
-  });
-
-  // Step 4 — Plan activation
+  // Step 3 — Plan selection + Stripe checkout
+  readonly selectedPlan = signal<PlanSlug | null>(null);
   readonly billingCycle = signal<BillingCycle>('monthly');
   readonly checkoutLoading = signal(false);
   readonly checkoutError = signal('');
 
   /**
    * Pricing group derived from selected business type.
-   * Defaults to 'standard' when no giro is picked yet — this keeps the
-   * price row rendering during the wizard; once the user selects a giro
-   * the real group takes over.
+   * Defaults to 'standard' when no giro is picked yet — once the user
+   * advances past Step 2 this will always reflect a real group.
    */
   readonly pricingGroup = computed<PricingGroup>(() => {
     const giro = this.primaryGiro();
     return giro !== null ? PRICING_GROUP_MAP[giro] : 'standard';
   });
 
-  /** Display name for the pending plan */
-  readonly pendingPlanName = computed(() =>
-    PLAN_NAMES[this.pendingPlan() ?? ''] ?? ''
-  );
-
-  /** Current display price in centavos based on plan, group, and cycle */
-  readonly displayPriceCents = computed(() => {
-    const plan = this.pendingPlan();
-    if (!plan || !DISPLAY_PRICES[plan]) return 0;
-    return DISPLAY_PRICES[plan][this.pricingGroup()][this.billingCycle()];
+  /** Plan slugs available for the current pricing group, in display order */
+  readonly availablePlans = computed<PlanSlug[]>(() => {
+    const group = this.pricingGroup();
+    return PLAN_ORDER.filter(slug => {
+      // Free is always available and short-circuits Stripe
+      if (slug === 'free') return true;
+      return Boolean(STRIPE_PRICE_IDS[slug]?.[group]);
+    });
   });
 
-  /** Formatted price string for display */
-  readonly displayPrice = computed(() => {
-    const cents = this.displayPriceCents();
-    if (!cents) return '';
+  /** Highest-tier plan currently available (fallback when pendingPlan is missing) */
+  readonly defaultPlan = computed<PlanSlug>(() => {
+    const available = this.availablePlans();
+    for (let i = PLAN_ORDER.length - 1; i >= 0; i--) {
+      if (available.includes(PLAN_ORDER[i])) return PLAN_ORDER[i];
+    }
+    return 'free';
+  });
+
+  /** Cards rendered in the plan grid with computed copy + price */
+  readonly planCards = computed(() => {
+    const group = this.pricingGroup();
+    const cycle = this.billingCycle();
+    return this.availablePlans().map(slug => ({
+      slug,
+      name: PLAN_NAMES[slug],
+      tagline: PLAN_TAGLINES[slug],
+      features: PLAN_FEATURES[slug],
+      priceCents: slug === 'free' ? 0 : (DISPLAY_PRICES[slug]?.[group]?.[cycle] ?? 0),
+      isFree: slug === 'free',
+    }));
+  });
+
+  /** Formatted price for a card's centavo amount (empty when free) */
+  formatPrice(cents: number): string {
+    if (!cents) return 'Gratis';
     return '$' + (cents / 100).toLocaleString('es-MX', { minimumFractionDigits: 0 });
-  });
+  }
 
   /** Billing cycle label for display */
   readonly cycleLabel = computed(() =>
@@ -327,24 +279,52 @@ export class OnboardingComponent implements OnInit {
 
   /** Progress percentage */
   readonly progress = computed(() =>
-    Math.round((this.currentStep() / this.totalSteps()) * 100),
+    Math.round((this.currentStep() / this.totalSteps) * 100),
   );
 
-  /** Folio preview for non-zone giros */
-  folioPreview(): string {
-    const prefix = this.folioPrefix.trim().toUpperCase();
-    return prefix ? `${prefix}-0001` : '0001';
-  }
+  /** Whether the primary CTA should fire Stripe checkout (vs. trial completion) */
+  readonly isCheckoutPlan = computed(() =>
+    PAID_PLANS.includes(this.selectedPlan() as PlanSlug),
+  );
+
+  /** CTA label changes between Stripe and trial flows */
+  readonly ctaLabel = computed(() =>
+    this.isCheckoutPlan() ? 'Activar plan →' : 'Continuar con trial gratis',
+  );
 
   //#endregion
 
-  //#region Lifecycle
+  //#region Constructor & Lifecycle
+
+  constructor() {
+    // Reset plan selection whenever the pool of available plans changes
+    // (e.g. when giro changes in Step 2). If the current pick is still
+    // valid we keep it; otherwise fall back to the pendingPlan or the
+    // highest-tier plan available for the new group.
+    effect(() => {
+      const available = this.availablePlans();
+      const current = this.selectedPlan();
+      if (current && available.includes(current)) return;
+      const pending = this.readPendingPlan();
+      if (pending && available.includes(pending)) {
+        this.selectedPlan.set(pending);
+        return;
+      }
+      this.selectedPlan.set(this.defaultPlan());
+    }, { allowSignalWrites: true });
+  }
 
   ngOnInit(): void {
+    // Redirect if not authenticated — guard contract, but keep as safety net
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
     // Restore step from user profile (survives page refresh)
     const user = this.authService.currentUser();
     const savedStep = user?.currentOnboardingStep;
-    if (savedStep && savedStep > 1 && savedStep <= this.totalSteps()) {
+    if (savedStep && savedStep > 1 && savedStep <= this.totalSteps) {
       this.currentStep.set(savedStep);
     }
 
@@ -358,20 +338,6 @@ export class OnboardingComponent implements OnInit {
         this.selectedGiros.set([jwtGiro]);
       }
     }
-
-    // Init zone suggestions
-    this.refreshZoneSuggestions();
-
-    // Check for pending plan from registration
-    const branchId = this.authService.branchId;
-    this.pendingPlan.set(
-      localStorage.getItem(`pending-plan-${branchId}`),
-    );
-
-    // Redirect if not authenticated
-    if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login']);
-    }
   }
 
   //#endregion
@@ -380,13 +346,8 @@ export class OnboardingComponent implements OnInit {
 
   /** Advances to the next step */
   nextStep(): void {
-    if (this.currentStep() < this.totalSteps()) {
-      // When leaving step 1, refresh zone suggestions for new giro
-      if (this.currentStep() === 1) {
-        this.refreshZoneSuggestions();
-      }
+    if (this.currentStep() < this.totalSteps) {
       this.currentStep.update(s => s + 1);
-      // Sync to backend — best-effort, never blocks UI
       this.businessService.syncOnboardingStep(2, this.currentStep())
         .subscribe({ error: () => {} });
     }
@@ -396,7 +357,6 @@ export class OnboardingComponent implements OnInit {
   prevStep(): void {
     if (this.currentStep() > 1) {
       this.currentStep.update(s => s - 1);
-      // Sync to backend — best-effort, never blocks UI
       this.businessService.syncOnboardingStep(2, this.currentStep())
         .subscribe({ error: () => {} });
     } else {
@@ -404,36 +364,24 @@ export class OnboardingComponent implements OnInit {
     }
   }
 
-  /** Skips step 3 (product). Completes onboarding when already on the last step. */
-  skipStep(): void {
-    this.skipProduct.set(true);
-    if (this.currentStep() >= this.totalSteps()) {
-      this.completeOnboarding();
-    } else {
-      this.nextStep();
-    }
-  }
-
   /** Whether the current step has valid data to proceed */
   canProceed(): boolean {
     switch (this.currentStep()) {
-      case 1: {
+      case 1: return true; // Identity is read-only confirmation
+      case 2: {
         const giros = this.selectedGiros();
         if (giros.length === 0) return false;
-        // When "Otra tienda" (Retail) is selected, require a custom description
         if (giros.includes(BusinessTypeId.Retail) && !this.customGiroText().trim()) return false;
         return true;
       }
-      case 2: return true; // zones/folio are optional
-      case 3: return this.skipProduct() || this.productForm.valid;
-      case 4: return true;
+      case 3: return this.selectedPlan() !== null;
       default: return false;
     }
   }
 
   //#endregion
 
-  //#region Step 1 — Giro
+  //#region Step 2 — Giro
 
   /** Whether a giro is currently selected (used in template bindings) */
   hasGiro(giro: BusinessTypeId | number): boolean {
@@ -466,59 +414,37 @@ export class OnboardingComponent implements OnInit {
 
   //#endregion
 
-  //#region Step 2 — Zones
-
-  /** Toggles a zone draft on/off */
-  toggleZone(index: number): void {
-    this.zones[index].checked = !this.zones[index].checked;
-  }
-
-  /** Adds a custom zone */
-  addCustomZone(): void {
-    if (!this.newZoneName.trim()) return;
-    this.zones.push({
-      name: this.newZoneName.trim(),
-      type: ZoneType.Other,
-      checked: true,
-    });
-    this.newZoneName = '';
-  }
-
-  /** Refreshes zone suggestions — unions suggestions for all selected giros, deduped by name */
-  private refreshZoneSuggestions(): void {
-    const seen = new Set<string>();
-    const merged: ZoneDraft[] = [];
-    for (const giro of this.selectedGiros()) {
-      for (const z of ZONE_SUGGESTIONS[giro] ?? []) {
-        if (!seen.has(z.name)) {
-          seen.add(z.name);
-          merged.push({ ...z });
-        }
-      }
-    }
-    this.zones = merged;
-  }
-
-  //#endregion
-
-  //#region Step 4 — Device
-
-  /** Selects a device mode */
-  selectMode(mode: string): void {
-    this.selectedMode.set(mode);
-  }
+  //#region Step 3 — Plan + Checkout
 
   /** Toggles billing cycle between monthly and annual */
   toggleBillingCycle(cycle: BillingCycle): void {
     this.billingCycle.set(cycle);
   }
 
+  /** Marks a card as selected */
+  selectPlan(slug: PlanSlug): void {
+    this.selectedPlan.set(slug);
+    this.checkoutError.set('');
+  }
+
   /**
-   * Starts Stripe checkout for the pending plan.
+   * Primary CTA handler — dispatches to Stripe checkout for paid plans
+   * or completes onboarding with the trial intact for Free.
+   */
+  async activatePlan(): Promise<void> {
+    if (this.isCheckoutPlan()) {
+      await this.startCheckout();
+    } else {
+      await this.continueWithTrial();
+    }
+  }
+
+  /**
+   * Starts Stripe checkout for the selected paid plan.
    * Calls POST /api/subscription/checkout and redirects to Stripe.
    */
   async startCheckout(): Promise<void> {
-    const plan = this.pendingPlan();
+    const plan = this.selectedPlan();
     if (!plan || !STRIPE_PRICE_IDS[plan]) return;
 
     this.checkoutLoading.set(true);
@@ -543,13 +469,10 @@ export class OnboardingComponent implements OnInit {
   }
 
   /**
-   * Skips plan activation and continues with free trial.
-   * Clears pendingPlan and completes onboarding normally.
+   * Completes onboarding on the trial — no Stripe call.
+   * Backend already provisioned the trialEndsAt window at registration time.
    */
   async continueWithTrial(): Promise<void> {
-    const branchId = this.authService.branchId;
-    localStorage.removeItem(`pending-plan-${branchId}`);
-    this.pendingPlan.set(null);
     await this.completeOnboarding();
   }
 
@@ -558,105 +481,35 @@ export class OnboardingComponent implements OnInit {
   //#region Completion
 
   /**
-   * Completes the onboarding wizard.
-   * All API calls are best-effort — failures don't block navigation.
+   * Closes the onboarding wizard with a single call to
+   * `POST /business/complete-onboarding` and lands the Owner on /admin.
+   *
+   * A silent 'admin' device config is persisted so the downstream
+   * auth/setup/provisioning guards (which require `isDeviceConfigured()`)
+   * don't bounce the user to /setup right after finishing.
    */
   async completeOnboarding(): Promise<void> {
     this.isSubmitting.set(true);
 
     const branchId = this.authService.branchId;
 
-    // 1. Update business types (multi-giro)
-    try {
-      await firstValueFrom(
-        this.businessService.updateBusinessTypes(
-          this.selectedGiros(),
-          this.customGiroText().trim() || null,
-        ),
-      );
-    } catch { /* best-effort */ }
-
-    // 2a. Create zones (if zone step)
-    if (this.isZoneStep()) {
-      const checkedZones = this.zones.filter(z => z.checked);
-      await Promise.allSettled(
-        checkedZones.map((z, i) =>
-          firstValueFrom(
-            this.http.post(`${environment.apiUrl}/zone`, {
-              branchId,
-              name: z.name,
-              type: z.type,
-              sortOrder: i,
-              isActive: true,
-            }),
-          ),
-        ),
-      );
-    }
-
-    // 2b. Save folio prefix (if folio step)
-    if (!this.isZoneStep() && this.folioPrefix.trim()) {
-      try {
-        await firstValueFrom(
-          this.http.post(`${environment.apiUrl}/branch/folio-config`, {
-            folioPrefix: this.folioPrefix.trim().toUpperCase(),
-          }),
-        );
-      } catch { /* best-effort */ }
-    }
-
-    // 3. Create first product (if not skipped)
-    if (!this.skipProduct() && this.productForm.valid) {
-      try {
-        const { name, pricePesos, categoryName } = this.productForm.getRawValue();
-        let categoryId: number | null = null;
-
-        if (categoryName?.trim()) {
-          const cat = await firstValueFrom(
-            this.http.post<{ id: number }>(`${environment.apiUrl}/categories`, {
-              name: categoryName.trim(),
-              branchId,
-            }),
-          );
-          categoryId = cat.id;
-        }
-
-        await firstValueFrom(
-          this.http.post(`${environment.apiUrl}/products`, {
-            name: name?.trim(),
-            priceCents: Math.round((pricePesos ?? 0) * 100),
-            categoryId,
-            branchId,
-            isAvailable: true,
-          }),
-        );
-      } catch { /* best-effort */ }
-    }
-
-    // 4. Save complete device config (so isDeviceConfigured() passes)
+    // 1. Save silent 'admin' device config to satisfy downstream guards
     const user = this.authService.currentUser();
     const activeBranchId = this.authService.activeBranchId();
     const branchEntry = user?.branches?.find(b => b.id === activeBranchId);
     const branchDisplayName = branchEntry?.name ?? '';
-
-    // Owners get a silent 'admin' config — they never select a device mode
-    const mode: DeviceConfig['mode'] = this.isOwnerOrManager()
-      ? 'admin'
-      : this.selectedMode() as DeviceConfig['mode'];
-    const defaultName = this.isOwnerOrManager() ? 'Admin' : 'POS Principal';
-
     const deviceConfig: DeviceConfig = {
       businessId:   user?.businessId ?? 0,
       branchId:     activeBranchId,
       businessName: branchDisplayName,
       branchName:   branchDisplayName,
-      mode,
-      deviceName:   this.deviceName().trim() || defaultName,
+      mode:         'admin',
+      deviceName:   'Admin',
       configuredAt: new Date().toISOString(),
     };
     this.configService.saveDeviceConfig(deviceConfig);
 
-    // 5. Mark onboarding complete via API → get new JWT
+    // 2. Mark onboarding complete via API → get new JWT
     try {
       const response = await firstValueFrom(
         this.businessService.completeOnboarding(),
@@ -664,23 +517,30 @@ export class OnboardingComponent implements OnInit {
       this.authService.handleLoginSuccess(response);
     } catch { /* best-effort — localStorage fallback below */ }
 
-    // 6. LocalStorage fallback
+    // 3. LocalStorage fallback + cleanup
     localStorage.setItem(`${ONBOARDING_KEY_PREFIX}${branchId}`, 'true');
-
-    // Cleanup pending plan
     localStorage.removeItem(`pending-plan-${branchId}`);
 
     this.isSubmitting.set(false);
 
-    // 7. Delegate the post-onboarding landing to DeviceRoutingService so
-    //    the "who goes where" rule lives in a single place. Owners and
-    //    Managers always land on /admin; floor roles are resolved by
-    //    their role + current device mode.
+    // 4. Land the Owner on /admin (role-based routing lives in DeviceRoutingService)
     const roleId = this.authService.currentUser()?.roleId;
     const dest = roleId
       ? this.deviceRoutingService.getPostLoginRoute(roleId)
-      : '/pin';
+      : '/admin';
     this.router.navigate([dest]);
+  }
+
+  //#endregion
+
+  //#region Private helpers
+
+  /** Reads the plan slug persisted by the register handshake */
+  private readPendingPlan(): PlanSlug | null {
+    const branchId = this.authService.branchId;
+    const raw = localStorage.getItem(`pending-plan-${branchId}`);
+    if (!raw) return null;
+    return PLAN_ORDER.includes(raw as PlanSlug) ? (raw as PlanSlug) : null;
   }
 
   //#endregion
