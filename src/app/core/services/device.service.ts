@@ -96,7 +96,7 @@ export class DeviceService implements OnDestroy {
    * infrastructure JWT used by KDS / Kiosk devices.
    *
    * @param branchId Branch this device belongs to
-   * @param mode Operating mode (cashier, kitchen, tables, kiosk, admin)
+   * @param mode Operating mode (cashier, kitchen, tables, kiosk, mobile)
    * @param name Human-readable device name
    */
   async registerDevice(branchId: number, mode: string, name: string): Promise<DeviceRegisterResponse> {

@@ -76,9 +76,8 @@ export class IdleService implements OnDestroy {
    * triggering change detection every 30 seconds.
    *
    * Short-circuits when the device is in an infrastructure mode
-   * (`kitchen`, `kiosk`, `admin`) — those screens must never be
-   * auto-locked. No listeners are registered so the event loop
-   * is completely free.
+   * (`kitchen`, `kiosk`) — those screens must never be auto-locked.
+   * No listeners are registered so the event loop is completely free.
    */
   start(): void {
     if (this.isRunning) return;
