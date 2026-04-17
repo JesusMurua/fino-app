@@ -5,18 +5,36 @@
     <div class="onboarding-progress__bar" [style.width.%]="progress()"></div>
   </div>
   <div class="onboarding-step-counter">
-    Paso {{ currentStep() }} de {{ totalSteps() }}
+    Paso {{ currentStep() }} de {{ totalSteps }}
   </div>
 
   <!-- Step content -->
   <div class="onboarding-card">
 
     <!-- ================================================================ -->
-    <!-- STEP 1 — Giro del negocio                                        -->
+    <!-- STEP 1 — Identidad                                                -->
     <!-- ================================================================ -->
     @if (currentStep() === 1) {
+      <h1 class="onboarding-card__title">¡Bienvenido{{ ownerName() ? ', ' + ownerName() : '' }}!</h1>
+      <p class="onboarding-card__subtitle">
+        Tu cuenta está lista. En los próximos pasos configuramos tu negocio y activamos tu plan.
+      </p>
+
+      <div class="identity-card">
+        <i class="pi pi-user-check identity-card__icon"></i>
+        <div class="identity-card__copy">
+          <strong class="identity-card__name">{{ ownerName() || 'Propietario' }}</strong>
+          <span class="identity-card__role">Dueño de la cuenta</span>
+        </div>
+      </div>
+    }
+
+    <!-- ================================================================ -->
+    <!-- STEP 2 — Negocio (Giro)                                           -->
+    <!-- ================================================================ -->
+    @if (currentStep() === 2) {
       <h1 class="onboarding-card__title">¿Qué tipo de negocio tienes?</h1>
-      <p class="onboarding-card__subtitle">Esto personaliza tu experiencia</p>
+      <p class="onboarding-card__subtitle">Esto personaliza los planes y la experiencia</p>
 
       <!-- Case A: Retail group from JWT — badge + sub-options -->
       @if (isRetailGroup()) {
@@ -105,218 +123,86 @@
     }
 
     <!-- ================================================================ -->
-    <!-- STEP 2 — Zones or Folio                                           -->
-    <!-- ================================================================ -->
-    @if (currentStep() === 2) {
-      @if (isZoneStep()) {
-        <h1 class="onboarding-card__title">Configura las zonas de tu local</h1>
-        <p class="onboarding-card__subtitle">Puedes cambiarlas después en Mesas → Zonas</p>
-
-        <div class="zone-drafts">
-          @for (zone of zones; track zone.name; let i = $index) {
-            <button
-              type="button"
-              class="zone-chip"
-              [class.zone-chip--checked]="zone.checked"
-              (click)="toggleZone(i)"
-            >
-              @if (zone.checked) {
-                <i class="pi pi-check"></i>
-              } @else {
-                <i class="pi pi-plus"></i>
-              }
-              <span>{{ zone.name }}</span>
-            </button>
-          }
-        </div>
-
-        <div class="zone-add-row">
-          <input
-            type="text"
-            pInputText
-            [(ngModel)]="newZoneName"
-            placeholder="Agregar zona personalizada"
-            class="zone-add-row__input"
-            (keydown.enter)="addCustomZone()"
-          />
-          <button
-            type="button"
-            class="zone-add-row__btn"
-            [disabled]="!newZoneName.trim()"
-            (click)="addCustomZone()"
-          >
-            <i class="pi pi-plus"></i>
-          </button>
-        </div>
-      } @else {
-        <h1 class="onboarding-card__title">Configura tus folios de venta</h1>
-        <p class="onboarding-card__subtitle">El folio aparece en cada ticket y nota de venta</p>
-
-        <div class="folio-field">
-          <label class="folio-field__label" for="ob-prefix">Prefijo del folio</label>
-          <input
-            id="ob-prefix"
-            type="text"
-            pInputText
-            [(ngModel)]="folioPrefix"
-            [maxlength]="10"
-            placeholder="Ej. HMO, SUC1"
-            class="folio-field__input"
-            style="text-transform: uppercase"
-          />
-          <span class="folio-field__hint">
-            Vista previa: <strong>{{ folioPreview() }}</strong>
-          </span>
-          <span class="folio-field__hint">Puedes cambiarlo después en Configuración</span>
-        </div>
-      }
-    }
-
-    <!-- ================================================================ -->
-    <!-- STEP 3 — First product                                            -->
+    <!-- STEP 3 — Plan + Stripe Checkout                                   -->
     <!-- ================================================================ -->
     @if (currentStep() === 3) {
-      <h1 class="onboarding-card__title">Agrega tu primer producto</h1>
-      <p class="onboarding-card__subtitle">O sáltatelo y agrégalos después en Catálogo</p>
+      <h1 class="onboarding-card__title">Elige tu plan</h1>
+      <p class="onboarding-card__subtitle">
+        Puedes cambiarlo cuando quieras. Activa con tarjeta o arranca con trial.
+      </p>
 
-      <form [formGroup]="productForm" class="product-form">
-        <div class="product-form__field">
-          <label for="ob-prod-name">Nombre del producto</label>
-          <input
-            formControlName="name"
-            id="ob-prod-name"
-            type="text"
-            pInputText
-            placeholder="Ej. Tacos de canasta"
-          />
-        </div>
-
-        <div class="product-form__field">
-          <label for="ob-prod-price">Precio (MXN)</label>
-          <p-inputNumber
-            formControlName="pricePesos"
-            inputId="ob-prod-price"
-            mode="currency"
-            currency="MXN"
-            locale="es-MX"
-            [min]="0"
-            styleClass="product-form__number"
-          />
-        </div>
-
-        <div class="product-form__field">
-          <label for="ob-prod-cat">Categoría (opcional)</label>
-          <input
-            formControlName="categoryName"
-            id="ob-prod-cat"
-            type="text"
-            pInputText
-            placeholder="Ej. Antojitos, Bebidas"
-          />
-        </div>
-      </form>
-
-      <button type="button" class="skip-link" (click)="skipStep()">
-        Saltar este paso
-      </button>
-    }
-
-    <!-- ================================================================ -->
-    <!-- STEP 4 — Device mode                                              -->
-    <!-- ================================================================ -->
-    @if (currentStep() === 4) {
-      <h1 class="onboarding-card__title">¿Cómo usarás esta pantalla?</h1>
-      <p class="onboarding-card__subtitle">Puedes configurar otros dispositivos después</p>
-
-      <div class="device-name-field">
-        <label for="ob-device-name">Nombre del dispositivo</label>
-        <input
-          id="ob-device-name"
-          type="text"
-          pInputText
-          [ngModel]="deviceName()"
-          (ngModelChange)="deviceName.set($event)"
-          placeholder="Ej. Caja Principal, Tablet Mesero"
-        />
+      <!-- Billing cycle toggle -->
+      <div class="plan-card__toggle">
+        <button
+          type="button"
+          class="plan-card__toggle-btn"
+          [class.plan-card__toggle-btn--active]="billingCycle() === 'monthly'"
+          (click)="toggleBillingCycle('monthly')"
+        >
+          Mensual
+        </button>
+        <button
+          type="button"
+          class="plan-card__toggle-btn"
+          [class.plan-card__toggle-btn--active]="billingCycle() === 'annual'"
+          (click)="toggleBillingCycle('annual')"
+        >
+          Anual — 2 meses gratis
+        </button>
       </div>
 
-      <div class="mode-grid">
-        @for (mode of filteredModes(); track mode.value) {
+      <!-- Plan grid -->
+      <div class="plan-grid">
+        @for (card of planCards(); track card.slug) {
           <button
             type="button"
-            class="mode-card"
-            [class.mode-card--active]="selectedMode() === mode.value"
-            (click)="selectMode(mode.value)"
+            class="plan-card"
+            [class.plan-card--active]="selectedPlan() === card.slug"
+            (click)="selectPlan(card.slug)"
           >
-            @if (selectedMode() === mode.value) {
-              <i class="pi pi-check-circle mode-card__check"></i>
-            }
-            <span class="mode-card__icon">{{ mode.icon }}</span>
-            <span class="mode-card__label">{{ mode.label }}</span>
-            <span class="mode-card__desc">{{ mode.description }}</span>
+            <div class="plan-card__header">
+              @if (selectedPlan() === card.slug) {
+                <i class="pi pi-check-circle plan-card__star"></i>
+              } @else {
+                <i class="pi pi-star-fill plan-card__star"></i>
+              }
+              <span class="plan-card__name">{{ card.name }}</span>
+            </div>
+
+            <div class="plan-card__price">
+              <span class="plan-card__amount">{{ formatPrice(card.priceCents) }}</span>
+              @if (!card.isFree) {
+                <span class="plan-card__cycle">{{ cycleLabel() }}</span>
+              }
+            </div>
+
+            <p class="plan-card__tagline">{{ card.tagline }}</p>
+
+            <ul class="plan-card__features">
+              @for (feature of card.features; track feature) {
+                <li><i class="pi pi-check"></i> {{ feature }}</li>
+              }
+            </ul>
           </button>
         }
       </div>
 
-      @if (pendingPlan()) {
-        <div class="plan-card">
-          <div class="plan-card__header">
-            <i class="pi pi-star-fill plan-card__star"></i>
-            <span class="plan-card__name">Plan {{ pendingPlanName() }}</span>
-          </div>
-
-          <div class="plan-card__price">
-            <span class="plan-card__amount">{{ displayPrice() }}</span>
-            <span class="plan-card__cycle">{{ cycleLabel() }}</span>
-          </div>
-
-          <!-- Billing cycle toggle -->
-          <div class="plan-card__toggle">
-            <button
-              type="button"
-              class="plan-card__toggle-btn"
-              [class.plan-card__toggle-btn--active]="billingCycle() === 'monthly'"
-              (click)="toggleBillingCycle('monthly')"
-            >
-              Mensual
-            </button>
-            <button
-              type="button"
-              class="plan-card__toggle-btn"
-              [class.plan-card__toggle-btn--active]="billingCycle() === 'annual'"
-              (click)="toggleBillingCycle('annual')"
-            >
-              Anual — 2 meses gratis
-            </button>
-          </div>
-
-          @if (checkoutError()) {
-            <p class="plan-card__error">{{ checkoutError() }}</p>
-          }
-
-          <!-- Actions -->
-          <button
-            type="button"
-            class="plan-card__activate"
-            [disabled]="checkoutLoading()"
-            (click)="startCheckout()"
-          >
-            @if (checkoutLoading()) {
-              <i class="pi pi-spinner pi-spin"></i>
-            }
-            Activar ahora →
-          </button>
-
-          <button
-            type="button"
-            class="plan-card__skip"
-            [disabled]="checkoutLoading()"
-            (click)="continueWithTrial()"
-          >
-            Continuar con trial gratis
-          </button>
-        </div>
+      @if (checkoutError()) {
+        <p class="plan-card__error">{{ checkoutError() }}</p>
       }
+
+      <!-- Primary CTA: Stripe for paid plans, trial completion for Free -->
+      <button
+        type="button"
+        class="plan-card__activate"
+        [disabled]="checkoutLoading() || isSubmitting() || !selectedPlan()"
+        (click)="activatePlan()"
+      >
+        @if (checkoutLoading() || isSubmitting()) {
+          <i class="pi pi-spinner pi-spin"></i>
+        }
+        {{ ctaLabel() }}
+      </button>
     }
 
   </div>
@@ -328,7 +214,7 @@
       {{ currentStep() === 1 ? 'Salir' : 'Atrás' }}
     </button>
 
-    @if (currentStep() < totalSteps()) {
+    @if (currentStep() < totalSteps) {
       <button
         type="button"
         class="onboarding-nav__next"
@@ -337,19 +223,6 @@
       >
         Siguiente
         <i class="pi pi-arrow-right"></i>
-      </button>
-    } @else {
-      <button
-        type="button"
-        class="onboarding-nav__next"
-        [disabled]="isSubmitting()"
-        (click)="completeOnboarding()"
-      >
-        @if (isSubmitting()) {
-          <i class="pi pi-spinner pi-spin"></i>
-        }
-        Finalizar
-        <i class="pi pi-check"></i>
       </button>
     }
   </div>

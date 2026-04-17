@@ -4,15 +4,18 @@
  * copy — changes here never affect other devices.
  *
  * Operating modes:
- *   counter — Counter service with order number display (fondas, taquerías)
  *   cashier — Quick cashier mode, no table selection
  *   kiosk   — Self-service touch screen; customer places their own order
  *   tables  — Table management with table selection
- *   waiter  — Waiter mode with table assignment
  *   kitchen — Kitchen display mode
+ *   mobile  — Handheld used by floor staff (waiter on foot, host tablet)
+ *
+ * Back Office (Owner/Manager) is NOT a device mode — laptops that hit
+ * `/admin` never persist a DeviceConfig; `terminalGuard` bypasses the
+ * hardware check based on role, not on a synthetic mode value.
  */
 export interface DeviceConfig {
-  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen' | 'admin';
+  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen' | 'mobile';
   /** Human-readable name for this device, e.g. "Caja 1" or "Kiosko Entrada" */
   deviceName: string;
   /** Business this device belongs to (set during /setup) */

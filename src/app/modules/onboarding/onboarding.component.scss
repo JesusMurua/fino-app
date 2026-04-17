@@ -419,19 +419,76 @@
 }
 
 // -----------------------------------------------------------------------
-// Plan activation card (step 4)
+// Step 1 — Identity welcome card
 // -----------------------------------------------------------------------
-.plan-card {
+.identity-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: $space-4;
-  width: 100%;
-  padding: $space-5;
-  background: white;
+  padding: $space-4 $space-5;
+  background: #F0FDF4;
   border: 2px solid $color-primary;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba($color-primary, 0.12);
+  border-radius: 12px;
+  width: 100%;
+
+  &__icon {
+    font-size: 28px;
+    color: $color-primary;
+  }
+
+  &__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__role {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Step 3 — Plan grid + per-card selection
+// -----------------------------------------------------------------------
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-3;
+  width: 100%;
+}
+
+.plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-3;
+  width: 100%;
+  padding: $space-4;
+  background: white;
+  border: 2px solid #E5E7EB;
+  border-radius: 14px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+
+  &:hover:not(.plan-card--active) {
+    border-color: $color-primary;
+  }
+
+  &--active {
+    border-color: $color-primary;
+    background: #F0FDF4;
+    box-shadow: 0 4px 12px rgba($color-primary, 0.12);
+  }
 
   &__header {
     display: flex;
@@ -440,12 +497,12 @@
   }
 
   &__star {
-    font-size: 20px;
+    font-size: 18px;
     color: #D97706;
   }
 
   &__name {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -457,14 +514,43 @@
   }
 
   &__amount {
-    font-size: 32px;
+    font-size: 26px;
     font-weight: 800;
     color: $color-text-title;
   }
 
   &__cycle {
-    font-size: $font-size-base;
+    font-size: 13px;
     color: $color-text-sub;
+  }
+
+  &__tagline {
+    margin: 0;
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+
+  &__features {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: $color-text-title;
+
+      i {
+        font-size: 10px;
+        color: $color-primary;
+      }
+    }
   }
 
   &__toggle {

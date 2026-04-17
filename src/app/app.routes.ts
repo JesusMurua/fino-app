@@ -3,9 +3,10 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { deviceAuthGuard } from './core/guards/device-auth.guard';
 import { featureGuard } from './core/guards/feature.guard';
-import { onboardingGuard } from './core/guards/onboarding.guard';
 import { provisioningGuard } from './core/guards/provisioning.guard';
+import { roleGuard } from './core/guards/role.guard';
 import { setupGuard } from './core/guards/setup.guard';
+import { terminalGuard } from './core/guards/terminal.guard';
 import { FeatureKey, UserRoleId } from './core/enums';
 
 export const appRoutes: Routes = [
@@ -15,7 +16,7 @@ export const appRoutes: Routes = [
 		pathMatch: 'full',
 	},
 
-	// --- Public routes (no guards or setupGuard only) ---
+	// --- Public routes ---
 	{
 		path: 'register',
 		loadComponent: () =>
@@ -38,7 +39,6 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'login',
-		canActivate: [setupGuard],
 		loadComponent: () =>
 			import('./modules/login/login.component').then((m) => m.LoginComponent),
 	},
@@ -48,6 +48,8 @@ export const appRoutes: Routes = [
 		loadComponent: () =>
 			import('./modules/pin/pin.component').then((m) => m.PinComponent),
 	},
+
+	// --- Machine-only routes (device token, no human session) ---
 	{
 		path: 'kiosk',
 		canActivate: [deviceAuthGuard, featureGuard],
@@ -55,42 +57,43 @@ export const appRoutes: Routes = [
 		loadChildren: () =>
 			import('./modules/kiosk/kiosk.routes').then((m) => m.kioskRoutes),
 	},
-
-	// --- Protected routes (authGuard) ---
-	{
-		path: 'pos',
-		canActivate: [authGuard],
-		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
-		loadChildren: () =>
-			import('./modules/pos/pos.routes').then((m) => m.posRoutes),
-	},
-	{
-		path: 'admin',
-		canActivate: [authGuard, onboardingGuard],
-		data: { roles: [UserRoleId.Owner, UserRoleId.Manager] },
-		loadChildren: () =>
-			import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
-	},
 	{
 		path: 'kitchen',
 		canActivate: [deviceAuthGuard, featureGuard],
 		data: {
-			roles: [UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager],
 			requiredFeature: [FeatureKey.KdsBasic, FeatureKey.RealtimeKds],
 		},
 		loadChildren: () =>
 			import('./modules/kitchen/kitchen.routes').then((m) => m.kitchenRoutes),
 	},
+
+	// --- Back Office (identity + permissions, no hardware) ---
+	{
+		path: 'admin',
+		canActivate: [authGuard, roleGuard],
+		data: { roles: [UserRoleId.Owner, UserRoleId.Manager] },
+		loadChildren: () =>
+			import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
+	},
+
+	// --- Operational routes (identity + permissions + terminal) ---
+	{
+		path: 'pos',
+		canActivate: [authGuard, roleGuard, terminalGuard],
+		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
+		loadChildren: () =>
+			import('./modules/pos/pos.routes').then((m) => m.posRoutes),
+	},
 	{
 		path: 'orders',
-		canActivate: [authGuard],
+		canActivate: [authGuard, roleGuard, terminalGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/orders/orders.routes').then((m) => m.ordersRoutes),
 	},
 	{
 		path: 'tables',
-		canActivate: [authGuard],
+		canActivate: [authGuard, roleGuard, terminalGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter, UserRoleId.Host] },
 		loadComponent: () =>
 			import('./modules/tables/tables.component').then(
@@ -98,11 +101,9 @@ export const appRoutes: Routes = [
 			),
 	},
 
-	// --- Catch-all (must be LAST) ---
+	// --- Catch-all: redirect to /pin so unknown URLs resolve to the terminal entry ---
 	{
 		path: '**',
-		canActivate: [setupGuard],
-		loadComponent: () =>
-			import('./modules/pin/pin.component').then((m) => m.PinComponent),
+		redirectTo: 'pin',
 	},
 ];

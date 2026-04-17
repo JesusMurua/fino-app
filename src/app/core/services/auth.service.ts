@@ -119,9 +119,10 @@ export class AuthService {
   readonly isExpired = computed(() => {
     // Free plans never expire — they just have limited features
     if (this.planTypeId() === PlanTypeId.Free) return false;
-    // Paid plans without a trial end date are treated as expired (missing data)
+    // Without a trial end date, the account is still active (backend guarantees
+    // the field is populated once the subscription or trial is provisioned).
     const trial = this.trialEndsAt();
-    if (!trial) return true;
+    if (!trial) return false;
     return new Date(trial) < new Date();
   });
 

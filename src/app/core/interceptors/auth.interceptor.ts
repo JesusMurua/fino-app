@@ -97,7 +97,7 @@ export const authInterceptor: HttpInterceptorFn = (
  *     Under NO circumstance does an infrastructure device borrow a
  *     human user's token.
  *
- *   - For every other mode (cashier / tables / admin) we keep the
+ *   - For every other mode (cashier / tables / mobile) we keep the
  *     existing user-token flow, skipping the `offline-session-*`
  *     marker that must never hit the API.
  */
