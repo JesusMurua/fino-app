@@ -12,17 +12,16 @@ const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 /** How often to check idle state (every 30 seconds) */
 const CHECK_INTERVAL_MS = 30_000;
 
-/** Routes where idle lock should NOT apply */
-const EXEMPT_ROUTES = ['/pin', '/login', '/register', '/setup', '/onboarding', '/kiosk'];
+/** Routes where idle lock should NOT apply — includes /admin so Back Office sessions on a laptop don't get kicked to /pin */
+const EXEMPT_ROUTES = ['/pin', '/login', '/register', '/setup', '/onboarding', '/kiosk', '/admin'];
 
 /**
- * Device modes that run 24/7 as infrastructure (kitchen / kiosk) or as
- * back office on a personal laptop (admin). None of them should ever be
- * auto-locked by the global idle timer — the KDS must keep showing
- * orders, the Kiosk must stay on the welcome screen, and an Owner
- * reading reports at night should not be kicked back to the PIN pad.
+ * Device modes that run 24/7 as infrastructure (kitchen / kiosk). Neither
+ * should be auto-locked by the global idle timer — the KDS must keep
+ * showing orders and the Kiosk must stay on the welcome screen.
+ * Back Office sessions are exempted via EXEMPT_ROUTES, not by a mode.
  */
-const INFRA_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk', 'admin'];
+const INFRA_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk'];
 
 /**
  * Global idle-detection service for the POS application.

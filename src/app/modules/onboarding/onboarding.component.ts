@@ -6,12 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { DeviceConfig } from '../../core/models';
 import { BusinessTypeId } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
-import { ConfigService } from '../../core/services/config.service';
 
 const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 
@@ -165,7 +163,6 @@ export class OnboardingComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly businessService = inject(BusinessService);
-  private readonly configService = inject(ConfigService);
   private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly router = inject(Router);
 
@@ -484,32 +481,14 @@ export class OnboardingComponent implements OnInit {
    * Closes the onboarding wizard with a single call to
    * `POST /business/complete-onboarding` and lands the Owner on /admin.
    *
-   * A silent 'admin' device config is persisted so the downstream
-   * auth/setup/provisioning guards (which require `isDeviceConfigured()`)
-   * don't bounce the user to /setup right after finishing.
+   * Hardware binding is handled by `terminalGuard` on operational routes,
+   * so the Back Office session finishes without persisting any DeviceConfig.
    */
   async completeOnboarding(): Promise<void> {
     this.isSubmitting.set(true);
 
     const branchId = this.authService.branchId;
 
-    // 1. Save silent 'admin' device config to satisfy downstream guards
-    const user = this.authService.currentUser();
-    const activeBranchId = this.authService.activeBranchId();
-    const branchEntry = user?.branches?.find(b => b.id === activeBranchId);
-    const branchDisplayName = branchEntry?.name ?? '';
-    const deviceConfig: DeviceConfig = {
-      businessId:   user?.businessId ?? 0,
-      branchId:     activeBranchId,
-      businessName: branchDisplayName,
-      branchName:   branchDisplayName,
-      mode:         'admin',
-      deviceName:   'Admin',
-      configuredAt: new Date().toISOString(),
-    };
-    this.configService.saveDeviceConfig(deviceConfig);
-
-    // 2. Mark onboarding complete via API → get new JWT
     try {
       const response = await firstValueFrom(
         this.businessService.completeOnboarding(),
@@ -517,13 +496,11 @@ export class OnboardingComponent implements OnInit {
       this.authService.handleLoginSuccess(response);
     } catch { /* best-effort — localStorage fallback below */ }
 
-    // 3. LocalStorage fallback + cleanup
     localStorage.setItem(`${ONBOARDING_KEY_PREFIX}${branchId}`, 'true');
     localStorage.removeItem(`pending-plan-${branchId}`);
 
     this.isSubmitting.set(false);
 
-    // 4. Land the Owner on /admin (role-based routing lives in DeviceRoutingService)
     const roleId = this.authService.currentUser()?.roleId;
     const dest = roleId
       ? this.deviceRoutingService.getPostLoginRoute(roleId)
