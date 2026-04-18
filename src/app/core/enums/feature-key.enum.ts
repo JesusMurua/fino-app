@@ -1,4 +1,4 @@
-import { BusinessTypeId } from './config.enum';
+import { MacroCategoryType } from './config.enum';
 
 /**
  * Feature keys emitted by the backend in the JWT `features` claim.
@@ -109,22 +109,14 @@ const SERVICES_FEATURES: readonly FeatureKey[] = [
   FeatureKey.CustomFolios, FeatureKey.CustomerHistory, FeatureKey.Reminders,
 ];
 
-export const GIRO_FEATURE_MAP: Record<BusinessTypeId, readonly FeatureKey[]> = {
-  // Full-service Food & Beverage
-  [BusinessTypeId.Restaurant]: FOOD_AND_BEVERAGE_FEATURES,
-  [BusinessTypeId.Bar]:        FOOD_AND_BEVERAGE_FEATURES,
-
-  // Quick service
-  [BusinessTypeId.Cafe]:     QUICK_SERVICE_FEATURES,
-  [BusinessTypeId.Taqueria]: QUICK_SERVICE_FEATURES,
-
-  // Retail verticals
-  [BusinessTypeId.Retail]:     RETAIL_FEATURES,
-  [BusinessTypeId.Abarrotes]:  RETAIL_FEATURES,
-  [BusinessTypeId.Ferreteria]: RETAIL_FEATURES,
-  [BusinessTypeId.Papeleria]:  RETAIL_FEATURES,
-  [BusinessTypeId.Farmacia]:   RETAIL_FEATURES,
-
-  // Specialized services
-  [BusinessTypeId.Servicios]: SERVICES_FEATURES,
+/**
+ * Feature applicability keyed by macro category (not sub-giro).
+ * Drives `TenantContextService.isApplicableToGiro()` — used by the UI to
+ * decide hide vs. upsell-lock for each feature.
+ */
+export const GIRO_FEATURE_MAP: Record<MacroCategoryType, readonly FeatureKey[]> = {
+  [MacroCategoryType.FoodBeverage]: FOOD_AND_BEVERAGE_FEATURES,
+  [MacroCategoryType.QuickService]: QUICK_SERVICE_FEATURES,
+  [MacroCategoryType.Retail]:       RETAIL_FEATURES,
+  [MacroCategoryType.Services]:     SERVICES_FEATURES,
 };

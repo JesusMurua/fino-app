@@ -9,22 +9,16 @@ import { PasswordModule } from 'primeng/password';
 
 import { environment } from '../../../environments/environment';
 import { RegisterRequest } from '../../core/models';
-import { BUSINESS_TYPE_LABELS, BusinessTypeId } from '../../core/enums';
+import { MACRO_CATEGORY_LABELS, MacroCategoryType } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { RegistrationIntent, parseRegistrationIntent } from '../../core/utils/registration.utils';
 
-/** Icon used next to each giro in the read-only badge (landing-driven flow) */
-const GIRO_BADGE_ICON: Record<BusinessTypeId, string> = {
-  [BusinessTypeId.Restaurant]: '🍽️',
-  [BusinessTypeId.Cafe]:       '☕',
-  [BusinessTypeId.Retail]:     '🛒',
-  [BusinessTypeId.Servicios]:  '🛠️',
-  [BusinessTypeId.Bar]:        '🍺',
-  [BusinessTypeId.Taqueria]:   '🌮',
-  [BusinessTypeId.Abarrotes]:  '🛒',
-  [BusinessTypeId.Ferreteria]: '🔧',
-  [BusinessTypeId.Papeleria]:  '📝',
-  [BusinessTypeId.Farmacia]:   '💊',
+/** Icon used next to each macro category in the read-only badge (landing-driven flow) */
+const MACRO_BADGE_ICON: Record<MacroCategoryType, string> = {
+  [MacroCategoryType.FoodBeverage]: '🍽️',
+  [MacroCategoryType.QuickService]: '☕',
+  [MacroCategoryType.Retail]:       '🛒',
+  [MacroCategoryType.Services]:     '🛠️',
 };
 
 /** Typed error surfaced to the template — avoids substring matching on messages */
@@ -79,38 +73,39 @@ export class RegisterComponent implements OnInit {
   /** Whether the landing provided a `?giro=` — drives badge vs dropdown */
   readonly hasGiroFromUrl = signal(false);
 
-  /** Badge display info for the pre-selected giro */
+  /** Badge display info for the pre-selected macro category */
   readonly giroBadge = computed(() => {
     if (!this.hasGiroFromUrl()) return null;
-    const id = this.form.getRawValue().businessTypeId ?? this.intent?.businessTypeId ?? null;
+    const id = this.form.getRawValue().primaryMacroCategoryId
+      ?? this.intent?.primaryMacroCategoryId ?? null;
     if (id === null) return null;
     return {
-      icon: GIRO_BADGE_ICON[id],
-      label: BUSINESS_TYPE_LABELS[id],
+      icon:  MACRO_BADGE_ICON[id],
+      label: MACRO_CATEGORY_LABELS[id],
     };
   });
 
   /**
    * Dropdown options when the landing did not pre-select a giro.
-   * Strictly the 4 macro categories defined in `.claude/business-rules-matrix.md`.
+   * The 4 macro categories defined in `.claude/business-rules-matrix.md`.
    */
   readonly businessTypeOptions = [
-    { label: 'Restaurantes y Bares',     value: BusinessTypeId.Restaurant },
-    { label: 'Comida Rápida y Cafés',   value: BusinessTypeId.Cafe },
-    { label: 'Tiendas y Comercios',      value: BusinessTypeId.Retail },
-    { label: 'Servicios Especializados', value: BusinessTypeId.Servicios },
+    { label: 'Restaurantes y Bares',     value: MacroCategoryType.FoodBeverage },
+    { label: 'Comida Rápida y Cafés',   value: MacroCategoryType.QuickService },
+    { label: 'Tiendas y Comercios',      value: MacroCategoryType.Retail },
+    { label: 'Servicios Especializados', value: MacroCategoryType.Services },
   ];
 
   /** Landing URL for the "back to plans" link */
   readonly landingUrl = environment.landingUrl;
 
   readonly form = this.fb.group({
-    businessName:    ['', Validators.required],
-    ownerName:       ['', Validators.required],
-    email:           ['', [Validators.required, Validators.email]],
-    password:        ['', [Validators.required, Validators.minLength(8)]],
-    confirmPassword: ['', Validators.required],
-    businessTypeId:  this.fb.control<BusinessTypeId | null>(null, Validators.required),
+    businessName:           ['', Validators.required],
+    ownerName:              ['', Validators.required],
+    email:                  ['', [Validators.required, Validators.email]],
+    password:               ['', [Validators.required, Validators.minLength(8)]],
+    confirmPassword:        ['', Validators.required],
+    primaryMacroCategoryId: this.fb.control<MacroCategoryType | null>(null, Validators.required),
   }, { validators: passwordMatchValidator });
 
   //#endregion
@@ -128,8 +123,8 @@ export class RegisterComponent implements OnInit {
       return;
     }
     this.hasGiroFromUrl.set(this.intent.giroSlug !== null);
-    if (this.intent.businessTypeId !== null) {
-      this.form.patchValue({ businessTypeId: this.intent.businessTypeId });
+    if (this.intent.primaryMacroCategoryId !== null) {
+      this.form.patchValue({ primaryMacroCategoryId: this.intent.primaryMacroCategoryId });
     }
   }
 
@@ -179,24 +174,24 @@ export class RegisterComponent implements OnInit {
     this.isLoading.set(true);
     this.errorCode.set(null);
 
-    const { businessName, ownerName, email, password, businessTypeId } = this.form.getRawValue();
-    // Validators.required guarantees businessTypeId is set at this point;
+    const { businessName, ownerName, email, password, primaryMacroCategoryId } = this.form.getRawValue();
+    // Validators.required guarantees the macro is set at this point;
     // if the URL handshake brought one, it was patched into the form during ngOnInit.
-    const resolvedBusinessTypeId = businessTypeId ?? this.intent.businessTypeId;
-    if (resolvedBusinessTypeId === null) {
+    const resolvedMacroId = primaryMacroCategoryId ?? this.intent.primaryMacroCategoryId;
+    if (resolvedMacroId === null) {
       this.isLoading.set(false);
       this.form.markAllAsTouched();
       return;
     }
 
     const payload: RegisterRequest = {
-      businessName: businessName!.trim(),
-      ownerName:    ownerName!.trim(),
-      email:        email!.trim(),
-      password:     password!,
-      businessTypeId: resolvedBusinessTypeId,
-      planTypeId:   this.intent.planTypeId,
-      countryCode:  this.intent.countryCode,
+      businessName:           businessName!.trim(),
+      ownerName:              ownerName!.trim(),
+      email:                  email!.trim(),
+      password:               password!,
+      primaryMacroCategoryId: resolvedMacroId,
+      planTypeId:             this.intent.planTypeId,
+      countryCode:            this.intent.countryCode,
     };
 
     try {

@@ -14,7 +14,7 @@ import {
   ZoneType,
   normalizeDisplayStatus,
 } from '../../core/models';
-import { BusinessTypeId, KitchenStatusId, TableStatus } from '../../core/enums';
+import { KitchenStatusId, MacroCategoryType, TableStatus } from '../../core/enums';
 import { Reservation } from '../../core/models/reservation.model';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
@@ -1166,12 +1166,11 @@ export class TablesComponent implements OnInit, OnDestroy {
     return group.type === ZoneType.BarSeats;
   }
 
-  /** Whether KPI strip should be visible based on business type */
+  /** Whether KPI strip should be visible based on primary macro category */
   showKpis(): boolean {
-    const giro = this.authService.businessTypeId();
-    return giro === BusinessTypeId.Restaurant
-      || giro === BusinessTypeId.Bar
-      || giro === BusinessTypeId.Cafe;
+    const macro = this.authService.primaryMacroCategoryId();
+    return macro === MacroCategoryType.FoodBeverage
+      || macro === MacroCategoryType.QuickService;
   }
 
   /**

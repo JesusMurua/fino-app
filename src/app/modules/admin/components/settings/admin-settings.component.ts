@@ -13,7 +13,7 @@ import { TableModule } from 'primeng/table';
 import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, REGIMEN_FISCAL_OPTIONS, RFC_REGEX, SatCatalogOption } from '../../../../core/models';
 import { PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
-import { BusinessTypeId, OrderSource, PlanTypeId, UserRoleId } from '../../../../core/enums';
+import { MACRO_CATEGORY_LABELS, MacroCategoryType, OrderSource, PlanTypeId, UserRoleId } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
@@ -254,19 +254,17 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.showKitchenToggle() || this.showTablesToggle()
   );
 
-  /** Whether to show kitchen toggle in branch dialog */
+  /** Whether to show kitchen toggle in branch dialog — Food&Bev and Quick Service prep food */
   readonly showKitchenToggle = computed(() => {
-    const type = this.authService.businessTypeId();
-    if (type === null) return false;
-    return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar,
-            BusinessTypeId.Taqueria].includes(type);
+    const macro = this.authService.primaryMacroCategoryId();
+    if (macro === null) return false;
+    return macro === MacroCategoryType.FoodBeverage || macro === MacroCategoryType.QuickService;
   });
 
-  /** Whether to show tables toggle in branch dialog */
+  /** Whether to show tables toggle in branch dialog — only Food & Beverage uses table service */
   readonly showTablesToggle = computed(() => {
-    const type = this.authService.businessTypeId();
-    if (type === null) return false;
-    return [BusinessTypeId.Restaurant, BusinessTypeId.Cafe, BusinessTypeId.Bar].includes(type);
+    const macro = this.authService.primaryMacroCategoryId();
+    return macro === MacroCategoryType.FoodBeverage;
   });
 
   /** Delivery platforms available for configuration */
@@ -275,28 +273,19 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Show delivery section when editing a branch */
   readonly showDeliverySection = computed(() => this.editingBranch() !== null);
 
-  /** Current business type info — read-only display from authService */
+  /** Current macro category info — read-only display from authService */
   readonly currentGiroInfo = computed(() => {
-    const giro = this.authService.businessTypeId();
-    const map: Record<BusinessTypeId, { icon: string; name: string; description: string }> = {
-      // 4 macro categories — match `.claude/business-rules-matrix.md`
-      [BusinessTypeId.Restaurant]: { icon: '🍽️', name: 'Restaurantes y Bares',     description: 'Mesas, cocina, mesero, kiosko' },
-      [BusinessTypeId.Cafe]:       { icon: '☕',  name: 'Comida Rápida y Cafés',   description: 'Comandas rápidas, barra, food trucks' },
-      [BusinessTypeId.Retail]:     { icon: '🛒',  name: 'Tiendas y Comercios',      description: 'Inventario, código de barras, fiado' },
-      [BusinessTypeId.Servicios]:  { icon: '🛠️', name: 'Servicios Especializados', description: 'Estéticas, consultorios, talleres' },
-
-      // Sub-types — display their own identity, users recognize the label
-      [BusinessTypeId.Bar]:        { icon: '🍺', name: 'Bar / Cantina', description: 'Mesas + barra, consumo corrido' },
-      [BusinessTypeId.Taqueria]:   { icon: '🌮', name: 'Taquería',      description: 'Cobro rápido, con cocina' },
-      [BusinessTypeId.Abarrotes]:  { icon: '🛒', name: 'Abarrotes',     description: 'Tiendita de barrio' },
-      [BusinessTypeId.Ferreteria]: { icon: '🔧', name: 'Ferretería',    description: 'Materiales y herramientas' },
-      [BusinessTypeId.Papeleria]:  { icon: '📝', name: 'Papelería',     description: 'Útiles y copias' },
-      [BusinessTypeId.Farmacia]:   { icon: '💊', name: 'Farmacia',      description: 'Medicinas y salud' },
+    const macro = this.authService.primaryMacroCategoryId();
+    const map: Record<MacroCategoryType, { icon: string; name: string; description: string }> = {
+      [MacroCategoryType.FoodBeverage]: { icon: '🍽️', name: MACRO_CATEGORY_LABELS[MacroCategoryType.FoodBeverage], description: 'Mesas, cocina, mesero, kiosko' },
+      [MacroCategoryType.QuickService]: { icon: '☕',  name: MACRO_CATEGORY_LABELS[MacroCategoryType.QuickService], description: 'Mostrador, comandas rápidas' },
+      [MacroCategoryType.Retail]:       { icon: '🛒',  name: MACRO_CATEGORY_LABELS[MacroCategoryType.Retail],       description: 'Inventario, código de barras, fiado' },
+      [MacroCategoryType.Services]:     { icon: '🛠️', name: MACRO_CATEGORY_LABELS[MacroCategoryType.Services],     description: 'Estéticas, consultorios, talleres' },
     };
     // Null = tenant context not yet hydrated. Return a neutral placeholder
     // rather than throwing — this computed drives a read-only display.
-    if (giro === null) return { icon: '…', name: 'Cargando…', description: '' };
-    return map[giro];
+    if (macro === null) return { icon: '…', name: 'Cargando…', description: '' };
+    return map[macro];
   });
 
   //#endregion

@@ -16,7 +16,7 @@ import {
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
-import { BusinessTypeId, PlanTypeId } from '../enums';
+import { MacroCategoryType, PlanTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 import { TenantContextService } from './tenant-context.service';
@@ -62,13 +62,13 @@ export class AuthService {
   );
 
   /**
-   * Current business vertical — restored from storage on init.
+   * Primary macro category — restored from storage on init.
    * `null` until a user logs in (or storage hydration completes).
-   * Callers that require a concrete giro must handle null explicitly;
+   * Callers that require a concrete macro must handle null explicitly;
    * there is no fallback to a generic default.
    */
-  readonly businessTypeId = signal<BusinessTypeId | null>(
-    this.loadUserFromStorage()?.businessTypeId ?? null,
+  readonly primaryMacroCategoryId = signal<MacroCategoryType | null>(
+    this.loadUserFromStorage()?.primaryMacroCategoryId ?? null,
   );
 
   /** Trial end date as ISO string — null if no trial */
@@ -83,7 +83,7 @@ export class AuthService {
     const trialDate = endsAt ? new Date(endsAt) : null;
     return {
       planTypeId: this.planTypeId(),
-      businessTypeId: this.businessTypeId(),
+      primaryMacroCategoryId: this.primaryMacroCategoryId(),
       trialEndsAt: endsAt ?? undefined,
       isOnTrial: trialDate ? trialDate > now : false,
       trialDaysLeft: trialDate
@@ -270,10 +270,10 @@ export class AuthService {
       // Feature keys are inherited from the previously stored user so
       // gating stays functional offline until the next real login.
       const previous = this.loadUserFromStorage();
-      const giro = this.businessTypeId();
-      if (giro === null) {
-        // Fail-fast: offline re-auth needs a previous session's business type.
-        throw new Error('[AuthService] Offline re-auth without a stored business type.');
+      const macro = this.primaryMacroCategoryId();
+      if (macro === null) {
+        // Fail-fast: offline re-auth needs a previous session's macro category.
+        throw new Error('[AuthService] Offline re-auth without a stored macro category.');
       }
       const user: AuthUser = {
         token: `offline-session-${Date.now()}`,
@@ -284,7 +284,7 @@ export class AuthService {
         branches: [{ id: branchId, name: '' }],
         currentBranchId: branchId,
         planTypeId: this.planTypeId(),
-        businessTypeId: giro,
+        primaryMacroCategoryId: macro,
         trialEndsAt: this.trialEndsAt() ?? undefined,
         features: previous?.features ?? [],
       };
@@ -347,7 +347,7 @@ export class AuthService {
     this.currentUser.set(null);
     this.activeBranchId.set(0);
     this.planTypeId.set(PlanTypeId.Free);
-    this.businessTypeId.set(null);
+    this.primaryMacroCategoryId.set(null);
     this.trialEndsAt.set(null);
     this.tenantContext.clear();
 
@@ -458,7 +458,7 @@ export class AuthService {
       branches: response.branches ?? [],
       currentBranchId: effectiveBranchId,
       planTypeId: response.planTypeId,
-      businessTypeId: response.businessTypeId,
+      primaryMacroCategoryId: response.primaryMacroCategoryId,
       trialEndsAt: response.trialEndsAt,
       onboardingStatusId: response.onboardingStatusId,
       currentOnboardingStep: response.currentOnboardingStep,
@@ -471,7 +471,7 @@ export class AuthService {
     this.currentUser.set(user);
     this.activeBranchId.set(effectiveBranchId);
     this.planTypeId.set(user.planTypeId);
-    this.businessTypeId.set(user.businessTypeId);
+    this.primaryMacroCategoryId.set(user.primaryMacroCategoryId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
     this.syncTenantContext();
 
@@ -550,14 +550,14 @@ export class AuthService {
       this.tenantContext.clear();
       return;
     }
-    const giro = this.businessTypeId();
-    if (giro === null) {
-      // Fail-fast: a logged-in user must always have a concrete business type.
-      throw new Error('[AuthService] syncTenantContext called with a null business type.');
+    const macro = this.primaryMacroCategoryId();
+    if (macro === null) {
+      // Fail-fast: a logged-in user must always have a concrete macro category.
+      throw new Error('[AuthService] syncTenantContext called with a null macro category.');
     }
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
-    this.tenantContext.setContext(this.planTypeId(), giro, features);
+    this.tenantContext.setContext(this.planTypeId(), macro, features);
   }
 
   //#endregion
