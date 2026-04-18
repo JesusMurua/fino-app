@@ -16,3 +16,18 @@ export interface UpdateBusinessGiroRequest {
   businessTypeIds: BusinessTypeId[];
   customGiroDescription?: string;
 }
+
+/**
+ * Payload returned by `GET /api/business/giro` — the current server-side
+ * snapshot used to hydrate the onboarding wizard on re-entry.
+ *
+ * `primaryMacroCategoryId` is null when the tenant has not yet submitted
+ * Step 1 (the JWT's macro is authoritative in that case). Empty
+ * `businessTypeIds` + empty `customGiroDescription` means the user picked
+ * a macro but skipped sub-giro refinement.
+ */
+export interface BusinessGiroResponse {
+  primaryMacroCategoryId: MacroCategoryType | null;
+  businessTypeIds: BusinessTypeId[];
+  customGiroDescription: string | null;
+}

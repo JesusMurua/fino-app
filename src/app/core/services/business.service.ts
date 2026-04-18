@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { LoginResponse, UpdateBusinessGiroRequest } from '../models';
+import { BusinessGiroResponse, LoginResponse, UpdateBusinessGiroRequest } from '../models';
 import { ApiService } from './api.service';
 
 /**
@@ -51,6 +51,16 @@ export class BusinessService {
    */
   updateGiro(payload: UpdateBusinessGiroRequest): Observable<void> {
     return this.api.put<void>('/business/giro', payload);
+  }
+
+  /**
+   * Reads the current giro selection so the onboarding wizard can hydrate
+   * its signals on re-entry. Returns the server snapshot — may have a
+   * `null` macro and empty sub-giros when the user has not yet passed
+   * Step 1.
+   */
+  getGiro(): Observable<BusinessGiroResponse> {
+    return this.api.get<BusinessGiroResponse>('/business/giro');
   }
 
   //#endregion

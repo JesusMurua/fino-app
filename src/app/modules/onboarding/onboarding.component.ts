@@ -400,11 +400,45 @@ export class OnboardingComponent implements OnInit {
     }
 
     // Pre-fill macro from the landing handshake: `primaryMacroCategoryId`
-    // is the only vertical info carried by the JWT.
+    // is the only vertical info carried by the JWT. The silent `getGiro()`
+    // fetch below may overwrite this with the authoritative server state.
     const macro = this.authService.primaryMacroCategoryId();
     if (macro !== null) {
       this.selectedMacroId.set(macro);
     }
+
+    // Silent hydration — best-effort. If the call fails (first-time
+    // tenant, network error, 404) we keep the JWT-seeded macro and the
+    // user types their sub-giros from scratch.
+    this.hydrateFromServer();
+  }
+
+  /**
+   * Pulls the current giro snapshot from the backend and merges it into
+   * the wizard's signals so a user returning to Step 1 (page refresh,
+   * Stripe cancel, manual navigation) sees their previous selection.
+   *
+   * "Otra" is recovered via sentinel: when the server reports a non-empty
+   * `customGiroDescription`, we inject `OTRA_SUB_ID` into the sub-giro
+   * set so the UI lights up the chip and reveals the text input.
+   */
+  private hydrateFromServer(): void {
+    this.businessService.getGiro().subscribe({
+      next: (snapshot) => {
+        if (snapshot.primaryMacroCategoryId !== null) {
+          this.selectedMacroId.set(snapshot.primaryMacroCategoryId);
+        }
+
+        const hydratedIds: number[] = [...snapshot.businessTypeIds];
+        const customText = snapshot.customGiroDescription?.trim() ?? '';
+        if (customText.length > 0) {
+          hydratedIds.push(OTRA_SUB_ID);
+          this.customGiroText.set(customText);
+        }
+        this.selectedSubGiroIds.set(hydratedIds);
+      },
+      error: () => { /* best-effort — the wizard still works without prior state */ },
+    });
   }
 
   //#endregion
