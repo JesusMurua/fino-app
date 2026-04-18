@@ -550,25 +550,26 @@ export class AuthService {
   }
 
   /**
-   * Mirrors the current auth state into the tenant context so that
-   * guards and directives see a consistent plan/giro/feature snapshot.
+   * Mirrors the current auth state into the tenant context so guards
+   * and directives see a consistent plan/macro/feature snapshot.
    * Called on boot, login, offline login, and subscription refresh.
+   *
+   * Hard guard: an unauthenticated session must never reach the tenant
+   * sync — Angular bootstraps `AuthService` before any component is
+   * rendered, and the public `/register` and `/login` routes both run
+   * with a null `currentUser`. Touching signals beyond the guard in
+   * that state previously crashed the app on Vercel (blank page).
    */
   private syncTenantContext(): void {
-    const user = this.currentUser();
-    if (!user) {
-      this.tenantContext.clear();
-      return;
-    }
+    if (!this.currentUser()) return;
+
     const macro = this.primaryMacroCategoryId();
-    if (macro === null) {
-      // Transient: a backend version without the macro field or a
-      // half-hydrated session. Log and clear rather than crashing the
-      // app — the next `handleLoginSuccess` will re-populate the context.
-      console.warn('[AuthService] syncTenantContext skipped — no macro category on the current user.');
-      this.tenantContext.clear();
-      return;
-    }
+    // Defensive no-op: handleLoginSuccess always primes the macro before
+    // calling this method, but if a stray caller invokes it mid-hydration
+    // we silently skip rather than crash. The next login will re-sync.
+    if (macro === null) return;
+
+    const user = this.currentUser()!;
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
     this.tenantContext.setContext(this.planTypeId(), macro, features);
