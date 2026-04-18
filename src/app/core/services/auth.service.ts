@@ -491,7 +491,9 @@ export class AuthService {
 
   /**
    * Restores user from localStorage on service creation.
-   * Returns null if the stored token is missing, malformed, or expired.
+   * Returns null if the stored token is missing, malformed, expired,
+   * or persisted under the pre-macro schema (forcing a clean re-login
+   * after the giro hierarchy refactor).
    */
   private loadUserFromStorage(): AuthUser | null {
     try {
@@ -500,6 +502,14 @@ export class AuthService {
       const user: AuthUser = JSON.parse(raw);
       if (!user.token || !user.roleId) return null;
       if (this.isTokenExpired(user.token)) return null;
+      // Schema guard — sessions from before the macro refactor lack
+      // `primaryMacroCategoryId`. Treat them as logged-out so the
+      // user re-authenticates and picks up a fresh JWT.
+      if (user.primaryMacroCategoryId === undefined || user.primaryMacroCategoryId === null) {
+        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+      }
       return user;
     } catch {
       return null;
@@ -552,8 +562,12 @@ export class AuthService {
     }
     const macro = this.primaryMacroCategoryId();
     if (macro === null) {
-      // Fail-fast: a logged-in user must always have a concrete macro category.
-      throw new Error('[AuthService] syncTenantContext called with a null macro category.');
+      // Transient: a backend version without the macro field or a
+      // half-hydrated session. Log and clear rather than crashing the
+      // app — the next `handleLoginSuccess` will re-populate the context.
+      console.warn('[AuthService] syncTenantContext skipped — no macro category on the current user.');
+      this.tenantContext.clear();
+      return;
     }
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
