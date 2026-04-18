@@ -491,7 +491,9 @@ export class AuthService {
 
   /**
    * Restores user from localStorage on service creation.
-   * Returns null if the stored token is missing, malformed, or expired.
+   * Returns null if the stored token is missing, malformed, expired,
+   * or persisted under the pre-macro schema (forcing a clean re-login
+   * after the giro hierarchy refactor).
    */
   private loadUserFromStorage(): AuthUser | null {
     try {
@@ -500,6 +502,14 @@ export class AuthService {
       const user: AuthUser = JSON.parse(raw);
       if (!user.token || !user.roleId) return null;
       if (this.isTokenExpired(user.token)) return null;
+      // Schema guard — sessions from before the macro refactor lack
+      // `primaryMacroCategoryId`. Treat them as logged-out so the
+      // user re-authenticates and picks up a fresh JWT.
+      if (user.primaryMacroCategoryId === undefined || user.primaryMacroCategoryId === null) {
+        localStorage.removeItem(AUTH_USER_KEY);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+      }
       return user;
     } catch {
       return null;
@@ -540,21 +550,26 @@ export class AuthService {
   }
 
   /**
-   * Mirrors the current auth state into the tenant context so that
-   * guards and directives see a consistent plan/giro/feature snapshot.
+   * Mirrors the current auth state into the tenant context so guards
+   * and directives see a consistent plan/macro/feature snapshot.
    * Called on boot, login, offline login, and subscription refresh.
+   *
+   * Hard guard: an unauthenticated session must never reach the tenant
+   * sync — Angular bootstraps `AuthService` before any component is
+   * rendered, and the public `/register` and `/login` routes both run
+   * with a null `currentUser`. Touching signals beyond the guard in
+   * that state previously crashed the app on Vercel (blank page).
    */
   private syncTenantContext(): void {
-    const user = this.currentUser();
-    if (!user) {
-      this.tenantContext.clear();
-      return;
-    }
+    if (!this.currentUser()) return;
+
     const macro = this.primaryMacroCategoryId();
-    if (macro === null) {
-      // Fail-fast: a logged-in user must always have a concrete macro category.
-      throw new Error('[AuthService] syncTenantContext called with a null macro category.');
-    }
+    // Defensive no-op: handleLoginSuccess always primes the macro before
+    // calling this method, but if a stray caller invokes it mid-hydration
+    // we silently skip rather than crash. The next login will re-sync.
+    if (macro === null) return;
+
+    const user = this.currentUser()!;
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
     this.tenantContext.setContext(this.planTypeId(), macro, features);
