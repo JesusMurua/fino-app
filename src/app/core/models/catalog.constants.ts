@@ -40,21 +40,40 @@ export const DEVICE_MODES: DeviceModeCatalog[] = [
   { id: 4, code: 'kitchen', name: 'Cocina',   description: 'Pantalla de cocina KDS' },
 ];
 
-/** Offline fallback — business type catalog with feature flags */
+/**
+ * Offline fallback — business type catalog with feature flags.
+ * Mirrors the backend seed (commit 75eacdf) — the 20 sub-giros keyed to
+ * 4 macro categories. `posExperience` and `hasKitchen` / `hasTables`
+ * are client-side defaults used when the API has not yet responded.
+ */
 export const BUSINESS_TYPES: BusinessTypeCatalog[] = [
-  // 4 macro categories — match `.claude/business-rules-matrix.md`
-  { id: 1,  code: 'Restaurant', name: 'Restaurantes y Bares',     hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
-  { id: 3,  code: 'Cafe',       name: 'Comida Rápida y Cafés',   hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 2 },
-  { id: 2,  code: 'Retail',     name: 'Tiendas y Comercios',      hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 3 },
-  { id: 12, code: 'Servicios',  name: 'Servicios Especializados', hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 4 },
+  // Macro 1 — Food & Beverage
+  { id: 1,  code: 'Restaurante',    name: 'Restaurante',             hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 1 },
+  { id: 2,  code: 'BarCantina',     name: 'Bar / Cantina',           hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 2 },
+  { id: 3,  code: 'SportsBar',      name: 'Sports Bar / Wings',      hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 3 },
 
-  // Sub-types — kept so the JWT / URL handshake can still resolve them
-  { id: 4,  code: 'Bar',        name: 'Bar',          hasKitchen: true,  hasTables: true,  posExperience: 'Restaurant', sortOrder: 5 },
-  { id: 7,  code: 'Taqueria',   name: 'Taquería',     hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 7 },
-  { id: 8,  code: 'Abarrotes',  name: 'Abarrotes',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 8 },
-  { id: 9,  code: 'Ferreteria', name: 'Ferretería',   hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 9 },
-  { id: 10, code: 'Papeleria',  name: 'Papelería',    hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 10 },
-  { id: 11, code: 'Farmacia',   name: 'Farmacia',     hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 11 },
+  // Macro 2 — Quick Service
+  { id: 4,  code: 'Taqueria',       name: 'Taquería',                hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 4 },
+  { id: 5,  code: 'Dogos',          name: 'Dogos',                   hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 5 },
+  { id: 6,  code: 'Hamburguesas',   name: 'Hamburguesas',            hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 6 },
+  { id: 7,  code: 'Cafeteria',      name: 'Cafetería',               hasKitchen: true,  hasTables: true,  posExperience: 'Counter',    sortOrder: 7 },
+  { id: 8,  code: 'Paleteria',      name: 'Paletería / Nevería',     hasKitchen: false, hasTables: false, posExperience: 'Counter',    sortOrder: 8 },
+  { id: 9,  code: 'Panaderia',      name: 'Panadería / Repostería',  hasKitchen: true,  hasTables: false, posExperience: 'Counter',    sortOrder: 9 },
+
+  // Macro 3 — Retail
+  { id: 10, code: 'Abarrotes',      name: 'Abarrotes / Miscelánea',  hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 10 },
+  { id: 11, code: 'Expendio',       name: 'Expendio / Depósito',     hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 11 },
+  { id: 12, code: 'Refaccionaria',  name: 'Refaccionaria',           hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 12 },
+  { id: 13, code: 'Ferreteria',     name: 'Ferretería',              hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 13 },
+  { id: 14, code: 'Papeleria',      name: 'Papelería',               hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 14 },
+  { id: 15, code: 'Farmacia',       name: 'Farmacia',                hasKitchen: false, hasTables: false, posExperience: 'Retail',     sortOrder: 15 },
+  { id: 16, code: 'Boutique',       name: 'Boutique / Ropa y Calzado', hasKitchen: false, hasTables: false, posExperience: 'Retail',    sortOrder: 16 },
+
+  // Macro 4 — Specialized Services
+  { id: 17, code: 'Estetica',       name: 'Estética / Barbería',     hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 17 },
+  { id: 18, code: 'TallerMecanico', name: 'Taller Mecánico',         hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 18 },
+  { id: 19, code: 'Consultorio',    name: 'Consultorio / Clínica',   hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 19 },
+  { id: 20, code: 'Gimnasio',       name: 'Gimnasio / Deportes',     hasKitchen: false, hasTables: false, posExperience: 'Quick',      sortOrder: 20 },
 ];
 
 /** Offline fallback — zone type catalog */

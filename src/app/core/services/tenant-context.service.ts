@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { BusinessTypeId, FeatureKey, PlanTypeId } from '../enums';
+import { FeatureKey, MacroCategoryType, PlanTypeId } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 
 /**
@@ -19,7 +19,7 @@ export class TenantContextService {
   //#region Backing signals
 
   private readonly _currentPlan = signal<PlanTypeId>(PlanTypeId.Free);
-  private readonly _currentGiro = signal<BusinessTypeId | null>(null);
+  private readonly _currentMacro = signal<MacroCategoryType | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
 
   //#endregion
@@ -29,8 +29,8 @@ export class TenantContextService {
   /** Current subscription plan tier */
   readonly currentPlan = this._currentPlan.asReadonly();
 
-  /** Current business vertical (giro) */
-  readonly currentGiro = this._currentGiro.asReadonly();
+  /** Current macro category (primary business vertical) */
+  readonly currentMacro = this._currentMacro.asReadonly();
 
   /** Set of feature keys currently enabled for this tenant */
   readonly activeFeatures = this._activeFeatures.asReadonly();
@@ -65,22 +65,22 @@ export class TenantContextService {
    * applicable to a giro are hidden, features that are applicable
    * but not yet unlocked are shown with a padlock.
    *
-   * Fail-fast: throws when the tenant's giro has not been loaded yet.
+   * Fail-fast: throws when the tenant's macro has not been loaded yet.
    * Callers that may run before auth hydration must guard with
-   * `currentGiro() !== null` first.
+   * `currentMacro() !== null` first.
    *
    * @param feature Feature key to check
-   * @throws Error when `currentGiro()` is null
+   * @throws Error when `currentMacro()` is null
    */
   isApplicableToGiro(feature: FeatureKey): boolean {
-    const giro = this._currentGiro();
-    if (giro === null) {
+    const macro = this._currentMacro();
+    if (macro === null) {
       throw new Error(
         '[TenantContextService] isApplicableToGiro called before tenant context was loaded. ' +
-        'Business type is null — cannot read feature map.',
+        'Macro category is null — cannot read feature map.',
       );
     }
-    return GIRO_FEATURE_MAP[giro].includes(feature);
+    return GIRO_FEATURE_MAP[macro].includes(feature);
   }
 
   //#endregion
@@ -92,23 +92,23 @@ export class TenantContextService {
    * Unknown feature strings (not present in the `FeatureKey` enum)
    * are silently dropped — the enum is authoritative on the client.
    * @param plan Subscription plan from the JWT
-   * @param giro Business type from the JWT
+   * @param macro Primary macro category from the JWT
    * @param features Array of feature key strings from the JWT `features` claim
    */
   setContext(
     plan: PlanTypeId,
-    giro: BusinessTypeId,
+    macro: MacroCategoryType,
     features: readonly string[],
   ): void {
     this._currentPlan.set(plan);
-    this._currentGiro.set(giro);
+    this._currentMacro.set(macro);
     this._activeFeatures.set(this.parseFeatures(features));
   }
 
   /** Clears the tenant context — called on logout */
   clear(): void {
     this._currentPlan.set(PlanTypeId.Free);
-    this._currentGiro.set(null);
+    this._currentMacro.set(null);
     this._activeFeatures.set(new Set());
   }
 

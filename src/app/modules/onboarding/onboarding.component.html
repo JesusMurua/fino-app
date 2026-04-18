@@ -1,230 +1,290 @@
-<div class="onboarding-page">
+<div class="onboarding">
+
+  <!-- Top bar with Brío brand + step pills -->
+  <header class="onboarding__topbar">
+    <div class="onboarding__brand">
+      <span class="onboarding__logo" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 48 48">
+          <rect width="48" height="48" rx="11" fill="#16A34A"/>
+          <path d="M11 33 L17 15 L25 27 L30 20 L37 33"
+            stroke="#ffffff" stroke-width="2.8" fill="none"
+            stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="37" cy="33" r="2.8" fill="#86efac"/>
+        </svg>
+      </span>
+      Brío
+    </div>
+
+    <nav class="onboarding__steps" aria-label="Pasos del onboarding">
+      <div class="onboarding__step">
+        <span class="onboarding__step-dot"
+          [class.onboarding__step-dot--active]="currentStep() === 1"
+          [class.onboarding__step-dot--done]="currentStep() > 1">
+          @if (currentStep() > 1) {
+            <i class="pi pi-check"></i>
+          } @else {
+            1
+          }
+        </span>
+        <span class="onboarding__step-label"
+          [class.onboarding__step-label--active]="currentStep() === 1">
+          Tu negocio
+        </span>
+      </div>
+
+      <span class="onboarding__step-separator"></span>
+
+      <div class="onboarding__step">
+        <span class="onboarding__step-dot"
+          [class.onboarding__step-dot--active]="currentStep() === 2">
+          2
+        </span>
+        <span class="onboarding__step-label"
+          [class.onboarding__step-label--active]="currentStep() === 2">
+          Tu plan
+        </span>
+      </div>
+    </nav>
+  </header>
 
   <!-- Progress bar -->
-  <div class="onboarding-progress">
-    <div class="onboarding-progress__bar" [style.width.%]="progress()"></div>
-  </div>
-  <div class="onboarding-step-counter">
-    Paso {{ currentStep() }} de {{ totalSteps }}
+  <div class="onboarding__progress">
+    <div class="onboarding__progress-bar" [style.width.%]="progress()"></div>
   </div>
 
-  <!-- Step content -->
-  <div class="onboarding-card">
-
-    <!-- ================================================================ -->
-    <!-- STEP 1 — Identidad                                                -->
-    <!-- ================================================================ -->
-    @if (currentStep() === 1) {
-      <h1 class="onboarding-card__title">¡Bienvenido{{ ownerName() ? ', ' + ownerName() : '' }}!</h1>
-      <p class="onboarding-card__subtitle">
-        Tu cuenta está lista. En los próximos pasos configuramos tu negocio y activamos tu plan.
-      </p>
-
-      <div class="identity-card">
-        <i class="pi pi-user-check identity-card__icon"></i>
-        <div class="identity-card__copy">
-          <strong class="identity-card__name">{{ ownerName() || 'Propietario' }}</strong>
-          <span class="identity-card__role">Dueño de la cuenta</span>
+  <!-- ================================================================ -->
+  <!-- STEP 1 — Tu negocio (Macro + sub-giros)                           -->
+  <!-- ================================================================ -->
+  @if (currentStep() === 1) {
+    <section class="onboarding__body">
+      <div class="welcome">
+        <div class="welcome__copy">
+          <h1 class="welcome__title">
+            ¡Hola<span class="welcome__name">{{ ownerName() ? ', ' + ownerName() : '' }}</span>!
+            Personalicemos tu punto de venta.
+          </h1>
+          <p class="welcome__subtitle">
+            Elige el tipo principal de tu negocio. Los sub-giros afinan la experiencia en tu POS.
+          </p>
+        </div>
+        <div class="welcome__mascot">
+          <app-brio-mascot [skin]="mascotSkin()" />
         </div>
       </div>
-    }
 
-    <!-- ================================================================ -->
-    <!-- STEP 2 — Negocio (Giro)                                           -->
-    <!-- ================================================================ -->
-    @if (currentStep() === 2) {
-      <h1 class="onboarding-card__title">¿Qué tipo de negocio tienes?</h1>
-      <p class="onboarding-card__subtitle">Esto personaliza los planes y la experiencia</p>
+      <div class="macro-grid" role="radiogroup" aria-label="Tipo de negocio">
+        @for (card of macroCards; track card.id) {
+          <article
+            class="macro-card"
+            role="radio"
+            tabindex="0"
+            [attr.aria-checked]="selectedMacroId() === card.id"
+            [class.macro-card--active]="selectedMacroId() === card.id"
+            (click)="selectMacro(card.id)"
+            (keyup.enter)="selectMacro(card.id)"
+            (keyup.space)="selectMacro(card.id)"
+            (mouseenter)="hoverMacro(card.id)"
+            (mouseleave)="hoverMacro(null)"
+          >
+            <header class="macro-card__head">
+              <span class="macro-card__icon"
+                [style.background]="card.accent + '1a'"
+                [style.color]="card.accent">
+                <i [class]="card.icon"></i>
+              </span>
+              <span class="macro-card__info">
+                <span class="macro-card__label">{{ card.label }}</span>
+                <span class="macro-card__description">{{ card.description }}</span>
+              </span>
+              <span class="macro-card__right">
+                @if (selectedMacroId() === card.id && selectedSubCount() > 0) {
+                  <span class="macro-card__count">{{ selectedSubCount() }}</span>
+                }
+                <span class="macro-card__tick"
+                  [class.macro-card__tick--on]="selectedMacroId() === card.id">
+                  @if (selectedMacroId() === card.id) {
+                    <i class="pi pi-check"></i>
+                  }
+                </span>
+              </span>
+            </header>
 
-      <!-- Case A: Retail group from JWT — badge + sub-options -->
-      @if (isRetailGroup()) {
-        <div class="giro-badge">
-          <span class="giro-badge__icon">{{ giroBadge()?.icon }}</span>
-          <span class="giro-badge__label">{{ giroBadge()?.label }}</span>
-        </div>
+            @if (selectedMacroId() === card.id) {
+              <div class="macro-card__panel" (click)="$event.stopPropagation()">
+                <p class="macro-card__panel-title">Sub-giro — marca los que apliquen</p>
 
-        <p class="onboarding-card__subtitle">¿Qué tipo de tienda?</p>
+                <div class="chip-grid">
+                  @for (sub of card.subGiros; track sub.label) {
+                    <button
+                      type="button"
+                      class="chip"
+                      [class.chip--on]="isSubGiroChecked(chipIdOf(sub))"
+                      (click)="toggleSubGiro(chipIdOf(sub))"
+                    >
+                      <span class="chip__box">
+                        @if (isSubGiroChecked(chipIdOf(sub))) {
+                          <i class="pi pi-check"></i>
+                        }
+                      </span>
+                      {{ sub.label }}
+                    </button>
+                  }
+                </div>
 
-        <div class="giro-grid">
-          @for (sub of retailSubOptions; track sub.value) {
-            <button
-              type="button"
-              class="giro-card"
-              [class.giro-card--active]="hasGiro(sub.value)"
-              (click)="toggleRetailSub(sub.value)"
-            >
-              @if (hasGiro(sub.value)) {
-                <i class="pi pi-check-circle giro-card__check"></i>
-              }
-              <span class="giro-card__icon">{{ sub.icon }}</span>
-              <span class="giro-card__label">{{ sub.label }}</span>
-            </button>
-          }
-        </div>
-
-        @if (showCustomGiroInput()) {
-          <div class="custom-giro-field">
-            <label for="ob-custom-giro">Describe tu tipo de tienda</label>
-            <input
-              id="ob-custom-giro"
-              type="text"
-              pInputText
-              [ngModel]="customGiroText()"
-              (ngModelChange)="customGiroText.set($event)"
-              placeholder="Ej. Mayoreo de comida para mascotas"
-              class="custom-giro-field__input"
-            />
-          </div>
+                @if (isOtraChecked()) {
+                  <input
+                    type="text"
+                    pInputText
+                    class="otra-input"
+                    placeholder="¿Cómo describes tu negocio?"
+                    [ngModel]="customGiroText()"
+                    (ngModelChange)="customGiroText.set($event)"
+                    (click)="$event.stopPropagation()"
+                  />
+                }
+              </div>
+            }
+          </article>
         }
-
-      <!-- Case B: Non-retail JWT giro — badge only, no selection needed -->
-      } @else if (giroBadge()) {
-        <div class="giro-badge">
-          <span class="giro-badge__icon">{{ giroBadge()?.icon }}</span>
-          <span class="giro-badge__label">{{ giroBadge()?.label }}</span>
-          <span class="giro-badge__desc">{{ giroBadge()?.description }}</span>
-        </div>
-
-      <!-- Case C: No JWT giro — full grid -->
-      } @else {
-        <div class="giro-grid">
-          @for (giro of giroOptions; track giro.value) {
-            <button
-              type="button"
-              class="giro-card"
-              [class.giro-card--active]="hasGiro(giro.value)"
-              (click)="toggleGiro(giro.value)"
-            >
-              @if (hasGiro(giro.value)) {
-                <i class="pi pi-check-circle giro-card__check"></i>
-              }
-              <span class="giro-card__icon">{{ giro.icon }}</span>
-              <span class="giro-card__label">{{ giro.label }}</span>
-              <span class="giro-card__desc">{{ giro.description }}</span>
-            </button>
-          }
-        </div>
-
-        @if (showCustomGiroInput()) {
-          <div class="custom-giro-field">
-            <label for="ob-custom-giro-main">Describe tu tipo de tienda</label>
-            <input
-              id="ob-custom-giro-main"
-              type="text"
-              pInputText
-              [ngModel]="customGiroText()"
-              (ngModelChange)="customGiroText.set($event)"
-              placeholder="Ej. Mayoreo de comida para mascotas"
-              class="custom-giro-field__input"
-            />
-          </div>
-        }
-      }
-    }
-
-    <!-- ================================================================ -->
-    <!-- STEP 3 — Plan + Stripe Checkout                                   -->
-    <!-- ================================================================ -->
-    @if (currentStep() === 3) {
-      <h1 class="onboarding-card__title">Elige tu plan</h1>
-      <p class="onboarding-card__subtitle">
-        Puedes cambiarlo cuando quieras. Activa con tarjeta o arranca con trial.
-      </p>
-
-      <!-- Billing cycle toggle -->
-      <div class="plan-card__toggle">
-        <button
-          type="button"
-          class="plan-card__toggle-btn"
-          [class.plan-card__toggle-btn--active]="billingCycle() === 'monthly'"
-          (click)="toggleBillingCycle('monthly')"
-        >
-          Mensual
-        </button>
-        <button
-          type="button"
-          class="plan-card__toggle-btn"
-          [class.plan-card__toggle-btn--active]="billingCycle() === 'annual'"
-          (click)="toggleBillingCycle('annual')"
-        >
-          Anual — 2 meses gratis
-        </button>
       </div>
 
-      <!-- Plan grid -->
-      <div class="plan-grid">
-        @for (card of planCards(); track card.slug) {
+      <p class="hint">
+        @if (selectedMacroId() !== null) {
+          <i class="pi pi-check-circle hint__icon"></i>
+          <strong>{{ selectedMacroLabel() }}</strong> seleccionado
+          @if (selectedSubCount() > 0) {
+            · {{ selectedSubCount() }} sub-giro{{ selectedSubCount() === 1 ? '' : 's' }}
+          } @else {
+            · elige los sub-giros que apliquen
+          }
+        } @else {
+          Selecciona el tipo principal de tu negocio
+        }
+      </p>
+
+      <footer class="onboarding__cta">
+        <span class="onboarding__spacer"></span>
+        <button
+          type="button"
+          class="onboarding__primary"
+          [disabled]="!canContinueFromStep1() || isSavingGiro()"
+          (click)="goToStep2()"
+        >
+          @if (isSavingGiro()) {
+            <i class="pi pi-spinner pi-spin"></i>
+          }
+          Continuar
+          <i class="pi pi-arrow-right"></i>
+        </button>
+      </footer>
+    </section>
+  }
+
+  <!-- ================================================================ -->
+  <!-- STEP 2 — Tu plan (grid + gating + Stripe)                         -->
+  <!-- ================================================================ -->
+  @if (currentStep() === 2) {
+    <section class="onboarding__body">
+      <div class="plan-heading">
+        <div>
+          <h1 class="plan-heading__title">Elige tu plan</h1>
+          <p class="plan-heading__subtitle">Empieza gratis. Sube cuando tu negocio crezca.</p>
+        </div>
+
+        <div class="period-toggle" role="tablist" aria-label="Ciclo de cobro">
           <button
             type="button"
+            role="tab"
+            class="period-toggle__btn"
+            [class.period-toggle__btn--active]="billingCycle() === 'monthly'"
+            [attr.aria-selected]="billingCycle() === 'monthly'"
+            (click)="toggleBillingCycle('monthly')"
+          >
+            Mensual
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="period-toggle__btn"
+            [class.period-toggle__btn--active]="billingCycle() === 'annual'"
+            [attr.aria-selected]="billingCycle() === 'annual'"
+            (click)="toggleBillingCycle('annual')"
+          >
+            Anual
+            <span class="period-toggle__pill">-20%</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="plan-grid">
+        @for (card of planCards(); track card.slug) {
+          <article
             class="plan-card"
-            [class.plan-card--active]="selectedPlan() === card.slug"
+            [class.plan-card--active]="selectedPlan() === card.slug && !card.isLocked"
+            [class.plan-card--featured]="card.isFeatured && !card.isLocked"
+            [class.plan-card--locked]="card.isLocked"
             (click)="selectPlan(card.slug)"
           >
-            <div class="plan-card__header">
-              @if (selectedPlan() === card.slug) {
-                <i class="pi pi-check-circle plan-card__star"></i>
-              } @else {
-                <i class="pi pi-star-fill plan-card__star"></i>
-              }
-              <span class="plan-card__name">{{ card.name }}</span>
-            </div>
+            @if (card.isLocked) {
+              <span class="plan-card__lock-icon" aria-hidden="true">
+                <i class="pi pi-lock"></i>
+              </span>
+            }
+
+            <span class="plan-card__badge" [attr.data-slug]="card.slug">{{ card.badge }}</span>
+            <h2 class="plan-card__name">{{ card.name }}</h2>
 
             <div class="plan-card__price">
               <span class="plan-card__amount">{{ formatPrice(card.priceCents) }}</span>
               @if (!card.isFree) {
                 <span class="plan-card__cycle">{{ cycleLabel() }}</span>
+              } @else {
+                <span class="plan-card__cycle">para siempre</span>
               }
             </div>
 
-            <p class="plan-card__tagline">{{ card.tagline }}</p>
+            <p class="plan-card__description">{{ card.description }}</p>
 
             <ul class="plan-card__features">
               @for (feature of card.features; track feature) {
-                <li><i class="pi pi-check"></i> {{ feature }}</li>
+                <li>
+                  <span class="plan-card__dot"></span>
+                  {{ feature }}
+                </li>
               }
             </ul>
-          </button>
+
+            @if (card.isLocked) {
+              <span class="plan-card__lock-badge">
+                <i class="pi pi-lock"></i>
+                No disponible para tu giro
+              </span>
+            }
+          </article>
         }
       </div>
 
       @if (checkoutError()) {
-        <p class="plan-card__error">{{ checkoutError() }}</p>
+        <p class="plan-error">{{ checkoutError() }}</p>
       }
 
-      <!-- Primary CTA: Stripe for paid plans, trial completion for Free -->
-      <button
-        type="button"
-        class="plan-card__activate"
-        [disabled]="checkoutLoading() || isSubmitting() || !selectedPlan()"
-        (click)="activatePlan()"
-      >
-        @if (checkoutLoading() || isSubmitting()) {
-          <i class="pi pi-spinner pi-spin"></i>
-        }
-        {{ ctaLabel() }}
-      </button>
-    }
-
-  </div>
-
-  <!-- Bottom navigation -->
-  <div class="onboarding-nav">
-    <button type="button" class="onboarding-nav__back" (click)="prevStep()">
-      <i class="pi pi-arrow-left"></i>
-      {{ currentStep() === 1 ? 'Salir' : 'Atrás' }}
-    </button>
-
-    @if (currentStep() < totalSteps) {
-      <button
-        type="button"
-        class="onboarding-nav__next"
-        [disabled]="!canProceed()"
-        (click)="nextStep()"
-      >
-        Siguiente
-        <i class="pi pi-arrow-right"></i>
-      </button>
-    }
-  </div>
-
+      <footer class="onboarding__cta">
+        <button type="button" class="onboarding__ghost" (click)="goBackToStep1()">
+          <i class="pi pi-arrow-left"></i> Regresar
+        </button>
+        <button
+          type="button"
+          class="onboarding__primary"
+          [disabled]="checkoutLoading() || isSubmitting() || !selectedPlan()"
+          (click)="activatePlan()"
+        >
+          @if (checkoutLoading() || isSubmitting()) {
+            <i class="pi pi-spinner pi-spin"></i>
+          }
+          {{ ctaLabel() }}
+          <i class="pi pi-arrow-right"></i>
+        </button>
+      </footer>
+    </section>
+  }
 </div>

@@ -1,12 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { LoginResponse } from '../models';
-import { BusinessTypeId } from '../enums';
+import { BusinessGiroResponse, LoginResponse, UpdateBusinessGiroRequest } from '../models';
 import { ApiService } from './api.service';
 
 /**
- * Manages business-level configuration: business type(s),
+ * Manages business-level configuration: giro (macro + sub-giros),
  * onboarding step sync, and onboarding completion.
  */
 @Injectable({ providedIn: 'root' })
@@ -38,15 +37,30 @@ export class BusinessService {
 
   //#endregion
 
-  //#region Business Type
+  //#region Business Giro
 
   /**
-   * Updates the business type(s) for the current business.
-   * @param businessTypes Array of selected business types
-   * @param customGiroDescription Free-text description when "Otra tienda" is selected
+   * Idempotent write of the tenant's giro selection — the macro category
+   * plus any number of sub-giros (with optional free-text for "Otra").
+   *
+   * Safe to call multiple times; the backend replaces the current set on
+   * each call. The onboarding wizard invokes this between Step 1 and
+   * Step 2 so the tenant context is reconciled before plan selection.
+   *
+   * @param payload Primary macro + sub-giro ids + optional custom text
    */
-  updateBusinessTypes(businessTypes: BusinessTypeId[], customGiroDescription: string | null): Observable<void> {
-    return this.api.put<void>('/business/type', { businessTypes, customGiroDescription });
+  updateGiro(payload: UpdateBusinessGiroRequest): Observable<void> {
+    return this.api.put<void>('/business/giro', payload);
+  }
+
+  /**
+   * Reads the current giro selection so the onboarding wizard can hydrate
+   * its signals on re-entry. Returns the server snapshot — may have a
+   * `null` macro and empty sub-giros when the user has not yet passed
+   * Step 1.
+   */
+  getGiro(): Observable<BusinessGiroResponse> {
+    return this.api.get<BusinessGiroResponse>('/business/giro');
   }
 
   //#endregion

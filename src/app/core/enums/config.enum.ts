@@ -35,23 +35,68 @@ export enum PlanTypeId {
 }
 
 /**
- * Business vertical — maps to BusinessTypeCatalog in backend.
- * Strictly the 4 macro categories from `.claude/business-rules-matrix.md`
- * plus their explicit sub-types. "General" and "FoodTruck" have been
- * eradicated — any unknown business type must fail-fast at the slug
- * resolver, never fall through to a generic default.
+ * Macro business category — top of the hierarchy. The JWT carries
+ * `primaryMacroCategoryId` and the tenant context is keyed by this enum.
+ *
+ * IDs match the backend `MacroCategory` catalog. There are exactly 4
+ * values and they drive feature gating, pricing, and POS experience.
+ */
+export enum MacroCategoryType {
+  FoodBeverage = 1,
+  QuickService = 2,
+  Retail       = 3,
+  Services     = 4,
+}
+
+/**
+ * Sub-giro — the user's specific vertical inside a macro category.
+ * IDs match the backend `BusinessTypeCatalog` seed emitted by
+ * commit 75eacdf (sequential 1-20 across 4 macro groups).
+ *
+ * Sub-giros are stored as an N:M relation (`BusinessGiro` table) and
+ * are NOT carried on the JWT — the onboarding wizard persists them via
+ * `PUT /business/giro` and consumers that need them must fetch a
+ * dedicated endpoint.
  */
 export enum BusinessTypeId {
-  Restaurant = 1,
-  Retail     = 2,
-  Cafe       = 3,
-  Bar        = 4,
-  Taqueria   = 7,
-  Abarrotes  = 8,
-  Ferreteria = 9,
-  Papeleria  = 10,
-  Farmacia   = 11,
-  Servicios  = 12,
+  // Macro 1 — Food & Beverage
+  Restaurante    = 1,
+  BarCantina     = 2,
+  SportsBar      = 3,
+
+  // Macro 2 — Quick Service
+  Taqueria       = 4,
+  Dogos          = 5,
+  Hamburguesas   = 6,
+  Cafeteria      = 7,
+  Paleteria      = 8,
+  Panaderia      = 9,
+
+  // Macro 3 — Retail
+  Abarrotes      = 10,
+  Expendio       = 11,
+  Refaccionaria  = 12,
+  Ferreteria     = 13,
+  Papeleria      = 14,
+  Farmacia       = 15,
+  Boutique       = 16,
+
+  // Macro 4 — Specialized Services
+  Estetica       = 17,
+  TallerMecanico = 18,
+  Consultorio    = 19,
+  Gimnasio       = 20,
+}
+
+/**
+ * Derives the parent macro category from a sub-giro id. Matches the
+ * seed order (1-3=FoodBeverage, 4-9=QuickService, 10-16=Retail, 17-20=Services).
+ */
+export function macroOfBusinessType(id: BusinessTypeId): MacroCategoryType {
+  if (id <= 3)  return MacroCategoryType.FoodBeverage;
+  if (id <= 9)  return MacroCategoryType.QuickService;
+  if (id <= 16) return MacroCategoryType.Retail;
+  return MacroCategoryType.Services;
 }
 
 /** Promotion type — maps to PromotionTypeCatalog in backend */
@@ -86,20 +131,41 @@ export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {
   [PlanTypeId.Enterprise]: 'Enterprise',
 };
 
-export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {
-  // 4 macro categories — match `.claude/business-rules-matrix.md`
-  [BusinessTypeId.Restaurant]: 'Restaurantes y Bares',
-  [BusinessTypeId.Cafe]:       'Comida Rápida y Cafés',
-  [BusinessTypeId.Retail]:     'Tiendas y Comercios',
-  [BusinessTypeId.Servicios]:  'Servicios Especializados',
+export const MACRO_CATEGORY_LABELS: Record<MacroCategoryType, string> = {
+  [MacroCategoryType.FoodBeverage]: 'Restaurantes y Bares',
+  [MacroCategoryType.QuickService]: 'Comida Rápida y Cafés',
+  [MacroCategoryType.Retail]:       'Tiendas y Comercios',
+  [MacroCategoryType.Services]:     'Servicios Especializados',
+};
 
-  // Sub-types — kept for badge rendering when JWT/URL brings a sub-giro
-  [BusinessTypeId.Bar]:        'Bar',
-  [BusinessTypeId.Taqueria]:   'Taquería',
-  [BusinessTypeId.Abarrotes]:  'Abarrotes',
-  [BusinessTypeId.Ferreteria]: 'Ferretería',
-  [BusinessTypeId.Papeleria]:  'Papelería',
-  [BusinessTypeId.Farmacia]:   'Farmacia',
+export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {
+  // Macro 1 — Food & Beverage
+  [BusinessTypeId.Restaurante]:    'Restaurante',
+  [BusinessTypeId.BarCantina]:     'Bar / Cantina',
+  [BusinessTypeId.SportsBar]:      'Sports Bar / Wings',
+
+  // Macro 2 — Quick Service
+  [BusinessTypeId.Taqueria]:       'Taquería',
+  [BusinessTypeId.Dogos]:          'Dogos',
+  [BusinessTypeId.Hamburguesas]:   'Hamburguesas',
+  [BusinessTypeId.Cafeteria]:      'Cafetería',
+  [BusinessTypeId.Paleteria]:      'Paletería / Nevería',
+  [BusinessTypeId.Panaderia]:      'Panadería / Repostería',
+
+  // Macro 3 — Retail
+  [BusinessTypeId.Abarrotes]:      'Abarrotes / Miscelánea',
+  [BusinessTypeId.Expendio]:       'Expendio / Depósito',
+  [BusinessTypeId.Refaccionaria]:  'Refaccionaria / Autopartes',
+  [BusinessTypeId.Ferreteria]:     'Ferretería',
+  [BusinessTypeId.Papeleria]:      'Papelería',
+  [BusinessTypeId.Farmacia]:       'Farmacia',
+  [BusinessTypeId.Boutique]:       'Boutique / Ropa y Calzado',
+
+  // Macro 4 — Specialized Services
+  [BusinessTypeId.Estetica]:       'Estética / Barbería',
+  [BusinessTypeId.TallerMecanico]: 'Taller Mecánico',
+  [BusinessTypeId.Consultorio]:    'Consultorio / Clínica',
+  [BusinessTypeId.Gimnasio]:       'Gimnasio / Deportes',
 };
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionTypeId, string> = {

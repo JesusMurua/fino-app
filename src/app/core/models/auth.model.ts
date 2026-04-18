@@ -1,4 +1,4 @@
-import { BusinessTypeId, PlanTypeId, UserRoleId } from '../enums';
+import { MacroCategoryType, PlanTypeId, UserRoleId } from '../enums';
 
 /** Branch summary returned in the login response */
 export interface BranchInfo {
@@ -18,8 +18,11 @@ export interface AuthUser {
   currentBranchId: number;
   /** Numeric plan FK — use PlanTypeId enum */
   planTypeId: PlanTypeId;
-  /** Numeric business type FK — use BusinessTypeId enum */
-  businessTypeId: BusinessTypeId;
+  /**
+   * Primary macro category — drives feature gating, pricing and POS experience.
+   * Sub-giros live server-side (`BusinessGiro` N:M) and are NOT carried here.
+   */
+  primaryMacroCategoryId: MacroCategoryType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */
@@ -36,18 +39,17 @@ export interface AuthUser {
 /**
  * Shape of the JSON body for POST /api/auth/register.
  *
- * Singular `businessTypeId` by design — the initial registration handshake
- * commits one giro for pricing and catalog seeding. Multi-giro support is
- * negotiated later by the onboarding wizard via PUT /api/business/type
- * with an array payload. Do not add `businessTypes: number[]` here.
+ * The landing handshake commits a single macro category; specific
+ * sub-giros are captured later during the onboarding wizard and
+ * persisted via `PUT /api/business/giro`.
  */
 export interface RegisterRequest {
   businessName: string;
   ownerName: string;
   email: string;
   password: string;
-  /** Numeric business type FK — use BusinessTypeId enum */
-  businessTypeId: BusinessTypeId;
+  /** Primary macro FK — use MacroCategoryType enum */
+  primaryMacroCategoryId: MacroCategoryType;
   /** Numeric plan FK — use PlanTypeId enum */
   planTypeId: PlanTypeId;
   /** ISO 3166-1 alpha-2 country code (e.g. 'MX') — drives tax engine defaults */
@@ -65,8 +67,8 @@ export interface LoginResponse {
   currentBranchId: number;
   /** Numeric plan FK */
   planTypeId: PlanTypeId;
-  /** Numeric business type FK */
-  businessTypeId: BusinessTypeId;
+  /** Primary macro FK — sub-giros are fetched separately when needed */
+  primaryMacroCategoryId: MacroCategoryType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */

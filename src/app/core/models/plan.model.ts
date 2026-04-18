@@ -1,4 +1,4 @@
-import { BusinessTypeId, PlanTypeId } from '../enums';
+import { MacroCategoryType, PlanTypeId } from '../enums';
 
 /**
  * Computed plan metadata derived from auth state. Kept here because
@@ -8,7 +8,7 @@ import { BusinessTypeId, PlanTypeId } from '../enums';
 export interface PlanInfo {
   planTypeId: PlanTypeId;
   /** Null until the user logs in and the tenant context is hydrated */
-  businessTypeId: BusinessTypeId | null;
+  primaryMacroCategoryId: MacroCategoryType | null;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
   isOnTrial: boolean;

@@ -1,10 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 
-import { BusinessTypeId, UserRoleId } from '../enums';
-import { BUSINESS_TYPE_LABELS } from '../enums/config.enum';
+import { MacroCategoryType, UserRoleId } from '../enums';
 import { AuthService } from './auth.service';
-import { CatalogService } from './catalog.service';
 import { ConfigService } from './config.service';
+
+/** Deterministic macro → POS experience mapping used as fallback. */
+const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, 'Restaurant' | 'Counter' | 'Retail' | 'Quick'> = {
+  [MacroCategoryType.FoodBeverage]: 'Restaurant',
+  [MacroCategoryType.QuickService]: 'Counter',
+  [MacroCategoryType.Retail]:       'Retail',
+  [MacroCategoryType.Services]:     'Quick',
+};
 
 /**
  * Determines the correct landing route after authentication
@@ -17,7 +23,6 @@ export class DeviceRoutingService {
 
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
-  private readonly catalogService = inject(CatalogService);
 
   //#region Public API
 
@@ -53,11 +58,11 @@ export class DeviceRoutingService {
   //#region POS Route Resolution
 
   /**
-   * Resolves the POS route variant based on the business type's posExperience.
+   * Resolves the POS route variant based on the tenant's posExperience.
    *
    * Resolution order:
    *   1. configService.posExperience() — loaded from Dexie/API during preload
-   *   2. Fallback: derive from authService.businessTypeId() using static catalog
+   *   2. Fallback: derive deterministically from the JWT macro category
    *   3. Last resort: /pos (Restaurant default)
    *
    * Public so the POS entry guard can reuse the same logic.
@@ -66,10 +71,9 @@ export class DeviceRoutingService {
     let experience = this.configService.posExperience();
 
     if (!experience) {
-      const btId = this.authService.businessTypeId();
-      if (btId !== null) {
-        const catalog = this.catalogService.getBusinessType(BusinessTypeId[btId]);
-        experience = catalog?.posExperience;
+      const macroId = this.authService.primaryMacroCategoryId();
+      if (macroId !== null) {
+        experience = MACRO_POS_EXPERIENCE[macroId];
       }
     }
 

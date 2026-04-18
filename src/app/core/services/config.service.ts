@@ -9,11 +9,20 @@ import {
   DeviceConfig,
   PosExperience,
 } from '../models';
-import { BusinessTypeId } from '../enums';
+import { MacroCategoryType } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
-import { CatalogService } from './catalog.service';
 import { DatabaseService } from './database.service';
+
+/** Derives the default POS experience variant from the primary macro category. */
+function posExperienceForMacro(macro: MacroCategoryType): PosExperience {
+  switch (macro) {
+    case MacroCategoryType.FoodBeverage: return 'Restaurant';
+    case MacroCategoryType.QuickService: return 'Counter';
+    case MacroCategoryType.Retail:       return 'Retail';
+    case MacroCategoryType.Services:     return 'Quick';
+  }
+}
 
 /** API response shape for GET /api/branch/{id}/config */
 interface BranchConfigResponse {
@@ -30,7 +39,7 @@ interface BranchConfigResponse {
   folioFormat?: string;
   folioCounter?: number;
   planTypeId?: number;
-  businessTypeId?: number;
+  primaryMacroCategoryId?: number;
   posExperience?: string;
 }
 
@@ -86,7 +95,6 @@ export class ConfigService {
     private readonly db: DatabaseService,
     private readonly api: ApiService,
     private readonly authService: AuthService,
-    private readonly catalogService: CatalogService,
   ) {
     // Eagerly load device config so subscribers get the real value immediately
     this.loadDeviceConfig();
@@ -123,13 +131,19 @@ export class ConfigService {
         this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
       );
 
-      // Resolve business type catalog from CatalogService using JWT business type.
-      // If auth hydration hasn't completed yet, keep the preloaded catalog — this
-      // method runs in a background refresh and never as the source of truth.
-      const btId = this.authService.businessTypeId();
-      const btCatalog = btId !== null
-        ? (this.catalogService.getBusinessType(BusinessTypeId[btId]) ?? config.businessTypeCatalog)
-        : config.businessTypeCatalog;
+      // Derive the POS experience from the branch payload when available,
+      // or fall back to the macro category from the JWT. Macro → experience
+      // is deterministic (see `posExperienceForMacro`), so we never need to
+      // hit the catalog service for this resolution.
+      const macroId = this.authService.primaryMacroCategoryId();
+      const posExperience: PosExperience | undefined =
+        (remote.posExperience as PosExperience | undefined)
+        ?? (macroId !== null ? posExperienceForMacro(macroId) : config.businessTypeCatalog?.posExperience);
+      const btCatalog = config.businessTypeCatalog
+        ? { ...config.businessTypeCatalog, posExperience: posExperience ?? config.businessTypeCatalog.posExperience }
+        : posExperience
+          ? { id: 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
+          : config.businessTypeCatalog;
 
       config = {
         ...config,
