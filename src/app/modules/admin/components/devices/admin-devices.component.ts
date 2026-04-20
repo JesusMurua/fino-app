@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
+import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 
 import { DeviceConfig } from '../../../../core/models';
@@ -37,6 +38,7 @@ interface ModeOption {
     FormsModule,
     ButtonModule,
     DropdownModule,
+    InputTextModule,
     TableModule,
   ],
   templateUrl: './admin-devices.component.html',
@@ -65,6 +67,12 @@ export class AdminDevicesComponent implements OnInit {
   /** Form values for the activation code generator */
   codeBranchId = 0;
   codeMode: DeviceConfig['mode'] = 'cashier';
+  /**
+   * Human-readable name the terminal will adopt after activation.
+   * Travels with the code so the field-tech only has to type 6 digits —
+   * the terminal never asks for a name again.
+   */
+  codeDeviceName = '';
 
   /**
    * Device mode options, filtered dynamically by the tenant's active
@@ -131,6 +139,9 @@ export class AdminDevicesComponent implements OnInit {
   async generateActivationCode(): Promise<void> {
     if (this.generatingCode() || !this.codeBranchId) return;
 
+    const name = this.codeDeviceName.trim();
+    if (!name) return;
+
     this.generatingCode.set(true);
     this.activationCode.set('');
 
@@ -139,6 +150,7 @@ export class AdminDevicesComponent implements OnInit {
         this.api.post<{ code: string }>('/device/generate-code', {
           branchId: this.codeBranchId,
           mode: this.codeMode,
+          name,
         }),
       );
       this.activationCode.set(response.code);

@@ -50,6 +50,22 @@
             styleClass="w-full"
           />
         </div>
+
+        <div class="form-field">
+          <label class="form-field__label" for="device-name">Nombre del dispositivo</label>
+          <input
+            id="device-name"
+            type="text"
+            pInputText
+            [(ngModel)]="codeDeviceName"
+            placeholder="Ej. Caja 1, Cocina Principal"
+            maxlength="60"
+            class="w-full"
+          />
+          <small class="form-field__hint">
+            El terminal adoptará este nombre automáticamente al activar el código.
+          </small>
+        </div>
       </div>
 
       @if (activationCode()) {
@@ -58,6 +74,7 @@
           <span class="activation-code__summary">
             Código para: <strong>{{ codeBranchLabel() }}</strong>
             — Modo: <strong>{{ codeModeLabel() }}</strong>
+            — Nombre: <strong>{{ codeDeviceName.trim() }}</strong>
           </span>
           <span class="activation-code__hint">
             Ingresa este código en el nuevo dispositivo desde la pantalla "Dispositivo no vinculado".
@@ -69,7 +86,7 @@
         <p-button
           label="Generar código"
           icon="pi pi-qrcode"
-          [disabled]="generatingCode() || !codeBranchId"
+          [disabled]="generatingCode() || !codeBranchId || !codeDeviceName.trim()"
           [loading]="generatingCode()"
           (onClick)="generateActivationCode()"
         />

@@ -346,3 +346,58 @@
     color: $color-primary;
   }
 }
+
+// -----------------------------------------------------------------------
+// Review card (code flow — read-only summary before confirmation)
+// -----------------------------------------------------------------------
+.setup-review {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-bottom: $space-4;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+
+    > i {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $color-primary;
+      font-size: 16px;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  &__label {
+    font-size: 12px;
+    color: $color-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+    word-break: break-word;
+  }
+}
