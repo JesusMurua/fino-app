@@ -1,0 +1,45 @@
+<p-dialog
+  [visible]="visible"
+  [modal]="true"
+  [closable]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [closeOnEscape]="false"
+  [style]="{ width: '28rem', 'max-width': '90vw' }"
+  styleClass="hardware-only-dialog"
+  role="alertdialog"
+  [attr.aria-labelledby]="'hardware-only-dialog-title'"
+  [attr.aria-describedby]="'hardware-only-dialog-body'"
+>
+  <ng-template pTemplate="header">
+    <div class="hardware-only-dialog__header">
+      <i class="pi pi-exclamation-triangle hardware-only-dialog__icon" aria-hidden="true"></i>
+      <h2 id="hardware-only-dialog-title" class="hardware-only-dialog__title">
+        {{ title }}
+      </h2>
+    </div>
+  </ng-template>
+
+  <p id="hardware-only-dialog-body" class="hardware-only-dialog__body" aria-live="assertive">
+    {{ body }}
+  </p>
+
+  <ng-template pTemplate="footer">
+    <div class="hardware-only-dialog__footer">
+      <p-button
+        label="Entendido"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="onDismiss()"
+        ariaLabel="Cerrar alerta y volver al PIN"
+      />
+      <p-button
+        label="Re-vincular dispositivo"
+        severity="warning"
+        (onClick)="onReprovision()"
+        ariaLabel="Re-vincular este dispositivo como POS"
+      />
+    </div>
+  </ng-template>
+</p-dialog>

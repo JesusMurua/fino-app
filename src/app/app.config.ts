@@ -16,6 +16,7 @@ import { provideServiceWorker } from '@angular/service-worker';
 import { appRoutes } from './app.routes';
 import { AuthService } from './core/services/auth.service';
 import { ConfigService } from './core/services/config.service';
+import { SessionRehydrationService } from './core/services/session-rehydration.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -26,9 +27,19 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'es' },
     {
       provide: APP_INITIALIZER,
-      useFactory: (authService: AuthService, configService: ConfigService) => () =>
-        authService.isAuthenticated() ? configService.load() : Promise.resolve(),
-      deps: [AuthService, ConfigService],
+      useFactory: (
+        authService: AuthService,
+        configService: ConfigService,
+        sessionRehydration: SessionRehydrationService,
+      ) => () => {
+        if (!authService.isAuthenticated()) return Promise.resolve();
+        // Fire rehydration in the background — bootstrap must not wait
+        // on the network. The local cached session is already trustworthy
+        // enough to render the first route; `/auth/me` catches up behind.
+        sessionRehydration.hydrateOnBoot();
+        return configService.load();
+      },
+      deps: [AuthService, ConfigService, SessionRehydrationService],
       multi: true,
     },
     provideServiceWorker('ngsw-worker.js', {

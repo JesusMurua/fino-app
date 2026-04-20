@@ -1,11 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, firstValueFrom, tap } from 'rxjs';
+import { Observable, firstValueFrom, map, tap } from 'rxjs';
 
 import {
   ACTIVE_BRANCH_KEY,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
+  AuthSessionType,
   AuthUser,
   BranchInfo,
   EmployeeHash,
@@ -16,7 +17,7 @@ import {
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
-import { MacroCategoryType, PlanTypeId } from '../enums';
+import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 import { TenantContextService } from './tenant-context.service';
@@ -40,6 +41,31 @@ export class AuthService {
 
   /** True when a user is authenticated with a valid token */
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
+
+  /**
+   * How the current session was authenticated.
+   *
+   * Priority:
+   *   1. `currentUser().sessionType` — set by the login response or rehydration.
+   *   2. JWT `sessionType` claim — covers sessions stored before the field existed on AuthUser.
+   *   3. Backwards-compatible inference — Back Office roles default to `'email'`,
+   *      everyone else defaults to `'pin'`.
+   *
+   * Returns `null` when the user is not authenticated.
+   */
+  readonly sessionType = computed<AuthSessionType | null>(() => {
+    const user = this.currentUser();
+    if (!user) return null;
+    if (user.sessionType) return user.sessionType;
+
+    const fromJwt = this.extractSessionTypeFromJwt(user.token);
+    if (fromJwt) return fromJwt;
+
+    return BACK_OFFICE_ROLES.includes(user.roleId) ? 'email' : 'pin';
+  });
+
+  /** Epoch millis of the last successful `/auth/me` rehydration — used by SessionRehydrationService */
+  readonly lastRehydratedAt = signal<number | null>(null);
 
   /** Branches available for the current user */
   readonly availableBranches = computed<BranchInfo[]>(() =>
@@ -287,6 +313,7 @@ export class AuthService {
         primaryMacroCategoryId: macro,
         trialEndsAt: this.trialEndsAt() ?? undefined,
         features: previous?.features ?? [],
+        sessionType: 'pin',
       };
 
       localStorage.setItem(AUTH_TOKEN_KEY, user.token);
@@ -378,6 +405,62 @@ export class AuthService {
 
   //#endregion
 
+  //#region Rehydration
+
+  /**
+   * Refreshes the local session from `GET /api/auth/me` so that server-side
+   * state (onboarding status, role, plan, `sessionType`, feature claims)
+   * stays in sync across devices and across shell transitions.
+   *
+   * Behavior:
+   *   - When there is no real JWT to present (unauthenticated or offline
+   *     marker token), the call is skipped and the observable errors
+   *     with a sentinel so the caller can branch on `'no-session'`.
+   *   - On success, delegates to `handleLoginSuccess` which atomically
+   *     replaces the stored user/token + refreshes the tenant context.
+   *   - On 401, forwards to `logout()` — the interceptor would do the
+   *     same but we short-circuit here to make the flow explicit.
+   *   - On any other error (network, 5xx) the promise still resolves;
+   *     callers inspect `lastRehydratedAt` to detect a stale session.
+   *
+   * The returned observable emits exactly once and completes.
+   */
+  rehydrate(): Observable<AuthUser> {
+    const token = this.getToken();
+    if (!token || token.startsWith('offline-session-')) {
+      return new Observable<AuthUser>(subscriber => {
+        subscriber.error(new Error('no-session'));
+      });
+    }
+
+    return this.api.get<LoginResponse>('/auth/me').pipe(
+      map(response => {
+        // Schema guard: the rehydration response MUST carry a macro category.
+        // If the backend returns an incomplete payload, do NOT wipe the
+        // current state mid-session — log and bail out by throwing so the
+        // caller records the failure.
+        if (response.primaryMacroCategoryId === undefined || response.primaryMacroCategoryId === null) {
+          console.warn('[AuthService] /auth/me response missing primaryMacroCategoryId — keeping cached state');
+          throw new Error('invalid-me-response');
+        }
+
+        // Only replace the stored token when the server returned a real JWT.
+        // Offline marker tokens must never be overwritten by a rehydrate.
+        const responseTokenIsJwt = response.token?.split('.').length === 3;
+        if (!responseTokenIsJwt) {
+          console.warn('[AuthService] /auth/me response token is not a JWT — keeping cached state');
+          throw new Error('invalid-me-response');
+        }
+
+        const user = this.handleLoginSuccess(response);
+        this.lastRehydratedAt.set(Date.now());
+        return user;
+      }),
+    );
+  }
+
+  //#endregion
+
   //#region Subscription
 
   /**
@@ -449,6 +532,12 @@ export class AuthService {
     const jwtFeatures = this.extractFeaturesFromJwt(response.token);
     const features = jwtFeatures ?? response.features ?? [];
 
+    // Prefer the JWT `sessionType` claim so stored sessions and guards
+    // see the backend-signed value. Fall back to the response body for
+    // legacy backends that pre-date the claim.
+    const sessionType: AuthSessionType | undefined =
+      this.extractSessionTypeFromJwt(response.token) ?? response.sessionType;
+
     const user: AuthUser = {
       token: response.token,
       roleId: response.roleId,
@@ -463,6 +552,7 @@ export class AuthService {
       onboardingStatusId: response.onboardingStatusId,
       currentOnboardingStep: response.currentOnboardingStep,
       features,
+      sessionType,
     };
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
@@ -544,6 +634,23 @@ export class AuthService {
       if (parts.length !== 3) return undefined;
       const payload = JSON.parse(atob(parts[1]));
       return Array.isArray(payload.features) ? payload.features : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Extracts the `sessionType` claim from a JWT payload.
+   * Returns undefined for offline marker tokens or malformed JWTs.
+   */
+  private extractSessionTypeFromJwt(token: string): AuthSessionType | undefined {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return undefined;
+      const payload = JSON.parse(atob(parts[1]));
+      const raw = payload.sessionType;
+      if (raw === 'email' || raw === 'pin' || raw === 'device') return raw;
+      return undefined;
     } catch {
       return undefined;
     }

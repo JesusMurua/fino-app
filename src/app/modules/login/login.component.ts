@@ -52,7 +52,12 @@ export class LoginComponent {
 
     if (user) {
       const returnUrl = this.authService.consumeReturnUrl();
-      const defaultRoute = this.deviceRoutingService.getPostLoginRoute(user.roleId);
+      const resolved = this.deviceRoutingService.getPostLoginRoute(user.roleId);
+
+      // Email login users are Back Office by definition. They never trip
+      // the hardware-shell error path; if they somehow did, fall back to
+      // /admin rather than locking them out.
+      const defaultRoute = resolved.kind === 'route' ? resolved.route : '/admin';
       this.router.navigateByUrl(returnUrl ?? defaultRoute);
     } else {
       this.hasError.set(true);
