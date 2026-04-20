@@ -94,7 +94,7 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- Section 2 — Devices list (placeholder until backend lands)           -->
+    <!-- Section 2 — Fleet table                                              -->
     <!-- =================================================================== -->
     <section class="settings-card">
       <div class="settings-card-header">
@@ -105,21 +105,240 @@
         </div>
       </div>
 
-      <div class="devices-empty">
-        <i class="pi pi-tablet devices-empty__icon"></i>
-        <p class="devices-empty__title">Listado en camino</p>
-        <p class="devices-empty__text">
-          Pronto podrás ver aquí todos tus equipos con su estado en tiempo real,
-          revocar accesos y renombrarlos. Por ahora, usa el generador de arriba
-          para vincular dispositivos nuevos.
-        </p>
-        <span class="devices-empty__badge">
-          <i class="pi pi-clock"></i>
-          Próximamente
-        </span>
+      <!-- Fleet header: counters + controls -->
+      <div class="fleet-header">
+        <div class="fleet-stats" aria-label="Resumen de dispositivos">
+          <span class="fleet-stats__item">
+            Total: <strong>{{ totalCount() }}</strong>
+          </span>
+          <span class="fleet-stats__item fleet-stats__item--online">
+            En línea: <strong>{{ onlineCount() }}</strong>
+          </span>
+          <span class="fleet-stats__item fleet-stats__item--offline">
+            Desconectados: <strong>{{ offlineCount() }}</strong>
+          </span>
+          @if (revokedCount() > 0) {
+            <span class="fleet-stats__item fleet-stats__item--revoked">
+              Revocados: <strong>{{ revokedCount() }}</strong>
+            </span>
+          }
+        </div>
+
+        <div class="fleet-controls">
+          @if (showBranchFilter()) {
+            <p-dropdown
+              [options]="branchFilterOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="branchFilterId()"
+              (ngModelChange)="onBranchFilterChange($event)"
+              placeholder="Todas las sucursales"
+              [showClear]="false"
+              styleClass="w-14rem"
+              ariaLabel="Filtrar por sucursal"
+            />
+          }
+          <p-button
+            label="Refrescar"
+            icon="pi pi-refresh"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="refreshingDevices() || loadingDevices()"
+            [loading]="refreshingDevices()"
+            (onClick)="refresh()"
+          />
+        </div>
       </div>
+
+      <!-- Fleet table or empty state -->
+      @if (hasDevices() || loadingDevices()) {
+        <p-table
+          [value]="devices()"
+          [loading]="loadingDevices()"
+          [rowTrackBy]="trackByDeviceId"
+          dataKey="id"
+          styleClass="p-datatable-sm fleet-table"
+          responsiveLayout="scroll"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th scope="col">Nombre</th>
+              <th scope="col">Sucursal</th>
+              <th scope="col">Modo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Últ. visto</th>
+              <th scope="col" class="fleet-table__actions-col">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-device>
+            <tr>
+              <td>
+                <span class="fleet-table__name">{{ device.name }}</span>
+              </td>
+              <td>{{ device.branchName }}</td>
+              <td>{{ modeLabel(device.mode) }}</td>
+              <td [attr.aria-label]="statusAriaLabel(device)">
+                @switch (statusOf(device)) {
+                  @case ('online') {
+                    <p-tag
+                      severity="success"
+                      value="En línea"
+                      icon="pi pi-circle-fill"
+                      styleClass="status-badge status-badge--online"
+                    />
+                  }
+                  @case ('offline') {
+                    <p-tag
+                      severity="secondary"
+                      value="Desconectado"
+                      icon="pi pi-circle"
+                      styleClass="status-badge status-badge--offline"
+                    />
+                  }
+                  @case ('revoked') {
+                    <p-tag
+                      severity="danger"
+                      value="Revocado"
+                      icon="pi pi-ban"
+                      styleClass="status-badge status-badge--revoked"
+                    />
+                  }
+                }
+              </td>
+              <td>{{ relativeTime(device.lastSeenAt) }}</td>
+              <td>
+                <div class="row-actions">
+                  <p-button
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    [text]="true"
+                    [rounded]="true"
+                    pTooltip="Editar"
+                    [ariaLabel]="'Editar dispositivo «' + device.name + '»'"
+                    (onClick)="openEditDialog(device)"
+                  />
+                  @if (device.isActive) {
+                    <p-button
+                      icon="pi pi-ban"
+                      severity="danger"
+                      [text]="true"
+                      [rounded]="true"
+                      pTooltip="Revocar"
+                      [loading]="togglingDeviceId() === device.id"
+                      [disabled]="togglingDeviceId() !== null && togglingDeviceId() !== device.id"
+                      [ariaLabel]="'Revocar dispositivo «' + device.name + '»'"
+                      (onClick)="confirmToggle(device)"
+                    />
+                  } @else {
+                    <p-button
+                      icon="pi pi-refresh"
+                      severity="success"
+                      [text]="true"
+                      [rounded]="true"
+                      pTooltip="Reactivar"
+                      [loading]="togglingDeviceId() === device.id"
+                      [disabled]="togglingDeviceId() !== null && togglingDeviceId() !== device.id"
+                      [ariaLabel]="'Reactivar dispositivo «' + device.name + '»'"
+                      (onClick)="confirmToggle(device)"
+                    />
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      } @else {
+        <div class="devices-empty">
+          <i class="pi pi-tablet devices-empty__icon"></i>
+          @if (branchFilterId() !== null) {
+            <p class="devices-empty__title">Sin dispositivos en esta sucursal</p>
+            <p class="devices-empty__text">
+              No hay equipos vinculados al filtro seleccionado. Cambia de sucursal
+              o usa el generador de arriba para vincular uno nuevo.
+            </p>
+          } @else {
+            <p class="devices-empty__title">Aún no tienes dispositivos vinculados</p>
+            <p class="devices-empty__text">
+              Genera un código con el formulario de arriba para agregar tu primer equipo.
+            </p>
+          }
+        </div>
+      }
     </section>
 
   </div>
+
+  <!-- Edit dialog (Phase 4) -->
+  <p-dialog
+    header="Editar dispositivo"
+    [visible]="editDialogVisible()"
+    (visibleChange)="onEditDialogVisibleChange($event)"
+    [modal]="true"
+    [closable]="!savingEdit()"
+    [closeOnEscape]="!savingEdit()"
+    [dismissableMask]="false"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '32rem', 'max-width': '90vw' }"
+    styleClass="edit-device-dialog"
+  >
+    <form [formGroup]="editForm" class="edit-form" (ngSubmit)="saveEdit()">
+      <div class="form-field">
+        <label class="form-field__label" for="edit-device-name">Nombre</label>
+        <input
+          id="edit-device-name"
+          type="text"
+          pInputText
+          formControlName="name"
+          maxlength="60"
+          class="w-full"
+        />
+        @if (editForm.controls.name.touched && editForm.controls.name.invalid) {
+          <small class="form-error">
+            Ingresa un nombre válido (máx 60 caracteres, sin espacios vacíos).
+          </small>
+        }
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="edit-device-branch">Sucursal</label>
+        <p-dropdown
+          inputId="edit-device-branch"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          formControlName="branchId"
+          placeholder="Selecciona una sucursal"
+          styleClass="w-full"
+        />
+        @if (editForm.controls.branchId.touched && editForm.controls.branchId.invalid) {
+          <small class="form-error">Selecciona una sucursal.</small>
+        }
+      </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+      <div class="edit-form__footer">
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="savingEdit()"
+          (onClick)="closeEditDialog()"
+        />
+        <p-button
+          label="Guardar"
+          icon="pi pi-check"
+          [loading]="savingEdit()"
+          [disabled]="editForm.invalid"
+          (onClick)="saveEdit()"
+        />
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Confirmation dialog for Revoke / Restore (Phase 3) -->
+  <p-confirmDialog key="device-toggle" [style]="{ width: '28rem', 'max-width': '90vw' }" />
 
 </div>
