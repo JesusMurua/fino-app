@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { Router, RouterModule } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
@@ -12,8 +13,13 @@ import { NotificationService } from '../../core/services/notification.service';
 import { OrderContextService } from '../../core/services/order-context.service';
 import { ProductService } from '../../core/services/product.service';
 import { PromotionService } from '../../core/services/promotion.service';
+import { RouteAccessPolicy } from '../../core/services/route-access-policy.service';
 import { SyncService } from '../../core/services/sync.service';
 import { TableService } from '../../core/services/table.service';
+import {
+  HardwareOnlyMode,
+  HardwareOnlyScreenDialogComponent,
+} from '../../shared/components/hardware-only-screen-dialog/hardware-only-screen-dialog.component';
 
 /** Keys available on the PIN numpad */
 type NumpadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'del';
@@ -32,7 +38,7 @@ const SS_LOCK_UNTIL = 'pin_lock_until';
 @Component({
   selector: 'app-pin',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, HardwareOnlyScreenDialogComponent],
   templateUrl: './pin.component.html',
   styleUrl: './pin.component.scss',
 })
@@ -70,6 +76,9 @@ export class PinComponent implements OnInit {
   /** True when permanently locked (10+ attempts) — requires app restart */
   readonly isPermanentLock = signal(false);
 
+  /** Non-null when the last PIN login hit a hardware-only shell (KDS/Kiosk) */
+  readonly hardwareShellError = signal<HardwareOnlyMode | null>(null);
+
   /** Flat key list for the 3x4 grid (last row: empty slot, 0, del) */
   readonly keys: (NumpadKey | null)[] = [
     '1', '2', '3',
@@ -93,6 +102,7 @@ export class PinComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly promotionService = inject(PromotionService);
   private readonly orderContextService = inject(OrderContextService);
+  private readonly routeAccessPolicy = inject(RouteAccessPolicy);
   private readonly syncService = inject(SyncService);
   private readonly tableService = inject(TableService);
 
@@ -185,14 +195,35 @@ export class PinComponent implements OnInit {
       this.syncService.pullTodayOrders().catch(() => {});
       this.authService.refreshSubscriptionStatus();
 
-      const returnUrl = this.authService.consumeReturnUrl();
-      if (returnUrl) {
-        this.router.navigateByUrl(returnUrl);
+      // Refresh server-side session state (onboarding, role, plan). Skipped
+      // automatically for offline sessions by `AuthService.rehydrate`.
+      if (!result.offline) {
+        try {
+          await firstValueFrom(this.authService.rehydrate());
+        } catch {
+          // Fail-open: the freshly-minted PIN session is already correct.
+        }
+      }
+
+      // Resolve the role-appropriate destination BEFORE honoring any
+      // stored returnUrl, so we can gate the URL behind RouteAccessPolicy.
+      const resolved = this.deviceRoutingService.getPostLoginRoute(result.user.roleId);
+
+      if (resolved.kind === 'error') {
+        // Human PIN on a hardware-only device. Clear any stored
+        // returnUrl so a future legitimate login is not redirected
+        // anywhere surprising, and surface the modal.
+        this.authService.consumeReturnUrl();
+        this.hardwareShellError.set(resolved.mode);
         return;
       }
 
-      const dest = this.deviceRoutingService.getPostLoginRoute(result.user.roleId);
-      this.router.navigate([dest]);
+      const returnUrl = this.authService.consumeReturnUrl();
+      const targetUrl = this.routeAccessPolicy.isAllowed(result.user.roleId, returnUrl)
+        ? returnUrl!
+        : resolved.route;
+
+      this.router.navigateByUrl(targetUrl);
 
       // Request push notification permission (best-effort, non-blocking)
       this.notificationService.requestPermission();
@@ -206,6 +237,23 @@ export class PinComponent implements OnInit {
         this.hasError.set(false);
       }, 600);
     }
+  }
+
+  //#endregion
+
+  //#region Hardware-Only Shell Dialog
+
+  /** User acknowledged the hardware-shell block — clear PIN and close modal */
+  onHardwareShellDismiss(): void {
+    this.hardwareShellError.set(null);
+    this.digits.set([]);
+    this.hasError.set(false);
+  }
+
+  /** User asked to re-provision the device as a POS */
+  onHardwareShellReprovision(): void {
+    this.hardwareShellError.set(null);
+    this.router.navigate(['/setup'], { queryParams: { reason: 'reprovision' } });
   }
 
   //#endregion

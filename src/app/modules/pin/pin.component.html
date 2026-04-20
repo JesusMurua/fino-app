@@ -96,4 +96,14 @@
 
   </div>
 
+  <!-- Hardware-only shell block — shown when a human signs in on a KDS/Kiosk device -->
+  @if (hardwareShellError(); as mode) {
+    <app-hardware-only-screen-dialog
+      [visible]="true"
+      [mode]="mode"
+      (dismiss)="onHardwareShellDismiss()"
+      (reprovision)="onHardwareShellReprovision()"
+    />
+  }
+
 </div>

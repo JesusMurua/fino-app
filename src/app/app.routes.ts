@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
 
+import { adminShellGuard } from './core/guards/admin-shell.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { deviceAuthGuard } from './core/guards/device-auth.guard';
 import { featureGuard } from './core/guards/feature.guard';
+import { posShellGuard } from './core/guards/pos-shell.guard';
 import { provisioningGuard } from './core/guards/provisioning.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { setupGuard } from './core/guards/setup.guard';
@@ -70,7 +72,7 @@ export const appRoutes: Routes = [
 	// --- Back Office (identity + permissions, no hardware) ---
 	{
 		path: 'admin',
-		canActivate: [authGuard, roleGuard],
+		canActivate: [authGuard, roleGuard, adminShellGuard],
 		data: { roles: [UserRoleId.Owner, UserRoleId.Manager] },
 		loadChildren: () =>
 			import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
@@ -79,7 +81,7 @@ export const appRoutes: Routes = [
 	// --- Operational routes (identity + permissions + terminal) ---
 	{
 		path: 'pos',
-		canActivate: [authGuard, roleGuard, terminalGuard],
+		canActivate: [authGuard, roleGuard, terminalGuard, posShellGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/pos/pos.routes').then((m) => m.posRoutes),

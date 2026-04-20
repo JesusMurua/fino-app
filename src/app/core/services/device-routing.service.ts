@@ -13,6 +13,15 @@ const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, 'Restaurant' | 'Counter' |
 };
 
 /**
+ * Result of `getPostLoginRoute` — a discriminated union so callers can
+ * branch between a plain redirect and the "you signed in on a hardware
+ * shell" error path without relying on sentinel strings.
+ */
+export type PostLoginRoute =
+  | { kind: 'route'; route: string }
+  | { kind: 'error'; error: 'hardware-shell'; mode: 'kitchen' | 'kiosk' };
+
+/**
  * Determines the correct landing route after authentication
  * based on the user's role and the device's operating mode.
  *
@@ -28,28 +37,52 @@ export class DeviceRoutingService {
 
   /**
    * Resolves the post-login landing route.
-   * @param roleId Numeric role from the authenticated user
-   * @param deviceMode Optional device mode override (defaults to current device config)
+   *
+   * @param roleId     Numeric role from the authenticated user.
+   * @param deviceMode Optional device mode override (defaults to the
+   *                   current device config). Hardware modes
+   *                   (`kitchen`, `kiosk`) surface an error for
+   *                   human-PIN roles because those shells are
+   *                   device-authenticated only.
    */
-  getPostLoginRoute(roleId: UserRoleId, deviceMode?: string): string {
+  getPostLoginRoute(roleId: UserRoleId, deviceMode?: string): PostLoginRoute {
     const mode = deviceMode ?? this.configService.deviceConfig$.getValue().mode;
 
     switch (roleId) {
       case UserRoleId.Owner:
       case UserRoleId.Manager:
-        return '/admin';
+        return { kind: 'route', route: '/admin' };
+
       case UserRoleId.Kitchen:
-        return '/kitchen';
+        // Kitchen role users exist, but the /kitchen shell is device-auth
+        // only. Send them to /orders so they can triage tickets with the
+        // human session; operators map this role to the KDS manually.
+        return { kind: 'route', route: '/orders' };
+
       case UserRoleId.Host:
-        return '/tables';
+        return { kind: 'route', route: '/tables' };
+
       case UserRoleId.Waiter:
-        return mode === 'tables' ? '/tables' : this.resolvePosRoute();
-      case UserRoleId.Cashier:
-        if (mode === 'tables') return '/tables';
-        if (mode === 'kitchen') return '/kitchen';
-        return this.resolvePosRoute();
+        if (mode === 'tables') return { kind: 'route', route: '/tables' };
+        return { kind: 'route', route: '/pos/waiter' };
+
+      case UserRoleId.Cashier: {
+        if (mode === 'kitchen' || mode === 'kiosk') {
+          return { kind: 'error', error: 'hardware-shell', mode };
+        }
+        if (mode === 'tables') return { kind: 'route', route: '/tables' };
+        return { kind: 'route', route: this.resolvePosRoute() };
+      }
+
+      case UserRoleId.Kiosk: {
+        if (mode === 'kitchen' || mode === 'kiosk') {
+          return { kind: 'error', error: 'hardware-shell', mode };
+        }
+        return { kind: 'route', route: '/pin' };
+      }
+
       default:
-        return '/pin';
+        return { kind: 'route', route: '/pin' };
     }
   }
 

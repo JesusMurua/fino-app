@@ -6,6 +6,14 @@ export interface BranchInfo {
   name: string;
 }
 
+/**
+ * Identifies how the current session was created.
+ * - `email`: browser login with email + password (Back Office users).
+ * - `pin`: terminal login with a 4-digit PIN (operational staff).
+ * - `device`: long-lived machine token (KDS, kiosk) — humans never own this.
+ */
+export type AuthSessionType = 'email' | 'pin' | 'device';
+
 /** Authenticated user state held in AuthService */
 export interface AuthUser {
   /** Numeric role FK — use UserRoleId enum for comparisons */
@@ -34,6 +42,12 @@ export interface AuthUser {
    * JWT `features` claim. Drives `TenantContextService`.
    */
   features?: string[];
+  /**
+   * How the session was authenticated. Drives setup-guard bypass and
+   * hardware-shell separation. Optional to stay backwards compatible
+   * with sessions created before the `/auth/me` contract shipped.
+   */
+  sessionType?: AuthSessionType;
 }
 
 /**
@@ -56,7 +70,12 @@ export interface RegisterRequest {
   countryCode: string;
 }
 
-/** Shape of the JSON body returned by POST /api/auth/pin-login and /api/auth/email-login */
+/**
+ * Shape of the JSON body returned by:
+ *   - POST /api/auth/pin-login
+ *   - POST /api/auth/email-login
+ *   - GET  /api/auth/me  (rehydration)
+ */
 export interface LoginResponse {
   token: string;
   roleId: UserRoleId;
@@ -80,6 +99,8 @@ export interface LoginResponse {
    * `features` claim for convenience. Drives `TenantContextService`.
    */
   features?: string[];
+  /** How this session was authenticated — see AuthSessionType. */
+  sessionType?: AuthSessionType;
 }
 
 /** Shape of GET /api/subscription/status response */

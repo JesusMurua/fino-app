@@ -284,8 +284,9 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     this.router.navigate(['/orders']);
   }
 
+  /** Navigates to the Back Office shell — session rehydration runs in `adminShellGuard`. */
   openAdmin(): void {
-    this.router.navigate(['/pin']);
+    this.router.navigate(['/admin']);
   }
 
   logout(): void {
