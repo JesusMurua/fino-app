@@ -192,6 +192,7 @@ export class RegisterComponent implements OnInit {
       primaryMacroCategoryId: resolvedMacroId,
       planTypeId:             this.intent.planTypeId,
       countryCode:            this.intent.countryCode,
+      timeZoneId:             Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 
     try {

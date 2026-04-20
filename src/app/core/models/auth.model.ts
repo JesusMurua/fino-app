@@ -68,6 +68,12 @@ export interface RegisterRequest {
   planTypeId: PlanTypeId;
   /** ISO 3166-1 alpha-2 country code (e.g. 'MX') — drives tax engine defaults */
   countryCode: string;
+  /**
+   * IANA timezone id (e.g. 'America/Mexico_City', 'America/Tijuana').
+   * Backend defaults to 'America/Mexico_City' when omitted.
+   * Used to compute local day boundaries for reports and register cuts.
+   */
+  timeZoneId?: string;
 }
 
 /**
