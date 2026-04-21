@@ -8,14 +8,11 @@
         Administra las ubicaciones de tu negocio y la configuración de cada una
       </p>
     </div>
-    <button
-      type="button"
-      class="btn-primary"
-      (click)="openNewBranch()"
-    >
-      <i class="pi pi-plus"></i>
-      Nueva sucursal
-    </button>
+    <p-button
+      label="Nueva sucursal"
+      icon="pi pi-plus"
+      (onClick)="openNewBranch()"
+    />
   </div>
 
   <!-- List -->
@@ -58,23 +55,25 @@
           <td>
             <div class="branch-actions">
               @if (!branch.isMatrix) {
-                <button
-                  type="button"
-                  class="btn-icon"
-                  aria-label="Copiar catálogo"
-                  (click)="openCopyCatalog(branch)"
-                >
-                  <i class="pi pi-copy"></i>
-                </button>
+                <p-button
+                  icon="pi pi-copy"
+                  severity="secondary"
+                  [text]="true"
+                  [rounded]="true"
+                  pTooltip="Copiar catálogo"
+                  [ariaLabel]="'Copiar catálogo a ' + branch.name"
+                  (onClick)="openCopyCatalog(branch)"
+                />
               }
-              <button
-                type="button"
-                class="btn-icon"
-                aria-label="Editar sucursal"
-                (click)="openEditBranch(branch)"
-              >
-                <i class="pi pi-pencil"></i>
-              </button>
+              <p-button
+                icon="pi pi-pencil"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                pTooltip="Editar sucursal"
+                [ariaLabel]="'Editar sucursal ' + branch.name"
+                (onClick)="openEditBranch(branch)"
+              />
             </div>
           </td>
         </tr>
@@ -180,23 +179,20 @@
 
     <ng-template pTemplate="footer">
       <div class="dialog-footer">
-        <button
-          type="button"
-          class="btn-secondary"
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [outlined]="true"
           [disabled]="savingBranch()"
-          (click)="showBranchDialog.set(false)"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn-primary"
+          (onClick)="showBranchDialog.set(false)"
+        />
+        <p-button
+          label="Guardar"
+          icon="pi pi-check"
+          [loading]="savingBranch()"
           [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
-          (click)="saveBranch()"
-        >
-          @if (savingBranch()) { <i class="pi pi-spin pi-spinner"></i> }
-          Guardar
-        </button>
+          (onClick)="saveBranch()"
+        />
       </div>
     </ng-template>
   </p-dialog>
@@ -221,23 +217,20 @@
 
     <ng-template pTemplate="footer">
       <div class="dialog-footer">
-        <button
-          type="button"
-          class="btn-secondary"
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [outlined]="true"
           [disabled]="copyingCatalog()"
-          (click)="showCopyDialog.set(false)"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="btn-primary"
+          (onClick)="showCopyDialog.set(false)"
+        />
+        <p-button
+          label="Sí, copiar"
+          icon="pi pi-copy"
+          [loading]="copyingCatalog()"
           [disabled]="copyingCatalog()"
-          (click)="confirmCopyCatalog()"
-        >
-          @if (copyingCatalog()) { <i class="pi pi-spin pi-spinner"></i> }
-          Sí, copiar
-        </button>
+          (onClick)="confirmCopyCatalog()"
+        />
       </div>
     </ng-template>
   </p-dialog>
