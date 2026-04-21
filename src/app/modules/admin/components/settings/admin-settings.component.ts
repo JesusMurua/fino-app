@@ -8,25 +8,55 @@ import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
-import { RadioButtonModule } from 'primeng/radiobutton';
 import { TableModule } from 'primeng/table';
-import { AppConfig, DEFAULT_APP_CONFIG, DEFAULT_DEVICE_CONFIG, DeviceConfig, REGIMEN_FISCAL_OPTIONS, RFC_REGEX, SatCatalogOption } from '../../../../core/models';
-import { PLAN_DISPLAY_NAME, PLAN_HIERARCHY } from '../../../../core/models/plan.model';
-import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
-import { MACRO_CATEGORY_LABELS, MacroCategoryType, OrderSource, PlanTypeId, UserRoleId } from '../../../../core/enums';
+
+import {
+  AppConfig,
+  AVAILABLE_PLAN_TYPES_BY_MACRO,
+  DEFAULT_APP_CONFIG,
+  PLAN_DISPLAY_NAME,
+  PLAN_HIERARCHY,
+  REGIMEN_FISCAL_OPTIONS,
+  RFC_REGEX,
+} from '../../../../core/models';
+import {
+  FeatureKey,
+  MACRO_CATEGORY_LABELS,
+  MacroCategoryType,
+  PlanTypeId,
+} from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { Branch, BranchService } from '../../../../core/services/branch.service';
-import { BranchDeliveryConfigService } from '../../../../core/services/branch-delivery-config.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
-import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-config-card.component';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
 import { environment } from '../../../../../environments/environment';
 
-type DeviceMode = DeviceConfig['mode'];
+/**
+ * Tab ids rendered by the settings screen.
+ *
+ * Trimmed from 8 → 5 in FDD-016:
+ *   - `device`  removed: fleet + mode live under `/admin/devices` (FDD-015).
+ *   - `branches` removed: extracted to the top-level `/admin/branches` route.
+ *   - `peripherals` + `printers` merged into `hardware`.
+ */
+type TabId = 'business' | 'hardware' | 'security' | 'fiscal' | 'billing';
 
+interface TabDef {
+  id: TabId;
+  label: string;
+  icon: string;
+}
+
+/**
+ * Back Office Settings — Negocio · Hardware · Seguridad · Fiscal · Facturación.
+ *
+ * Every feature-specific surface is gated via `TenantContextService.hasFeature`
+ * or macro predicates so a tenant only sees options their plan × giro
+ * actually unlock (FDD-016 FR-005).
+ */
 @Component({
   selector: 'app-admin-settings',
   standalone: true,
@@ -37,9 +67,7 @@ type DeviceMode = DeviceConfig['mode'];
     DropdownModule,
     InputTextModule,
     PasswordModule,
-    RadioButtonModule,
     TableModule,
-    DeliveryConfigCardComponent,
     AdminPrinterSettingsComponent,
   ],
   templateUrl: './admin-settings.component.html',
@@ -51,27 +79,77 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   private readonly api = inject(ApiService);
   readonly authService = inject(AuthService);
-  private readonly branchService = inject(BranchService);
-  readonly deliveryConfigService = inject(BranchDeliveryConfigService);
+  private readonly configService = inject(ConfigService);
   private readonly messageService = inject(MessageService);
   readonly printerService = inject(PrinterService);
   readonly scannerService = inject(ScannerService);
+  private readonly tenantContext = inject(TenantContextService);
+  private readonly router = inject(Router);
 
   //#endregion
 
-  //#region Properties
+  //#region Tab state
 
-  /** Exposed to template for role comparisons */
-  readonly UserRoleId = UserRoleId;
+  /**
+   * All tab definitions in rendering order. Visibility is filtered by
+   * `visibleTabs` — a hidden tab does NOT leave a gap in the bar.
+   */
+  private readonly allTabs: readonly TabDef[] = [
+    { id: 'business', label: 'Negocio',     icon: 'pi pi-building' },
+    { id: 'hardware', label: 'Hardware',    icon: 'pi pi-print' },
+    { id: 'security', label: 'Seguridad',   icon: 'pi pi-lock' },
+    { id: 'fiscal',   label: 'Fiscal',      icon: 'pi pi-file-edit' },
+    { id: 'billing',  label: 'Facturación', icon: 'pi pi-receipt' },
+  ];
 
   /** Active settings tab */
-  readonly activeTab = signal<'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing' | 'printers'>('business');
+  readonly activeTab = signal<TabId>('business');
+
+  //#endregion
+
+  //#region Feature-shield computeds
+
+  /** Fiscal tab visible only when the tenant has CFDI invoicing */
+  readonly canSeeFiscal = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.CfdiInvoicing),
+  );
+
+  /** Scale card visible to Retail tenants with Core hardware */
+  readonly canSeeScale = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.CoreHardware)
+    && this.authService.primaryMacroCategoryId() === MacroCategoryType.Retail,
+  );
+
+  /** Print destinations visible when any kitchen-printing feature is on */
+  readonly canSeePrintDestinations = computed(() =>
+    this.tenantContext.hasAnyFeature([
+      FeatureKey.KdsBasic,
+      FeatureKey.RealtimeKds,
+      FeatureKey.PrintedTickets,
+    ]),
+  );
+
+  /** Folio custom format editor gated by custom folios or CFDI */
+  readonly canSeeCustomFolio = computed(() =>
+    this.tenantContext.hasAnyFeature([
+      FeatureKey.CustomFolios,
+      FeatureKey.CfdiInvoicing,
+    ]),
+  );
+
+  /** Tabs currently visible based on the matrix */
+  readonly visibleTabs = computed<readonly TabDef[]>(() => {
+    const hidden = new Set<TabId>();
+    if (!this.canSeeFiscal()) hidden.add('fiscal');
+    return this.allTabs.filter(t => !hidden.has(t.id));
+  });
+
+  //#endregion
+
+  //#region Business config
 
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
-
-  /** Device config — stored in localStorage, local to this screen only */
-  deviceConfig = signal<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
 
   /** PIN change fields */
   currentPin = '';
@@ -79,40 +157,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   confirmPin = '';
 
   readonly isSaving        = signal(false);
-  readonly saveSuccess      = signal(false);
-  readonly isSavingDevice  = signal(false);
-  readonly saveDeviceSuccess = signal(false);
-  readonly pinError         = signal('');
-  readonly pinSuccess       = signal(false);
-
-  /** Device modes filtered by hasKitchen/hasTables */
-  readonly availableModes = computed(() => {
-    const hasKitchen = this.configService.hasKitchen();
-    const hasTables = this.configService.hasTables();
-
-    return [
-      { value: 'cashier' as DeviceMode, icon: '💳', label: 'Cajero',  description: 'POS estándar de cobro',          show: true, badge: '' },
-      { value: 'tables'  as DeviceMode, icon: '🪑', label: 'Mesas',   description: 'Vista de mesas para meseros',    show: hasTables, badge: '' },
-      { value: 'kitchen' as DeviceMode, icon: '👨‍🍳', label: 'Cocina',  description: 'Pantalla de cocina KDS',         show: hasKitchen, badge: '' },
-      { value: 'kiosk'   as DeviceMode, icon: '📱', label: 'Kiosko',  description: 'Autoservicio para clientes',     show: true, badge: 'Beta' },
-    ].filter(m => m.show);
-  });
-
-  /** All branches for the current business */
-  readonly branches = signal<Branch[]>([]);
-  readonly loadingBranches = signal(false);
-  readonly showBranchDialog = signal(false);
-  readonly savingBranch = signal(false);
-  readonly editingBranch = signal<Branch | null>(null);
-  branchForm: { name: string; locationName: string; hasKitchen: boolean; hasTables: boolean } = { name: '', locationName: '', hasKitchen: true, hasTables: true };
-
-  /** Branch targeted for catalog copy */
-  readonly copyTarget = signal<Branch | null>(null);
-  readonly showCopyDialog = signal(false);
-  readonly copyingCatalog = signal(false);
-
-  /** Phone field — local only, not persisted yet */
-  businessPhone = '';
+  readonly saveSuccess     = signal(false);
+  readonly pinError        = signal('');
+  readonly pinSuccess      = signal(false);
 
   // ---- Folio configuration ----
   folioPrefix = '';
@@ -133,9 +180,13 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly showCancelDialog = signal(false);
   readonly isCanceling = signal(false);
 
+  //#endregion
+
+  //#region Billing computeds
+
   /** Display name for the current plan */
   readonly currentPlanName = computed(() =>
-    PLAN_DISPLAY_NAME[this.authService.planTypeId()] ?? 'Gratuito'
+    PLAN_DISPLAY_NAME[this.authService.planTypeId()] ?? 'Gratuito',
   );
 
   /** Badge variant for subscription status */
@@ -190,27 +241,36 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     return '';
   });
 
-  /** Upgrade plan options above current tier */
+  /**
+   * Upgrade options filtered by the macro's matrix eligibility. A tenant
+   * only ever sees tiers the matrix permits for their giro — e.g. Services
+   * never sees Basic or Enterprise, Retail never sees Enterprise.
+   */
   readonly upgradeOptions = computed(() => {
     const current = this.authService.planTypeId();
     const currentLevel = PLAN_HIERARCHY[current] ?? 0;
+    const macro = this.authService.primaryMacroCategoryId();
+    const allowed = macro !== null
+      ? AVAILABLE_PLAN_TYPES_BY_MACRO[macro]
+      : new Set<PlanTypeId>([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]);
+
     const options: { name: string; price: string; features: string[] }[] = [];
 
-    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Basic]) {
+    if (allowed.has(PlanTypeId.Basic) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Basic]) {
       options.push({
         name: 'Básico',
         price: '$199/mes',
         features: ['Impresora térmica', 'Escáner de códigos', 'Promociones'],
       });
     }
-    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Pro]) {
+    if (allowed.has(PlanTypeId.Pro) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Pro]) {
       options.push({
         name: 'Pro',
         price: '$399/mes',
         features: ['Reportes avanzados', 'Facturación CFDI', 'Multi-sucursal'],
       });
     }
-    if (currentLevel < PLAN_HIERARCHY[PlanTypeId.Enterprise]) {
+    if (allowed.has(PlanTypeId.Enterprise) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Enterprise]) {
       options.push({
         name: 'Enterprise',
         price: 'Contacto',
@@ -236,6 +296,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     return '—';
   });
 
+  //#endregion
+
+  //#region Negocio tab computeds
+
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
 
@@ -251,27 +315,21 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Whether to show operational config section in Negocio tab */
   readonly showOperationalConfig = computed(() =>
-    this.showKitchenToggle() || this.showTablesToggle()
+    this.showKitchenToggle() || this.showTablesToggle(),
   );
 
-  /** Whether to show kitchen toggle in branch dialog — Food&Bev and Quick Service prep food */
+  /** Kitchen row visible for macros that prep food */
   readonly showKitchenToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
     if (macro === null) return false;
     return macro === MacroCategoryType.FoodBeverage || macro === MacroCategoryType.QuickService;
   });
 
-  /** Whether to show tables toggle in branch dialog — only Food & Beverage uses table service */
+  /** Tables row visible only for Food & Beverage */
   readonly showTablesToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
     return macro === MacroCategoryType.FoodBeverage;
   });
-
-  /** Delivery platforms available for configuration */
-  readonly deliveryPlatforms = [OrderSource.UberEats, OrderSource.Rappi, OrderSource.DidiFood];
-
-  /** Show delivery section when editing a branch */
-  readonly showDeliverySection = computed(() => this.editingBranch() !== null);
 
   /** Current macro category info — read-only display from authService */
   readonly currentGiroInfo = computed(() => {
@@ -282,8 +340,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       [MacroCategoryType.Retail]:       { icon: '🛒',  name: MACRO_CATEGORY_LABELS[MacroCategoryType.Retail],       description: 'Inventario, código de barras, fiado' },
       [MacroCategoryType.Services]:     { icon: '🛠️', name: MACRO_CATEGORY_LABELS[MacroCategoryType.Services],     description: 'Estéticas, consultorios, talleres' },
     };
-    // Null = tenant context not yet hydrated. Return a neutral placeholder
-    // rather than throwing — this computed drives a read-only display.
     if (macro === null) return { icon: '…', name: 'Cargando…', description: '' };
     return map[macro];
   });
@@ -291,18 +347,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Constructor
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly router: Router,
-  ) {
-    // Reactively update folio form when config loads from API
+
+  constructor() {
+    // Reactively update folio/fiscal form fields when config loads
     effect(() => {
       const cfg = this.config();
       this.folioPrefix = cfg.folioPrefix ?? '';
       this.folioFormat = cfg.folioFormat ?? '{PREFIX}-{NUM:4}';
       this.folioCounter.set(cfg.folioCounter ?? 0);
 
-      // Seed fiscal form fields
       const fiscal = cfg.fiscalConfig;
       if (fiscal) {
         this.fiscalRfc = fiscal.rfc;
@@ -312,31 +365,27 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Load delivery configs when a branch is selected for editing
+    // If the active tab becomes hidden mid-session (e.g. plan downgrade),
+    // gracefully fall back to "business" instead of rendering an empty tab.
     effect(() => {
-      const branch = this.editingBranch();
-      if (branch) {
-        this.deliveryConfigService.loadConfigs(branch.id);
+      const visible = this.visibleTabs();
+      const current = this.activeTab();
+      if (!visible.some(t => t.id === current)) {
+        this.activeTab.set('business');
       }
-    });
+    }, { allowSignalWrites: true });
   }
+
   //#endregion
 
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    const [appConfig] = await Promise.all([
-      this.configService.load(),
-    ]);
+    const appConfig = await this.configService.load();
     this.config.set(appConfig);
-    this.deviceConfig.set(this.configService.loadDeviceConfig());
 
     // Refresh subscription status for billing tab
     this.authService.refreshSubscriptionStatus();
-
-    if (this.authService.currentUser()?.roleId === UserRoleId.Owner) {
-      await this.loadBranches();
-    }
   }
 
   ngOnDestroy(): void {
@@ -349,17 +398,23 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#region Tab Navigation
 
-  /** Switches the active settings tab */
-  setTab(tab: 'business' | 'device' | 'peripherals' | 'security' | 'fiscal' | 'branches' | 'billing' | 'printers'): void {
-    // Stop scanner when leaving peripherals tab
-    if (this.activeTab() === 'peripherals' && tab !== 'peripherals') {
+  /**
+   * Switches the active settings tab. Refuses to navigate to a tab that
+   * is currently hidden by the feature shield — guards against stale
+   * links or keyboard shortcuts.
+   */
+  setTab(tab: TabId): void {
+    if (!this.visibleTabs().some(t => t.id === tab)) return;
+
+    // Stop scanner when leaving hardware tab
+    if (this.activeTab() === 'hardware' && tab !== 'hardware') {
       this.scannerService.stopListening();
     }
 
     this.activeTab.set(tab);
 
-    // Start scanner when entering peripherals tab
-    if (tab === 'peripherals') {
+    // Start scanner when entering hardware tab
+    if (tab === 'hardware') {
       this.scannerService.startListening();
     }
   }
@@ -371,45 +426,27 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   async saveBusinessConfig(): Promise<void> {
     this.isSaving.set(true);
     this.saveSuccess.set(false);
-    await this.configService.save(this.config());
-    this.isSaving.set(false);
-    this.saveSuccess.set(true);
-    setTimeout(() => this.saveSuccess.set(false), 3000);
+    try {
+      await this.configService.save(this.config());
+      this.saveSuccess.set(true);
+      setTimeout(() => this.saveSuccess.set(false), 3000);
+    } catch (error: unknown) {
+      const status = this.readStatus(error);
+      if (status !== 402) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error al guardar',
+          life: 3000,
+        });
+      }
+    } finally {
+      this.isSaving.set(false);
+    }
   }
 
   /** Updates a field on the business config signal */
   updateConfig<K extends keyof AppConfig>(key: K, value: AppConfig[K]): void {
     this.config.update(c => ({ ...c, [key]: value }));
-  }
-
-  //#endregion
-
-  //#region Device config save
-
-  saveAndRedirect(): void {
-    this.isSavingDevice.set(true);
-    this.configService.saveDeviceConfig(this.deviceConfig());
-
-    const mode = this.deviceConfig().mode;
-
-    switch (mode) {
-      case 'tables':
-        this.router.navigate(['/tables']);
-        break;
-      case 'kitchen':
-        this.router.navigate(['/kitchen']);
-        break;
-      case 'kiosk':
-        this.router.navigate(['/kiosk/welcome']);
-        break;
-      default:
-        this.router.navigate(['/pos']);
-    }
-  }
-
-  /** Updates a field on the device config signal */
-  updateDeviceConfig<K extends keyof DeviceConfig>(key: K, value: DeviceConfig[K]): void {
-    this.deviceConfig.update(c => ({ ...c, [key]: value }));
   }
 
   //#endregion
@@ -448,9 +485,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#region Folio Configuration
 
-  /**
-   * Returns a live preview of the next folio based on current form values.
-   */
+  /** Returns a live preview of the next folio based on current form values. */
   folioPreview(): string {
     const counter = this.folioCounter() + 1;
     const num = counter.toString().padStart(4, '0');
@@ -484,12 +519,15 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         life: 3000,
       });
       setTimeout(() => this.saveFolioSuccess.set(false), 3000);
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error al guardar la configuración de folios',
-        life: 3000,
-      });
+    } catch (error: unknown) {
+      const status = this.readStatus(error);
+      if (status !== 402) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error al guardar la configuración de folios',
+          life: 3000,
+        });
+      }
     } finally {
       this.isSavingFolio.set(false);
     }
@@ -538,175 +576,18 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         life: 3000,
       });
       setTimeout(() => this.saveFiscalSuccess.set(false), 3000);
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error al guardar la configuración fiscal',
-        life: 3000,
-      });
+    } catch (error: unknown) {
+      const status = this.readStatus(error);
+      if (status !== 402) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error al guardar la configuración fiscal',
+          life: 3000,
+        });
+      }
     } finally {
       this.isSavingFiscal.set(false);
     }
-  }
-
-  //#endregion
-
-  //#region Branch Management
-
-  /**
-   * Loads all branches from the API.
-   */
-  async loadBranches(): Promise<void> {
-    this.loadingBranches.set(true);
-    try {
-      const branches = await this.branchService.getAll();
-      this.branches.set(branches);
-    } catch (error) {
-      console.error('[AdminSettings] Failed to load branches:', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudieron cargar las sucursales',
-      });
-    } finally {
-      this.loadingBranches.set(false);
-    }
-  }
-
-  /** Opens the dialog to create a new branch */
-  openNewBranch(): void {
-    this.editingBranch.set(null);
-    this.branchForm = { name: '', locationName: '', hasKitchen: false, hasTables: false };
-    this.showBranchDialog.set(true);
-  }
-
-  /**
-   * Opens the dialog to edit an existing branch.
-   * @param branch Branch to edit
-   */
-  openEditBranch(branch: Branch): void {
-    this.editingBranch.set(branch);
-    this.branchForm = {
-      name: branch.name,
-      locationName: branch.locationName,
-      hasKitchen: branch.hasKitchen ?? false,
-      hasTables: branch.hasTables ?? false,
-    };
-    this.showBranchDialog.set(true);
-  }
-
-  /**
-   * Saves the branch form — creates or updates depending on editingBranch state.
-   */
-  async saveBranch(): Promise<void> {
-    const { name, locationName, hasKitchen, hasTables } = this.branchForm;
-    if (!name.trim() || !locationName.trim()) return;
-
-    this.savingBranch.set(true);
-    try {
-      const editing = this.editingBranch();
-      if (editing) {
-        await this.branchService.update(editing.id, name.trim(), locationName.trim(), hasKitchen, hasTables);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Sucursal',
-          detail: 'Sucursal actualizada',
-        });
-      } else {
-        await this.branchService.create(name.trim(), locationName.trim());
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Sucursal',
-          detail: 'Sucursal creada',
-        });
-      }
-      this.showBranchDialog.set(false);
-      await this.loadBranches();
-    } catch (error) {
-      console.error('[AdminSettings] Failed to save branch:', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo guardar la sucursal',
-      });
-    } finally {
-      this.savingBranch.set(false);
-    }
-  }
-
-  /**
-   * Opens the confirmation dialog to copy the matrix catalog to a branch.
-   * @param branch Target branch to receive the catalog copy
-   */
-  openCopyCatalog(branch: Branch): void {
-    this.copyTarget.set(branch);
-    this.showCopyDialog.set(true);
-  }
-
-  /**
-   * Copies the catalog from the matrix branch to the selected target branch.
-   * Shows a toast on success or error and reloads the branch list.
-   */
-  async confirmCopyCatalog(): Promise<void> {
-    const target = this.copyTarget();
-    const matrix = this.branches().find(b => b.isMatrix);
-    if (!target || !matrix) return;
-
-    this.copyingCatalog.set(true);
-    try {
-      await this.branchService.copyCatalog(target.id, matrix.id);
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Catálogo copiado',
-        detail: `Catálogo copiado a ${target.name}`,
-      });
-      this.showCopyDialog.set(false);
-      await this.loadBranches();
-    } catch (error) {
-      console.error('[AdminSettings] Failed to copy catalog:', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo copiar el catálogo',
-      });
-    } finally {
-      this.copyingCatalog.set(false);
-    }
-  }
-
-  //#endregion
-
-  //#region Delivery Config
-
-  /** Returns the delivery config for a platform, or null */
-  getDeliveryConfig(platform: OrderSource): BranchDeliveryConfig | null {
-    return this.deliveryConfigService.configs().find(c => c.platform === platform) ?? null;
-  }
-
-  handleDeliveryConfigSave(request: UpsertDeliveryConfigRequest): void {
-    const branchId = this.editingBranch()?.id;
-    if (!branchId) return;
-    this.deliveryConfigService.upsert(branchId, request).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Configuración guardada', life: 3000 });
-      },
-      error: () => {
-        this.messageService.add({ severity: 'error', summary: 'Error al guardar configuración', life: 3000 });
-      },
-    });
-  }
-
-  handleDeliveryConfigDelete(platform: OrderSource): void {
-    const branchId = this.editingBranch()?.id;
-    if (!branchId) return;
-    this.deliveryConfigService.delete(branchId, platform).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'info', summary: 'Configuración eliminada', life: 3000 });
-      },
-      error: () => {
-        this.messageService.add({ severity: 'error', summary: 'Error al eliminar', life: 3000 });
-      },
-    });
   }
 
   //#endregion
@@ -749,6 +630,17 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private formatDate(iso: string): string {
     const d = new Date(iso);
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  //#endregion
+
+  //#region Helpers
+
+  /** Safely reads HTTP status from an unknown error */
+  private readStatus(error: unknown): number | undefined {
+    if (typeof error !== 'object' || error === null) return undefined;
+    const candidate = (error as { status?: unknown }).status;
+    return typeof candidate === 'number' ? candidate : undefined;
   }
 
   //#endregion

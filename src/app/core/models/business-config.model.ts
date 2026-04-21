@@ -12,6 +12,8 @@ import { BusinessFiscalConfig } from './invoice.model';
 export interface BusinessConfig {
   businessName: string;
   locationName: string;
+  /** Contact phone shown on tickets and kiosk; optional to ease legacy records */
+  businessPhone?: string;
   /** Whether this business has a kitchen (KDS, kitchen orders) */
   hasKitchen: boolean;
   /** Whether this business uses table management */
@@ -36,6 +38,7 @@ export interface BusinessConfig {
 export const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   businessName: '',
   locationName: '',
+  businessPhone: '',
   hasKitchen: false,
   hasTables: false,
   hasDelivery: false,

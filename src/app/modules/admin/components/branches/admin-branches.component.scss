@@ -1,0 +1,187 @@
+@use '../../../../../styles/variables' as *;
+
+// ============================================================================
+// Admin Branches — list + create/edit dialog + delivery config
+// ============================================================================
+
+.admin-branches {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  padding: $space-5;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $space-4;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__subtitle {
+    margin: 4px 0 0;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+  }
+}
+
+// Card reuses the global settings-card style — only local tweaks here
+.settings-card {
+  background: white;
+  border: 1px solid $color-border-soft;
+  border-radius: 12px;
+  padding: $space-5;
+}
+
+// -----------------------------------------------------------------------
+// Matrix badge (on the matrix branch row)
+// -----------------------------------------------------------------------
+.matrix-badge {
+  display: inline-block;
+  margin-left: $space-2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: $color-primary;
+  background: #F0FDF4;
+  vertical-align: middle;
+}
+
+// -----------------------------------------------------------------------
+// Row actions
+// -----------------------------------------------------------------------
+.branch-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.branches-empty {
+  text-align: center;
+  color: $color-text-sub;
+  padding: $space-5 !important;
+}
+
+// -----------------------------------------------------------------------
+// Dialog
+// -----------------------------------------------------------------------
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: $space-3;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  &__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-sub;
+  }
+
+  &__input {
+    width: 100%;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Branch toggles (checkbox row)
+// -----------------------------------------------------------------------
+.branch-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding-top: $space-2;
+}
+
+.branch-toggle {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: $font-size-base;
+  font-weight: 500;
+  color: $color-text-title;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: $color-primary;
+    cursor: pointer;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Delivery platforms (gated section inside edit dialog)
+// -----------------------------------------------------------------------
+.settings-delivery-section {
+  margin-top: $space-4;
+  padding-top: $space-4;
+  border-top: 1px solid $color-border-soft;
+
+  &__header {
+    margin-bottom: $space-4;
+
+    h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: $color-text-title;
+      margin: 0 0 4px;
+    }
+
+    p {
+      font-size: 13px;
+      color: $color-text-sub;
+      margin: 0;
+    }
+  }
+}
+
+.delivery-hint {
+  font-size: 12px;
+  color: $color-text-sub;
+  margin: 0 0 $space-3;
+}
+
+.delivery-configs {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+// -----------------------------------------------------------------------
+// Informational / error messages
+// -----------------------------------------------------------------------
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-3;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 0 0 $space-3;
+
+  i { flex-shrink: 0; margin-top: 2px; }
+
+  &--info {
+    background: #F0F9FF;
+    color: #0369A1;
+  }
+}

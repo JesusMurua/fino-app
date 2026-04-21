@@ -429,7 +429,7 @@ export class OnboardingComponent implements OnInit {
           this.selectedMacroId.set(snapshot.primaryMacroCategoryId);
         }
 
-        const hydratedIds: number[] = [...snapshot.businessTypeIds];
+        const hydratedIds: number[] = [...snapshot.subGiroIds];
         const customText = snapshot.customGiroDescription?.trim() ?? '';
         if (customText.length > 0) {
           hydratedIds.push(OTRA_SUB_ID);
@@ -507,11 +507,11 @@ export class OnboardingComponent implements OnInit {
 
     this.isSavingGiro.set(true);
 
-    const businessTypeIds = this.selectedSubGiroIds()
+    const subGiroIds = this.selectedSubGiroIds()
       .filter((id): id is BusinessTypeId => id !== OTRA_SUB_ID);
     const payload: UpdateBusinessGiroRequest = {
       primaryMacroCategoryId: macro,
-      businessTypeIds,
+      subGiroIds,
     };
     if (this.isOtraChecked()) {
       payload.customGiroDescription = this.customGiroText().trim();

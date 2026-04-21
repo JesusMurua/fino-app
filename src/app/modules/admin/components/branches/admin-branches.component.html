@@ -1,0 +1,245 @@
+<div class="admin-branches">
+
+  <!-- Header -->
+  <div class="admin-branches__header">
+    <div>
+      <h1 class="admin-branches__title">Sucursales</h1>
+      <p class="admin-branches__subtitle">
+        Administra las ubicaciones de tu negocio y la configuración de cada una
+      </p>
+    </div>
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="openNewBranch()"
+    >
+      <i class="pi pi-plus"></i>
+      Nueva sucursal
+    </button>
+  </div>
+
+  <!-- List -->
+  <section class="settings-card">
+    <p-table
+      [value]="branches()"
+      [loading]="loadingBranches()"
+      [rowHover]="true"
+      dataKey="id"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Ubicación</th>
+          @if (showKitchenToggle()) {
+            <th style="width: 5rem; text-align: center">Cocina</th>
+          }
+          @if (showTablesToggle()) {
+            <th style="width: 5rem; text-align: center">Mesas</th>
+          }
+          <th style="width: 7rem">Acciones</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-branch>
+        <tr>
+          <td>
+            {{ branch.name }}
+            @if (branch.isMatrix) {
+              <span class="matrix-badge">Matriz</span>
+            }
+          </td>
+          <td>{{ branch.locationName }}</td>
+          @if (showKitchenToggle()) {
+            <td style="text-align: center">{{ branch.hasKitchen ? '✅' : '❌' }}</td>
+          }
+          @if (showTablesToggle()) {
+            <td style="text-align: center">{{ branch.hasTables ? '✅' : '❌' }}</td>
+          }
+          <td>
+            <div class="branch-actions">
+              @if (!branch.isMatrix) {
+                <button
+                  type="button"
+                  class="btn-icon"
+                  aria-label="Copiar catálogo"
+                  (click)="openCopyCatalog(branch)"
+                >
+                  <i class="pi pi-copy"></i>
+                </button>
+              }
+              <button
+                type="button"
+                class="btn-icon"
+                aria-label="Editar sucursal"
+                (click)="openEditBranch(branch)"
+              >
+                <i class="pi pi-pencil"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="99" class="branches-empty">
+            No hay sucursales registradas.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+
+  <!-- Branch create/edit dialog -->
+  <p-dialog
+    [visible]="showBranchDialog()"
+    (visibleChange)="showBranchDialog.set($event)"
+    [header]="editingBranch() ? 'Editar sucursal' : 'Nueva sucursal'"
+    [modal]="true"
+    [closable]="true"
+    [style]="{ width: editingBranch() ? '560px' : '420px' }"
+  >
+    @if (editingBranch()?.isMatrix) {
+      <p class="msg msg--info">
+        <i class="pi pi-info-circle"></i>
+        Esta es la sucursal principal del negocio
+      </p>
+    }
+
+    <div class="settings-form">
+      <div class="form-field">
+        <label class="form-field__label" for="branch-name">Nombre</label>
+        <input
+          [(ngModel)]="branchForm.name"
+          id="branch-name"
+          type="text"
+          pInputText
+          class="form-field__input"
+          placeholder="Ej. Centro"
+        />
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="branch-location">Ubicación</label>
+        <input
+          [(ngModel)]="branchForm.locationName"
+          id="branch-location"
+          type="text"
+          pInputText
+          class="form-field__input"
+          placeholder="Ej. Av. Reforma 123, CDMX"
+        />
+      </div>
+
+      @if (showKitchenToggle() || showTablesToggle()) {
+        <div class="branch-toggles">
+          @if (showKitchenToggle()) {
+            <label class="branch-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="branchForm.hasKitchen"
+              />
+              <span>¿Tiene cocina?</span>
+            </label>
+          }
+          @if (showTablesToggle()) {
+            <label class="branch-toggle">
+              <input
+                type="checkbox"
+                [(ngModel)]="branchForm.hasTables"
+              />
+              <span>¿Tiene mesas?</span>
+            </label>
+          }
+        </div>
+      }
+
+      <!-- Delivery platforms section — gated by DeliveryPlatforms feature -->
+      @if (showDeliverySection()) {
+        <div class="settings-delivery-section">
+          <div class="settings-delivery-section__header">
+            <h4>Plataformas de Delivery</h4>
+            <p>Conecta tu sucursal con plataformas de entrega a domicilio</p>
+          </div>
+          <p class="delivery-hint">Expande cada plataforma para configurarla y guarda por separado.</p>
+          <div class="delivery-configs">
+            @for (platform of deliveryPlatforms; track platform) {
+              <app-delivery-config-card
+                [platform]="platform"
+                [config]="getDeliveryConfig(platform)"
+                [branchId]="editingBranch()!.id"
+                [saving]="deliveryConfigService.saving()"
+                (onSave)="handleDeliveryConfigSave($event)"
+                (onDelete)="handleDeliveryConfigDelete($event)"
+              />
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dialog-footer">
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="savingBranch()"
+          (click)="showBranchDialog.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
+          (click)="saveBranch()"
+        >
+          @if (savingBranch()) { <i class="pi pi-spin pi-spinner"></i> }
+          Guardar
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Copy catalog confirmation dialog -->
+  <p-dialog
+    [visible]="showCopyDialog()"
+    (visibleChange)="showCopyDialog.set($event)"
+    header="Copiar catálogo"
+    [modal]="true"
+    [closable]="true"
+    [style]="{ width: '420px' }"
+  >
+    <div class="msg msg--info">
+      <i class="pi pi-info-circle"></i>
+      <span>
+        ¿Copiar el catálogo de la sucursal principal a
+        <strong>{{ copyTarget()?.name }}</strong>?
+        Esto copiará todas las categorías y productos.
+      </span>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dialog-footer">
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="copyingCatalog()"
+          (click)="showCopyDialog.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="copyingCatalog()"
+          (click)="confirmCopyCatalog()"
+        >
+          @if (copyingCatalog()) { <i class="pi pi-spin pi-spinner"></i> }
+          Sí, copiar
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+</div>

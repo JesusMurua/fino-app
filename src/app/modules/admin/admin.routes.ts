@@ -87,6 +87,14 @@ export const adminRoutes: Routes = [
             .then(m => m.AdminDevicesComponent),
       },
       {
+        // Accessible to Owner and Manager — inherits `/admin` guards which
+        // already enforce `roles: [Owner, Manager]` (see app.routes.ts).
+        path: 'branches',
+        loadComponent: () =>
+          import('./components/branches/admin-branches.component')
+            .then(m => m.AdminBranchesComponent),
+      },
+      {
         path: 'cash',
         redirectTo: 'registers',
         pathMatch: 'full',
