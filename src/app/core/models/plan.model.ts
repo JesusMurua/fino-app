@@ -50,3 +50,18 @@ export const PLAN_DISPLAY_NAME: Record<PlanTypeId, string> = {
   [PlanTypeId.Pro]: 'Pro',
   [PlanTypeId.Enterprise]: 'Enterprise',
 };
+
+/**
+ * Plans the business matrix allows per macro category. Mirrors the
+ * onboarding `AVAILABLE_PLANS_BY_MACRO` constant but keyed by
+ * `PlanTypeId` so guards and Back Office code can filter without
+ * mapping between slug and enum.
+ *
+ * Source of truth: `.claude/business-rules-matrix.md`.
+ */
+export const AVAILABLE_PLAN_TYPES_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanTypeId>> = {
+  [MacroCategoryType.FoodBeverage]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]),
+  [MacroCategoryType.QuickService]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryType.Retail]:       new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryType.Services]:     new Set([PlanTypeId.Free, PlanTypeId.Pro]),
+};

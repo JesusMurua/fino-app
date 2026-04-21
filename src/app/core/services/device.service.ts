@@ -1,7 +1,12 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
-import { DeviceConfig } from '../models';
+import {
+  DeviceConfig,
+  DeviceListItem,
+  ToggleActiveResponse,
+  UpdateDevicePayload,
+} from '../models';
 import { ApiService } from './api.service';
 import { ConfigService } from './config.service';
 
@@ -257,6 +262,53 @@ export class DeviceService implements OnDestroy {
     } catch {
       return false;
     }
+  }
+
+  //#endregion
+
+  //#region Fleet Management (Back Office)
+
+  /**
+   * Lists every device linked to the current tenant.
+   *
+   * Maps to `GET /api/devices`, optionally scoped to a single branch via
+   * `?branchId={id}` when `params.branchId` is a positive integer.
+   * Non-positive or missing branch ids are treated as "no filter" so
+   * callers can pass through UI values without extra guards.
+   *
+   * @param params Optional query parameters (currently only `branchId`).
+   */
+  getAll(params?: { branchId?: number }): Observable<DeviceListItem[]> {
+    const branchId = params?.branchId;
+    const path = typeof branchId === 'number' && branchId > 0
+      ? `/devices?branchId=${branchId}`
+      : '/devices';
+    return this.api.get<DeviceListItem[]>(path);
+  }
+
+  /**
+   * Flips a device's `isActive` flag on the backend. Revoking invalidates
+   * the device token at the next request; reactivating restores access.
+   *
+   * @param id Backend primary key of the device.
+   */
+  toggleActive(id: number): Observable<ToggleActiveResponse> {
+    return this.api.patch<ToggleActiveResponse>(
+      `/devices/${id}/toggle-active`,
+      {},
+    );
+  }
+
+  /**
+   * Updates a device's human-readable name and/or branch assignment.
+   * Transport-only: the caller is responsible for trimming `name` and
+   * validating `branchId` before calling.
+   *
+   * @param id Backend primary key of the device.
+   * @param payload New name and branch assignment.
+   */
+  update(id: number, payload: UpdateDevicePayload): Observable<DeviceListItem> {
+    return this.api.patch<DeviceListItem>(`/devices/${id}`, payload);
   }
 
   //#endregion

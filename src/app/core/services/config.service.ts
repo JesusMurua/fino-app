@@ -31,6 +31,7 @@ interface BranchConfigResponse {
   businessName: string;
   branchName: string;
   locationName?: string;
+  businessPhone?: string;
   hasKitchen?: boolean;
   hasTables?: boolean;
   hasDelivery?: boolean;
@@ -149,6 +150,7 @@ export class ConfigService {
         ...config,
         businessName: remote.businessName,
         locationName: remote.locationName || remote.branchName || config.locationName,
+        businessPhone: remote.businessPhone ?? config.businessPhone ?? '',
         hasKitchen: remote.hasKitchen ?? false,
         hasTables: remote.hasTables ?? false,
         hasDelivery: remote.hasDelivery ?? false,

@@ -6,6 +6,7 @@ import { PasswordModule } from 'primeng/password';
 
 import { DeviceConfig } from '../../core/models';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { DeviceService } from '../../core/services/device.service';
 import { firstValueFrom } from 'rxjs';
@@ -38,6 +39,12 @@ interface ActivateResponse {
   branchId: number;
   branchName: string;
   mode: DeviceConfig['mode'];
+  /**
+   * Human-readable name pre-configured by the admin when generating the
+   * code. Optional to stay backwards compatible with codes issued before
+   * this field shipped; the UI falls back to 'POS Principal'.
+   */
+  deviceName?: string;
 }
 
 @Component({
@@ -52,6 +59,7 @@ export class SetupComponent implements OnInit {
   //#region Injections
 
   private readonly api = inject(ApiService);
+  private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
   private readonly deviceService = inject(DeviceService);
   private readonly route = inject(ActivatedRoute);
@@ -61,7 +69,17 @@ export class SetupComponent implements OnInit {
 
   //#region Properties
 
-  /** Current step: 'choose' | 'email' | 'code' | 'branch' | 'mode' | 'code-name' */
+  /**
+   * Current step of the setup state machine:
+   *   choose       → pick between email or 6-digit code
+   *   email        → admin email + password form
+   *   branch       → (email flow) pick the branch this device belongs to
+   *   mode         → (email flow) pick device mode + name
+   *   code         → enter 6-digit code
+   *   code-review  → (code flow) read-only summary of the pre-configured
+   *                  branch/mode/name; a single "Confirmar" button runs
+   *                  registerDevice and navigates away
+   */
   readonly step = signal<string>('choose');
 
   /** Error message displayed to the user */
@@ -151,6 +169,16 @@ export class SetupComponent implements OnInit {
       this.isUnbound.set(true);
     }
 
+    // Fresh incognito / first-time boot: neither a user JWT nor a device
+    // token exists, so calling /devices/validate would bounce with a
+    // 401 and pollute observability. Skip straight to the choose-method
+    // screen. A device is considered "known" only when at least one
+    // token is present.
+    if (!this.hasAnyLocalToken()) {
+      this.isValidating.set(false);
+      return;
+    }
+
     try {
       const recovered = await this.deviceService.validateDevice();
       if (recovered && this.canAutoRedirect()) {
@@ -162,6 +190,17 @@ export class SetupComponent implements OnInit {
     } finally {
       this.isValidating.set(false);
     }
+  }
+
+  /**
+   * True when the browser already holds a user JWT or a long-lived
+   * device token. Used to gate the auto-recovery `validateDevice()`
+   * call so a fresh incognito window never fires an unauthenticated
+   * request to a protected endpoint.
+   */
+  private hasAnyLocalToken(): boolean {
+    return this.authService.getToken() !== null
+      || this.deviceService.getDeviceToken() !== null;
   }
 
   /**
@@ -334,7 +373,7 @@ export class SetupComponent implements OnInit {
       );
 
       this.activateData = response;
-      this.step.set('code-name');
+      this.step.set('code-review');
     } catch {
       this.error.set('Código inválido o expirado.');
     } finally {
@@ -343,20 +382,22 @@ export class SetupComponent implements OnInit {
   }
 
   /**
-   * Step 2B final: Register device in the backend, persist the device
-   * token, and only then navigate. The fire-and-forget pattern used to
-   * race `router.navigate` against the async `registerDevice` call —
-   * on slow networks the guard on `/kitchen` / `/kiosk` would rebound
-   * the user back here because the device token was not yet in
-   * localStorage. Awaiting the registration fixes the race at the cost
-   * of a spinner; a failed call is surfaced as an error so the user can
-   * retry instead of being stranded in a half-provisioned state.
+   * Code flow confirmation: registers the device using the name, branch
+   * and mode the admin pre-configured when issuing the code. The user
+   * does not type anything here — they only confirm.
+   *
+   * Awaits `registerDevice` before navigating so the device token is in
+   * localStorage before `deviceAuthGuard` on /kitchen or /kiosk can
+   * rebound us to /setup.
    */
   async saveCodeSetup(): Promise<void> {
     if (!this.activateData) return;
     if (this.isLoading()) return;
 
-    const name = this.deviceName.trim() || 'POS Principal';
+    // Defensive fallback: codes issued before the admin deviceName field
+    // shipped won't carry a name — keep a sensible default so the
+    // activation does not fail.
+    const name = this.activateData.deviceName?.trim() || 'POS Principal';
 
     this.error.set('');
     this.isLoading.set(true);

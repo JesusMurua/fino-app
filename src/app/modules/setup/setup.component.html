@@ -242,53 +242,68 @@
     }
 
     <!-- ============================================================== -->
-    <!-- STEP: Device name only (code flow)                              -->
+    <!-- STEP: Review & confirm (code flow)                              -->
+    <!-- Read-only summary of the pre-configured assignment. Zero input. -->
     <!-- ============================================================== -->
-    @if (!isValidating() && step() === 'code-name') {
+    @if (!isValidating() && step() === 'code-review') {
       <div class="setup-header">
-        <h1 class="setup-header__title">Dispositivo activado</h1>
-        <p class="setup-header__sub">{{ activateData?.businessName }} — {{ activateData?.branchName }}</p>
+        <div class="setup-header__icon">
+          <i class="pi pi-check-circle"></i>
+        </div>
+        <h1 class="setup-header__title">Código válido</h1>
+        <p class="setup-header__sub">Confirma la configuración asignada por tu administrador</p>
       </div>
 
-      <!-- Assigned mode badge -->
-      <div class="setup-mode-badge">
-        <span class="setup-mode-badge__label">Modo asignado:</span>
-        <span class="setup-mode-badge__value">{{ getActivateModeBadge() }}</span>
-      </div>
-
-      <div class="setup-form">
-        <div class="setup-field">
-          <label class="setup-field__label">Nombre del dispositivo (opcional)</label>
-          <input
-            type="text"
-            pInputText
-            [(ngModel)]="deviceName"
-            placeholder="Ej. Caja 1"
-            class="setup-field__input"
-          />
+      <div class="setup-review">
+        <div class="setup-review__row">
+          <i class="pi pi-building"></i>
+          <div class="setup-review__body">
+            <span class="setup-review__label">Sucursal</span>
+            <strong class="setup-review__value">
+              {{ activateData?.businessName }} — {{ activateData?.branchName }}
+            </strong>
+          </div>
         </div>
 
-        <p class="setup-hint">
-          <i class="pi pi-info-circle"></i>
-          ¿Modo incorrecto? Pide un nuevo código a tu administrador.
-        </p>
+        <div class="setup-review__row">
+          <i class="pi pi-desktop"></i>
+          <div class="setup-review__body">
+            <span class="setup-review__label">Nombre del dispositivo</span>
+            <strong class="setup-review__value">
+              {{ activateData?.deviceName || 'POS Principal' }}
+            </strong>
+          </div>
+        </div>
 
-        @if (error()) {
-          <p class="setup-error">
-            <i class="pi pi-exclamation-circle"></i>
-            {{ error() }}
-          </p>
-        }
-
-        <button
-          class="setup-btn"
-          [disabled]="isLoading()"
-          (click)="saveCodeSetup()"
-        >
-          @if (isLoading()) { <i class="pi pi-spin pi-spinner"></i> }
-          Activar dispositivo
-        </button>
+        <div class="setup-review__row">
+          <i class="pi pi-sliders-h"></i>
+          <div class="setup-review__body">
+            <span class="setup-review__label">Modo</span>
+            <strong class="setup-review__value">{{ getActivateModeBadge() }}</strong>
+          </div>
+        </div>
       </div>
+
+      <p class="setup-hint">
+        <i class="pi pi-info-circle"></i>
+        ¿Algún dato es incorrecto? Pide un nuevo código a tu administrador.
+      </p>
+
+      @if (error()) {
+        <p class="setup-error">
+          <i class="pi pi-exclamation-circle"></i>
+          {{ error() }}
+        </p>
+      }
+
+      <button
+        class="setup-btn"
+        [disabled]="isLoading()"
+        (click)="saveCodeSetup()"
+      >
+        @if (isLoading()) { <i class="pi pi-spin pi-spinner"></i> }
+        Confirmar y activar
+      </button>
     }
 
   </div>

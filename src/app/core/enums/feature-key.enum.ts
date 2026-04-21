@@ -39,6 +39,8 @@ export enum FeatureKey {
   PublicApi = 'PublicApi',
   /** Recipes, waste tracking, ingredient-level inventory */
   RecipeInventory = 'RecipeInventory',
+  /** Third-party delivery aggregator integrations (UberEats, Rappi, DidiFood). */
+  DeliveryPlatforms = 'DeliveryPlatforms',
 
   // --- Quick Service ------------------------------------------------------
   /** Loyalty program + customer CRM */
@@ -88,13 +90,14 @@ const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
   FeatureKey.PrintedTickets, FeatureKey.KdsBasic, FeatureKey.RealtimeKds,
   FeatureKey.TableMap, FeatureKey.WaiterApp, FeatureKey.KioskMode,
   FeatureKey.MultiTill, FeatureKey.MultiBranch, FeatureKey.PublicApi,
-  FeatureKey.RecipeInventory, FeatureKey.AdvancedReports,
+  FeatureKey.RecipeInventory, FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
 
 const QUICK_SERVICE_FEATURES: readonly FeatureKey[] = [
   FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
   FeatureKey.KdsBasic, FeatureKey.RealtimeKds, FeatureKey.KioskMode,
-  FeatureKey.LoyaltyCrm, FeatureKey.MultiTill, FeatureKey.AdvancedReports,
+  FeatureKey.LoyaltyCrm, FeatureKey.MultiTill,
+  FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
 
 const RETAIL_FEATURES: readonly FeatureKey[] = [

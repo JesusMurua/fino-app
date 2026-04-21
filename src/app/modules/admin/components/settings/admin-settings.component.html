@@ -1,81 +1,20 @@
 <div class="admin-settings">
 
-  <!-- Sticky header with tabs -->
+  <!-- Sticky header with tabs (filtered by the feature shield) -->
   <div class="settings-header">
     <h1 class="settings-header__title">Configuración</h1>
-    <nav class="settings-tabs">
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'business'"
-        (click)="setTab('business')"
-      >
-        <i class="pi pi-building"></i>
-        Negocio
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'device'"
-        (click)="setTab('device')"
-      >
-        <i class="pi pi-mobile"></i>
-        Dispositivo
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'peripherals'"
-        (click)="setTab('peripherals')"
-      >
-        <i class="pi pi-print"></i>
-        Periféricos
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'security'"
-        (click)="setTab('security')"
-      >
-        <i class="pi pi-lock"></i>
-        Seguridad
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'fiscal'"
-        (click)="setTab('fiscal')"
-      >
-        <i class="pi pi-file-edit"></i>
-        Fiscal
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'billing'"
-        (click)="setTab('billing')"
-      >
-        <i class="pi pi-receipt"></i>
-        Facturación
-      </button>
-      <button
-        type="button"
-        class="settings-tab"
-        [class.settings-tab--active]="activeTab() === 'printers'"
-        (click)="setTab('printers')"
-      >
-        <i class="pi pi-print"></i>
-        Impresoras
-      </button>
-      @if (authService.currentUser()?.roleId === UserRoleId.Owner) {
+    <nav class="settings-tabs" role="tablist">
+      @for (tab of visibleTabs(); track tab.id) {
         <button
           type="button"
           class="settings-tab"
-          [class.settings-tab--active]="activeTab() === 'branches'"
-          (click)="setTab('branches')"
+          role="tab"
+          [class.settings-tab--active]="activeTab() === tab.id"
+          [attr.aria-current]="activeTab() === tab.id ? 'page' : null"
+          (click)="setTab(tab.id)"
         >
-          <i class="pi pi-sitemap"></i>
-          Sucursales
+          <i class="pi" [class]="tab.icon"></i>
+          {{ tab.label }}
         </button>
       }
     </nav>
@@ -133,7 +72,8 @@
                 id="s-phone"
                 type="tel"
                 pInputText
-                [(ngModel)]="businessPhone"
+                [ngModel]="config().businessPhone"
+                (ngModelChange)="updateConfig('businessPhone', $event)"
                 placeholder="Ej. 667 123 4567"
                 class="form-field__input"
               />
@@ -215,172 +155,80 @@
           </section>
         }
 
-        <!-- Folio configuration -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-receipt"></i></div>
-            <div>
-              <div class="card-title">Configuración de folios</div>
-              <div class="card-subtitle">El folio aparece en cada ticket y nota de venta</div>
-            </div>
-          </div>
-
-          <div class="settings-form">
-            <div class="form-field">
-              <label class="form-field__label" for="folio-prefix">Prefijo del folio</label>
-              <input
-                id="folio-prefix"
-                type="text"
-                pInputText
-                [(ngModel)]="folioPrefix"
-                [maxlength]="10"
-                placeholder="Ej. HMO, SUC1"
-                class="form-field__input"
-                style="text-transform: uppercase"
-              />
-              <span class="form-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+        <!-- Folio configuration — gated by CustomFolios or CfdiInvoicing -->
+        @if (canSeeCustomFolio()) {
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-receipt"></i></div>
+              <div>
+                <div class="card-title">Configuración de folios</div>
+                <div class="card-subtitle">El folio aparece en cada ticket y nota de venta</div>
+              </div>
             </div>
 
-            <div class="form-field">
-              <label class="form-field__label" for="folio-format">Formato del folio</label>
-              <input
-                id="folio-format"
-                type="text"
-                pInputText
-                [(ngModel)]="folioFormat"
-                placeholder="{PREFIX}-{NUM:4}"
-                class="form-field__input"
-              />
-              <span class="form-field__hint">
-                Vista previa: <strong>{{ folioPreview() }}</strong>
-              </span>
+            <div class="settings-form">
+              <div class="form-field">
+                <label class="form-field__label" for="folio-prefix">Prefijo del folio</label>
+                <input
+                  id="folio-prefix"
+                  type="text"
+                  pInputText
+                  [(ngModel)]="folioPrefix"
+                  [maxlength]="10"
+                  placeholder="Ej. HMO, SUC1"
+                  class="form-field__input"
+                  style="text-transform: uppercase"
+                />
+                <span class="form-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+              </div>
+
+              <div class="form-field">
+                <label class="form-field__label" for="folio-format">Formato del folio</label>
+                <input
+                  id="folio-format"
+                  type="text"
+                  pInputText
+                  [(ngModel)]="folioFormat"
+                  placeholder="{PREFIX}-{NUM:4}"
+                  class="form-field__input"
+                />
+                <span class="form-field__hint">
+                  Vista previa: <strong>{{ folioPreview() }}</strong>
+                </span>
+              </div>
+
+              <div class="folio-preview-card">
+                <span class="folio-preview-card__label">El siguiente folio será:</span>
+                <span class="folio-preview-card__value">{{ folioPreview() }}</span>
+              </div>
             </div>
 
-            <div class="folio-preview-card">
-              <span class="folio-preview-card__label">El siguiente folio será:</span>
-              <span class="folio-preview-card__value">{{ folioPreview() }}</span>
-            </div>
-          </div>
-
-          <div class="settings-card__footer">
-            @if (saveFolioSuccess()) {
-              <span class="settings-card__ok">
-                <i class="pi pi-check-circle"></i> Guardado
-              </span>
-            }
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="isSavingFolio()"
-              (click)="saveFolioConfig()"
-            >
-              @if (isSavingFolio()) { <i class="pi pi-spin pi-spinner"></i> }
-              Guardar configuración
-            </button>
-          </div>
-        </section>
-
-      </div>
-    }
-
-    <!-- ================================================================ -->
-    <!-- TAB: Dispositivo                                                  -->
-    <!-- ================================================================ -->
-    @case ('device') {
-      <div class="settings-content">
-
-        <!-- Device config card -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-mobile"></i></div>
-            <div>
-              <div class="card-title">Este dispositivo</div>
-              <div class="card-subtitle">Solo afecta esta pantalla</div>
-            </div>
-            <span class="device-badge">
-              <i class="pi pi-mobile"></i>
-              Local
-            </span>
-          </div>
-
-          <div class="settings-form">
-            <div class="form-field">
-              <label class="form-field__label" for="s-device-name">Nombre del dispositivo</label>
-              <input
-                id="s-device-name"
-                type="text"
-                pInputText
-                [ngModel]="deviceConfig().deviceName"
-                (ngModelChange)="updateDeviceConfig('deviceName', $event)"
-                placeholder="Ej. Caja 1, Kiosko Entrada"
-                class="form-field__input"
-              />
-            </div>
-          </div>
-
-          <div class="mode-section">
-            <h3 class="mode-section__title">Modo de operación</h3>
-            <p class="mode-section__desc">Elige cómo funciona esta pantalla</p>
-
-            <div class="mode-grid">
-              @for (mode of availableModes(); track mode.value) {
-                <label
-                  class="mode-card"
-                  [class.mode-card--active]="deviceConfig().mode === mode.value"
-                  [for]="'mode-' + mode.value"
-                >
-                  <input
-                    type="radio"
-                    [id]="'mode-' + mode.value"
-                    name="deviceMode"
-                    [value]="mode.value"
-                    [checked]="deviceConfig().mode === mode.value"
-                    (change)="updateDeviceConfig('mode', mode.value)"
-                    class="mode-card__radio"
-                  />
-
-                  @if (deviceConfig().mode === mode.value) {
-                    <i class="pi pi-check-circle mode-card__check"></i>
-                  }
-
-                  <span class="mode-card__icon">{{ mode.icon }}</span>
-                  <span class="mode-card__label">
-                    {{ mode.label }}
-                    @if (mode.badge) {
-                      <span class="mode-card__badge">{{ mode.badge }}</span>
-                    }
-                  </span>
-                  <span class="mode-card__desc">{{ mode.description }}</span>
-                </label>
+            <div class="settings-card__footer">
+              @if (saveFolioSuccess()) {
+                <span class="settings-card__ok">
+                  <i class="pi pi-check-circle"></i> Guardado
+                </span>
               }
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="isSavingFolio()"
+                (click)="saveFolioConfig()"
+              >
+                @if (isSavingFolio()) { <i class="pi pi-spin pi-spinner"></i> }
+                Guardar configuración
+              </button>
             </div>
-          </div>
-
-          <div class="settings-card__footer">
-            @if (saveDeviceSuccess()) {
-              <span class="settings-card__ok">
-                <i class="pi pi-check-circle"></i> Guardado
-              </span>
-            }
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="isSavingDevice()"
-              (click)="saveAndRedirect()"
-            >
-              @if (isSavingDevice()) { <i class="pi pi-spin pi-spinner"></i> }
-              Aplicar configuración
-            </button>
-          </div>
-        </section>
+          </section>
+        }
 
       </div>
     }
 
     <!-- ================================================================ -->
-    <!-- TAB: Periféricos                                                  -->
+    <!-- TAB: Hardware (Periféricos + Impresoras fusionados)               -->
     <!-- ================================================================ -->
-    @case ('peripherals') {
+    @case ('hardware') {
       <div class="settings-content">
 
         <!-- No transport supported warning -->
@@ -445,7 +293,6 @@
               <button type="button" class="btn-secondary btn-secondary--sm" (click)="printerService.connect()">Cambiar</button>
             </div>
           } @else {
-            <!-- Transport type toggle -->
             @if (printerService.serialSupported() && printerService.bluetoothSupported()) {
               <div class="printer-type-toggle">
                 <button
@@ -548,19 +395,26 @@
           </div>
         </section>
 
-        <!-- Scale card — full-width horizontal -->
-        <section class="settings-card periph-bar">
-          <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
-          <div class="periph-bar__info">
-            <div class="card-title">Báscula</div>
-            <div class="card-subtitle">Solo disponible en giro Retail — Web Serial</div>
-          </div>
-          <div class="status-badge status-badge--disconnected">
-            <span class="status-dot status-dot--off"></span>
-            No conectada
-          </div>
-          <button type="button" class="btn-secondary btn-secondary--sm" disabled>Disponible en Retail</button>
-        </section>
+        <!-- Scale card — only for Retail tenants with Core hardware -->
+        @if (canSeeScale()) {
+          <section class="settings-card periph-bar">
+            <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
+            <div class="periph-bar__info">
+              <div class="card-title">Báscula</div>
+              <div class="card-subtitle">Web Serial — para ventas por peso</div>
+            </div>
+            <div class="status-badge status-badge--disconnected">
+              <span class="status-dot status-dot--off"></span>
+              No conectada
+            </div>
+            <button type="button" class="btn-secondary btn-secondary--sm" disabled>Próximamente</button>
+          </section>
+        }
+
+        <!-- Print destinations — gated by kitchen printing features -->
+        @if (canSeePrintDestinations()) {
+          <app-admin-printer-settings />
+        }
 
       </div>
     }
@@ -649,108 +503,109 @@
     }
 
     <!-- ================================================================ -->
-    <!-- TAB: Configuración Fiscal                                         -->
+    <!-- TAB: Fiscal — only rendered when CfdiInvoicing is unlocked        -->
     <!-- ================================================================ -->
     @case ('fiscal') {
-      <div class="settings-content">
+      @if (canSeeFiscal()) {
+        <div class="settings-content">
 
-        <!-- Fiscal data card -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-file-edit"></i></div>
-            <div>
-              <div class="card-title">Datos Fiscales del Emisor</div>
-              <div class="card-subtitle">Información para facturación CFDI (SAT)</div>
-            </div>
-          </div>
-
-          <div class="settings-form">
-            <div class="form-field">
-              <label class="form-field__label" for="fiscal-rfc">RFC</label>
-              <input
-                id="fiscal-rfc"
-                type="text"
-                pInputText
-                [(ngModel)]="fiscalRfc"
-                placeholder="Ej. XAXX010101000"
-                class="form-field__input form-field__input--mono"
-                maxlength="13"
-                style="text-transform: uppercase"
-              />
-              @if (fiscalRfc.length > 0 && !isFiscalRfcValid()) {
-                <small class="form-field__error">RFC inválido — debe ser 12 o 13 caracteres alfanuméricos</small>
-              }
-            </div>
-
-            <div class="form-field">
-              <label class="form-field__label" for="fiscal-razon">Razón Social</label>
-              <input
-                id="fiscal-razon"
-                type="text"
-                pInputText
-                [(ngModel)]="fiscalRazonSocial"
-                placeholder="Ej. MI NEGOCIO S.A. DE C.V."
-                class="form-field__input"
-                style="text-transform: uppercase"
-              />
-            </div>
-
-            <div class="form-row">
-              <div class="form-field">
-                <label class="form-field__label" for="fiscal-regimen">Régimen Fiscal</label>
-                <p-dropdown
-                  inputId="fiscal-regimen"
-                  [(ngModel)]="fiscalRegimen"
-                  [options]="regimenFiscalOptions"
-                  optionValue="clave"
-                  optionLabel="descripcion"
-                  placeholder="Selecciona régimen"
-                  [filter]="true"
-                  filterPlaceholder="Buscar..."
-                  styleClass="form-field__dropdown"
-                />
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-file-edit"></i></div>
+              <div>
+                <div class="card-title">Datos Fiscales del Emisor</div>
+                <div class="card-subtitle">Información para facturación CFDI (SAT)</div>
               </div>
+            </div>
 
+            <div class="settings-form">
               <div class="form-field">
-                <label class="form-field__label" for="fiscal-cp">Código Postal</label>
+                <label class="form-field__label" for="fiscal-rfc">RFC</label>
                 <input
-                  id="fiscal-cp"
+                  id="fiscal-rfc"
                   type="text"
                   pInputText
-                  [(ngModel)]="fiscalCodigoPostal"
-                  placeholder="Ej. 83000"
-                  class="form-field__input"
-                  maxlength="5"
-                  pattern="\d{5}"
+                  [(ngModel)]="fiscalRfc"
+                  placeholder="Ej. XAXX010101000"
+                  class="form-field__input form-field__input--mono"
+                  maxlength="13"
+                  style="text-transform: uppercase"
                 />
-                @if (fiscalCodigoPostal.length > 0 && !isFiscalCpValid()) {
-                  <small class="form-field__error">Debe ser 5 dígitos</small>
+                @if (fiscalRfc.length > 0 && !isFiscalRfcValid()) {
+                  <small class="form-field__error">RFC inválido — debe ser 12 o 13 caracteres alfanuméricos</small>
                 }
               </div>
+
+              <div class="form-field">
+                <label class="form-field__label" for="fiscal-razon">Razón Social</label>
+                <input
+                  id="fiscal-razon"
+                  type="text"
+                  pInputText
+                  [(ngModel)]="fiscalRazonSocial"
+                  placeholder="Ej. MI NEGOCIO S.A. DE C.V."
+                  class="form-field__input"
+                  style="text-transform: uppercase"
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="form-field__label" for="fiscal-regimen">Régimen Fiscal</label>
+                  <p-dropdown
+                    inputId="fiscal-regimen"
+                    [(ngModel)]="fiscalRegimen"
+                    [options]="regimenFiscalOptions"
+                    optionValue="clave"
+                    optionLabel="descripcion"
+                    placeholder="Selecciona régimen"
+                    [filter]="true"
+                    filterPlaceholder="Buscar..."
+                    styleClass="form-field__dropdown"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label class="form-field__label" for="fiscal-cp">Código Postal</label>
+                  <input
+                    id="fiscal-cp"
+                    type="text"
+                    pInputText
+                    [(ngModel)]="fiscalCodigoPostal"
+                    placeholder="Ej. 83000"
+                    class="form-field__input"
+                    maxlength="5"
+                    pattern="\d{5}"
+                  />
+                  @if (fiscalCodigoPostal.length > 0 && !isFiscalCpValid()) {
+                    <small class="form-field__error">Debe ser 5 dígitos</small>
+                  }
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="settings-card__footer">
-            @if (saveFiscalSuccess()) {
-              <span class="settings-card__ok">
-                <i class="pi pi-check-circle"></i> Guardado
-              </span>
-            }
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="isSavingFiscal() || !fiscalRfc || !fiscalRazonSocial || !fiscalRegimen || !fiscalCodigoPostal"
-              (click)="saveFiscalConfig()"
-            >
-              @if (isSavingFiscal()) {
-                <i class="pi pi-spin pi-spinner"></i>
+            <div class="settings-card__footer">
+              @if (saveFiscalSuccess()) {
+                <span class="settings-card__ok">
+                  <i class="pi pi-check-circle"></i> Guardado
+                </span>
               }
-              Guardar datos fiscales
-            </button>
-          </div>
-        </section>
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="isSavingFiscal() || !fiscalRfc || !fiscalRazonSocial || !fiscalRegimen || !fiscalCodigoPostal"
+                (click)="saveFiscalConfig()"
+              >
+                @if (isSavingFiscal()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Guardar datos fiscales
+              </button>
+            </div>
+          </section>
 
-      </div>
+        </div>
+      }
     }
 
     <!-- ================================================================ -->
@@ -781,7 +636,7 @@
           }
         </section>
 
-        <!-- Section 2: Upgrade options -->
+        <!-- Section 2: Upgrade options (already filtered by matrix in TS) -->
         @if (upgradeOptions().length > 0) {
           <section class="settings-card">
             <div class="settings-card-header">
@@ -838,264 +693,6 @@
           </section>
         }
 
-      </div>
-    }
-
-    <!-- ================================================================ -->
-    <!-- TAB: Sucursales                                                   -->
-    <!-- ================================================================ -->
-    @case ('branches') {
-      <div class="settings-content settings-content--full">
-
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-sitemap"></i></div>
-            <div>
-              <div class="card-title">Sucursales</div>
-              <div class="card-subtitle">Administra las ubicaciones de tu negocio</div>
-            </div>
-            <button
-              type="button"
-              class="btn-primary btn-primary--sm"
-              style="margin-left: auto"
-              (click)="openNewBranch()"
-            >
-              <i class="pi pi-plus"></i>
-              Nueva sucursal
-            </button>
-          </div>
-
-          <p-table
-            [value]="branches()"
-            [loading]="loadingBranches()"
-            [rowHover]="true"
-            dataKey="id"
-          >
-            <ng-template pTemplate="header">
-              <tr>
-                <th>Nombre</th>
-                <th>Ubicación</th>
-                @if (showKitchenToggle()) {
-                  <th style="width: 5rem; text-align: center">Cocina</th>
-                }
-                @if (showTablesToggle()) {
-                  <th style="width: 5rem; text-align: center">Mesas</th>
-                }
-                <th style="width: 7rem">Acciones</th>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="body" let-branch>
-              <tr>
-                <td>
-                  {{ branch.name }}
-                  @if (branch.isMatrix) {
-                    <span class="matrix-badge">Matriz</span>
-                  }
-                </td>
-                <td>{{ branch.locationName }}</td>
-                @if (showKitchenToggle()) {
-                  <td style="text-align: center">{{ branch.hasKitchen ? '✅' : '❌' }}</td>
-                }
-                @if (showTablesToggle()) {
-                  <td style="text-align: center">{{ branch.hasTables ? '✅' : '❌' }}</td>
-                }
-                <td>
-                  <div class="branch-actions">
-                    @if (!branch.isMatrix) {
-                      <button
-                        type="button"
-                        class="btn-icon"
-                        aria-label="Copiar catálogo"
-                        (click)="openCopyCatalog(branch)"
-                      >
-                        <i class="pi pi-copy"></i>
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      class="btn-icon"
-                      aria-label="Editar sucursal"
-                      (click)="openEditBranch(branch)"
-                    >
-                      <i class="pi pi-pencil"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="emptymessage">
-              <tr>
-                <td colspan="99" class="branches-empty">
-                  No hay sucursales registradas.
-                </td>
-              </tr>
-            </ng-template>
-          </p-table>
-        </section>
-
-      </div>
-
-      <!-- Branch create/edit dialog -->
-      <p-dialog
-        [visible]="showBranchDialog()"
-        (visibleChange)="showBranchDialog.set($event)"
-        [header]="editingBranch() ? 'Editar sucursal' : 'Nueva sucursal'"
-        [modal]="true"
-        [closable]="true"
-        [style]="{ width: editingBranch() ? '560px' : '420px' }"
-      >
-        @if (editingBranch()?.isMatrix) {
-          <p class="msg msg--info">
-            <i class="pi pi-info-circle"></i>
-            Esta es la sucursal principal del negocio
-          </p>
-        }
-
-        <div class="settings-form">
-          <div class="form-field">
-            <label class="form-field__label" for="branch-name">Nombre</label>
-            <input
-              [(ngModel)]="branchForm.name"
-              id="branch-name"
-              type="text"
-              pInputText
-              class="form-field__input"
-              placeholder="Ej. Centro"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="branch-location">Ubicación</label>
-            <input
-              [(ngModel)]="branchForm.locationName"
-              id="branch-location"
-              type="text"
-              pInputText
-              class="form-field__input"
-              placeholder="Ej. Av. Reforma 123, CDMX"
-            />
-          </div>
-
-          @if (showKitchenToggle() || showTablesToggle()) {
-            <div class="branch-toggles">
-              @if (showKitchenToggle()) {
-                <label class="branch-toggle">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="branchForm.hasKitchen"
-                  />
-                  <span>¿Tiene cocina?</span>
-                </label>
-              }
-              @if (showTablesToggle()) {
-                <label class="branch-toggle">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="branchForm.hasTables"
-                  />
-                  <span>¿Tiene mesas?</span>
-                </label>
-              }
-            </div>
-          }
-
-          <!-- Delivery platforms section -->
-          @if (showDeliverySection()) {
-            <div class="settings-delivery-section">
-              <div class="settings-delivery-section__header">
-                <h4>Plataformas de Delivery</h4>
-                <p>Conecta tu sucursal con plataformas de entrega a domicilio</p>
-              </div>
-              <p class="delivery-hint">Expande cada plataforma para configurarla y guarda por separado.</p>
-              <div class="delivery-configs">
-                @for (platform of deliveryPlatforms; track platform) {
-                  <app-delivery-config-card
-                    [platform]="platform"
-                    [config]="getDeliveryConfig(platform)"
-                    [branchId]="editingBranch()!.id"
-                    [saving]="deliveryConfigService.saving()"
-                    (onSave)="handleDeliveryConfigSave($event)"
-                    (onDelete)="handleDeliveryConfigDelete($event)"
-                  />
-                }
-              </div>
-            </div>
-          }
-        </div>
-
-        <ng-template pTemplate="footer">
-          <div class="dialog-footer">
-            <button
-              type="button"
-              class="btn-secondary"
-              [disabled]="savingBranch()"
-              (click)="showBranchDialog.set(false)"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
-              (click)="saveBranch()"
-            >
-              @if (savingBranch()) { <i class="pi pi-spin pi-spinner"></i> }
-              Guardar
-            </button>
-          </div>
-        </ng-template>
-      </p-dialog>
-
-      <!-- Copy catalog confirmation dialog -->
-      <p-dialog
-        [visible]="showCopyDialog()"
-        (visibleChange)="showCopyDialog.set($event)"
-        header="Copiar catálogo"
-        [modal]="true"
-        [closable]="true"
-        [style]="{ width: '420px' }"
-      >
-        <div class="msg msg--info">
-          <i class="pi pi-info-circle"></i>
-          <span>
-            ¿Copiar el catálogo de la sucursal principal a
-            <strong>{{ copyTarget()?.name }}</strong>?
-            Esto copiará todas las categorías y productos.
-          </span>
-        </div>
-
-        <ng-template pTemplate="footer">
-          <div class="dialog-footer">
-            <button
-              type="button"
-              class="btn-secondary"
-              [disabled]="copyingCatalog()"
-              (click)="showCopyDialog.set(false)"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="copyingCatalog()"
-              (click)="confirmCopyCatalog()"
-            >
-              @if (copyingCatalog()) { <i class="pi pi-spin pi-spinner"></i> }
-              Sí, copiar
-            </button>
-          </div>
-        </ng-template>
-      </p-dialog>
-    }
-
-    <!-- ================================================================ -->
-    <!-- TAB: Impresoras                                                   -->
-    <!-- ================================================================ -->
-    @case ('printers') {
-      <div class="settings-content settings-content--full">
-        <app-admin-printer-settings />
       </div>
     }
 
