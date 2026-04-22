@@ -13,8 +13,11 @@ import {
   AppConfig,
   AVAILABLE_PLAN_TYPES_BY_MACRO,
   DEFAULT_APP_CONFIG,
+  FEATURE_LABELS,
+  PLAN_CATALOG,
   PLAN_DISPLAY_NAME,
   PLAN_HIERARCHY,
+  pricingGroupForMacro,
   REGIMEN_FISCAL_OPTIONS,
   RFC_REGEX,
 } from '../../../../core/models';
@@ -231,42 +234,39 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   });
 
   /**
-   * Upgrade options filtered by the macro's matrix eligibility. A tenant
-   * only ever sees tiers the matrix permits for their giro — e.g. Services
-   * never sees Basic or Enterprise, Retail never sees Enterprise.
+   * Upgrade options derived from the single-source `PLAN_CATALOG`.
+   *
+   * Only tiers that (a) are strictly higher than the tenant's current plan
+   * and (b) are allowed by the macro × plan availability matrix are shown.
+   * Feature bullets are the **delta** unlocked by the target tier — i.e.
+   * the FeatureKeys the user does NOT yet have at their current tier — so
+   * the upgrade pitch focuses on what they actually gain.
    */
   readonly upgradeOptions = computed(() => {
-    const current = this.authService.planTypeId();
-    const currentLevel = PLAN_HIERARCHY[current] ?? 0;
+    const currentPlan = this.authService.planTypeId();
+    const currentLevel = PLAN_HIERARCHY[currentPlan] ?? 0;
     const macro = this.authService.primaryMacroCategoryId();
     const allowed = macro !== null
       ? AVAILABLE_PLAN_TYPES_BY_MACRO[macro]
       : new Set<PlanTypeId>([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]);
 
-    const options: { name: string; price: string; features: string[] }[] = [];
+    const group = pricingGroupForMacro(macro);
+    const currentTierFeatures = new Set<FeatureKey>(
+      PLAN_CATALOG.find(t => t.planTypeId === currentPlan)?.features ?? [],
+    );
 
-    if (allowed.has(PlanTypeId.Basic) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Basic]) {
-      options.push({
-        name: 'Básico',
-        price: '$199/mes',
-        features: ['Impresora térmica', 'Escáner de códigos', 'Promociones'],
-      });
-    }
-    if (allowed.has(PlanTypeId.Pro) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Pro]) {
-      options.push({
-        name: 'Pro',
-        price: '$399/mes',
-        features: ['Reportes avanzados', 'Facturación CFDI', 'Multi-sucursal'],
-      });
-    }
-    if (allowed.has(PlanTypeId.Enterprise) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Enterprise]) {
-      options.push({
-        name: 'Enterprise',
-        price: 'Contacto',
-        features: ['Báscula industrial', 'API de acceso', 'Soporte prioritario'],
-      });
-    }
-    return options;
+    return PLAN_CATALOG
+      .filter(tier =>
+        (PLAN_HIERARCHY[tier.planTypeId] ?? 0) > currentLevel
+        && allowed.has(tier.planTypeId),
+      )
+      .map(tier => ({
+        name: tier.name,
+        price: `$${tier.monthlyPrice[group].toLocaleString('es-MX')}/mes`,
+        features: tier.features
+          .filter(key => !currentTierFeatures.has(key))
+          .map(key => FEATURE_LABELS[key]),
+      }));
   });
 
   /** Whether the cancel button should be shown */
