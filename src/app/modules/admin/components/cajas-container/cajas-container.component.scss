@@ -40,39 +40,4 @@
     }
   }
 
-  &__lock {
-    color: #D97706;
-    margin-left: $space-1;
-    font-size: 12px;
-  }
-
-  &__upgrade-banner {
-    display: flex;
-    align-items: flex-start;
-    gap: $space-2;
-    padding: $space-3;
-    background: #FFFBEB;
-    border: 1px solid #FCD34D;
-    border-radius: 12px;
-    color: #92400E;
-    margin-bottom: $space-3;
-
-    i {
-      font-size: 18px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    strong {
-      display: block;
-      font-size: 15px;
-      margin-bottom: 4px;
-    }
-
-    p {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-  }
 }

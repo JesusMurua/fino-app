@@ -7,7 +7,6 @@ import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
 import { TableModule } from 'primeng/table';
 
 import {
@@ -32,7 +31,6 @@ import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
-import { environment } from '../../../../../environments/environment';
 
 /**
  * Tab ids rendered by the settings screen.
@@ -42,7 +40,7 @@ import { environment } from '../../../../../environments/environment';
  *   - `branches` removed: extracted to the top-level `/admin/branches` route.
  *   - `peripherals` + `printers` merged into `hardware`.
  */
-type TabId = 'business' | 'hardware' | 'security' | 'fiscal' | 'billing';
+type TabId = 'business' | 'hardware' | 'fiscal' | 'billing';
 
 interface TabDef {
   id: TabId;
@@ -66,7 +64,6 @@ interface TabDef {
     DialogModule,
     DropdownModule,
     InputTextModule,
-    PasswordModule,
     TableModule,
     AdminPrinterSettingsComponent,
   ],
@@ -97,7 +94,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private readonly allTabs: readonly TabDef[] = [
     { id: 'business', label: 'Negocio',     icon: 'pi pi-building' },
     { id: 'hardware', label: 'Hardware',    icon: 'pi pi-print' },
-    { id: 'security', label: 'Seguridad',   icon: 'pi pi-lock' },
     { id: 'fiscal',   label: 'Fiscal',      icon: 'pi pi-file-edit' },
     { id: 'billing',  label: 'Facturación', icon: 'pi pi-receipt' },
   ];
@@ -151,15 +147,8 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
 
-  /** PIN change fields */
-  currentPin = '';
-  newPin     = '';
-  confirmPin = '';
-
   readonly isSaving        = signal(false);
   readonly saveSuccess     = signal(false);
-  readonly pinError        = signal('');
-  readonly pinSuccess      = signal(false);
 
   // ---- Folio configuration ----
   folioPrefix = '';
@@ -453,38 +442,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region PIN Change
-
-  async changePin(): Promise<void> {
-    this.pinError.set('');
-    this.pinSuccess.set(false);
-
-    if (!/^\d{4}$/.test(this.newPin)) {
-      this.pinError.set('El PIN debe ser de 4 dígitos numéricos.');
-      return;
-    }
-
-    if (this.newPin !== this.confirmPin) {
-      this.pinError.set('Los PINs no coinciden.');
-      return;
-    }
-
-    const currentValid = await this.configService.verifyPin(this.currentPin);
-    if (!currentValid) {
-      this.pinError.set('El PIN actual es incorrecto.');
-      return;
-    }
-
-    await this.configService.updatePin(this.newPin);
-    this.currentPin = '';
-    this.newPin     = '';
-    this.confirmPin = '';
-    this.pinSuccess.set(true);
-    setTimeout(() => this.pinSuccess.set(false), 3000);
-  }
-
-  //#endregion
-
   //#region Folio Configuration
 
   /** Returns a live preview of the next folio based on current form values. */
@@ -596,9 +553,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#region Billing Methods
 
-  /** Opens the landing page pricing section in a new tab */
+  /** Navigates to the internal upgrade flow */
   openUpgrade(): void {
-    window.open(`${environment.landingUrl}/#precios`, '_blank');
+    this.router.navigate(['/admin/upgrade']);
   }
 
   /** Cancels the subscription after user confirmation */
