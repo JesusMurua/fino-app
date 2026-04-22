@@ -25,6 +25,7 @@ import { CashRegisterService } from '../../../../core/services/cash-register.ser
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { StatusLabelPipe, StatusClassPipe } from '../../../../shared/pipes/status-label.pipe';
+import { SelectOnFocusDirective } from '../../../../shared/directives/select-on-focus.directive';
 
 /** Movement type options for the dialog */
 interface MovementTypeOption {
@@ -51,6 +52,7 @@ interface MovementTypeOption {
     PricePipe,
     StatusLabelPipe,
     StatusClassPipe,
+    SelectOnFocusDirective,
   ],
   providers: [ConfirmationService],
   templateUrl: './cash-register.component.html',
@@ -139,9 +141,10 @@ export class CashRegisterComponent implements OnInit {
   readonly showCloseConfirm = signal(false);
   readonly unpaidOrderCount = signal(0);
 
-  // Forms
-  openAmount = 0;
-  closeAmount = 0;
+  // Forms — currency inputs start as `null` so the PrimeNG placeholder
+  // ("$0.00") is visible and the first keystroke overwrites cleanly.
+  openAmount: number | null = null;
+  closeAmount: number | null = null;
   closeNotes = '';
   movementAmount = 0;
   movementDescription = '';
@@ -205,7 +208,7 @@ export class CashRegisterComponent implements OnInit {
   });
 
   readonly difference = computed(() => {
-    if (this.closeAmount <= 0) return null;
+    if (this.closeAmount == null || this.closeAmount <= 0) return null;
     return Math.round(this.closeAmount * 100) - this.expectedAmount();
   });
 
@@ -291,7 +294,8 @@ export class CashRegisterComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return;
 
-    if (this.openAmount === 0) {
+    const amount = this.openAmount ?? 0;
+    if (amount === 0) {
       const confirmed = await this.confirmOpenWithoutFloat();
       if (!confirmed) return;
     }
@@ -299,7 +303,7 @@ export class CashRegisterComponent implements OnInit {
     this.isOpeningSession.set(true);
     try {
       await this.cashRegisterService.openSession({
-        initialAmountCents: Math.round(this.openAmount * 100),
+        initialAmountCents: Math.round(amount * 100),
         openedBy: user.name,
       });
 
@@ -419,12 +423,12 @@ export class CashRegisterComponent implements OnInit {
     try {
       await this.cashRegisterService.closeSession({
         sessionId: session.id,
-        countedAmountCents: Math.round(this.closeAmount * 100),
+        countedAmountCents: Math.round((this.closeAmount ?? 0) * 100),
         closedBy: user.name,
         notes: this.closeNotes.trim() || undefined,
       });
 
-      this.closeAmount = 0;
+      this.closeAmount = null;
       this.closeNotes = '';
 
       this.messageService.add({
@@ -539,7 +543,7 @@ export class CashRegisterComponent implements OnInit {
    * from a previous attempt so the cashier never sees a stale value.
    */
   openOpenDialog(): void {
-    this.openAmount = 0;
+    this.openAmount = null;
     this.showOpenDialog.set(true);
   }
 
@@ -549,7 +553,7 @@ export class CashRegisterComponent implements OnInit {
    * attempt — the cashier must count blind every single time.
    */
   openCloseDialog(): void {
-    this.closeAmount = 0;
+    this.closeAmount = null;
     this.closeNotes = '';
     this.closeStep.set('counting');
     this.showCloseDialog.set(true);
@@ -562,7 +566,7 @@ export class CashRegisterComponent implements OnInit {
    * state, this is a defensive guard for programmatic invocation.
    */
   verifyCount(): void {
-    if (this.closeAmount <= 0) return;
+    if (this.closeAmount == null || this.closeAmount <= 0) return;
     this.closeStep.set('reveal');
   }
 
