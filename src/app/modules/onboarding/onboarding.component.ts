@@ -7,7 +7,13 @@ import { firstValueFrom } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
-import { UpdateBusinessGiroRequest } from '../../core/models';
+import {
+  FEATURE_LABELS,
+  PLAN_CATALOG,
+  PRICING_GROUP_BY_MACRO,
+  PricingGroup,
+  UpdateBusinessGiroRequest,
+} from '../../core/models';
 import { BusinessTypeId, MACRO_CATEGORY_LABELS, MacroCategoryType } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
@@ -42,21 +48,11 @@ type PlanSlug = 'free' | 'basic' | 'pro' | 'enterprise';
 
 type BillingCycle = 'monthly' | 'annual';
 
-type PricingGroup = 'restaurant' | 'standard' | 'general';
-
 /** Plans ordered from cheapest to most expensive — drives grid layout. */
 const PLAN_ORDER: PlanSlug[] = ['free', 'basic', 'pro', 'enterprise'];
 
 /** Plans that require Stripe — Free short-circuits to `continueWithTrial`. */
 const PAID_PLANS: PlanSlug[] = ['basic', 'pro', 'enterprise'];
-
-/** Maps macro → pricing group used by the Stripe matrix. */
-const PRICING_GROUP_BY_MACRO: Record<MacroCategoryType, PricingGroup> = {
-  [MacroCategoryType.FoodBeverage]: 'restaurant',
-  [MacroCategoryType.QuickService]: 'standard',
-  [MacroCategoryType.Retail]:       'general',
-  [MacroCategoryType.Services]:     'general',
-};
 
 /**
  * Plans available per macro (feature gating per `.claude/business-rules-matrix.md`):
@@ -72,58 +68,7 @@ const AVAILABLE_PLANS_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanSlug>>
   [MacroCategoryType.Services]:     new Set(['free', 'pro']),
 };
 
-/** Stripe price IDs keyed by [plan][group][cycle]. */
-const STRIPE_PRICE_IDS: Record<Exclude<PlanSlug, 'free'>, Record<PricingGroup, Record<BillingCycle, string>>> = {
-  basic: {
-    restaurant: { monthly: 'price_1TGjZTGd6oMtnYKNKH4mV0WR', annual: 'price_1TGjaKGd6oMtnYKNMlQbqt1f' },
-    standard:   { monthly: 'price_1TGjYIGd6oMtnYKNaWsO5wW9', annual: 'price_1TGjYvGd6oMtnYKNNLJSrXWk' },
-    general:    { monthly: 'price_1TGVDNGd6oMtnYKN3mOfuloV', annual: 'price_1TGVGBGd6oMtnYKNOtYdklZ7' },
-  },
-  pro: {
-    restaurant: { monthly: 'price_1TGVDsGd6oMtnYKNGYySti0z', annual: 'price_1TGVFhGd6oMtnYKNJGIXZ3d3' },
-    standard:   { monthly: 'price_1TGjjMGd6oMtnYKNnUYsOsmr', annual: 'price_1TGjk0Gd6oMtnYKNbIyJOpr8' },
-    general:    { monthly: 'price_1TGjiaGd6oMtnYKNFY6ZbnMS', annual: 'price_1TGjj3Gd6oMtnYKNYX06rZPx' },
-  },
-  enterprise: {
-    restaurant: { monthly: 'price_1TGVEDGd6oMtnYKNC7v50zld', annual: 'price_1TGVErGd6oMtnYKNfEBSfiPS' },
-    standard:   { monthly: 'price_1TGjsMGd6oMtnYKNV4ixW9ms', annual: 'price_1TGjtEGd6oMtnYKNMDlACMO2' },
-    general:    { monthly: 'price_1TGjrfGd6oMtnYKNaEVHitCF', annual: 'price_1TGjs2Gd6oMtnYKN4BvXPwXw' },
-  },
-};
-
-/** Display prices in centavos, keyed by [plan][group][cycle]. */
-const DISPLAY_PRICES: Record<Exclude<PlanSlug, 'free'>, Record<PricingGroup, Record<BillingCycle, number>>> = {
-  basic: {
-    general:    { monthly: 9900,   annual: 7900 },
-    standard:   { monthly: 14900,  annual: 11900 },
-    restaurant: { monthly: 19900,  annual: 15900 },
-  },
-  pro: {
-    general:    { monthly: 24900,  annual: 19900 },
-    standard:   { monthly: 34900,  annual: 27900 },
-    restaurant: { monthly: 49900,  annual: 39900 },
-  },
-  enterprise: {
-    general:    { monthly: 59900,  annual: 47900 },
-    standard:   { monthly: 79900,  annual: 63900 },
-    restaurant: { monthly: 99900,  annual: 79900 },
-  },
-};
-
-const PLAN_NAMES: Record<PlanSlug, string> = {
-  free:       'Free',
-  basic:      'Basic',
-  pro:        'Pro',
-  enterprise: 'Enterprise',
-};
-
-const PLAN_BADGES: Record<PlanSlug, string> = {
-  free:       'Gratis',
-  basic:      'Básico',
-  pro:        'Más popular',
-  enterprise: 'Franquicia',
-};
-
+/** Short tagline per plan — kept local to the onboarding UI (not in the catalog). */
 const PLAN_DESCRIPTIONS: Record<PlanSlug, string> = {
   free:       'Para probar sin compromiso',
   basic:      'Para negocios que arrancan',
@@ -131,12 +76,8 @@ const PLAN_DESCRIPTIONS: Record<PlanSlug, string> = {
   enterprise: 'Para cadenas y franquicias',
 };
 
-const PLAN_FEATURES: Record<PlanSlug, string[]> = {
-  free:       ['1 sucursal', 'Hasta 100 ventas/mes', 'Inventario básico', 'App iOS / Android'],
-  basic:      ['1 sucursal', 'Ventas ilimitadas', 'Reportes mensuales', 'Soporte prioritario'],
-  pro:        ['3 sucursales', 'Multi-dispositivo', 'Reportes avanzados', 'Facturación CFDI', 'Soporte 24/7'],
-  enterprise: ['Sucursales ilimitadas', 'API personalizada', 'Dashboard central', 'Gerente dedicado'],
-};
+/** Free tier copy tweak — the catalog leaves `badge` blank for Free. */
+const FREE_BADGE_FALLBACK = 'Gratis';
 
 /**
  * Catalog of macro cards + their sub-giros. `id: null` means the chip is
@@ -318,15 +259,17 @@ export class OnboardingComponent implements OnInit {
     const group = this.pricingGroup();
     const cycle = this.billingCycle();
     return PLAN_ORDER.map(slug => {
+      const tier = PLAN_CATALOG.find(t => t.slug === slug);
+      if (!tier) throw new Error(`[onboarding] Missing tier in PLAN_CATALOG for slug "${slug}"`);
       const isLocked = !allowed.has(slug);
-      const priceCents = slug === 'free' ? 0 : DISPLAY_PRICES[slug][group][cycle];
+      const priceTable = cycle === 'annual' ? tier.annualPrice : tier.monthlyPrice;
       return {
         slug,
-        name: PLAN_NAMES[slug],
-        badge: PLAN_BADGES[slug],
+        name: tier.name,
+        badge: tier.badge ?? FREE_BADGE_FALLBACK,
         description: PLAN_DESCRIPTIONS[slug],
-        features: PLAN_FEATURES[slug],
-        priceCents,
+        features: tier.features.map(key => FEATURE_LABELS[key]),
+        price: priceTable[group],
         isFree: slug === 'free',
         isFeatured: slug === 'pro',
         isLocked,
@@ -357,7 +300,9 @@ export class OnboardingComponent implements OnInit {
 
   readonly ctaLabel = computed(() => {
     const slug = this.selectedPlan();
-    return slug ? `Comenzar con ${PLAN_NAMES[slug]}` : 'Elige un plan';
+    if (!slug) return 'Elige un plan';
+    const tier = PLAN_CATALOG.find(t => t.slug === slug);
+    return tier ? `Comenzar con ${tier.name}` : 'Elige un plan';
   });
 
   //#endregion
@@ -577,7 +522,13 @@ export class OnboardingComponent implements OnInit {
     this.checkoutLoading.set(true);
     this.checkoutError.set('');
 
-    const priceId = STRIPE_PRICE_IDS[plan][this.pricingGroup()][this.billingCycle()];
+    const tier = PLAN_CATALOG.find(t => t.slug === plan);
+    const priceId = tier?.stripePriceIds?.[this.billingCycle()][this.pricingGroup()];
+    if (!priceId) {
+      this.checkoutError.set('No se pudo resolver el plan seleccionado.');
+      this.checkoutLoading.set(false);
+      return;
+    }
     const origin = window.location.origin;
 
     try {
@@ -656,10 +607,10 @@ export class OnboardingComponent implements OnInit {
     return PLAN_ORDER.includes(raw as PlanSlug) ? (raw as PlanSlug) : null;
   }
 
-  /** Formats a price amount in centavos for display. Returns 'Gratis' when 0. */
-  formatPrice(cents: number): string {
-    if (!cents) return 'Gratis';
-    return '$' + (cents / 100).toLocaleString('es-MX', { minimumFractionDigits: 0 });
+  /** Formats a price amount in MXN pesos for display. Returns 'Gratis' when 0. */
+  formatPrice(pesos: number): string {
+    if (!pesos) return 'Gratis';
+    return '$' + pesos.toLocaleString('es-MX', { minimumFractionDigits: 0 });
   }
 
   //#endregion

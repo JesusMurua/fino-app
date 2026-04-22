@@ -48,7 +48,7 @@ interface BranchConfigResponse {
  * Manages two separate layers of configuration:
  *
  * Business config (IndexedDB via Dexie):
- *   Shared across all devices — businessName, locationName, PIN.
+ *   Shared across all devices — businessName, locationName, folio/fiscal.
  *   On load(), tries GET /api/branch/1/config first.
  *   If API succeeds → updates Dexie with fresh data.
  *   If API fails → uses Dexie local fallback.
@@ -189,24 +189,6 @@ export class ConfigService {
     this.hasDelivery.set(normalized.hasDelivery ?? false);
     this.hasInvoicing.set(normalized.hasInvoicing ?? false);
     this.posExperience.set(normalized.businessTypeCatalog?.posExperience);
-  }
-
-  /**
-   * Verifies whether the provided PIN matches the stored one.
-   * @param pin 4-digit PIN string to verify
-   */
-  async verifyPin(pin: string): Promise<boolean> {
-    const config = await this.load();
-    return config.pin === pin;
-  }
-
-  /**
-   * Updates the PIN in the stored config.
-   * @param newPin New 4-digit PIN string
-   */
-  async updatePin(newPin: string): Promise<void> {
-    const config = await this.load();
-    await this.save({ ...config, pin: newPin });
   }
 
   //#endregion

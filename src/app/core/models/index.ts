@@ -18,6 +18,7 @@ export * from './order.model';
 export * from './orphaned-order.model';
 export * from './payment.model';
 export * from './plan.model';
+export * from './plan-catalog.model';
 export * from './product-import.model';
 export * from './promotion.model';
 export * from './report.model';

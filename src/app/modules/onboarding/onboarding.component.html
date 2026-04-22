@@ -235,7 +235,7 @@
             <h2 class="plan-card__name">{{ card.name }}</h2>
 
             <div class="plan-card__price">
-              <span class="plan-card__amount">{{ formatPrice(card.priceCents) }}</span>
+              <span class="plan-card__amount">{{ formatPrice(card.price) }}</span>
               @if (!card.isFree) {
                 <span class="plan-card__cycle">{{ cycleLabel() }}</span>
               } @else {

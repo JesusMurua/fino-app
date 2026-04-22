@@ -152,6 +152,7 @@
         styleClass="dialog-field__input-lg"
         inputStyleClass="dialog-field__input-lg-inner"
         placeholder="$0.00"
+        posSelectOnFocus
       />
     </div>
 
@@ -172,7 +173,7 @@
       <button
         type="button"
         class="btn-primary"
-        [disabled]="openAmount < 0 || isOpeningSession()"
+        [disabled]="openAmount == null || openAmount < 0 || isOpeningSession()"
         (click)="openSession()"
       >
         @if (isOpeningSession()) {
@@ -249,6 +250,7 @@
           styleClass="dialog-field__input-lg"
           inputStyleClass="dialog-field__input-lg-inner"
           placeholder="$0.00"
+          posSelectOnFocus
         />
       </div>
 
@@ -296,7 +298,7 @@
         <button
           type="button"
           class="btn-primary"
-          [disabled]="closeAmount <= 0"
+          [disabled]="closeAmount == null || closeAmount <= 0"
           (click)="verifyCount()"
         >
           Verificar conteo
@@ -315,7 +317,7 @@
         <button
           type="button"
           [class]="difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
-          [disabled]="closeAmount <= 0 || isClosingSession()"
+          [disabled]="closeAmount == null || closeAmount <= 0 || isClosingSession()"
           (click)="onCloseSession()"
         >
           @if (isClosingSession()) {

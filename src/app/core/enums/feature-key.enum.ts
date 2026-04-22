@@ -85,30 +85,48 @@ export enum FeatureKey {
  *
  * Derived from the plan × giro matrix in `.claude/business-rules-matrix.md`.
  */
+/**
+ * Features applicable to ALL four macros after the V2.0 business-rules
+ * sync. These show up in every giro's `GIRO_FEATURE_MAP` entry and are
+ * unlocked vertically by plan tier rather than horizontally by macro.
+ */
+const UNIVERSAL_FEATURES: readonly FeatureKey[] = [
+  FeatureKey.CoreHardware,
+  FeatureKey.CfdiInvoicing,
+  FeatureKey.CustomerCredit,
+  FeatureKey.CustomerBase,
+  FeatureKey.SimpleFolios,
+  FeatureKey.StockAlerts,
+  FeatureKey.MultiWarehouseInventory,
+  FeatureKey.MultiBranch,
+  FeatureKey.PublicApi,
+];
+
 const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
-  FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
+  ...UNIVERSAL_FEATURES,
+  FeatureKey.UnlimitedProducts,
   FeatureKey.PrintedTickets, FeatureKey.KdsBasic, FeatureKey.RealtimeKds,
   FeatureKey.TableMap, FeatureKey.WaiterApp, FeatureKey.KioskMode,
-  FeatureKey.MultiTill, FeatureKey.MultiBranch, FeatureKey.PublicApi,
+  FeatureKey.MultiTill, FeatureKey.LoyaltyCrm,
   FeatureKey.RecipeInventory, FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
 
 const QUICK_SERVICE_FEATURES: readonly FeatureKey[] = [
-  FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
+  ...UNIVERSAL_FEATURES,
+  FeatureKey.UnlimitedProducts,
   FeatureKey.KdsBasic, FeatureKey.RealtimeKds, FeatureKey.KioskMode,
   FeatureKey.LoyaltyCrm, FeatureKey.MultiTill,
   FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
 
 const RETAIL_FEATURES: readonly FeatureKey[] = [
-  FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing, FeatureKey.UnlimitedProducts,
-  FeatureKey.CustomerCredit, FeatureKey.MultiWarehouseInventory,
-  FeatureKey.ComparativeReports, FeatureKey.StockAlerts, FeatureKey.AdvancedReports,
+  ...UNIVERSAL_FEATURES,
+  FeatureKey.UnlimitedProducts,
+  FeatureKey.ComparativeReports, FeatureKey.AdvancedReports,
 ];
 
 const SERVICES_FEATURES: readonly FeatureKey[] = [
-  FeatureKey.CoreHardware, FeatureKey.CfdiInvoicing,
-  FeatureKey.SimpleFolios, FeatureKey.CustomerBase,
+  ...UNIVERSAL_FEATURES,
   FeatureKey.CustomFolios, FeatureKey.CustomerHistory, FeatureKey.Reminders,
 ];
 

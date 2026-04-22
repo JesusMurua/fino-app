@@ -7,15 +7,17 @@ import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
 import { TableModule } from 'primeng/table';
 
 import {
   AppConfig,
   AVAILABLE_PLAN_TYPES_BY_MACRO,
   DEFAULT_APP_CONFIG,
+  FEATURE_LABELS,
+  PLAN_CATALOG,
   PLAN_DISPLAY_NAME,
   PLAN_HIERARCHY,
+  pricingGroupForMacro,
   REGIMEN_FISCAL_OPTIONS,
   RFC_REGEX,
 } from '../../../../core/models';
@@ -32,7 +34,6 @@ import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
-import { environment } from '../../../../../environments/environment';
 
 /**
  * Tab ids rendered by the settings screen.
@@ -42,7 +43,7 @@ import { environment } from '../../../../../environments/environment';
  *   - `branches` removed: extracted to the top-level `/admin/branches` route.
  *   - `peripherals` + `printers` merged into `hardware`.
  */
-type TabId = 'business' | 'hardware' | 'security' | 'fiscal' | 'billing';
+type TabId = 'business' | 'hardware' | 'fiscal' | 'billing';
 
 interface TabDef {
   id: TabId;
@@ -66,7 +67,6 @@ interface TabDef {
     DialogModule,
     DropdownModule,
     InputTextModule,
-    PasswordModule,
     TableModule,
     AdminPrinterSettingsComponent,
   ],
@@ -97,7 +97,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private readonly allTabs: readonly TabDef[] = [
     { id: 'business', label: 'Negocio',     icon: 'pi pi-building' },
     { id: 'hardware', label: 'Hardware',    icon: 'pi pi-print' },
-    { id: 'security', label: 'Seguridad',   icon: 'pi pi-lock' },
     { id: 'fiscal',   label: 'Fiscal',      icon: 'pi pi-file-edit' },
     { id: 'billing',  label: 'Facturación', icon: 'pi pi-receipt' },
   ];
@@ -151,15 +150,8 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Business config — stored in IndexedDB, shared across all devices */
   config = signal<AppConfig>({ ...DEFAULT_APP_CONFIG });
 
-  /** PIN change fields */
-  currentPin = '';
-  newPin     = '';
-  confirmPin = '';
-
   readonly isSaving        = signal(false);
   readonly saveSuccess     = signal(false);
-  readonly pinError        = signal('');
-  readonly pinSuccess      = signal(false);
 
   // ---- Folio configuration ----
   folioPrefix = '';
@@ -242,42 +234,39 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   });
 
   /**
-   * Upgrade options filtered by the macro's matrix eligibility. A tenant
-   * only ever sees tiers the matrix permits for their giro — e.g. Services
-   * never sees Basic or Enterprise, Retail never sees Enterprise.
+   * Upgrade options derived from the single-source `PLAN_CATALOG`.
+   *
+   * Only tiers that (a) are strictly higher than the tenant's current plan
+   * and (b) are allowed by the macro × plan availability matrix are shown.
+   * Feature bullets are the **delta** unlocked by the target tier — i.e.
+   * the FeatureKeys the user does NOT yet have at their current tier — so
+   * the upgrade pitch focuses on what they actually gain.
    */
   readonly upgradeOptions = computed(() => {
-    const current = this.authService.planTypeId();
-    const currentLevel = PLAN_HIERARCHY[current] ?? 0;
+    const currentPlan = this.authService.planTypeId();
+    const currentLevel = PLAN_HIERARCHY[currentPlan] ?? 0;
     const macro = this.authService.primaryMacroCategoryId();
     const allowed = macro !== null
       ? AVAILABLE_PLAN_TYPES_BY_MACRO[macro]
       : new Set<PlanTypeId>([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]);
 
-    const options: { name: string; price: string; features: string[] }[] = [];
+    const group = pricingGroupForMacro(macro);
+    const currentTierFeatures = new Set<FeatureKey>(
+      PLAN_CATALOG.find(t => t.planTypeId === currentPlan)?.features ?? [],
+    );
 
-    if (allowed.has(PlanTypeId.Basic) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Basic]) {
-      options.push({
-        name: 'Básico',
-        price: '$199/mes',
-        features: ['Impresora térmica', 'Escáner de códigos', 'Promociones'],
-      });
-    }
-    if (allowed.has(PlanTypeId.Pro) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Pro]) {
-      options.push({
-        name: 'Pro',
-        price: '$399/mes',
-        features: ['Reportes avanzados', 'Facturación CFDI', 'Multi-sucursal'],
-      });
-    }
-    if (allowed.has(PlanTypeId.Enterprise) && currentLevel < PLAN_HIERARCHY[PlanTypeId.Enterprise]) {
-      options.push({
-        name: 'Enterprise',
-        price: 'Contacto',
-        features: ['Báscula industrial', 'API de acceso', 'Soporte prioritario'],
-      });
-    }
-    return options;
+    return PLAN_CATALOG
+      .filter(tier =>
+        (PLAN_HIERARCHY[tier.planTypeId] ?? 0) > currentLevel
+        && allowed.has(tier.planTypeId),
+      )
+      .map(tier => ({
+        name: tier.name,
+        price: `$${tier.monthlyPrice[group].toLocaleString('es-MX')}/mes`,
+        features: tier.features
+          .filter(key => !currentTierFeatures.has(key))
+          .map(key => FEATURE_LABELS[key]),
+      }));
   });
 
   /** Whether the cancel button should be shown */
@@ -453,38 +442,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region PIN Change
-
-  async changePin(): Promise<void> {
-    this.pinError.set('');
-    this.pinSuccess.set(false);
-
-    if (!/^\d{4}$/.test(this.newPin)) {
-      this.pinError.set('El PIN debe ser de 4 dígitos numéricos.');
-      return;
-    }
-
-    if (this.newPin !== this.confirmPin) {
-      this.pinError.set('Los PINs no coinciden.');
-      return;
-    }
-
-    const currentValid = await this.configService.verifyPin(this.currentPin);
-    if (!currentValid) {
-      this.pinError.set('El PIN actual es incorrecto.');
-      return;
-    }
-
-    await this.configService.updatePin(this.newPin);
-    this.currentPin = '';
-    this.newPin     = '';
-    this.confirmPin = '';
-    this.pinSuccess.set(true);
-    setTimeout(() => this.pinSuccess.set(false), 3000);
-  }
-
-  //#endregion
-
   //#region Folio Configuration
 
   /** Returns a live preview of the next folio based on current form values. */
@@ -596,9 +553,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   //#region Billing Methods
 
-  /** Opens the landing page pricing section in a new tab */
+  /** Navigates to the internal upgrade flow */
   openUpgrade(): void {
-    window.open(`${environment.landingUrl}/#precios`, '_blank');
+    this.router.navigate(['/admin/upgrade']);
   }
 
   /** Cancels the subscription after user confirmation */

@@ -22,29 +22,9 @@
 
     <p-tabPanel>
       <ng-template pTemplate="header">
-        <i class="pi pi-desktop"></i>
-        <span>Equipos y Hardware</span>
-        @if (isHardwareLocked()) {
-          <i
-            class="pi pi-lock cajas-container__lock"
-            pTooltip="Vincular múltiples equipos requiere Plan Pro"
-            tooltipPosition="top"
-          ></i>
-        }
+        <i class="pi pi-wallet"></i>
+        <span>Cajas Físicas</span>
       </ng-template>
-
-      @if (isHardwareLocked()) {
-        <div class="cajas-container__upgrade-banner">
-          <i class="pi pi-lock"></i>
-          <div>
-            <strong>Vinculación de equipos limitada</strong>
-            <p>
-              Tu plan permite vincular un equipo principal. Para asignar roles
-              adicionales (KDS Cocina, Pantalla Mesero, Kiosko) actualiza a Pro.
-            </p>
-          </div>
-        </div>
-      }
 
       <app-admin-registers />
     </p-tabPanel>
