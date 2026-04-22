@@ -349,7 +349,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   //#region Constructor
 
   constructor() {
-    // Reactively update folio/fiscal form fields when config loads
+    // Reactively update folio/fiscal form fields when config loads.
+    // `allowSignalWrites` is required because the effect mirrors into
+    // `folioCounter` (a signal) to drive the folio preview.
     effect(() => {
       const cfg = this.config();
       this.folioPrefix = cfg.folioPrefix ?? '';
@@ -363,7 +365,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         this.fiscalRegimen = fiscal.regimenFiscal;
         this.fiscalCodigoPostal = fiscal.codigoPostal;
       }
-    });
+    }, { allowSignalWrites: true });
 
     // If the active tab becomes hidden mid-session (e.g. plan downgrade),
     // gracefully fall back to "business" instead of rendering an empty tab.

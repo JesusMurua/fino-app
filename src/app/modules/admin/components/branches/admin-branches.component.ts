@@ -6,6 +6,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
 import { FeatureKey, MacroCategoryType, OrderSource } from '../../../../core/enums';
@@ -48,6 +49,7 @@ interface BranchFormValue {
     DropdownModule,
     InputTextModule,
     TableModule,
+    TooltipModule,
     DeliveryConfigCardComponent,
   ],
   templateUrl: './admin-branches.component.html',
