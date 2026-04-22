@@ -4,8 +4,15 @@ import { Observable, timeout, catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 
-/** Default request timeout in milliseconds — treat as offline after this */
-const REQUEST_TIMEOUT_MS = 10_000;
+/**
+ * Default request timeout in milliseconds — treat as offline after this.
+ *
+ * Raised to 60s so cloud cold-starts (spun-down App Service / serverless
+ * containers) don't trip a client-side `TimeoutError` while the backend
+ * is still executing. Shorter values produced the classic
+ * "silent success + 409 on user retry" pattern.
+ */
+const REQUEST_TIMEOUT_MS = 60_000;
 
 /**
  * Centralized HTTP wrapper around Angular HttpClient.
