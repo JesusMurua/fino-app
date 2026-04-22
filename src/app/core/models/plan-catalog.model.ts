@@ -30,7 +30,7 @@ export type PricingGroup = 'general' | 'standard' | 'restaurant';
 export const PRICING_GROUP_BY_MACRO: Record<MacroCategoryType, PricingGroup> = {
   [MacroCategoryType.FoodBeverage]: 'restaurant',
   [MacroCategoryType.QuickService]: 'standard',
-  [MacroCategoryType.Retail]:       'general',
+  [MacroCategoryType.Retail]:       'standard',
   [MacroCategoryType.Services]:     'general',
 };
 
