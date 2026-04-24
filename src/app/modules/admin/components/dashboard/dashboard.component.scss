@@ -4,20 +4,27 @@
   display: flex;
   flex-direction: column;
   gap: $space-5;
+  // Themed page surface — `var(--bg)` is defined by `.dashboard.l` / `.dashboard.d`
+  // so the gap between cards flips to the dark palette on theme toggle.
+  background: var(--bg);
+  min-height: 100%;
+  transition: background-color 0.3s ease;
 
   &__title {
     margin: 0;
     font-size: 22px;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__loading {
     display: flex;
     align-items: center;
     gap: $space-3;
-    color: $color-text-sub;
+    color: var(--text2);
     font-size: $font-size-base;
+    transition: color 0.3s ease;
 
     i { font-size: 20px; }
   }
@@ -28,11 +35,12 @@
     justify-content: center;
     gap: $space-2;
     padding: $space-3 $space-4;
-    background: #FEF3C7;
-    color: #92400E;
+    background: var(--badge-bg);
+    color: var(--badge-text);
     border-radius: 8px;
-    border: 1px solid #FDE68A;
+    border: 1px solid var(--badge-border);
     font-size: 13px;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 
     i { font-size: 16px; }
   }
@@ -71,27 +79,31 @@
   flex-direction: column;
   gap: $space-2;
   padding: $space-4 $space-5;
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 
   &__label {
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
     font-weight: 500;
+    transition: color 0.3s ease;
   }
 
   &__value {
     font-size: 24px;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
 
     &--primary { color: $color-primary; }
   }
 
   &__empty {
     font-size: $font-size-base;
-    color: $color-text-sub;
+    color: var(--text2);
+    transition: color 0.3s ease;
   }
 }
 
@@ -99,10 +111,11 @@
 // Section card (corte, top productos, órdenes)
 // -----------------------------------------------------------------------
 .section-card {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
   padding: $space-4 $space-5;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 
   &--wide { overflow: hidden; }
 
@@ -110,7 +123,8 @@
     margin: 0 0 $space-4;
     font-size: $font-size-base;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
 
     &--danger { color: #DC2626; }
   }
@@ -118,22 +132,25 @@
   &__empty {
     margin: 0;
     font-size: $font-size-base;
-    color: $color-text-sub;
+    color: var(--text2);
     text-align: center;
     padding: $space-4 0;
+    transition: color 0.3s ease;
   }
 
   &__subtitle {
     margin: -$space-3 0 $space-3;
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
+    transition: color 0.3s ease;
   }
 
   &__note {
     margin: $space-3 0 0;
     font-size: $font-size-label;
-    color: #9CA3AF;
+    color: var(--text3);
     font-style: italic;
+    transition: color 0.3s ease;
   }
 }
 
@@ -197,20 +214,23 @@
   align-items: center;
   justify-content: space-between;
   padding: $space-2 0;
-  border-bottom: 1px solid $color-border-soft;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.3s ease;
 
   &:last-child { border-bottom: none; }
 
   &__label {
     font-size: $font-size-base;
     font-weight: 600;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__amount {
     font-size: $font-size-base;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
 
     &--total {
       font-size: 18px;
@@ -219,7 +239,7 @@
   }
 
   &--total {
-    border-top: 2px solid $color-border-soft;
+    border-top: 2px solid var(--border);
     border-bottom: none;
     padding-top: $space-3;
     margin-top: $space-1;
@@ -240,35 +260,39 @@
   align-items: center;
   gap: $space-3;
   padding: $space-2 0;
-  border-bottom: 1px solid $color-border-soft;
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.3s ease;
 
   &:last-child { border-bottom: none; }
 
   &__reason {
     flex: 1;
     font-size: $font-size-base;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__count {
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
     min-width: 72px;
     text-align: right;
+    transition: color 0.3s ease;
   }
 
   &__amount {
     font-size: $font-size-base;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
     min-width: 80px;
     text-align: right;
+    transition: color 0.3s ease;
 
     &--danger { color: #DC2626; }
   }
 
   &--total {
-    border-top: 2px solid $color-border-soft;
+    border-top: 2px solid var(--border);
     border-bottom: none;
     padding-top: $space-3;
     margin-top: $space-1;
@@ -295,10 +319,11 @@
   gap: $space-3;
   padding: $space-2 $space-3;
   border-radius: 8px;
-  background: #F9FAFB;
+  background: var(--surface2);
+  transition: background-color 0.3s ease;
 
   &--first {
-    background: $color-primary-light;
+    background: var(--step-done-bg);
     .top-item__rank { background: $color-primary; color: white; }
     .top-item__name { color: $color-primary; font-weight: 700; }
   }
@@ -307,26 +332,29 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #E5E7EB;
-    color: $color-text-sub;
+    background: var(--border);
+    color: var(--text2);
     font-size: 12px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   &__name {
     flex: 1;
     font-size: $font-size-base;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__count {
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
     font-weight: 600;
+    transition: color 0.3s ease;
   }
 }
 
@@ -341,29 +369,32 @@
   width: 100%;
   border-collapse: collapse;
   font-size: $font-size-base;
+  transition: color 0.3s ease;
 
   th {
     padding: $space-2 $space-3;
     text-align: left;
     font-size: $font-size-label;
     font-weight: 600;
-    color: $color-text-sub;
-    border-bottom: 1px solid $color-border-soft;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    transition: color 0.3s ease, border-color 0.3s ease;
   }
 
   td {
     padding: $space-3;
-    border-bottom: 1px solid $color-border-soft;
-    color: $color-text-title;
+    border-bottom: 1px solid var(--border);
+    color: var(--text1);
     vertical-align: middle;
+    transition: color 0.3s ease, border-color 0.3s ease;
   }
 
   tr:last-child td { border-bottom: none; }
 
-  &__num    { font-weight: 700; color: $color-text-sub; }
-  &__items  { color: $color-text-sub; }
-  &__time   { color: $color-text-sub; font-size: $font-size-label; }
+  &__num    { font-weight: 700; color: var(--text2); }
+  &__items  { color: var(--text2); }
+  &__time   { color: var(--text2); font-size: $font-size-label; }
   &__total  { font-weight: 700; text-align: right; }
 
   &__row--cancelled {
@@ -373,22 +404,22 @@
   &__cancel-reason {
     display: block;
     font-size: 11px;
-    color: #9CA3AF;
+    color: var(--text3);
     font-style: italic;
     margin-top: 2px;
   }
 
   &__cancel-reason-cell {
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
     font-style: italic;
   }
 
   &__total-row td {
-    border-top: 2px solid $color-border-soft;
+    border-top: 2px solid var(--border);
     border-bottom: none;
     padding-top: $space-3;
-    color: $color-text-title;
+    color: var(--text1);
   }
 
   &__total--danger {
@@ -397,16 +428,26 @@
 }
 
 // -----------------------------------------------------------------------
-// BI Charts Toolbar
+// Shared Dashboard header — always rendered, consolidates title + toggle
+// + contextual controls (calendar, CSV export, "Ver guía de inicio").
+// Replaces the legacy `.charts-toolbar` + `.ftue-toolbar` pair.
 // -----------------------------------------------------------------------
-.charts-toolbar {
+.dashboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: $space-4;
+  flex-wrap: wrap;
 
-  &__controls {
+  &__title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text1);
+    transition: color 0.3s ease;
+  }
+
+  &__actions {
     display: flex;
     align-items: center;
     gap: $space-3;
@@ -436,12 +477,14 @@
     margin: 0;
     font-size: $font-size-title;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__period {
     font-size: $font-size-label;
-    color: $color-text-sub;
+    color: var(--text2);
+    transition: color 0.3s ease;
   }
 
   &__error {
@@ -460,29 +503,33 @@
     align-items: center;
     gap: $space-3;
     padding: $space-7 $space-5;
-    background: #F9FAFB;
-    border: 1px dashed #D1D5DB;
+    background: var(--surface2);
+    border: 1px dashed var(--border);
     border-radius: $radius-card;
     text-align: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
   &__upsell-icon {
     font-size: 32px;
-    color: $color-text-sub;
+    color: var(--text2);
+    transition: color 0.3s ease;
   }
 
   &__upsell-title {
     margin: 0;
     font-size: $font-size-title;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__upsell-text {
     margin: 0;
     font-size: $font-size-base;
-    color: $color-text-sub;
+    color: var(--text2);
     max-width: 400px;
+    transition: color 0.3s ease;
   }
 
   &__upsell-link {
@@ -516,10 +563,11 @@
 // Chart Card
 // -----------------------------------------------------------------------
 .chart-card {
-  background: white;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: $radius-card;
-  box-shadow: $shadow-card;
   padding: $space-5 $space-6;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 
   &__header {
     display: flex;
@@ -532,7 +580,8 @@
     margin: 0;
     font-size: $font-size-base;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
+    transition: color 0.3s ease;
   }
 
   &__body {
@@ -559,7 +608,8 @@
     align-items: center;
     justify-content: center;
     gap: $space-2;
-    color: $color-text-sub;
+    color: var(--text2);
+    transition: color 0.3s ease;
 
     i {
       font-size: 32px;
@@ -569,5 +619,361 @@
     span {
       font-size: $font-size-label;
     }
+  }
+}
+
+// =============================================================================
+// FTUE (Getting Started) — V2 tokens + checklist block
+// Tokens mirror `.l` / `.d` from brio_dashboard_v2_darklight.html so the
+// mockup's colors are consumed verbatim. Scope is the `.dashboard` root:
+// existing sections continue to use SCSS variables and are unaffected.
+// =============================================================================
+
+.dashboard.l {
+  --bg:          #f8fafc;
+  --surface:     #ffffff;
+  --surface2:    #f1f5f9;
+  --border:      #e2e8f0;
+  --border2:     #cbd5e1;
+  --text1:       #0f172a;
+  --text2:       #475569;
+  --text3:       #94a3b8;
+  --step-done-bg:     #f0fdf4;
+  --step-done-border: #bbf7d0;
+  --badge-bg:         #fef3c7;
+  --badge-text:       #92400e;
+  --badge-border:     #fde68a;
+  --upsell-border:    #e2e8f0;
+}
+
+.dashboard.d {
+  --bg:          #0f172a;
+  --surface:     #131e30;
+  --surface2:    #0d1625;
+  --border:      #1e2d42;
+  --border2:     #263548;
+  --text1:       #f1f5f9;
+  --text2:       #94a3b8;
+  --text3:       #3d5a72;
+  --step-done-bg:     #052e16;
+  --step-done-border: #0f5132;
+  --badge-bg:         #1a1200;
+  --badge-text:       #fbbf24;
+  --badge-border:     #2d2000;
+  --upsell-border:    #1e2d42;
+}
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+
+  &__track {
+    width: 28px;
+    height: 15px;
+    border-radius: 8px;
+    background: #1e3450;
+    position: relative;
+    transition: background 0.25s;
+    flex-shrink: 0;
+
+    &--on { background: #16a34a; }
+  }
+
+  &__thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.25s;
+
+    .mode-toggle__track--on & { transform: translateX(13px); }
+  }
+
+  &__label {
+    font-size: 10px;
+    color: var(--text2);
+    font-weight: 500;
+    min-width: 28px;
+  }
+}
+
+// ---- FTUE card -------------------------------------------------------------
+.ftue {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  transition: all 0.3s;
+
+  &__head {
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 11px;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text1);
+    margin-bottom: 2px;
+  }
+
+  &__subtitle {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  &__dismiss {
+    font-size: 10px;
+    color: var(--text3);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+    transition: color 0.15s;
+
+    &:hover { color: var(--text2); }
+  }
+}
+
+.prog {
+  &-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &-track {
+    flex: 1;
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  &-fill {
+    height: 100%;
+    background: #16a34a;
+    border-radius: 4px;
+    transition: width 0.5s;
+  }
+
+  &-lbl {
+    font-size: 10px;
+    color: var(--text3);
+    white-space: nowrap;
+    font-weight: 600;
+  }
+}
+
+// ---- Step rows -------------------------------------------------------------
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+
+  &:last-child { border-bottom: none; }
+
+  &:hover { background: var(--surface2); }
+
+  &__ico {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    font-size: 14px;
+    transition: all 0.3s;
+
+    &--done {
+      background: var(--step-done-bg);
+      border-color: var(--step-done-border);
+      color: #16a34a;
+    }
+  }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text1);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+
+    &--done {
+      color: var(--text3);
+      text-decoration: line-through;
+      text-decoration-color: var(--border2);
+    }
+  }
+
+  &__desc {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.45;
+    margin-bottom: 7px;
+
+    &--done {
+      color: #16a34a;
+      opacity: 0.75;
+      font-size: 10px;
+    }
+  }
+
+  &__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border2);
+    background: var(--surface);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    transition: all 0.15s;
+
+    &:hover {
+      border-color: #16a34a;
+      color: #16a34a;
+      background: var(--step-done-bg);
+    }
+  }
+
+  &__status {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border2);
+    color: var(--border2);
+
+    i { font-size: 10px; }
+
+    &--done {
+      background: var(--step-done-bg);
+      border-color: #16a34a;
+      color: #16a34a;
+    }
+
+    &__dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border2);
+    }
+  }
+}
+
+.badge-opt {
+  font-size: 9px;
+  background: var(--badge-bg);
+  color: var(--badge-text);
+  border: 1px solid var(--badge-border);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+
+// ---- Upsell card (sits below the FTUE) -------------------------------------
+.upsell-ftue {
+  background: var(--surface);
+  border: 1.5px dashed var(--upsell-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  &__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    color: var(--text3);
+    font-size: 17px;
+  }
+
+  &__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text1);
+    margin-bottom: 4px;
+  }
+
+  &__desc {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 12px;
+    line-height: 1.5;
+    max-width: 260px;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    transition: background 0.15s;
+
+    &:hover { background: #15803d; }
   }
 }

@@ -1,30 +1,158 @@
-<div class="dashboard">
+<div class="dashboard" [class.l]="!isDarkMode()" [class.d]="isDarkMode()">
 
-  <!-- BI Toolbar: title + date range picker + CSV export -->
-  <div class="charts-toolbar">
-    <h1 class="dashboard__title">Dashboard</h1>
-    <div class="charts-toolbar__controls">
-      <p-calendar
-        [ngModel]="selectedDateRange()"
-        (ngModelChange)="onDateRangeChange($event)"
-        selectionMode="range"
-        [readonlyInput]="true"
-        [maxDate]="today"
-        dateFormat="dd/mm/yy"
-        [showIcon]="true"
-        placeholder="Inicio – Fin"
-        styleClass="charts-toolbar__calendar"
-      />
-      <p-button
-        label="Exportar Detalle (CSV)"
-        icon="pi pi-download"
-        severity="secondary"
-        [loading]="isExportingCsv()"
-        [disabled]="isLoadingCharts()"
-        (click)="onExportDetailedCsv()"
-      />
+  <!-- ================================================================== -->
+  <!-- Shared header — rendered in every state so the theme toggle is      -->
+  <!-- always reachable. Contextual controls (calendar, CSV export, "Ver   -->
+  <!-- guía") only render when the Main Dashboard view is active.          -->
+  <!-- ================================================================== -->
+  <header class="dashboard-header">
+    <h1 class="dashboard-header__title">Dashboard</h1>
+
+    <div class="dashboard-header__actions">
+      @if (checklistService.hiddenByUser() && !checklistService.isChecklistComplete()) {
+        <p-button
+          label="Ver guía de inicio"
+          icon="pi pi-info-circle"
+          severity="secondary"
+          [outlined]="true"
+          (click)="showGuideAgain()"
+        />
+      }
+
+      @if (!checklistService.showChecklist()) {
+        <p-calendar
+          [ngModel]="selectedDateRange()"
+          (ngModelChange)="onDateRangeChange($event)"
+          selectionMode="range"
+          [readonlyInput]="true"
+          [maxDate]="today"
+          dateFormat="dd/mm/yy"
+          [showIcon]="true"
+          placeholder="Inicio – Fin"
+          styleClass="dashboard-header__calendar"
+        />
+        <p-button
+          label="Exportar Detalle (CSV)"
+          icon="pi pi-download"
+          severity="secondary"
+          [loading]="isExportingCsv()"
+          [disabled]="isLoadingCharts()"
+          (click)="onExportDetailedCsv()"
+        />
+      }
+
+      <div class="mode-toggle" (click)="toggleTheme()" title="Cambiar tema">
+        <div class="mode-toggle__track" [class.mode-toggle__track--on]="isDarkMode()">
+          <div class="mode-toggle__thumb"></div>
+        </div>
+        <span class="mode-toggle__label">{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+      </div>
     </div>
-  </div>
+  </header>
+
+  @if (checklistService.showChecklist()) {
+
+    <!-- ================================================================ -->
+    <!-- FTUE VIEW — onboarding checklist + upsell                         -->
+    <!-- ================================================================ -->
+    @if (!isDataReady()) {
+      <!-- Placeholder while auth / tenant / catalog hydrate — prevents
+           the "pending → done" flicker on step transitions. -->
+      <p-skeleton height="280px" borderRadius="12px" styleClass="ftue-skeleton" />
+    } @else {
+
+    <div class="ftue">
+      <div class="ftue__head">
+        <div class="ftue__row">
+          <div>
+            <div class="ftue__title">
+              ¡Bienvenido a Brío{{ greetingName() ? ', ' + greetingName() : '' }}! 👋
+            </div>
+            <div class="ftue__subtitle">
+              Completa estos pasos para empezar a vender hoy.
+            </div>
+          </div>
+          <button type="button" class="ftue__dismiss" (click)="dismissGuide()">
+            Ocultar guía
+          </button>
+        </div>
+
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-fill" [style.width.%]="checklistService.progressPercentage()"></div>
+          </div>
+          <span class="prog-lbl">{{ checklistService.progressLabel() }}</span>
+        </div>
+      </div>
+
+      @for (step of checklistService.checklist(); track step.id) {
+        <div class="step">
+          <div class="step__ico" [class.step__ico--done]="step.isCompleted">
+            @if (step.isCompleted) {
+              <i class="pi pi-check"></i>
+            } @else {
+              <i [class]="step.icon"></i>
+            }
+          </div>
+
+          <div class="step__body">
+            <div class="step__title" [class.step__title--done]="step.isCompleted">
+              {{ step.title }}
+              @if (step.isOptional && !step.isCompleted) {
+                <span class="badge-opt">Opcional</span>
+              }
+            </div>
+            <div class="step__desc" [class.step__desc--done]="step.isCompleted">
+              @if (step.isCompleted) {
+                ✓ {{ step.description }}
+              } @else {
+                {{ step.description }}
+              }
+            </div>
+            @if (!step.isCompleted) {
+              <a class="step__cta" [routerLink]="step.ctaLink">
+                {{ step.ctaText }}
+                <i class="pi pi-arrow-right"></i>
+              </a>
+            }
+          </div>
+
+          <div class="step__status" [class.step__status--done]="step.isCompleted">
+            @if (step.isCompleted) {
+              <i class="pi pi-check"></i>
+            } @else {
+              <span class="step__status__dot"></span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (!hasAdvancedReports()) {
+      <div class="upsell-ftue">
+        <div class="upsell-ftue__icon">
+          <i class="pi pi-lock"></i>
+        </div>
+        <div class="upsell-ftue__title">Análisis y gráficas avanzadas</div>
+        <div class="upsell-ftue__desc">
+          Ventas por producto, métodos de pago y comparativas por sucursal.
+          Disponible en Plan Pro.
+        </div>
+        <a class="upsell-ftue__btn" routerLink="/admin/upgrade">
+          <i class="pi pi-external-link"></i>
+          Ver planes
+        </a>
+      </div>
+    }
+
+    }
+
+  } @else {
+
+    <!-- ================================================================ -->
+    <!-- MAIN DASHBOARD — KPIs, cash cutoff, orders, charts                -->
+    <!-- Toolbar lives in the shared `.dashboard-header` above.            -->
+    <!-- ================================================================ -->
 
   @if (isLoading()) {
     <div class="dashboard__loading">
@@ -385,5 +513,7 @@
     </div>
 
   </section>
+
+  }
 
 </div>

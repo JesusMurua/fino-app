@@ -7,6 +7,7 @@ import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { FeatureKey, UserRoleId } from '../../core/enums';
+import { PLAN_CATALOG, pricingGroupForMacro } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
@@ -126,6 +127,58 @@ export class AdminShellComponent implements OnInit {
   modeFor(item: NavItem): AppFeatureMode {
     if (!item.feature) return 'lock';
     return this.tenantContext.isApplicableToGiro(item.feature) ? 'lock' : 'hide';
+  }
+
+  /**
+   * Mirrors the directive's decision at the template level so we can render
+   * the padlock icon and swap the tooltip copy. Returns false before tenant
+   * context is hydrated (macro still null) to avoid a brief "locked" flash.
+   */
+  isLocked(item: NavItem): boolean {
+    if (!item.feature) return false;
+    if (this.tenantContext.hasFeature(item.feature)) return false;
+    if (this.tenantContext.currentMacro() === null) return false;
+    return this.tenantContext.isApplicableToGiro(item.feature);
+  }
+
+  /**
+   * Returns the tooltip copy rendered by `pTooltip`. For locked items we
+   * surface the cheapest upgrade path; otherwise we keep the legacy
+   * "show label when collapsed" behavior.
+   */
+  tooltipFor(item: NavItem): string {
+    if (this.isLocked(item)) {
+      const info = this.upsellInfo(item);
+      if (info) {
+        return `Disponible en Plan ${info.plan}<br><small>Desde $${info.price.toLocaleString('es-MX')}/mes</small>`;
+      }
+    }
+    return this.isCollapsed() ? item.label : '';
+  }
+
+  /**
+   * Intercepts clicks on nav items. When the item is locked, we swallow
+   * the default `[routerLink]` navigation and route to `/admin/upgrade`
+   * so the user lands on the plan picker instead of a guarded-out page.
+   */
+  onNavClick(event: MouseEvent, item: NavItem): void {
+    if (!this.isLocked(item)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.router.navigate(['/admin/upgrade']);
+  }
+
+  /**
+   * Resolves the cheapest plan tier that unlocks a feature, using the
+   * tenant's macro to pick the correct pricing lane. Returns null when
+   * the feature does not appear in any tier (shouldn't happen in prod).
+   */
+  private upsellInfo(item: NavItem): { plan: string; price: number } | null {
+    if (!item.feature) return null;
+    const tier = PLAN_CATALOG.find(t => t.features.includes(item.feature!));
+    if (!tier) return null;
+    const group = pricingGroupForMacro(this.tenantContext.currentMacro());
+    return { plan: tier.name, price: tier.monthlyPrice[group] };
   }
 
   //#endregion
