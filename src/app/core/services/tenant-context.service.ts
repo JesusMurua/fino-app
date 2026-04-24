@@ -1,7 +1,8 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { FeatureKey, MacroCategoryType, PlanTypeId } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
+import { CatalogService } from './catalog.service';
 
 /**
  * Single source of truth for the current tenant's runtime context:
@@ -15,6 +16,12 @@ import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
  */
 @Injectable({ providedIn: 'root' })
 export class TenantContextService {
+
+  //#region Injections
+
+  private readonly catalogService = inject(CatalogService);
+
+  //#endregion
 
   //#region Backing signals
 
@@ -103,6 +110,11 @@ export class TenantContextService {
     this._currentPlan.set(plan);
     this._currentMacro.set(macro);
     this._activeFeatures.set(this.parseFeatures(features));
+
+    // Kick off the dynamic plan-catalog fetch as soon as the tenant
+    // context is hydrated. Fire-and-forget — the service handles its
+    // own errors and falls back to the static catalog on failure.
+    this.catalogService.fetchPlanCatalog();
   }
 
   /** Clears the tenant context — called on logout */

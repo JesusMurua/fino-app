@@ -623,90 +623,11 @@
 }
 
 // =============================================================================
-// FTUE (Getting Started) — V2 tokens + checklist block
-// Tokens mirror `.l` / `.d` from brio_dashboard_v2_darklight.html so the
-// mockup's colors are consumed verbatim. Scope is the `.dashboard` root:
-// existing sections continue to use SCSS variables and are unaffected.
+// FTUE (Getting Started) — checklist block
+// Tokens (`--bg`, `--surface`, …) are defined globally on `.shell.l` / `.shell.d`
+// in admin-shell.component.scss and inherit into this component via the
+// DOM cascade. See the shell for the theme palette.
 // =============================================================================
-
-.dashboard.l {
-  --bg:          #f8fafc;
-  --surface:     #ffffff;
-  --surface2:    #f1f5f9;
-  --border:      #e2e8f0;
-  --border2:     #cbd5e1;
-  --text1:       #0f172a;
-  --text2:       #475569;
-  --text3:       #94a3b8;
-  --step-done-bg:     #f0fdf4;
-  --step-done-border: #bbf7d0;
-  --badge-bg:         #fef3c7;
-  --badge-text:       #92400e;
-  --badge-border:     #fde68a;
-  --upsell-border:    #e2e8f0;
-}
-
-.dashboard.d {
-  --bg:          #0f172a;
-  --surface:     #131e30;
-  --surface2:    #0d1625;
-  --border:      #1e2d42;
-  --border2:     #263548;
-  --text1:       #f1f5f9;
-  --text2:       #94a3b8;
-  --text3:       #3d5a72;
-  --step-done-bg:     #052e16;
-  --step-done-border: #0f5132;
-  --badge-bg:         #1a1200;
-  --badge-text:       #fbbf24;
-  --badge-border:     #2d2000;
-  --upsell-border:    #1e2d42;
-}
-
-.mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.2s;
-
-  &__track {
-    width: 28px;
-    height: 15px;
-    border-radius: 8px;
-    background: #1e3450;
-    position: relative;
-    transition: background 0.25s;
-    flex-shrink: 0;
-
-    &--on { background: #16a34a; }
-  }
-
-  &__thumb {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: #fff;
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.25s;
-
-    .mode-toggle__track--on & { transform: translateX(13px); }
-  }
-
-  &__label {
-    font-size: 10px;
-    color: var(--text2);
-    font-weight: 500;
-    min-width: 28px;
-  }
-}
 
 // ---- FTUE card -------------------------------------------------------------
 .ftue {

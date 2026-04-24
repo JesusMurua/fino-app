@@ -59,15 +59,6 @@ export class DashboardComponent implements OnInit {
 
   //#region FTUE / theme
 
-  /**
-   * Dashboard-scoped light/dark toggle. Persisted so the preference
-   * survives refreshes. Only drives the FTUE block styling for now —
-   * the legacy dashboard uses SCSS variables, unaffected.
-   */
-  readonly isDarkMode = signal<boolean>(
-    localStorage.getItem('brio.dashboard.darkMode') === 'true',
-  );
-
   /** First word of the authenticated owner's name — used in the FTUE greeting. */
   readonly greetingName = computed(() => {
     const name = this.authService.currentUser()?.name?.trim() ?? '';
@@ -94,12 +85,6 @@ export class DashboardComponent implements OnInit {
     if (this.productService.isLoading()) return false;
     return true;
   });
-
-  toggleTheme(): void {
-    const next = !this.isDarkMode();
-    this.isDarkMode.set(next);
-    localStorage.setItem('brio.dashboard.darkMode', String(next));
-  }
 
   dismissGuide(): void {
     this.checklistService.dismissChecklist();

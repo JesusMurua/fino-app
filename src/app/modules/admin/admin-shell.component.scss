@@ -9,10 +9,52 @@ $sidebar-collapsed: 64px;
 $topbar-height: 48px;
 $transition: 0.25s ease;
 
+// ============================================================================
+// Global theme tokens — `.shell.l` / `.shell.d` define CSS custom properties
+// that cascade into every admin page (dashboard, settings, products, …).
+// Applied via `[class.l]`/`[class.d]` on the shell root, driven by the
+// `isDarkMode` signal. Pages consume with `var(--bg)`, `var(--surface)`, etc.
+// ============================================================================
+
+.shell.l {
+  --bg:          #f8fafc;
+  --surface:     #ffffff;
+  --surface2:    #f1f5f9;
+  --border:      #e2e8f0;
+  --border2:     #cbd5e1;
+  --text1:       #0f172a;
+  --text2:       #475569;
+  --text3:       #94a3b8;
+  --step-done-bg:     #f0fdf4;
+  --step-done-border: #bbf7d0;
+  --badge-bg:         #fef3c7;
+  --badge-text:       #92400e;
+  --badge-border:     #fde68a;
+  --upsell-border:    #e2e8f0;
+}
+
+.shell.d {
+  --bg:          #0f172a;
+  --surface:     #131e30;
+  --surface2:    #0d1625;
+  --border:      #1e2d42;
+  --border2:     #263548;
+  --text1:       #f1f5f9;
+  --text2:       #94a3b8;
+  --text3:       #3d5a72;
+  --step-done-bg:     #052e16;
+  --step-done-border: #0f5132;
+  --badge-bg:         #1a1200;
+  --badge-text:       #fbbf24;
+  --badge-border:     #2d2000;
+  --upsell-border:    #1e2d42;
+}
+
 .shell {
   display: flex;
   min-height: 100dvh;
-  background: $color-bg-page;
+  background: var(--bg);
+  transition: background-color 0.3s ease;
 }
 
 // ============================================================================
@@ -26,10 +68,10 @@ $transition: 0.25s ease;
   height: 100dvh;
   position: sticky;
   top: 0;
-  background: white;
-  border-right: 1px solid $color-border-soft;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   flex-shrink: 0;
-  transition: width $transition;
+  transition: width $transition, background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
   z-index: 10;
 
@@ -62,14 +104,16 @@ $transition: 0.25s ease;
   &__title {
     font-size: 15px;
     font-weight: 700;
-    color: $color-text-title;
+    color: var(--text1);
     white-space: nowrap;
+    transition: color 0.3s ease;
   }
 
   &__divider {
     height: 1px;
-    background: $color-border-soft;
+    background: var(--border);
     margin: 0 $space-3;
+    transition: background-color 0.3s ease;
   }
 
   // ---- Branch Selector ----
@@ -81,10 +125,11 @@ $transition: 0.25s ease;
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: $color-text-sub;
+    color: var(--text2);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin-bottom: $space-1;
+    transition: color 0.3s ease;
   }
 
   &__branch-icon {
@@ -96,11 +141,12 @@ $transition: 0.25s ease;
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: $color-text-sub;
+    color: var(--text2);
     font-size: 16px;
     cursor: default;
+    transition: background-color 0.15s, color 0.3s ease;
 
-    &:hover { background: #F3F4F6; }
+    &:hover { background: var(--surface2); }
   }
 
   // ---- Navigation ----
@@ -120,15 +166,15 @@ $transition: 0.25s ease;
     justify-content: center;
     height: 44px;
     margin: $space-2 $space-3 $space-3;
-    border: 1px solid $color-border-soft;
+    border: 1px solid var(--border);
     border-radius: 8px;
     background: transparent;
-    color: $color-text-sub;
+    color: var(--text2);
     font-size: 14px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background-color 0.15s, border-color 0.3s ease, color 0.3s ease;
 
-    &:hover { background: #F3F4F6; }
+    &:hover { background: var(--surface2); }
   }
 }
 
@@ -143,20 +189,22 @@ $transition: 0.25s ease;
   padding: 10px $space-3;
   border-radius: 8px;
   border-left: 3px solid transparent;
-  color: $color-text-sub;
+  color: var(--text2);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 
   &:hover {
-    background: #F9FAFB;
-    color: $color-text-title;
+    background: var(--surface2);
+    color: var(--text1);
   }
 
+  // Active state keeps the green accent in both themes — it's the brand
+  // identity colour and reads correctly against `--step-done-bg`.
   &--active {
-    background: #F0FDF4;
+    background: var(--step-done-bg);
     color: $color-primary;
     font-weight: 600;
     border-left-color: $color-primary;
@@ -246,14 +294,15 @@ $transition: 0.25s ease;
   justify-content: flex-end;
   height: $topbar-height;
   padding: 0 $space-4;
-  background: white;
-  border-bottom: 1px solid $color-border-soft;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 
   &__actions {
     display: flex;
     align-items: center;
-    gap: $space-2;
+    gap: $space-3;
   }
 
   &__btn {
@@ -264,21 +313,73 @@ $transition: 0.25s ease;
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: $color-text-sub;
+    color: var(--text2);
     font-size: 13px;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s, color 0.15s;
+    transition: background-color 0.15s, color 0.15s;
 
     i { font-size: 13px; }
 
-    &:hover { background: #F3F4F6; color: $color-text-title; }
+    &:hover { background: var(--surface2); color: var(--text1); }
 
+    // Logout keeps a fixed semantic red — destructive action reads the
+    // same in both themes.
     &--logout {
-      color: #9CA3AF;
+      color: var(--text3);
       &:hover { background: #FEF2F2; color: #DC2626; }
     }
+  }
+}
+
+// ---- Theme toggle (moved here from dashboard component so it's reachable
+// from every admin page). Uses themed tokens for surface + border; the
+// switch track + thumb retain fixed colors so the affordance reads
+// identically across both themes.
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+
+  &__track {
+    width: 28px;
+    height: 15px;
+    border-radius: 8px;
+    background: #1e3450;
+    position: relative;
+    transition: background 0.25s;
+    flex-shrink: 0;
+
+    &--on { background: #16a34a; }
+  }
+
+  &__thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.25s;
+
+    .mode-toggle__track--on & { transform: translateX(13px); }
+  }
+
+  &__label {
+    font-size: 11px;
+    color: var(--text2);
+    font-weight: 500;
+    min-width: 28px;
+    transition: color 0.3s ease;
   }
 }
 
