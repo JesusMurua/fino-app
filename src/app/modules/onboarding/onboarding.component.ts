@@ -14,7 +14,13 @@ import {
   PricingGroup,
   UpdateBusinessGiroRequest,
 } from '../../core/models';
-import { BusinessTypeId, MACRO_CATEGORY_LABELS, MacroCategoryType } from '../../core/enums';
+import {
+  BusinessTypeId,
+  FeatureKey,
+  GIRO_FEATURE_MAP,
+  MACRO_CATEGORY_LABELS,
+  MacroCategoryType,
+} from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
@@ -58,13 +64,13 @@ const PAID_PLANS: PlanSlug[] = ['basic', 'pro', 'enterprise'];
  * Plans available per macro (feature gating per `.claude/business-rules-matrix.md`):
  *   - FoodBeverage → all 4 tiers
  *   - QuickService → Free / Basic / Pro (Enterprise locked)
- *   - Retail       → Free / Basic / Pro (Enterprise locked)
+ *   - Retail       → all 4 tiers
  *   - Services     → Free / Pro (Basic and Enterprise locked)
  */
 const AVAILABLE_PLANS_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanSlug>> = {
   [MacroCategoryType.FoodBeverage]: new Set(['free', 'basic', 'pro', 'enterprise']),
   [MacroCategoryType.QuickService]: new Set(['free', 'basic', 'pro']),
-  [MacroCategoryType.Retail]:       new Set(['free', 'basic', 'pro']),
+  [MacroCategoryType.Retail]:       new Set(['free', 'basic', 'pro', 'enterprise']),
   [MacroCategoryType.Services]:     new Set(['free', 'pro']),
 };
 
@@ -256,6 +262,11 @@ export class OnboardingComponent implements OnInit {
     const allowed = macro !== null
       ? AVAILABLE_PLANS_BY_MACRO[macro]
       : new Set<PlanSlug>(PLAN_ORDER);
+    // Feature whitelist for the current macro — keeps F&B-only bullets
+    // (TableMap, WaiterApp, …) out of Retail/Services cards.
+    const applicableFeatures = macro !== null
+      ? new Set<FeatureKey>(GIRO_FEATURE_MAP[macro])
+      : null;
     const group = this.pricingGroup();
     const cycle = this.billingCycle();
     return PLAN_ORDER.map(slug => {
@@ -263,12 +274,15 @@ export class OnboardingComponent implements OnInit {
       if (!tier) throw new Error(`[onboarding] Missing tier in PLAN_CATALOG for slug "${slug}"`);
       const isLocked = !allowed.has(slug);
       const priceTable = cycle === 'annual' ? tier.annualPrice : tier.monthlyPrice;
+      const features = tier.features
+        .filter(key => applicableFeatures === null || applicableFeatures.has(key))
+        .map(key => FEATURE_LABELS[key]);
       return {
         slug,
         name: tier.name,
         badge: tier.badge ?? FREE_BADGE_FALLBACK,
         description: PLAN_DESCRIPTIONS[slug],
-        features: tier.features.map(key => FEATURE_LABELS[key]),
+        features,
         price: priceTable[group],
         isFree: slug === 'free',
         isFeatured: slug === 'pro',
