@@ -23,6 +23,7 @@ import {
 } from '../../../../core/models';
 import {
   FeatureKey,
+  GIRO_FEATURE_MAP,
   MACRO_CATEGORY_LABELS,
   MacroCategoryType,
   PlanTypeId,
@@ -254,6 +255,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     const currentTierFeatures = new Set<FeatureKey>(
       PLAN_CATALOG.find(t => t.planTypeId === currentPlan)?.features ?? [],
     );
+    // Keeps F&B-only bullets (TableMap, WaiterApp, …) out of Retail/Services cards.
+    const applicableFeatures = macro !== null
+      ? new Set<FeatureKey>(GIRO_FEATURE_MAP[macro])
+      : null;
 
     return PLAN_CATALOG
       .filter(tier =>
@@ -265,6 +270,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         price: `$${tier.monthlyPrice[group].toLocaleString('es-MX')}/mes`,
         features: tier.features
           .filter(key => !currentTierFeatures.has(key))
+          .filter(key => applicableFeatures === null || applicableFeatures.has(key))
           .map(key => FEATURE_LABELS[key]),
       }));
   });
@@ -407,6 +413,30 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     // Start scanner when entering hardware tab
     if (tab === 'hardware') {
       this.scannerService.startListening();
+    }
+  }
+
+  /**
+   * Fires the ESC/POS drawer-kick sequence for the connected thermal
+   * printer. Surfaces a toast on failure so the admin knows the printer
+   * is disconnected or the RJ12 cable is unplugged.
+   */
+  async testCashDrawer(): Promise<void> {
+    try {
+      await this.printerService.openCashDrawer();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Cajón abierto',
+        life: 2000,
+      });
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : 'Revisa la conexión de la impresora y el cable RJ12.';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo abrir el cajón',
+        detail,
+        life: 4000,
+      });
     }
   }
 

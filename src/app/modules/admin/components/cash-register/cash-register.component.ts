@@ -23,6 +23,7 @@ import {
 import { AuthService } from '../../../../core/services/auth.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { PrinterService } from '../../../../core/services/printer.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { StatusLabelPipe, StatusClassPipe } from '../../../../shared/pipes/status-label.pipe';
 import { SelectOnFocusDirective } from '../../../../shared/directives/select-on-focus.directive';
@@ -67,6 +68,7 @@ export class CashRegisterComponent implements OnInit {
   private readonly db = inject(DatabaseService);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly printerService = inject(PrinterService);
 
   //#endregion
 
@@ -309,6 +311,11 @@ export class CashRegisterComponent implements OnInit {
 
       this.showOpenDialog.set(false);
 
+      // Pop the drawer so the cashier can drop the initial float inside.
+      // Fire-and-forget: a missing or disconnected drawer must not block
+      // the happy path of opening the shift.
+      this.printerService.openCashDrawer().catch(() => { /* ignored */ });
+
       this.messageService.add({
         severity: 'success',
         summary: 'Turno abierto',
@@ -318,6 +325,29 @@ export class CashRegisterComponent implements OnInit {
       this.showOpenError(error);
     } finally {
       this.isOpeningSession.set(false);
+    }
+  }
+
+  /**
+   * Manual "No Sale" / "Abrir cajón" operation — kicks the cash drawer
+   * without recording a sale. Intended for giving change, settling a
+   * bill, or any time the cajero needs physical access without a
+   * completed order.
+   *
+   * Note: no UI button is wired yet — this method is exposed for the
+   * template to bind to when a future "Abrir cajón" action is added.
+   */
+  async triggerCashDrawer(): Promise<void> {
+    try {
+      await this.printerService.openCashDrawer();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Error al abrir el cajón.';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo abrir el cajón',
+        detail,
+        life: 4000,
+      });
     }
   }
 

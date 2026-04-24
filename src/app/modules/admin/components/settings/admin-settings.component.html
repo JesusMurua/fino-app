@@ -290,6 +290,10 @@
             <div class="periph-actions">
               <button type="button" class="btn-outline-green" (click)="printerService.printTestTicket()">Ticket de prueba</button>
               <button type="button" class="btn-outline-green" (click)="printerService.cutPaper()">Corte de papel</button>
+              <button type="button" class="btn-outline-green" (click)="testCashDrawer()">
+                <i class="pi pi-box"></i>
+                Abrir cajón
+              </button>
               <button type="button" class="btn-secondary btn-secondary--sm" (click)="printerService.connect()">Cambiar</button>
             </div>
           } @else {

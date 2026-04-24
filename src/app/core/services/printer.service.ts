@@ -17,6 +17,11 @@ const FONT_LARGE   = new Uint8Array([0x1D, 0x21, 0x11]);
 const FONT_NORMAL  = new Uint8Array([0x1D, 0x21, 0x00]);
 const CUT_PAPER    = new Uint8Array([0x1D, 0x56, 0x41, 0x10]);
 const LINE_FEED    = new Uint8Array([0x0A]);
+// Cash drawer kick commands (ESC p m t1 t2). Pin 2 and pin 5 cover the two
+// common RJ12 wirings — we send both so the right one fires regardless of
+// how the drawer is cabled to the printer.
+const DRAWER_KICK_PIN2 = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]);
+const DRAWER_KICK_PIN5 = new Uint8Array([0x1B, 0x70, 0x01, 0x19, 0xFA]);
 
 /** Paper width in characters for 80mm roll */
 const PAPER_WIDTH = 48;
@@ -209,6 +214,18 @@ export class PrinterService {
   /** Sends ESC/POS paper cut command */
   async cutPaper(): Promise<void> {
     await this.sendBytes(CUT_PAPER);
+  }
+
+  /**
+   * Sends the ESC/POS kick command to open a cash drawer wired into the
+   * printer's RJ12 port. Fires both pin-2 and pin-5 variants so it works
+   * regardless of how the drawer is cabled.
+   */
+  async openCashDrawer(): Promise<void> {
+    await this.sendBytes(DRAWER_KICK_PIN2);
+    // Small delay to prevent buffer lock between back-to-back kicks.
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await this.sendBytes(DRAWER_KICK_PIN5);
   }
 
   /**
