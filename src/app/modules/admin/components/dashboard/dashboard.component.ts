@@ -16,6 +16,8 @@ import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
+import { OnboardingChecklistService } from '../../../../core/services/onboarding-checklist.service';
+import { ProductService } from '../../../../core/services/product.service';
 import { ReportService } from '../../../../core/services/report.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
@@ -47,11 +49,72 @@ export class DashboardComponent implements OnInit {
   readonly catalogService         = inject(CatalogService);
   private readonly configService  = inject(ConfigService);
   private readonly tenantContext   = inject(TenantContextService);
+  private readonly productService  = inject(ProductService);
+  readonly checklistService        = inject(OnboardingChecklistService);
 
   /** True when the tenant's plan includes advanced charts */
   readonly hasAdvancedReports = computed(() =>
     this.tenantContext.hasFeature(FeatureKey.AdvancedReports),
   );
+
+  //#region FTUE / theme
+
+  /**
+   * Dashboard-scoped light/dark toggle. Persisted so the preference
+   * survives refreshes. Only drives the FTUE block styling for now —
+   * the legacy dashboard uses SCSS variables, unaffected.
+   */
+  readonly isDarkMode = signal<boolean>(
+    localStorage.getItem('brio.dashboard.darkMode') === 'true',
+  );
+
+  /** First word of the authenticated owner's name — used in the FTUE greeting. */
+  readonly greetingName = computed(() => {
+    const name = this.authService.currentUser()?.name?.trim() ?? '';
+    return name.split(/\s+/)[0] ?? '';
+  });
+
+  /**
+   * True once the three state sources that drive the checklist have
+   * finished their first hydration pass. Guards the FTUE block so it
+   * never flashes "pending → done" on mount:
+   *
+   *   - `authService.currentUser()`   : session restored from storage
+   *   - `tenantContext.currentMacro()`: giro hydrated from JWT
+   *   - `productService.isLoading()`  : catalog fetch in flight
+   *
+   * The product check is `!isLoading` (not `products().length > 0`)
+   * because a legitimate fresh account has zero products — we can't
+   * distinguish "not loaded" from "truly empty" without waiting for
+   * the loader to flip.
+   */
+  readonly isDataReady = computed(() => {
+    if (this.authService.currentUser() === null) return false;
+    if (this.tenantContext.currentMacro() === null) return false;
+    if (this.productService.isLoading()) return false;
+    return true;
+  });
+
+  toggleTheme(): void {
+    const next = !this.isDarkMode();
+    this.isDarkMode.set(next);
+    localStorage.setItem('brio.dashboard.darkMode', String(next));
+  }
+
+  dismissGuide(): void {
+    this.checklistService.dismissChecklist();
+  }
+
+  /**
+   * Re-exposes the FTUE block for a tenant who dismissed it but did not
+   * actually finish the required steps. Bound to the "Ver guía de inicio"
+   * button rendered on the legacy dashboard branch.
+   */
+  showGuideAgain(): void {
+    this.checklistService.resetDismiss();
+  }
+
+  //#endregion
 
   /** Current POS experience — determines which dashboard sections are shown */
   readonly posExperience = this.configService.posExperience;

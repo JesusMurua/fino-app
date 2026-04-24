@@ -55,8 +55,10 @@
             class="nav-item"
             [routerLink]="item.path"
             routerLinkActive="nav-item--active"
-            [pTooltip]="isCollapsed() ? item.label : ''"
+            [pTooltip]="tooltipFor(item)"
+            [escape]="false"
             tooltipPosition="right"
+            (click)="onNavClick($event, item)"
           >
             <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
             @if (!isCollapsed()) {
@@ -64,6 +66,9 @@
             }
             @if (item.badge && lowStockCount() > 0) {
               <span class="nav-item__badge">{{ lowStockCount() }}</span>
+            }
+            @if (isLocked(item)) {
+              <i class="pi pi-lock nav-item__lock"></i>
             }
           </a>
         } @else {

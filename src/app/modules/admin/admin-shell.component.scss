@@ -162,15 +162,20 @@ $transition: 0.25s ease;
     border-left-color: $color-primary;
   }
 
-  // Applied by AppFeatureDirective when a feature is locked by plan tier
+  // Applied by AppFeatureDirective when a feature is locked by plan tier.
+  // Click is intercepted in the shell and redirected to /admin/upgrade.
   &.feature-locked {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+    cursor: pointer;
+
+    .nav-item__icon  { color: #1e3a5f; }
+    .nav-item__label { color: #2d4a6a; }
+    .nav-item__lock  { color: #1e3a5f; }
 
     &:hover {
-      background: transparent;
-      color: $color-text-sub;
+      background: #0d1f36;
+      .nav-item__icon  { color: #3d6080; }
+      .nav-item__label { color: #4d7caa; }
+      .nav-item__lock  { color: #16a34a; }
     }
   }
 
@@ -185,6 +190,14 @@ $transition: 0.25s ease;
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  &__lock {
+    font-size: 11px;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    transition: color 0.15s;
   }
 
   &__badge {
