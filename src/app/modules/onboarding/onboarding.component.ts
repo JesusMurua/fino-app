@@ -584,10 +584,10 @@ export class OnboardingComponent implements OnInit {
     this.isSubmitting.set(false);
 
     const roleId = this.authService.currentUser()?.roleId;
-    const dest = roleId
-      ? this.deviceRoutingService.getPostLoginRoute(roleId)
-      : '/admin';
-    this.router.navigate([dest]);
+    const resolved = roleId ? this.deviceRoutingService.getPostLoginRoute(roleId) : null;
+    const dest = resolved?.kind === 'route' ? resolved.route : '/admin';
+
+    this.router.navigateByUrl(dest);
   }
 
   /**
