@@ -27,6 +27,7 @@ import { PaymentProviderService } from '../../../../core/services/payment-provid
 import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { DiscountService } from '../../../../core/services/discount.service';
+import { PrinterService } from '../../../../core/services/printer.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { OrderContextService } from '../../../../core/services/order-context.service';
@@ -342,6 +343,7 @@ export class CheckoutComponent implements OnInit {
     private readonly invoicingService: InvoicingService,
     readonly paymentProviderService: PaymentProviderService,
     private readonly printService: PrintService,
+    private readonly printerService: PrinterService,
     private readonly discountService: DiscountService,
     private readonly tableService: TableService,
     private readonly productService: ProductService,
@@ -716,6 +718,13 @@ export class CheckoutComponent implements OnInit {
 
       // Inventory deduction is handled atomically by the backend during SyncService.saveOrder().
       // No frontend deduction needed — optimistic local stock was already adjusted by CartService.
+
+      // Fire-and-forget cash drawer kick for any cash-tender payment. A
+      // disconnected drawer or a printer mid-reconnect must never block
+      // the order confirmation, so errors are swallowed.
+      if (payments.some(p => p.method === PaymentMethod.Cash)) {
+        this.printerService.openCashDrawer().catch(() => { /* ignored */ });
+      }
 
       try {
         await this.printService.printTicket(order);
