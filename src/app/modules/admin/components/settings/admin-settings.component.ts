@@ -14,7 +14,6 @@ import {
   AVAILABLE_PLAN_TYPES_BY_MACRO,
   DEFAULT_APP_CONFIG,
   FEATURE_LABELS,
-  PLAN_CATALOG,
   PLAN_DISPLAY_NAME,
   PLAN_HIERARCHY,
   pricingGroupForMacro,
@@ -30,6 +29,7 @@ import {
 } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
@@ -80,6 +80,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   private readonly api = inject(ApiService);
   readonly authService = inject(AuthService);
+  private readonly catalogService = inject(CatalogService);
   private readonly configService = inject(ConfigService);
   private readonly messageService = inject(MessageService);
   readonly printerService = inject(PrinterService);
@@ -235,7 +236,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   });
 
   /**
-   * Upgrade options derived from the single-source `PLAN_CATALOG`.
+   * Upgrade options derived from `catalogService.planCatalog()` — the
+   * backend is the SSOT for feature manifests; commercial metadata
+   * (prices, badges) is merged in from the local catalog.
    *
    * Only tiers that (a) are strictly higher than the tenant's current plan
    * and (b) are allowed by the macro × plan availability matrix are shown.
@@ -244,6 +247,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
    * the upgrade pitch focuses on what they actually gain.
    */
   readonly upgradeOptions = computed(() => {
+    const catalog = this.catalogService.planCatalog();
     const currentPlan = this.authService.planTypeId();
     const currentLevel = PLAN_HIERARCHY[currentPlan] ?? 0;
     const macro = this.authService.primaryMacroCategoryId();
@@ -253,14 +257,14 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
     const group = pricingGroupForMacro(macro);
     const currentTierFeatures = new Set<FeatureKey>(
-      PLAN_CATALOG.find(t => t.planTypeId === currentPlan)?.features ?? [],
+      catalog.find(t => t.planTypeId === currentPlan)?.features ?? [],
     );
     // Keeps F&B-only bullets (TableMap, WaiterApp, …) out of Retail/Services cards.
     const applicableFeatures = macro !== null
       ? new Set<FeatureKey>(GIRO_FEATURE_MAP[macro])
       : null;
 
-    return PLAN_CATALOG
+    return catalog
       .filter(tier =>
         (PLAN_HIERARCHY[tier.planTypeId] ?? 0) > currentLevel
         && allowed.has(tier.planTypeId),

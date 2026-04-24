@@ -1,4 +1,7 @@
-<div class="shell" [class.shell--collapsed]="isCollapsed()">
+<div class="shell"
+     [class.shell--collapsed]="isCollapsed()"
+     [class.l]="!isDarkMode()"
+     [class.d]="isDarkMode()">
 
   <!-- ================================================================== -->
   <!-- SIDEBAR                                                             -->
@@ -111,9 +114,23 @@
     <!-- Top bar -->
     <header class="topbar">
       <div class="topbar__actions">
+        <div
+          class="mode-toggle"
+          (click)="toggleTheme()"
+          title="Cambiar tema"
+          role="button"
+          tabindex="0"
+          (keyup.enter)="toggleTheme()"
+          (keyup.space)="toggleTheme()"
+        >
+          <div class="mode-toggle__track" [class.mode-toggle__track--on]="isDarkMode()">
+            <div class="mode-toggle__thumb"></div>
+          </div>
+          <span class="mode-toggle__label">{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+        </div>
         <button type="button" class="topbar__btn" (click)="goToPos()">
-          <i class="pi pi-arrow-left"></i>
-          <span>Ir al POS</span>
+          <i class="pi pi-shopping-cart"></i>
+          <span>Punto de Venta</span>
         </button>
         <button type="button" class="topbar__btn topbar__btn--logout" (click)="logout()">
           <i class="pi pi-sign-out"></i>

@@ -9,7 +9,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { environment } from '../../../environments/environment';
 import {
   FEATURE_LABELS,
-  PLAN_CATALOG,
   PRICING_GROUP_BY_MACRO,
   PricingGroup,
   UpdateBusinessGiroRequest,
@@ -22,6 +21,7 @@ import {
   MacroCategoryType,
 } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogService } from '../../core/services/catalog.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
 import { BrioMascotComponent, BrioSkin } from './brio-mascot/brio-mascot.component';
@@ -174,6 +174,7 @@ export class OnboardingComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly businessService = inject(BusinessService);
+  private readonly catalogService = inject(CatalogService);
   private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
@@ -269,9 +270,10 @@ export class OnboardingComponent implements OnInit {
       : null;
     const group = this.pricingGroup();
     const cycle = this.billingCycle();
+    const catalog = this.catalogService.planCatalog();
     return PLAN_ORDER.map(slug => {
-      const tier = PLAN_CATALOG.find(t => t.slug === slug);
-      if (!tier) throw new Error(`[onboarding] Missing tier in PLAN_CATALOG for slug "${slug}"`);
+      const tier = catalog.find(t => t.slug === slug);
+      if (!tier) throw new Error(`[onboarding] Missing tier in plan catalog for slug "${slug}"`);
       const isLocked = !allowed.has(slug);
       const priceTable = cycle === 'annual' ? tier.annualPrice : tier.monthlyPrice;
       const features = tier.features
@@ -315,7 +317,7 @@ export class OnboardingComponent implements OnInit {
   readonly ctaLabel = computed(() => {
     const slug = this.selectedPlan();
     if (!slug) return 'Elige un plan';
-    const tier = PLAN_CATALOG.find(t => t.slug === slug);
+    const tier = this.catalogService.planCatalog().find(t => t.slug === slug);
     return tier ? `Comenzar con ${tier.name}` : 'Elige un plan';
   });
 
@@ -349,6 +351,13 @@ export class OnboardingComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
+
+    // Belt-and-suspenders: TenantContextService already fires a catalog
+    // fetch after JWT hydration, but if the user lands on onboarding via
+    // a direct URL before that pipeline completes the signal would still
+    // be on the static fallback. Re-fetching is idempotent — the service
+    // just replaces `_planApiFeatures` with the latest response.
+    this.catalogService.fetchPlanCatalog();
 
     // Restore step from user profile (survives page refresh when the backend
     // updated `currentOnboardingStep` on the last nextStep() sync).
@@ -536,7 +545,7 @@ export class OnboardingComponent implements OnInit {
     this.checkoutLoading.set(true);
     this.checkoutError.set('');
 
-    const tier = PLAN_CATALOG.find(t => t.slug === plan);
+    const tier = this.catalogService.planCatalog().find(t => t.slug === plan);
     const priceId = tier?.stripePriceIds?.[this.billingCycle()][this.pricingGroup()];
     if (!priceId) {
       this.checkoutError.set('No se pudo resolver el plan seleccionado.');

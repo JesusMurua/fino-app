@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { FeatureKey, PlanTypeId } from '../enums';
 import {
   BusinessTypeCatalog,
   DeviceModeCatalog,
@@ -17,7 +18,19 @@ import {
   PAYMENT_METHODS,
   ZONE_TYPES,
 } from '../models/catalog.constants';
+import { PLAN_CATALOG } from '../models/catalog.fallback';
+import { PricingTier } from '../models/plan-catalog.model';
 import { ApiService } from './api.service';
+
+/**
+ * Shape returned by `GET /api/catalog/plans`. Backend is SSOT for the
+ * feature manifest per tier; commercial metadata (prices, Stripe IDs,
+ * badges) stays on the client in `PLAN_CATALOG` and is merged on top.
+ */
+interface PlanCatalogDto {
+  planTypeId: PlanTypeId;
+  features: string[];
+}
 
 /**
  * Provides system catalog data from the backend API.
@@ -38,6 +51,25 @@ export class CatalogService {
   readonly businessTypes   = signal<BusinessTypeCatalog[]>(BUSINESS_TYPES);
   readonly zoneTypes       = signal<ZoneTypeCatalog[]>(ZONE_TYPES);
 
+  /** Backend-delivered feature manifest, keyed by planTypeId. Null until fetched. */
+  private readonly _planApiFeatures = signal<Map<PlanTypeId, FeatureKey[]> | null>(null);
+
+  /**
+   * Live pricing catalog — commercial metadata from `PLAN_CATALOG`
+   * (prices, badges, stripePriceIds) merged with the backend's
+   * authoritative feature list. Falls back to the static catalog when
+   * the API is unreachable so the UI always has something to render.
+   */
+  readonly planCatalog = computed<readonly PricingTier[]>(() => {
+    const apiFeatures = this._planApiFeatures();
+    if (!apiFeatures) return PLAN_CATALOG;
+
+    return PLAN_CATALOG.map(tier => {
+      const fromApi = apiFeatures.get(tier.planTypeId);
+      return fromApi ? { ...tier, features: fromApi } : tier;
+    });
+  });
+
   //#endregion
 
   //#region Public Methods
@@ -55,6 +87,7 @@ export class CatalogService {
       firstValueFrom(this.api.get<DeviceModeCatalog[]>('/catalog/device-modes')),
       firstValueFrom(this.api.get<BusinessTypeCatalog[]>('/catalog/business-types')),
       firstValueFrom(this.api.get<ZoneTypeCatalog[]>('/catalog/zone-types')),
+      firstValueFrom(this.api.get<PlanCatalogDto[]>('/catalog/plans')),
     ]);
 
     if (results[0].status === 'fulfilled') this.kitchenStatuses.set(results[0].value);
@@ -63,6 +96,37 @@ export class CatalogService {
     if (results[3].status === 'fulfilled') this.deviceModes.set(results[3].value);
     if (results[4].status === 'fulfilled') this.businessTypes.set(results[4].value);
     if (results[5].status === 'fulfilled') this.zoneTypes.set(results[5].value);
+    if (results[6].status === 'fulfilled') this._planApiFeatures.set(this.parsePlanDto(results[6].value));
+  }
+
+  /**
+   * Fetches only the plan catalog on demand. Used by callers that
+   * cannot wait for `loadAll()` (e.g. upgrade surfaces that need the
+   * freshest feature list after an entitlement change). Silent on
+   * failure — fallback static catalog remains in place.
+   */
+  async fetchPlanCatalog(): Promise<void> {
+    try {
+      const dto = await firstValueFrom(this.api.get<PlanCatalogDto[]>('/catalog/plans'));
+      this._planApiFeatures.set(this.parsePlanDto(dto));
+    } catch {
+      // Fallback stays in effect; not surfaced to the user.
+    }
+  }
+
+  /**
+   * Validates backend feature strings against the `FeatureKey` enum and
+   * drops unknowns. Keeps the contract one-way: the client enum is the
+   * authoritative list of renderable features.
+   */
+  private parsePlanDto(dto: PlanCatalogDto[]): Map<PlanTypeId, FeatureKey[]> {
+    const known = new Set<string>(Object.values(FeatureKey));
+    const result = new Map<PlanTypeId, FeatureKey[]>();
+    for (const entry of dto) {
+      const valid = entry.features.filter(f => known.has(f)) as FeatureKey[];
+      result.set(entry.planTypeId, valid);
+    }
+    return result;
   }
 
   /** Returns display name for a kitchen status ID */

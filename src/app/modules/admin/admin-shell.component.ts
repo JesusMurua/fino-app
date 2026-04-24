@@ -7,8 +7,9 @@ import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { FeatureKey, UserRoleId } from '../../core/enums';
-import { PLAN_CATALOG, pricingGroupForMacro } from '../../core/models';
+import { PLAN_HIERARCHY, pricingGroupForMacro } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogService } from '../../core/services/catalog.service';
 import { ConfigService } from '../../core/services/config.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -18,6 +19,7 @@ import { AppFeatureDirective, AppFeatureMode } from '../../shared/directives/app
 import { TrialBannerComponent } from '../../shared/components/trial-banner/trial-banner.component';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
+const DARK_MODE_KEY = 'brio.dashboard.darkMode';
 
 /**
  * Single nav item declaration. The template uses `*appFeature` with the
@@ -50,6 +52,7 @@ export class AdminShellComponent implements OnInit {
 
   //#region Injections
 
+  private readonly catalogService = inject(CatalogService);
   private readonly configService = inject(ConfigService);
   private readonly inventoryService = inject(InventoryService);
   private readonly notificationService = inject(NotificationService);
@@ -65,6 +68,17 @@ export class AdminShellComponent implements OnInit {
 
   /** Whether the sidebar is collapsed (icon-only mode) */
   readonly isCollapsed = signal(false);
+
+  /**
+   * Global light/dark theme flag. Applied as `.l` or `.d` on the `.shell`
+   * root so CSS custom properties (`--bg`, `--surface`, …) cascade to
+   * every admin page that consumes them. Persisted so preference sticks
+   * across refreshes. Key is kept from the prior (dashboard-local)
+   * implementation so existing users don't lose their setting.
+   */
+  readonly isDarkMode = signal<boolean>(
+    localStorage.getItem(DARK_MODE_KEY) === 'true',
+  );
 
   /** True while a branch switch is in progress */
   readonly isSwitchingBranch = signal(false);
@@ -106,7 +120,7 @@ export class AdminShellComponent implements OnInit {
     { path: 'inventory',    icon: 'pi-box',        label: 'Inventario',    feature: FeatureKey.RecipeInventory, badge: true },
     { path: 'recipes',      icon: 'pi-book',       label: 'Recetas',       feature: FeatureKey.RecipeInventory },
     { path: 'promotions',   icon: 'pi-tag',        label: 'Promociones',   feature: FeatureKey.LoyaltyCrm },
-    { path: 'customers',    icon: 'pi-id-card',    label: 'Clientes',      feature: FeatureKey.CustomerBase },
+    { path: 'customers',    icon: 'pi-id-card',    label: 'Clientes',      feature: FeatureKey.CustomerDatabase },
     { path: 'users',        icon: 'pi-users',      label: 'Usuarios' },
     { path: 'devices',      icon: 'pi-tablet',     label: 'Dispositivos' },
     { path: 'branches',     icon: 'pi-sitemap',    label: 'Sucursales' },
@@ -169,13 +183,28 @@ export class AdminShellComponent implements OnInit {
   }
 
   /**
-   * Resolves the cheapest plan tier that unlocks a feature, using the
-   * tenant's macro to pick the correct pricing lane. Returns null when
-   * the feature does not appear in any tier (shouldn't happen in prod).
+   * Resolves the cheapest plan tier strictly above the tenant's current
+   * plan that unlocks the feature. Uses `PLAN_HIERARCHY` to compare
+   * tiers so a user on Basic missing a Pro feature gets "Pro" in the
+   * tooltip (not "Free" as the naive cheapest-match would suggest).
+   *
+   * Returns null when:
+   *   - the item has no feature gate
+   *   - no strictly-higher tier unlocks the feature (shouldn't happen
+   *     in well-formed catalogs, but prevents a paradox tooltip when
+   *     the lock state is spurious, e.g. a JWT missing features the
+   *     tenant's plan already covers)
+   *
+   * Reads from `catalogService.planCatalog()` so it picks up the
+   * backend-delivered feature manifest the moment it arrives.
    */
   private upsellInfo(item: NavItem): { plan: string; price: number } | null {
     if (!item.feature) return null;
-    const tier = PLAN_CATALOG.find(t => t.features.includes(item.feature!));
+    const currentLevel = PLAN_HIERARCHY[this.tenantContext.currentPlan()] ?? 0;
+    const tier = this.catalogService.planCatalog().find(t =>
+      t.features.includes(item.feature!)
+      && (PLAN_HIERARCHY[t.planTypeId] ?? 0) > currentLevel,
+    );
     if (!tier) return null;
     const group = pricingGroupForMacro(this.tenantContext.currentMacro());
     return { plan: tier.name, price: tier.monthlyPrice[group] };
@@ -250,6 +279,13 @@ export class AdminShellComponent implements OnInit {
   /** Navigates to the POS without logging out */
   goToPos(): void {
     this.router.navigate(['/pos']);
+  }
+
+  /** Flips the global theme and persists the preference. */
+  toggleTheme(): void {
+    const next = !this.isDarkMode();
+    this.isDarkMode.set(next);
+    localStorage.setItem(DARK_MODE_KEY, String(next));
   }
 
   /** Logs out and returns to the PIN screen */

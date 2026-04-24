@@ -1,4 +1,4 @@
-<div class="dashboard" [class.l]="!isDarkMode()" [class.d]="isDarkMode()">
+<div class="dashboard">
 
   <!-- ================================================================== -->
   <!-- Shared header — rendered in every state so the theme toggle is      -->
@@ -41,12 +41,6 @@
         />
       }
 
-      <div class="mode-toggle" (click)="toggleTheme()" title="Cambiar tema">
-        <div class="mode-toggle__track" [class.mode-toggle__track--on]="isDarkMode()">
-          <div class="mode-toggle__thumb"></div>
-        </div>
-        <span class="mode-toggle__label">{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
-      </div>
     </div>
   </header>
 

@@ -59,8 +59,8 @@ export enum FeatureKey {
   // --- Specialized Services -----------------------------------------------
   /** Simple sequential folios */
   SimpleFolios = 'SimpleFolios',
-  /** Basic customer directory */
-  CustomerBase = 'CustomerBase',
+  /** Basic customer directory — matches backend JWT claim `CustomerDatabase`. */
+  CustomerDatabase = 'CustomerDatabase',
   /** Custom folio formats / prefixes */
   CustomFolios = 'CustomFolios',
   /** Service history per customer */
@@ -94,7 +94,7 @@ const UNIVERSAL_FEATURES: readonly FeatureKey[] = [
   FeatureKey.CoreHardware,
   FeatureKey.CfdiInvoicing,
   FeatureKey.CustomerCredit,
-  FeatureKey.CustomerBase,
+  FeatureKey.CustomerDatabase,
   FeatureKey.SimpleFolios,
   FeatureKey.StockAlerts,
   FeatureKey.MultiWarehouseInventory,
