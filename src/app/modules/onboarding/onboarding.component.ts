@@ -19,11 +19,13 @@ import {
   GIRO_FEATURE_MAP,
   MACRO_CATEGORY_LABELS,
   MacroCategoryType,
+  deriveSubCategory,
 } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
+import { TenantContextService } from '../../core/services/tenant-context.service';
 import { BrioMascotComponent, BrioSkin } from './brio-mascot/brio-mascot.component';
 
 const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
@@ -33,6 +35,8 @@ interface SubGiroOption {
   /** Real BusinessTypeId — null only for the synthetic "Otra" chip */
   id: BusinessTypeId | null;
   label: string;
+  /** Optional PrimeNG icon class — surfaces verticalized chips (e.g. Gym). */
+  icon?: string;
 }
 
 /** Macro card rendered at the top of Step 1. */
@@ -151,7 +155,7 @@ const MACRO_CARDS: MacroCard[] = [
       { id: BusinessTypeId.Estetica,       label: 'Estética / Barbería' },
       { id: BusinessTypeId.TallerMecanico, label: 'Taller Mecánico' },
       { id: BusinessTypeId.Consultorio,    label: 'Consultorio / Clínica' },
-      { id: BusinessTypeId.Gimnasio,       label: 'Gimnasio / Deportes' },
+      { id: BusinessTypeId.Gimnasio,       label: 'Gimnasio / Deportes', icon: 'pi pi-heart-fill' },
       { id: null,                          label: 'Otra' },
     ],
   },
@@ -178,6 +182,7 @@ export class OnboardingComponent implements OnInit {
   private readonly deviceRoutingService = inject(DeviceRoutingService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
+  private readonly tenantContext = inject(TenantContextService);
 
   //#endregion
 
@@ -404,6 +409,10 @@ export class OnboardingComponent implements OnInit {
           this.customGiroText.set(customText);
         }
         this.selectedSubGiroIds.set(hydratedIds);
+
+        // Push the derived vertical sub-category so the rest of the
+        // app can react (POS layout, cart slots, member selectors).
+        this.tenantContext.setSubCategory(deriveSubCategory(snapshot.subGiroIds));
       },
       error: () => { /* best-effort — the wizard still works without prior state */ },
     });
@@ -487,6 +496,11 @@ export class OnboardingComponent implements OnInit {
 
     try {
       await firstValueFrom(this.businessService.updateGiro(payload));
+      // Mirror the derived sub-category into the tenant context as
+      // soon as the wizard's selection is committed server-side, so
+      // downstream consumers (POS layout, cart) react without waiting
+      // for the next JWT refresh.
+      this.tenantContext.setSubCategory(deriveSubCategory(subGiroIds));
       this.currentStep.set(2);
       // Fire-and-forget sync of the step pointer for session resume.
       this.businessService.syncOnboardingStep(2, 2).subscribe({ error: () => {} });

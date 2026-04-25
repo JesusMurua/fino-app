@@ -126,6 +126,9 @@
                           <i class="pi pi-check"></i>
                         }
                       </span>
+                      @if (sub.icon) {
+                        <i class="chip__icon" [class]="sub.icon"></i>
+                      }
                       {{ sub.label }}
                     </button>
                   }

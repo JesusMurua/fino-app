@@ -99,6 +99,50 @@ export function macroOfBusinessType(id: BusinessTypeId): MacroCategoryType {
   return MacroCategoryType.Services;
 }
 
+/**
+ * Vertical sub-category — secondary axis of tenant context, layered on
+ * top of `MacroCategoryType`. Drives UI verticalization (POS layout
+ * variants, cart slots, member selectors) without changing feature
+ * gating, which remains keyed by the macro.
+ *
+ * `Generic` is the catch-all when the tenant's sub-giros do not map to
+ * any known specialization. Backend may emit this on the JWT in a
+ * future release; until then `TenantContextService` derives it from
+ * the sub-giro selection persisted via `PUT /business/giro`.
+ */
+export enum SubCategoryType {
+  Generic  = 'Generic',
+  Gym      = 'Gym',
+  Yoga     = 'Yoga',
+  Crossfit = 'Crossfit',
+}
+
+/**
+ * Maps a sub-giro id to its vertical sub-category. Returns `Generic`
+ * for sub-giros that do not have a dedicated vertical UI yet.
+ *
+ * Update this map as new vertical specializations land (e.g. when
+ * Yoga / Crossfit get their own `BusinessTypeId` values).
+ */
+export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
+  if (id === BusinessTypeId.Gimnasio) return SubCategoryType.Gym;
+  return SubCategoryType.Generic;
+}
+
+/**
+ * Picks the most specific sub-category from a set of selected sub-giros.
+ * If any sub-giro maps to a non-Generic vertical, that wins; otherwise
+ * the result is `Generic`. Used to hydrate `currentSubCategory` from a
+ * `BusinessGiroResponse`.
+ */
+export function deriveSubCategory(ids: readonly BusinessTypeId[]): SubCategoryType {
+  for (const id of ids) {
+    const sub = subCategoryOfBusinessType(id);
+    if (sub !== SubCategoryType.Generic) return sub;
+  }
+  return SubCategoryType.Generic;
+}
+
 /** Promotion type — maps to PromotionTypeCatalog in backend */
 export enum PromotionTypeId {
   Percentage = 1,

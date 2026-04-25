@@ -2,14 +2,15 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { DividerModule } from 'primeng/divider';
 import { MessageService } from 'primeng/api';
 
 import { InputTextModule } from 'primeng/inputtext';
 
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
-import { KitchenStatusId, SyncStatusId } from '../../../../core/enums';
+import { CartItem, Customer, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
+import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
@@ -21,13 +22,14 @@ import { OrderContextService } from '../../../../core/services/order-context.ser
 import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableAssignmentService } from '../../../../core/services/table-assignment.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent],
+  imports: [FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
@@ -60,6 +62,17 @@ export class CartPanelComponent implements OnInit {
   /** True when the business has a kitchen — determines button label */
   readonly showSendToKitchen = computed(() => this.configService.hasKitchen());
 
+  /**
+   * True when the tenant's macro category is Food & Beverage. Used to
+   * hide kitchen / table UI for non-F&B verticals (Gym, Retail,
+   * Services) where mesas, comandas y cocina don't apply. Layered on
+   * top of the existing `showSendToKitchen()` feature flag so even an
+   * F&B tenant without a kitchen still gets the right experience.
+   */
+  readonly isFoodAndBeverage = computed(() =>
+    this.tenantContext.currentMacro() === MacroCategoryType.FoodBeverage,
+  );
+
   // ---- Table assignment (FDD-001) ----
   /** Controls TableSelectorDialog visibility */
   readonly showTableSelector = signal(false);
@@ -69,6 +82,42 @@ export class CartPanelComponent implements OnInit {
 
   /** Display name of the active table — unified signal across all sources */
   readonly activeTableName = this.orderContextService.activeTableName;
+
+  // ---- Item-level beneficiary selector (Gym vertical) ----
+  /** Cart item id whose beneficiary picker is currently open; null = closed */
+  readonly activeBeneficiaryItemId = signal<string | null>(null);
+  /** True when the beneficiary picker dialog is visible */
+  readonly beneficiaryDialogOpen = computed(() => this.activeBeneficiaryItemId() !== null);
+
+  /**
+   * Customer currently assigned as beneficiary on the line whose dialog
+   * is open — used to pre-fill the customer-selector so reopening an
+   * already-assigned item highlights the existing pick instead of a
+   * blank search box. Returns null when nothing is assigned yet or
+   * when the customer is not in the local cache.
+   */
+  readonly activeBeneficiaryCustomer = computed<Customer | null>(() => {
+    const itemId = this.activeBeneficiaryItemId();
+    if (!itemId) return null;
+    const item = this.cartItems().find(i => i.id === itemId);
+    if (!item) return null;
+    const beneficiaryId = this.getBeneficiaryId(item);
+    if (beneficiaryId === null) return null;
+    return this.customerService.customers().find(c => c.id === beneficiaryId) ?? null;
+  });
+
+  /**
+   * True when at least one cart line is a membership product
+   * (`product.metadata.membershipDurationDays` is set) but has not
+   * yet been assigned a `metadata.beneficiaryCustomerId`. Drives the
+   * checkout-blocking guard on the pay buttons so cashiers cannot
+   * complete a sale that would silently lose the membership intent.
+   */
+  readonly hasUnassignedMemberships = computed(() =>
+    this.cartItems().some(item =>
+      this.isMembershipItem(item) && this.getBeneficiaryId(item) === null,
+    ),
+  );
   //#endregion
 
   //#region Constructor
@@ -83,6 +132,7 @@ export class CartPanelComponent implements OnInit {
     private readonly promotionService: PromotionService,
     private readonly orderContextService: OrderContextService,
     private readonly tableAssignmentService: TableAssignmentService,
+    private readonly tenantContext: TenantContextService,
     private readonly messageService: MessageService,
     private readonly router: Router,
   ) {}
@@ -347,5 +397,84 @@ export class CartPanelComponent implements OnInit {
   trackById(_: number, item: CartItem): string {
     return item.id;
   }
+
+  //#region Membership Beneficiary (Gym vertical)
+
+  /**
+   * Returns the membership duration in days when the catalog tagged
+   * the product with `metadata.membershipDurationDays`, or null when
+   * the line is not a membership.
+   */
+  getMembershipDays(item: CartItem): number | null {
+    const days = item.product.metadata?.['membershipDurationDays'];
+    return typeof days === 'number' && days > 0 ? days : null;
+  }
+
+  /** True when the line carries a membership intent and needs a beneficiary. */
+  isMembershipItem(item: CartItem): boolean {
+    return this.getMembershipDays(item) !== null;
+  }
+
+  /** Beneficiary id stored on the cart item, or null when not yet assigned. */
+  getBeneficiaryId(item: CartItem): number | null {
+    const id = item.metadata?.['beneficiaryCustomerId'];
+    return typeof id === 'number' ? id : null;
+  }
+
+  /**
+   * Looks up the beneficiary's name from the customer cache so the cart
+   * can show "Para: Juan Pérez" instead of an opaque id. Returns null
+   * when the customer is not in the local cache (e.g. just-created
+   * record that has not been broadcast yet).
+   */
+  getBeneficiaryName(item: CartItem): string | null {
+    const id = this.getBeneficiaryId(item);
+    if (id === null) return null;
+    const found = this.customerService.customers().find(c => c.id === id);
+    return found?.name ?? null;
+  }
+
+  /** Opens the beneficiary picker dialog for the given cart line. */
+  openBeneficiarySelector(item: CartItem): void {
+    this.activeBeneficiaryItemId.set(item.id);
+  }
+
+  /** Closes the beneficiary picker dialog without committing a change. */
+  closeBeneficiarySelector(): void {
+    this.activeBeneficiaryItemId.set(null);
+  }
+
+  /**
+   * Commits the picked customer as the beneficiary for the active
+   * membership line. Writes the canonical metadata shape consumed by
+   * `SyncService.applyOfflineMembershipExtensions`:
+   *   `{ beneficiaryCustomerId, membershipDurationDays }`.
+   *
+   * A `null` payload means the user clicked the chip's clear button to
+   * search for a different beneficiary — keep the dialog open so they
+   * can pick again, and don't touch the cart. Closes only on a real
+   * pick. No-ops when the active item disappeared from the cart while
+   * the dialog was open.
+   */
+  async onBeneficiarySelected(customer: Customer | null): Promise<void> {
+    if (!customer) return;
+
+    const itemId = this.activeBeneficiaryItemId();
+    this.closeBeneficiarySelector();
+    if (!itemId) return;
+
+    const item = this.cartItems().find(i => i.id === itemId);
+    if (!item) return;
+
+    const days = this.getMembershipDays(item);
+    if (days === null) return;
+
+    await this.cartService.setItemMetadata(item.id, {
+      beneficiaryCustomerId: customer.id,
+      membershipDurationDays: days,
+    });
+  }
+
+  //#endregion
 
 }

@@ -35,6 +35,51 @@
 }
 
 // --------------------------------------------------------------------------
+// View-mode toolbar — Grid / List toggle above the catalog
+// --------------------------------------------------------------------------
+.pos-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: $space-2 $space-5 0;
+  flex-shrink: 0;
+}
+
+.view-toggle {
+  display: inline-flex;
+  background: #FFFFFF;
+  border: 1px solid $color-border-soft;
+  border-radius: $radius-button;
+  padding: 2px;
+  gap: 2px;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0 $space-3;
+    border: none;
+    background: transparent;
+    color: $color-text-sub;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { color: $color-text-title; }
+
+    &--active {
+      background: $color-primary;
+      color: #FFFFFF;
+
+      &:hover { color: #FFFFFF; }
+    }
+
+    i { font-size: 14px; }
+  }
+}
+
+// --------------------------------------------------------------------------
 // Product grid — scrollable, large visual cards
 // --------------------------------------------------------------------------
 .pos-products {
@@ -51,6 +96,12 @@
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 3px; }
+
+  // Dense list layout — single-column rows, tight spacing
+  &--list {
+    grid-template-columns: 1fr;
+    gap: $space-2;
+  }
 }
 
 .pos-empty {
@@ -73,6 +124,13 @@
   aspect-ratio: 3 / 4;
   border-radius: $radius-card;
   background: #F1F5F9;
+
+  &--list {
+    aspect-ratio: auto;
+    min-width: 0;
+    height: 72px;
+    border-radius: $radius-button;
+  }
 }
 
 // --------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
@@ -16,7 +16,7 @@ import { CartPanelComponent } from '../cart-panel/cart-panel.component';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
 import { DeliveryPanelComponent } from '../delivery-panel/delivery-panel.component';
 import { PosHeaderComponent } from '../pos-header/pos-header.component';
-import { ProductCardComponent } from '../product-card/product-card.component';
+import { ProductCardComponent, ProductCardViewMode } from '../product-card/product-card.component';
 
 @Component({
   selector: 'app-product-grid',
@@ -42,9 +42,38 @@ export class ProductGridComponent implements OnInit, OnDestroy {
   readonly filteredProducts = this.productService.filteredProducts;
   readonly selectedCategoryId = this.productService.selectedCategoryId;
 
+  /** localStorage key for the persisted view-mode preference. */
+  private static readonly VIEW_MODE_STORAGE_KEY = 'pos_view_mode';
+
+  /**
+   * Toggles between visual grid and dense list layouts. Hydrated from
+   * `localStorage` so the cashier's last choice survives reloads.
+   * Defaults to `grid` when no valid preference is stored (or when
+   * localStorage is unavailable, e.g. server-side / private mode).
+   */
+  readonly viewMode = signal<ProductCardViewMode>(this.loadStoredViewMode());
+
   private readonly destroy$ = new Subject<void>();
   private scanSubscription?: Subscription;
   //#endregion
+
+  /** Switches the catalog rendering between visual grid and dense list. */
+  setViewMode(mode: ProductCardViewMode): void {
+    this.viewMode.set(mode);
+    try {
+      localStorage.setItem(ProductGridComponent.VIEW_MODE_STORAGE_KEY, mode);
+    } catch { /* storage quota / privacy mode — keep working in-memory */ }
+  }
+
+  /** Reads the persisted view-mode from localStorage, falling back to `grid`. */
+  private loadStoredViewMode(): ProductCardViewMode {
+    try {
+      const raw = localStorage.getItem(ProductGridComponent.VIEW_MODE_STORAGE_KEY);
+      return raw === 'list' || raw === 'grid' ? raw : 'grid';
+    } catch {
+      return 'grid';
+    }
+  }
 
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);

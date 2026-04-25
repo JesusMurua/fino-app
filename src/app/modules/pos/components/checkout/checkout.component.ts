@@ -261,6 +261,22 @@ export class CheckoutComponent implements OnInit {
     Math.max(0, this.totalPaidCents() - this.totalWithDiscount()),
   );
 
+  /**
+   * True when at least one cart line is a membership product but has
+   * not been assigned a beneficiary in `metadata.beneficiaryCustomerId`.
+   * Blocks the confirm-payment button so the cashier cannot finalize a
+   * sale that would silently lose the membership-extension intent.
+   */
+  readonly hasUnassignedMemberships = computed(() =>
+    this.cartItems().some(item => {
+      const days = item.product.metadata?.['membershipDurationDays'];
+      const isMembership = typeof days === 'number' && days > 0;
+      if (!isMembership) return false;
+      const beneficiaryId = item.metadata?.['beneficiaryCustomerId'];
+      return typeof beneficiaryId !== 'number';
+    }),
+  );
+
   /** True when total paid covers the order total */
   readonly canConfirm = computed(() => {
     // Zero-total orders (100%-off promos, giveaways) are already covered.
@@ -625,7 +641,7 @@ export class CheckoutComponent implements OnInit {
    */
   async onConfirmPayment(): Promise<void> {
     if (!this.requireOpenSession()) return;
-    if (this.isProcessing() || !this.canConfirm()) return;
+    if (this.isProcessing() || !this.canConfirm() || this.hasUnassignedMemberships()) return;
 
     // Check if existing order is still in kitchen
     if (this.existingOrderId()) {
@@ -650,7 +666,7 @@ export class CheckoutComponent implements OnInit {
     // Re-guard: the session may have been closed from another tab while
     // the kitchen confirmation dialog was open.
     if (!this.requireOpenSession()) return;
-    if (this.isProcessing() || !this.canConfirm()) return;
+    if (this.isProcessing() || !this.canConfirm() || this.hasUnassignedMemberships()) return;
 
     this.isProcessing.set(true);
     try {

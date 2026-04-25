@@ -3,6 +3,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { Product } from '../../../../core/models';
 
+/** Visual layout for the catalog tile. */
+export type ProductCardViewMode = 'grid' | 'list';
+
 @Component({
   selector: 'app-product-card',
   standalone: true,
@@ -14,6 +17,12 @@ export class ProductCardComponent {
 
   //#region Inputs & Outputs
   @Input({ required: true }) product!: Product;
+  /**
+   * Visual layout — `grid` is the default tall card with a 4:3 image,
+   * `list` is a dense horizontal row optimized for fast catalog
+   * scanning (Gym memberships, services, retail SKUs without imagery).
+   */
+  @Input() viewMode: ProductCardViewMode = 'grid';
   @Output() selected = new EventEmitter<Product>();
   //#endregion
 

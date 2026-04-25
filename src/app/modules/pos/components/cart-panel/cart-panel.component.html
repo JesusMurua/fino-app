@@ -7,7 +7,7 @@
     } @else {
       <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
     }
-    @if (activeTableName()) {
+    @if (isFoodAndBeverage() && activeTableName()) {
       <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
     }
     @if (itemCount() > 0) {
@@ -42,6 +42,25 @@
             }
             @if (item.notes) {
               <span class="cart-item__meta cart-item__notes">{{ item.notes }}</span>
+            }
+            @if (isMembershipItem(item)) {
+              <button
+                type="button"
+                class="beneficiary-chip"
+                [class.beneficiary-chip--unset]="getBeneficiaryId(item) === null"
+                (click)="openBeneficiarySelector(item)"
+              >
+                <i class="pi pi-user"></i>
+                @if (getBeneficiaryName(item); as name) {
+                  Para: {{ name }}
+                } @else {
+                  @if (getBeneficiaryId(item); as id) {
+                    Para: cliente #{{ id }}
+                  } @else {
+                    Para: seleccionar beneficiario
+                  }
+                }
+              </button>
             }
           </div>
 
@@ -198,8 +217,8 @@
       }
     }
 
-    <!-- Assign table button (FDD-001) — visible when active order has no table -->
-    @if (canAssignTable()) {
+    <!-- Assign table button (FDD-001) — F&B-only, hidden for Gym/Retail/Services -->
+    @if (isFoodAndBeverage() && canAssignTable()) {
       <button
         type="button"
         class="btn-assign-table"
@@ -210,7 +229,14 @@
       </button>
     }
 
-    @if (showSendToKitchen()) {
+    @if (hasUnassignedMemberships()) {
+      <div class="membership-warning" role="status">
+        <i class="pi pi-exclamation-triangle"></i>
+        Asigna beneficiarios a las membresías
+      </div>
+    }
+
+    @if (isFoodAndBeverage() && showSendToKitchen()) {
       @if (addingToOrder(); as adding) {
         <p-button
           [label]="isProcessing() ? 'Enviando...' : 'Agregar a Orden #' + adding.orderNumber"
@@ -239,7 +265,7 @@
         <button
           type="button"
           class="btn-direct-pay"
-          [disabled]="itemCount() === 0"
+          [disabled]="itemCount() === 0 || hasUnassignedMemberships()"
           (click)="onCheckout()"
         >
           <i class="pi pi-credit-card"></i>
@@ -252,7 +278,7 @@
         icon="pi pi-credit-card"
         styleClass="w-full btn-checkout"
         size="large"
-        [disabled]="itemCount() === 0"
+        [disabled]="itemCount() === 0 || hasUnassignedMemberships()"
         (onClick)="onCheckout()"
       />
     }
@@ -270,8 +296,32 @@
 
 </aside>
 
-<!-- Table selector dialog (FDD-001) -->
-<app-table-selector-dialog
-  [(visible)]="showTableSelector"
-  (tableSelected)="onTableSelected($event)"
-/>
+<!-- Table selector dialog (FDD-001) — F&B only -->
+@if (isFoodAndBeverage()) {
+  <app-table-selector-dialog
+    [(visible)]="showTableSelector"
+    (tableSelected)="onTableSelected($event)"
+  />
+}
+
+<!-- Beneficiary selector dialog (Gym vertical) -->
+<p-dialog
+  [visible]="beneficiaryDialogOpen()"
+  (visibleChange)="$event ? null : closeBeneficiarySelector()"
+  [modal]="true"
+  [closable]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '420px', maxWidth: '92vw' }"
+  header="Selecciona el beneficiario"
+>
+  @if (beneficiaryDialogOpen()) {
+    <p class="beneficiary-dialog__hint">
+      El cliente que reciba esta membresía verá su vigencia extendida al cobrar.
+    </p>
+    <app-customer-selector
+      [selectedCustomer]="activeBeneficiaryCustomer()"
+      placeholder="Buscar cliente por nombre o teléfono..."
+      (customerChanged)="onBeneficiarySelected($event)"
+    />
+  }
+</p-dialog>

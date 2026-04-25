@@ -201,4 +201,75 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
+
+  // -----------------------------------------------------------------------
+  // List variant — dense horizontal row (icon + name + price + add)
+  // Optimized for fast scanning of imageless SKUs (memberships, services).
+  // -----------------------------------------------------------------------
+  &--list {
+    flex-direction: row;
+    align-items: center;
+    min-height: 72px;
+    min-width: 0;
+    padding: $space-2 $space-3;
+    gap: $space-3;
+    box-shadow: $shadow-card;
+
+    &:hover {
+      transform: translateX(2px);
+      box-shadow: $shadow-card-hover;
+    }
+
+    .product-card__image {
+      width: 56px;
+      height: 56px;
+      aspect-ratio: 1 / 1;
+      border-radius: $radius-button;
+      flex-shrink: 0;
+    }
+
+    .product-card__image-fallback i { font-size: 22px; }
+
+    .product-card__badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      border-radius: 6px;
+    }
+
+    .product-card__body {
+      flex-direction: row;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+      padding: 0;
+      gap: $space-3;
+    }
+
+    .product-card__name {
+      flex: 1;
+      min-width: 0;
+      font-size: 15px;
+      -webkit-line-clamp: 1;
+    }
+
+    .product-card__desc { display: none; }
+
+    .product-card__footer {
+      flex-shrink: 0;
+      margin-top: 0;
+      padding-top: 0;
+      gap: $space-3;
+    }
+
+    .product-card__price { font-size: 16px; }
+
+    .product-card__add-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: $radius-button;
+    }
+  }
 }

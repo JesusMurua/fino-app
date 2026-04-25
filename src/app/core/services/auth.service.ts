@@ -17,7 +17,7 @@ import {
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
-import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId } from '../enums';
+import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 import { TenantContextService } from './tenant-context.service';
@@ -657,6 +657,27 @@ export class AuthService {
   }
 
   /**
+   * Extracts the `subCategory` claim from a JWT payload. Returns
+   * undefined when the claim is absent (older backends, offline tokens)
+   * or when the value is not a recognized `SubCategoryType`. Callers
+   * treat undefined as "leave the current sub-category untouched" and
+   * hydrate it from a separate sub-giro fetch instead.
+   */
+  private extractSubCategoryFromJwt(token: string): SubCategoryType | undefined {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return undefined;
+      const payload = JSON.parse(atob(parts[1]));
+      const raw = payload.subCategory;
+      if (typeof raw !== 'string') return undefined;
+      const known = Object.values(SubCategoryType) as string[];
+      return known.includes(raw) ? (raw as SubCategoryType) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Mirrors the current auth state into the tenant context so guards
    * and directives see a consistent plan/macro/feature snapshot.
    * Called on boot, login, offline login, and subscription refresh.
@@ -679,7 +700,8 @@ export class AuthService {
     const user = this.currentUser()!;
     const jwtFeatures = this.extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
-    this.tenantContext.setContext(this.planTypeId(), macro, features);
+    const subCategory = this.extractSubCategoryFromJwt(user.token);
+    this.tenantContext.setContext(this.planTypeId(), macro, features, subCategory);
   }
 
   //#endregion

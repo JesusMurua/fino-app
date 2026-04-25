@@ -27,6 +27,18 @@ export interface Customer {
   totalSpentCents: number;
   /** Last purchase date */
   lastVisitAt?: Date;
+  /**
+   * Vertical-specific: end of the current membership window for Gym
+   * (and similar service verticals). Accepts Date or ISO string —
+   * server emits ISO, offline side-effects may write Date instances.
+   */
+  membershipValidUntil?: string | Date;
+  /**
+   * Vertical-specific: timestamp of the last paid transaction tied to
+   * this customer. Updated by the offline membership-extension hook
+   * the moment a membership item lands in `saveOrder()`.
+   */
+  lastPaymentAt?: string | Date;
   /** Record creation date */
   createdAt: Date;
   /** Soft delete flag */
