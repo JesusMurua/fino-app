@@ -184,6 +184,34 @@ export class CustomerService {
     this.selectedCustomer.set(null);
   }
 
+  /**
+   * Re-reads a single customer from Dexie and pushes the fresh row
+   * into the public signals so the UI reacts without a full reload.
+   *
+   * Intended for callers that mutate the Dexie row directly (offline
+   * side-effects like the membership extension hook in `SyncService`).
+   * No API call is made — the local row is treated as authoritative.
+   *
+   * Best-effort: if the customer is no longer cached, signals remain
+   * unchanged so we never blank an active selection on a transient miss.
+   */
+  async refreshFromDb(customerId: number): Promise<void> {
+    const fresh = await this.db.customers.get(customerId);
+    if (!fresh) return;
+
+    this.customers.update(arr => {
+      const idx = arr.findIndex(c => c.id === customerId);
+      if (idx === -1) return [...arr, fresh].sort((a, b) => a.name.localeCompare(b.name));
+      const next = arr.slice();
+      next[idx] = fresh;
+      return next;
+    });
+
+    if (this.selectedCustomer()?.id === customerId) {
+      this.selectedCustomer.set(fresh);
+    }
+  }
+
   //#endregion
 
   //#region Private Helpers

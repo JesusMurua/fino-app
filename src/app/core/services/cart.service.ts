@@ -214,6 +214,29 @@ export class CartService {
     await this.db.cart.clear();
     this.reevaluatePromotions([]);
   }
+
+  /**
+   * Replaces the `metadata` blob on a single cart item. Used by
+   * vertical-specific UI hooks (e.g. the Gym beneficiary selector
+   * that attaches `{ beneficiaryCustomerId, membershipDurationDays }`
+   * to a membership line). Pass `undefined` to clear the metadata.
+   *
+   * No-ops when the item id is no longer in the cart so a stale
+   * dialog click never resurrects a removed line.
+   * @param itemId Cart item UUID
+   * @param metadata New metadata blob, or undefined to clear
+   */
+  async setItemMetadata(
+    itemId: string,
+    metadata: Record<string, unknown> | undefined,
+  ): Promise<void> {
+    const current = this.items();
+    if (!current.some(i => i.id === itemId)) return;
+    const updated = current.map(item =>
+      item.id === itemId ? { ...item, metadata } : item,
+    );
+    await this.persist(updated);
+  }
   //#endregion
 
   //#region Private Helpers

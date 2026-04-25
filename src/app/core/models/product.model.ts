@@ -88,4 +88,12 @@ export interface Product {
   isTaxIncluded?: boolean;
   /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
   printingDestinationId?: number | null;
+  /**
+   * Free-form catalog metadata that drives vertical-specific behavior.
+   * For Gym memberships, the catalog tags the product with
+   * `{ membershipDurationDays: number }`; the cart UI reads this to
+   * surface the beneficiary selector and to seed the `CartItem.metadata`
+   * payload that triggers offline membership extension at sale time.
+   */
+  metadata?: Record<string, unknown>;
 }

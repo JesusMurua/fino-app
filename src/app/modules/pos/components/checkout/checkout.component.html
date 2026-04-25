@@ -318,8 +318,8 @@
       <button
         type="button"
         class="btn-confirm"
-        [class.btn-confirm--disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
-        [disabled]="!canConfirm() || isProcessing() || sessionBlocked()"
+        [class.btn-confirm--disabled]="!canConfirm() || isProcessing() || sessionBlocked() || hasUnassignedMemberships()"
+        [disabled]="!canConfirm() || isProcessing() || sessionBlocked() || hasUnassignedMemberships()"
         (click)="onConfirmPayment()"
       >
         @if (isProcessing()) {
@@ -334,6 +334,12 @@
         <span class="checkout-footer__session-warning">
           <i class="pi pi-exclamation-triangle"></i>
           Abre un turno de caja para cobrar
+        </span>
+      }
+      @if (hasUnassignedMemberships() && !sessionBlocked()) {
+        <span class="checkout-footer__session-warning">
+          <i class="pi pi-exclamation-triangle"></i>
+          Asigna beneficiarios a las membresías
         </span>
       }
     </footer>

@@ -16,17 +16,51 @@
     <!-- Transparent header -->
     <app-pos-header />
 
+    <!-- View-mode toolbar (Grid / List toggle) -->
+    <div class="pos-toolbar" role="toolbar" aria-label="Vista del catálogo">
+      <div class="view-toggle" role="group" aria-label="Cambiar vista">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="viewMode() === 'grid'"
+          [attr.aria-pressed]="viewMode() === 'grid'"
+          aria-label="Vista de cuadrícula"
+          (click)="setViewMode('grid')"
+        >
+          <i class="pi pi-th-large"></i>
+        </button>
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="viewMode() === 'list'"
+          [attr.aria-pressed]="viewMode() === 'list'"
+          aria-label="Vista de lista"
+          (click)="setViewMode('list')"
+        >
+          <i class="pi pi-list"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- Product Grid (scrollable) -->
-    <main class="pos-products" aria-label="Productos">
+    <main
+      class="pos-products"
+      [class.pos-products--list]="viewMode() === 'list'"
+      aria-label="Productos"
+    >
 
       @for (product of filteredProducts(); track product.id) {
         @defer (on viewport) {
           <app-product-card
             [product]="product"
+            [viewMode]="viewMode()"
             (selected)="onProductSelected($event)"
           />
         } @placeholder {
-          <div class="product-card-placeholder"></div>
+          <div
+            class="product-card-placeholder"
+            [class.product-card-placeholder--list]="viewMode() === 'list'"
+          ></div>
         }
       } @empty {
         @if (!isLoading()) {

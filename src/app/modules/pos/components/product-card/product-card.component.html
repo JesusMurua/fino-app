@@ -1,6 +1,7 @@
 <button
   class="product-card"
   [class.product-card--unavailable]="!product.isAvailable"
+  [class.product-card--list]="viewMode === 'list'"
   type="button"
   [attr.aria-label]="'Agregar ' + product.name"
   [disabled]="!product.isAvailable"

@@ -31,6 +31,15 @@ export interface CartItem {
   promotionId?: number;
   /** Display name of the applied promotion */
   promotionName?: string;
+  /**
+   * Free-form metadata attached to the line. Used to carry vertical-
+   * specific intents that drive offline side-effects (e.g. Gym
+   * membership extension uses
+   * `{ beneficiaryCustomerId: number, membershipDurationDays: number }`)
+   * and travels through sync to the backend so the server can apply
+   * the authoritative state.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { FeatureKey, MacroCategoryType, PlanTypeId } from '../enums';
+import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { CatalogService } from './catalog.service';
 
@@ -27,6 +27,7 @@ export class TenantContextService {
 
   private readonly _currentPlan = signal<PlanTypeId>(PlanTypeId.Free);
   private readonly _currentMacro = signal<MacroCategoryType | null>(null);
+  private readonly _currentSubCategory = signal<SubCategoryType | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
 
   //#endregion
@@ -38,6 +39,14 @@ export class TenantContextService {
 
   /** Current macro category (primary business vertical) */
   readonly currentMacro = this._currentMacro.asReadonly();
+
+  /**
+   * Vertical sub-category derived from the tenant's selected sub-giros.
+   * Drives UI verticalization (POS layouts, cart slots) without
+   * affecting feature gating, which stays keyed by `currentMacro`.
+   * Null until the sub-giro selection has been hydrated.
+   */
+  readonly currentSubCategory = this._currentSubCategory.asReadonly();
 
   /** Set of feature keys currently enabled for this tenant */
   readonly activeFeatures = this._activeFeatures.asReadonly();
@@ -98,18 +107,29 @@ export class TenantContextService {
    * Replaces the tenant context with a fresh snapshot.
    * Unknown feature strings (not present in the `FeatureKey` enum)
    * are silently dropped — the enum is authoritative on the client.
+   *
+   * `subCategory` is optional because the JWT does not yet carry it —
+   * pass `undefined` to leave the current sub-category untouched, or
+   * `null` to clear it. Hydrate it via `setSubCategory()` after the
+   * sub-giro fetch resolves.
+   *
    * @param plan Subscription plan from the JWT
    * @param macro Primary macro category from the JWT
    * @param features Array of feature key strings from the JWT `features` claim
+   * @param subCategory Vertical sub-category, or null to clear, or omit to keep current
    */
   setContext(
     plan: PlanTypeId,
     macro: MacroCategoryType,
     features: readonly string[],
+    subCategory?: SubCategoryType | null,
   ): void {
     this._currentPlan.set(plan);
     this._currentMacro.set(macro);
     this._activeFeatures.set(this.parseFeatures(features));
+    if (subCategory !== undefined) {
+      this._currentSubCategory.set(subCategory);
+    }
 
     // Kick off the dynamic plan-catalog fetch as soon as the tenant
     // context is hydrated. Fire-and-forget — the service handles its
@@ -117,10 +137,21 @@ export class TenantContextService {
     this.catalogService.fetchPlanCatalog();
   }
 
+  /**
+   * Hydrates the vertical sub-category independently of the macro/plan
+   * snapshot — used by callers that resolve sub-giros after the JWT
+   * has already primed the rest of the context (e.g. the onboarding
+   * wizard or `BusinessService.getGiro()`).
+   */
+  setSubCategory(subCategory: SubCategoryType | null): void {
+    this._currentSubCategory.set(subCategory);
+  }
+
   /** Clears the tenant context — called on logout */
   clear(): void {
     this._currentPlan.set(PlanTypeId.Free);
     this._currentMacro.set(null);
+    this._currentSubCategory.set(null);
     this._activeFeatures.set(new Set());
   }
 
