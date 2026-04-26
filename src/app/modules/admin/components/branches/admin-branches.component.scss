@@ -30,6 +30,22 @@
     font-size: $font-size-base;
     color: $color-text-sub;
   }
+
+  // Inline mode (embedded in Settings → Negocio): just a right-aligned
+  // "Nueva sucursal" button above the table — the host page provides
+  // its own card header.
+  &__inline-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: $space-3;
+  }
+}
+
+// Inline mode: drop the outer page padding/gap so the component sits
+// snug inside the host's settings-card.
+.admin-branches:has(> .admin-branches__inline-actions) {
+  padding: 0;
+  gap: $space-3;
 }
 
 // Card reuses the global settings-card style — only local tweaks here

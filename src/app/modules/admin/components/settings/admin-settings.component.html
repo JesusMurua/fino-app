@@ -41,7 +41,7 @@
 
           <div class="settings-form">
             <div class="form-field">
-              <label class="form-field__label" for="s-name">Nombre del negocio</label>
+              <label class="form-field__label" for="s-name">Nombre completo</label>
               <input
                 id="s-name"
                 type="text"
@@ -49,32 +49,6 @@
                 [ngModel]="config().businessName"
                 (ngModelChange)="updateConfig('businessName', $event)"
                 placeholder="Ej. Fonda El Sabor"
-                class="form-field__input"
-              />
-            </div>
-
-            <div class="form-field">
-              <label class="form-field__label" for="s-location">Dirección / Ubicación</label>
-              <input
-                id="s-location"
-                type="text"
-                pInputText
-                [ngModel]="displayLocationName()"
-                (ngModelChange)="updateConfig('locationName', $event)"
-                placeholder="Ej. Av. Reforma 123, Centro, CDMX"
-                class="form-field__input"
-              />
-            </div>
-
-            <div class="form-field">
-              <label class="form-field__label" for="s-phone">Teléfono de contacto</label>
-              <input
-                id="s-phone"
-                type="tel"
-                pInputText
-                [ngModel]="config().businessPhone"
-                (ngModelChange)="updateConfig('businessPhone', $event)"
-                placeholder="Ej. 667 123 4567"
                 class="form-field__input"
               />
             </div>
@@ -154,6 +128,18 @@
             </p>
           </section>
         }
+
+        <!-- Sucursales — embedded inline (replaces the former /admin/branches sidebar entry) -->
+        <section class="settings-card">
+          <div class="settings-card-header">
+            <div class="card-icon"><i class="pi pi-sitemap"></i></div>
+            <div>
+              <div class="card-title">Sucursales</div>
+              <div class="card-subtitle">Ubicaciones del negocio y configuración de cada una</div>
+            </div>
+          </div>
+          <app-admin-branches [inline]="true" />
+        </section>
 
         <!-- Folio configuration — gated by CustomFolios or CfdiInvoicing -->
         @if (canSeeCustomFolio()) {

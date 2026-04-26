@@ -32,7 +32,7 @@ import {
   ProductModifierGroup,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
-import { MacroCategoryType, SubCategoryType } from '../../../../../core/enums';
+import { MacroCategoryType } from '../../../../../core/enums';
 import { DatabaseService } from '../../../../../core/services/database.service';
 import { ProductService, SaveProductDto } from '../../../../../core/services/product.service';
 import { ScannerService } from '../../../../../core/services/scanner.service';
@@ -150,13 +150,14 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly MacroCategoryType = MacroCategoryType;
 
   /**
-   * True when the current tenant is on the Gym vertical. Drives the
-   * visibility of the membership configuration block — non-gym tenants
-   * never see these fields and the form's defaults result in a
-   * `metadata: undefined` payload, so nothing leaks across verticals.
+   * True when the current tenant should see the "membership / vigencia"
+   * configuration block — i.e. any Services-macro tenant (gyms, spas,
+   * subscriptions, etc.). Non-Services tenants never see these fields
+   * and the form's defaults result in a `metadata: undefined` payload,
+   * so nothing leaks across verticals.
    */
-  readonly isGymTenant = computed(() =>
-    this.tenantContext.currentSubCategory() === SubCategoryType.Gym,
+  readonly showsMembership = computed(() =>
+    this.tenantContext.currentMacro() === MacroCategoryType.Services,
   );
 
   /**

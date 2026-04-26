@@ -34,6 +34,7 @@ import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import { AdminBranchesComponent } from '../branches/admin-branches.component';
 import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
 
 /**
@@ -69,6 +70,7 @@ interface TabDef {
     DropdownModule,
     InputTextModule,
     TableModule,
+    AdminBranchesComponent,
     AdminPrinterSettingsComponent,
   ],
   templateUrl: './admin-settings.component.html',
@@ -301,16 +303,6 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
   /** Cleanup subject for subscriptions */
   private readonly destroy$ = new Subject<void>();
-
-  /** Cleaned location name — strips auto-generated branch name patterns */
-  readonly displayLocationName = computed(() => {
-    const loc = this.config().locationName ?? '';
-    const biz = this.config().businessName ?? '';
-    if (loc === `${biz} Principal` || loc.endsWith(' Principal')) {
-      return '';
-    }
-    return loc;
-  });
 
   /** Whether to show operational config section in Negocio tab */
   readonly showOperationalConfig = computed(() =>
