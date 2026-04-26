@@ -6,7 +6,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { FeatureKey, UserRoleId } from '../../core/enums';
+import { FeatureKey, SubCategoryType, UserRoleId } from '../../core/enums';
 import { PLAN_HIERARCHY, pricingGroupForMacro } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogService } from '../../core/services/catalog.service';
@@ -34,6 +34,13 @@ interface NavItem {
   feature?: FeatureKey;
   /** Shows the low-stock badge next to this item */
   badge?: boolean;
+  /**
+   * Sub-category gate: when set, the item is rendered only while the
+   * tenant's `currentSubCategory` matches. Independent of feature gating
+   * so vertical-only screens (e.g. gym Access Control) can be hidden for
+   * everyone else without polluting the FeatureKey enum.
+   */
+  subCategory?: SubCategoryType;
 }
 
 @Component({
@@ -127,8 +134,19 @@ export class AdminShellComponent implements OnInit {
     { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas' },
     { path: 'invoicing',    icon: 'pi-receipt',    label: 'Facturación',   feature: FeatureKey.CfdiInvoicing },
     { path: 'reservations', icon: 'pi-calendar',   label: 'Reservaciones', feature: FeatureKey.TableMap },
+    { path: '/reception/access-control', icon: 'pi-id-card', label: 'Recepción', subCategory: SubCategoryType.Gym },
     { path: 'settings',     icon: 'pi-cog',        label: 'Configuración' },
   ];
+
+  /**
+   * True when an item is gated by sub-category and that gate doesn't match
+   * the current tenant's vertical. Drives the `@if` in the template so the
+   * link is hidden entirely (no upsell, no padlock).
+   */
+  isHiddenBySubCategory(item: NavItem): boolean {
+    if (!item.subCategory) return false;
+    return this.tenantContext.currentSubCategory() !== item.subCategory;
+  }
 
   /**
    * Resolves the directive mode for a nav item based on the current giro:

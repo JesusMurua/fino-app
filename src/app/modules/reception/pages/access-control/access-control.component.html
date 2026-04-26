@@ -1,0 +1,108 @@
+<div class="access-control">
+
+  <!-- ================================================================== -->
+  <!-- Search bar                                                          -->
+  <!-- ================================================================== -->
+  <header class="access-control__searchbar">
+
+    <div class="access-control__search-wrapper">
+      <i class="pi pi-search access-control__search-icon" aria-hidden="true"></i>
+      <input
+        type="text"
+        pInputText
+        class="access-control__search-input"
+        placeholder="Buscar por nombre, teléfono o escanear QR..."
+        autocomplete="off"
+        spellcheck="false"
+        [ngModel]="query()"
+        (ngModelChange)="onQueryChange($event)"
+        aria-label="Buscar miembro"
+      />
+      @if (query().length > 0 || selectedCustomer()) {
+        <button
+          type="button"
+          class="access-control__clear-btn"
+          aria-label="Limpiar búsqueda"
+          (click)="reset()"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Results dropdown -->
+    @if (results().length > 0) {
+      <ul class="access-control__results" role="listbox">
+        @for (customer of results(); track customer.id) {
+          <li>
+            <button
+              type="button"
+              class="access-control__result"
+              (click)="selectCustomer(customer)"
+            >
+              <span class="access-control__result-name">{{ customer.name }}</span>
+              <span class="access-control__result-phone">{{ customer.phone }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+  </header>
+
+  <!-- ================================================================== -->
+  <!-- Status banner — fills the rest of the screen                        -->
+  <!-- ================================================================== -->
+  @switch (accessStatus()) {
+
+    @case ('VALID') {
+      <section class="access-control__banner access-control__banner--valid" role="status" aria-live="polite">
+        <i class="pi pi-check-circle access-control__icon"></i>
+        <h1 class="access-control__title">ACCESO PERMITIDO</h1>
+        @if (selectedCustomer(); as c) {
+          <p class="access-control__customer">{{ c.name }}</p>
+          @if (c.membershipValidUntil) {
+            <p class="access-control__expiry">
+              Vigente hasta el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}
+            </p>
+          }
+        }
+      </section>
+    }
+
+    @case ('EXPIRED') {
+      <section class="access-control__banner access-control__banner--expired" role="status" aria-live="polite">
+        <i class="pi pi-times-circle access-control__icon"></i>
+        <h1 class="access-control__title">MEMBRESÍA VENCIDA</h1>
+        @if (selectedCustomer(); as c) {
+          <p class="access-control__customer">{{ c.name }}</p>
+          @if (c.membershipValidUntil) {
+            <p class="access-control__expiry">
+              Venció el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}
+            </p>
+          } @else {
+            <p class="access-control__expiry">Sin membresía activa</p>
+          }
+        }
+      </section>
+    }
+
+    @case ('NOT_FOUND') {
+      <section class="access-control__banner access-control__banner--notfound" role="status" aria-live="polite">
+        <i class="pi pi-question-circle access-control__icon"></i>
+        <h1 class="access-control__title">MIEMBRO NO ENCONTRADO</h1>
+        <p class="access-control__expiry">Verifica el nombre, teléfono o código escaneado</p>
+      </section>
+    }
+
+    @default {
+      <section class="access-control__banner access-control__banner--idle">
+        <i class="pi pi-id-card access-control__icon"></i>
+        <h1 class="access-control__title">Listo para escanear</h1>
+        <p class="access-control__expiry">Escanea el código del miembro o búscalo por nombre</p>
+      </section>
+    }
+
+  }
+
+</div>

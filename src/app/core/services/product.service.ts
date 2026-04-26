@@ -27,6 +27,12 @@ export interface SaveProductDto {
   satUnitCode?: string;
   taxRate: number;
   printingDestinationId: number | null;
+  /**
+   * Free-form vertical metadata (e.g. `{ membershipDurationDays: 30 }` for
+   * gym memberships). The backend tolerates either an object or a JSON
+   * string; the frontend always sends an object literal.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -324,6 +330,17 @@ export class ProductService {
 
   /** Writes a server-confirmed product to Dexie and refreshes signals */
   private async persistProduct(product: Product): Promise<Product> {
+    // Defensive parse: the backend may emit `metadata` as a JSON string
+    // (legacy migrations) or as an object. Normalize to object so every
+    // downstream consumer (cart-panel, admin form) can read it directly.
+    if (typeof product.metadata === 'string') {
+      try {
+        product.metadata = JSON.parse(product.metadata);
+      } catch {
+        product.metadata = undefined;
+      }
+    }
+
     await this.db.products.put(product);
     await this.refreshSignalsFromDexie();
     return product;

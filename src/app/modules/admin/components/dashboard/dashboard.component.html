@@ -317,6 +317,31 @@
       </section>
     }
 
+    <!-- Gym: Memberships expiring or recently expired (±7 days) -->
+    @if (isGymTenant()) {
+      <section class="section-card">
+        <h2 class="section-card__title">Membresías por vencer</h2>
+        <p class="section-card__subtitle">Próximas a vencer o vencidas en los últimos 7 días</p>
+        @if (expiringMemberships().length === 0) {
+          <p class="section-card__empty">Ninguna membresía vence próximamente</p>
+        } @else {
+          <ol class="top-list">
+            @for (member of expiringMemberships(); track member.id) {
+              <li class="top-item">
+                <span class="top-item__name">{{ member.name }}</span>
+                <span class="top-item__date">{{ member.membershipValidUntil | date:'dd/MM/yyyy' }}</span>
+                @if (isExpired(member)) {
+                  <span class="badge badge--danger">Vencida</span>
+                } @else {
+                  <span class="badge badge--warning">Por vencer</span>
+                }
+              </li>
+            }
+          </ol>
+        }
+      </section>
+    }
+
     <div class="dashboard__columns">
 
       <!-- Top 5 productos -->

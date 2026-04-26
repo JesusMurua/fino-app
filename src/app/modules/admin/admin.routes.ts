@@ -22,9 +22,26 @@ export const adminRoutes: Routes = [
       },
       {
         path: 'products',
-        loadComponent: () =>
-          import('./components/products/admin-products.component')
-            .then(m => m.AdminProductsComponent),
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./components/products/admin-products.component')
+                .then(m => m.AdminProductsComponent),
+          },
+          {
+            path: 'new',
+            loadComponent: () =>
+              import('./components/products/product-form/product-form.component')
+                .then(m => m.ProductFormComponent),
+          },
+          {
+            path: ':id/edit',
+            loadComponent: () =>
+              import('./components/products/product-form/product-form.component')
+                .then(m => m.ProductFormComponent),
+          },
+        ],
       },
       {
         path: 'settings',
