@@ -18,19 +18,10 @@
     font-weight: 700;
     color: $color-text-title;
   }
-
-  &__loading {
-    display: flex;
-    align-items: center;
-    gap: $space-3;
-    color: $color-text-sub;
-    font-size: $font-size-base;
-    i { font-size: 20px; }
-  }
 }
 
 // -----------------------------------------------------------------------
-// Table
+// Table wrapper + per-cell typography (PrimeNG renders the actual <table>)
 // -----------------------------------------------------------------------
 .products-table-wrap {
   background: white;
@@ -40,29 +31,6 @@
 }
 
 .products-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: $font-size-base;
-
-  th {
-    padding: $space-3 $space-4;
-    text-align: left;
-    font-size: $font-size-label;
-    font-weight: 600;
-    color: $color-text-sub;
-    border-bottom: 1px solid $color-border-soft;
-    background: #FAFAFA;
-  }
-
-  td {
-    padding: $space-3 $space-4;
-    border-bottom: 1px solid $color-border-soft;
-    color: $color-text-title;
-    vertical-align: middle;
-  }
-
-  tr:last-child td { border-bottom: none; }
-
   &__name     { font-weight: 600; }
   &__category { color: $color-text-sub; }
   &__price    { font-weight: 700; color: $color-primary; }
@@ -90,6 +58,12 @@
 
   &:hover { background: #15803D; }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
+
+  &--sm {
+    padding: $space-2 $space-3;
+    min-height: 36px;
+    font-size: $font-size-label;
+  }
 }
 
 .btn-ghost {
@@ -129,6 +103,23 @@
   &--danger {
     &:hover { background: #FEF2F2; color: #DC2626; }
   }
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2;
+  border: none;
+  background: transparent;
+  color: $color-primary;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover { text-decoration: underline; }
 }
 
 // -----------------------------------------------------------------------
@@ -187,84 +178,13 @@
 }
 
 // -----------------------------------------------------------------------
-// Product dialog tabs
-// -----------------------------------------------------------------------
-:host ::ng-deep .product-dialog-tabs {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-
-  .p-tabview-panels {
-    padding: 0 !important;
-    flex: 1;
-    overflow: hidden;
-  }
-  .p-tabview-panel {
-    height: 100%;
-    overflow: hidden;
-  }
-  .p-tabview-nav-container {
-    padding: 0 $space-4;
-    flex-shrink: 0;
-  }
-  // Remove duplicate bottom border from tab nav
-  .p-tabview-nav {
-    border-bottom: none !important;
-  }
-  .p-tabview-nav-content {
-    border-bottom: 1px solid $color-border-soft;
-  }
-}
-
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: $color-primary;
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  margin-left: $space-2;
-}
-
-.tab-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $space-3;
-  padding: $space-6 $space-4;
-  text-align: center;
-
-  &__icon {
-    font-size: 48px;
-    color: #D1D5DB;
-  }
-
-  &__text {
-    margin: 0;
-    font-size: $font-size-base;
-    color: $color-text-sub;
-  }
-}
-
-// -----------------------------------------------------------------------
-// Dialog form
+// Shared dialog form (Categories / Discounts)
 // -----------------------------------------------------------------------
 .product-form {
   display: flex;
   flex-direction: column;
   gap: $space-4;
   padding: $space-2 0;
-
-  &--scrollable {
-    overflow-y: auto;
-    padding: $space-4;
-    max-height: calc(85vh - 180px);
-  }
 }
 
 .form-field {
@@ -287,168 +207,6 @@
   &__input {
     width: 100%;
   }
-
-  &__textarea {
-    resize: vertical;
-    min-height: 72px;
-  }
-}
-
-// -----------------------------------------------------------------------
-.form-section-divider {
-  height: 1px;
-  background: $color-border-soft;
-  margin: $space-2 0;
-}
-
-.form-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: $color-text-sub;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-// Sizes & Extras sections inside the product dialog
-// -----------------------------------------------------------------------
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
-  padding-top: $space-3;
-  border-top: 1px solid $color-border-soft;
-
-  &__header {
-    display: flex;
-    align-items: baseline;
-    gap: $space-3;
-  }
-
-  &__title {
-    font-size: $font-size-base;
-    font-weight: 600;
-    color: $color-text-title;
-  }
-
-  &__hint {
-    font-size: $font-size-label;
-    color: $color-text-sub;
-  }
-}
-
-.variant-row {
-  display: flex;
-  align-items: center;
-  gap: $space-2;
-
-  &__name {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__price {
-    width: 130px;
-    flex-shrink: 0;
-  }
-}
-
-.btn-add-variant {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-2 $space-3;
-  border: 1px dashed #D1D5DB;
-  border-radius: 8px;
-  background: transparent;
-  color: $color-text-sub;
-  font-size: $font-size-label;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-  align-self: flex-start;
-
-  i { font-size: 12px; }
-
-  &:hover {
-    border-color: $color-primary;
-    color: $color-primary;
-    background: $color-primary-light;
-  }
-
-  &:focus-visible {
-    outline: 2px solid $color-primary;
-    outline-offset: 2px;
-  }
-
-  &--nested {
-    margin-top: $space-2;
-  }
-}
-
-// -----------------------------------------------------------------------
-// Nested modifier group editor (product dialog → Precios y modificadores tab)
-// -----------------------------------------------------------------------
-.modifier-group {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-  padding: $space-4;
-  margin-bottom: $space-3;
-  border: 1px solid $color-border-soft;
-  border-radius: 12px;
-  background: #FAFBFC;
-
-  &__header {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-  }
-
-  &__name-input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__error {
-    margin: -$space-2 0 0;
-    font-size: $font-size-label;
-    font-weight: 700;
-    color: #DC2626;
-  }
-
-  &__rules {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $space-4;
-    padding: $space-2 0;
-    border-top: 1px dashed $color-border-soft;
-    border-bottom: 1px dashed $color-border-soft;
-  }
-
-  &__field {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-
-    &--switch {
-      margin-left: auto;
-    }
-  }
-
-  &__field-label {
-    font-size: $font-size-label;
-    color: $color-text-sub;
-  }
-
-  &__field-input {
-    width: 110px;
-  }
-
-  &__extras {
-    display: flex;
-    flex-direction: column;
-    gap: $space-2;
-  }
 }
 
 // -----------------------------------------------------------------------
@@ -469,6 +227,30 @@
   &--fixed {
     background: $color-primary-light;
     color: $color-primary;
+  }
+
+  &--success {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px $space-3;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  &--error {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px $space-3;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #FEF2F2;
+    color: #DC2626;
   }
 }
 
@@ -522,23 +304,6 @@
   }
 }
 
-.btn-link {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-2;
-  border: none;
-  background: transparent;
-  color: $color-primary;
-  font-size: $font-size-base;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:hover { text-decoration: underline; }
-}
-
 .import-divider {
   border: none;
   border-top: 1px solid #E5E7EB;
@@ -586,30 +351,6 @@
   display: flex;
   align-items: center;
   gap: $space-3;
-}
-
-.badge--success {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px $space-3;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 600;
-  background: #DCFCE7;
-  color: #15803D;
-}
-
-.badge--error {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px $space-3;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 600;
-  background: #FEF2F2;
-  color: #DC2626;
 }
 
 .import-errors {
@@ -683,7 +424,6 @@
 .text-red { color: #DC2626; }
 
 // -----------------------------------------------------------------------
-// -----------------------------------------------------------------------
 // Stock badges
 // -----------------------------------------------------------------------
 .stock-badge {
@@ -697,19 +437,6 @@
   &--low  { background: #FEF2F2; color: #DC2626; }
   &--out  { background: #DC2626; color: #fff; }
   &--na   { color: #9CA3AF; font-weight: 400; }
-}
-
-.form-hint {
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-top: $space-1;
-}
-
-.form-row {
-  display: flex;
-  gap: $space-4;
-
-  > .form-field { flex: 1; }
 }
 
 // -----------------------------------------------------------------------
@@ -735,12 +462,6 @@
   font-weight: 700;
   background: #EFF6FF;
   color: #2563EB;
-}
-
-.btn-primary--sm {
-  padding: $space-2 $space-3;
-  min-height: 36px;
-  font-size: $font-size-label;
 }
 
 // -----------------------------------------------------------------------
@@ -769,75 +490,3 @@
   color: #2563EB;
   font-weight: 600;
 }
-
-// -----------------------------------------------------------------------
-// Product image grid in edit dialog
-// -----------------------------------------------------------------------
-.image-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $space-3;
-
-  &__item {
-    position: relative;
-    width: 96px;
-    height: 96px;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid $color-border-soft;
-  }
-
-  &__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  &__remove {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.15s;
-
-    i { font-size: 11px; }
-
-    &:hover { background: #DC2626; }
-  }
-
-  &__add {
-    width: 96px;
-    height: 96px;
-    border: 2px dashed #D1D5DB;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    cursor: pointer;
-    color: $color-text-sub;
-    font-size: 12px;
-    font-family: inherit;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-
-    i { font-size: 18px; }
-
-    &:hover {
-      border-color: $color-primary;
-      color: $color-primary;
-      background: $color-primary-light;
-    }
-  }
-}
-
