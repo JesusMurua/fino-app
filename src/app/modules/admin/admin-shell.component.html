@@ -52,44 +52,46 @@
     <!-- Navigation -->
     <nav class="sidebar__nav" aria-label="Navegación del back office">
       @for (item of navItems; track item.path) {
-        @if (item.feature; as feature) {
-          <a
-            *appFeature="feature; mode: modeFor(item)"
-            class="nav-item"
-            [routerLink]="item.path"
-            routerLinkActive="nav-item--active"
-            [pTooltip]="tooltipFor(item)"
-            [escape]="false"
-            tooltipPosition="right"
-            (click)="onNavClick($event, item)"
-          >
-            <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
-            @if (!isCollapsed()) {
-              <span class="nav-item__label">{{ item.label }}</span>
-            }
-            @if (item.badge && lowStockCount() > 0) {
-              <span class="nav-item__badge">{{ lowStockCount() }}</span>
-            }
-            @if (isLocked(item)) {
-              <i class="pi pi-lock nav-item__lock"></i>
-            }
-          </a>
-        } @else {
-          <a
-            class="nav-item"
-            [routerLink]="item.path"
-            routerLinkActive="nav-item--active"
-            [pTooltip]="isCollapsed() ? item.label : ''"
-            tooltipPosition="right"
-          >
-            <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
-            @if (!isCollapsed()) {
-              <span class="nav-item__label">{{ item.label }}</span>
-            }
-            @if (item.badge && lowStockCount() > 0) {
-              <span class="nav-item__badge">{{ lowStockCount() }}</span>
-            }
-          </a>
+        @if (!isHiddenBySubCategory(item)) {
+          @if (item.feature; as feature) {
+            <a
+              *appFeature="feature; mode: modeFor(item)"
+              class="nav-item"
+              [routerLink]="item.path"
+              routerLinkActive="nav-item--active"
+              [pTooltip]="tooltipFor(item)"
+              [escape]="false"
+              tooltipPosition="right"
+              (click)="onNavClick($event, item)"
+            >
+              <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
+              @if (!isCollapsed()) {
+                <span class="nav-item__label">{{ item.label }}</span>
+              }
+              @if (item.badge && lowStockCount() > 0) {
+                <span class="nav-item__badge">{{ lowStockCount() }}</span>
+              }
+              @if (isLocked(item)) {
+                <i class="pi pi-lock nav-item__lock"></i>
+              }
+            </a>
+          } @else {
+            <a
+              class="nav-item"
+              [routerLink]="item.path"
+              routerLinkActive="nav-item--active"
+              [pTooltip]="isCollapsed() ? item.label : ''"
+              tooltipPosition="right"
+            >
+              <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
+              @if (!isCollapsed()) {
+                <span class="nav-item__label">{{ item.label }}</span>
+              }
+              @if (item.badge && lowStockCount() > 0) {
+                <span class="nav-item__badge">{{ lowStockCount() }}</span>
+              }
+            </a>
+          }
         }
       }
     </nav>

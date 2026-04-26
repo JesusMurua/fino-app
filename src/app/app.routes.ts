@@ -102,6 +102,13 @@ export const appRoutes: Routes = [
 				(m) => m.TablesComponent,
 			),
 	},
+	{
+		path: 'reception',
+		canActivate: [authGuard, roleGuard, terminalGuard],
+		data: { roles: [UserRoleId.Host, UserRoleId.Cashier, UserRoleId.Manager, UserRoleId.Owner] },
+		loadChildren: () =>
+			import('./modules/reception/reception.routes').then((m) => m.receptionRoutes),
+	},
 
 	// --- Catch-all: redirect to /pin so unknown URLs resolve to the terminal entry ---
 	{
