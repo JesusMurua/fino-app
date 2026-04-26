@@ -627,13 +627,22 @@ export class AuthService {
    * Extracts the `features` claim from a JWT payload.
    * Returns undefined when the token is not a real JWT
    * (e.g. `offline-session-*`) or when the claim is missing.
+   *
+   * The .NET backend serializes the claim as a JSON-encoded string
+   * (e.g. `"features": "[\"CustomerDatabase\"]"`) instead of a native
+   * JSON array, so we transparently parse strings back into arrays
+   * before handing them to the tenant context.
    */
   private extractFeaturesFromJwt(token: string): string[] | undefined {
     try {
       const parts = token.split('.');
       if (parts.length !== 3) return undefined;
       const payload = JSON.parse(atob(parts[1]));
-      return Array.isArray(payload.features) ? payload.features : undefined;
+      let feats = payload.features;
+      if (typeof feats === 'string') {
+        try { feats = JSON.parse(feats); } catch { return undefined; }
+      }
+      return Array.isArray(feats) ? feats : undefined;
     } catch {
       return undefined;
     }
