@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
+import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
 import { CatalogService } from './catalog.service';
 
 /**
@@ -53,6 +54,32 @@ export class TenantContextService {
 
   /** Number of active features — useful for debug / dev tooling */
   readonly featureCount = computed(() => this._activeFeatures().size);
+
+  /**
+   * Business type catalog entry matching the tenant's current sub-category.
+   * Looks up `catalogService.businessTypes()` by `code === currentSubCategory()`.
+   * Returns null when no sub-category is set or no match exists.
+   */
+  readonly currentBusinessType = computed<BusinessTypeCatalog | null>(() => {
+    const sub = this._currentSubCategory();
+    if (sub === null) return null;
+    return this.catalogService.businessTypes().find(b => b.code === sub) ?? null;
+  });
+
+  /**
+   * True when the tenant's business type has a kitchen (food prep area).
+   * Falls back to `true` for any FoodBeverage tenant — the macro alone
+   * implies a kitchen, even before the sub-category is hydrated.
+   */
+  readonly hasKitchen = computed(
+    () => this.currentBusinessType()?.hasKitchen
+      ?? (this.currentMacro() === MacroCategoryType.FoodBeverage),
+  );
+
+  /** POS experience variant for the current tenant — drives UI verticalization */
+  readonly posExperience = computed<PosExperience | undefined>(
+    () => this.currentBusinessType()?.posExperience,
+  );
 
   /**
    * Returns true when the tenant has the given feature enabled.
