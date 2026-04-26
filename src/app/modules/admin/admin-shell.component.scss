@@ -384,11 +384,23 @@ $transition: 0.25s ease;
 }
 
 // ---- Content ----
+//
+// Flex-column with `min-height: 0` + `overflow: hidden` delegates scroll to
+// each route component. This is required for pages that need a sticky
+// toolbar/footer pattern (e.g. product-form): the inner page sets
+// `height: 100%` on its host and uses `flex-shrink: 0` on header/footer to
+// pin them, while the body scrolls. With `overflow-y: auto` here the
+// document itself scrolled and `:host { height: 100% }` collapsed to 0.
+//
+// Pages that do NOT manage their own scroll must set `overflow-y: auto`
+// on their host or root element.
 .content {
   flex: 1;
-  padding: $space-5;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  overflow-y: auto;
 }

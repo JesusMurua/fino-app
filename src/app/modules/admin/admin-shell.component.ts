@@ -130,7 +130,9 @@ export class AdminShellComponent implements OnInit {
     { path: 'customers',    icon: 'pi-id-card',    label: 'Clientes',      feature: FeatureKey.CustomerDatabase },
     { path: 'users',        icon: 'pi-users',      label: 'Usuarios' },
     { path: 'devices',      icon: 'pi-tablet',     label: 'Dispositivos' },
-    { path: 'branches',     icon: 'pi-sitemap',    label: 'Sucursales' },
+    // 'branches' removed from sidebar in AUDIT-040 — embedded inline at the
+    // bottom of Settings → Negocio. The `/admin/branches` route remains
+    // registered in admin.routes.ts as a deep-link target.
     { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas' },
     { path: 'invoicing',    icon: 'pi-receipt',    label: 'Facturación',   feature: FeatureKey.CfdiInvoicing },
     { path: 'reservations', icon: 'pi-calendar',   label: 'Reservaciones', feature: FeatureKey.TableMap },

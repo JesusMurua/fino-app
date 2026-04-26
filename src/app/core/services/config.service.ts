@@ -146,11 +146,15 @@ export class ConfigService {
           ? { id: 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
           : config.businessTypeCatalog;
 
+      // Use `||` (not `??`) on string fields so an empty remote string
+      // does not overwrite a populated local value — the backend can
+      // return `''` for unset columns and we never want to clobber data
+      // the user already typed locally.
       config = {
         ...config,
-        businessName: remote.businessName,
+        businessName: remote.businessName || config.businessName || '',
         locationName: remote.locationName || remote.branchName || config.locationName,
-        businessPhone: remote.businessPhone ?? config.businessPhone ?? '',
+        businessPhone: remote.businessPhone || config.businessPhone || '',
         hasKitchen: remote.hasKitchen ?? false,
         hasTables: remote.hasTables ?? false,
         hasDelivery: remote.hasDelivery ?? false,
@@ -169,7 +173,16 @@ export class ConfigService {
       this.posExperience.set(config.businessTypeCatalog?.posExperience);
       console.info('[ConfigService] Config updated from API');
     } catch (error) {
-      console.warn('[ConfigService] API unreachable — using local config:', error);
+      // Surface the failure loudly so an empty form does not look like a
+      // hydration race — the user (and Sentry/console) need to know that
+      // the remote merge step failed and we are showing local-only data.
+      const status = (error as { status?: unknown })?.status;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[ConfigService] Failed to refresh config from API (status=${status ?? 'n/a'}): ${message}. ` +
+        `Showing local Dexie data — fields may be empty if this is a fresh install.`,
+        error,
+      );
     }
 
     this._isLoaded = true;

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -64,6 +64,18 @@ export class AdminBranchesComponent implements OnInit {
   readonly deliveryConfigService = inject(BranchDeliveryConfigService);
   private readonly messageService = inject(MessageService);
   private readonly tenantContext = inject(TenantContextService);
+
+  //#endregion
+
+  //#region Inputs
+
+  /**
+   * When true, the component is being embedded inside another page (e.g.
+   * Settings → Negocio) and should suppress its own page chrome (title,
+   * subtitle). The standalone `/admin/branches` route renders with
+   * `inline=false` and keeps the full header. (AUDIT-040)
+   */
+  readonly inline = input<boolean>(false);
 
   //#endregion
 

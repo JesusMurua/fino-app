@@ -137,10 +137,10 @@
             </div>
           }
 
-          <!-- Membership configuration (Gym vertical only) -->
-          @if (isGymTenant()) {
+          <!-- Membership / vigencia configuration (Services macro) -->
+          @if (showsMembership()) {
             <div class="form-field form-field--row">
-              <label class="form-field__label" for="pf-is-membership">¿Es una membresía?</label>
+              <label class="form-field__label" for="pf-is-membership">¿Es un producto con vigencia?</label>
               <p-inputSwitch inputId="pf-is-membership" formControlName="isMembership" />
             </div>
 
@@ -155,7 +155,7 @@
                   suffix=" días"
                   styleClass="w-full"
                 />
-                <span class="form-hint">Al cobrar este producto, la membresía del cliente se extenderá por este número de días.</span>
+                <span class="form-hint">Al cobrar este producto, la vigencia del cliente se extenderá por este número de días.</span>
               </div>
             }
           }
