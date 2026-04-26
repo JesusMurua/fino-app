@@ -198,6 +198,27 @@
     background: #F3F4F6;
     color: #6B7280;
   }
+
+  &--warning {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+
+  &--danger {
+    background: #FEF2F2;
+    color: #DC2626;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Date column inside `.top-item` rows (gym membership widget)
+// -----------------------------------------------------------------------
+.top-item__date {
+  font-variant-numeric: tabular-nums;
+  font-size: $font-size-label;
+  color: $color-text-sub;
+  margin-left: auto;
+  margin-right: $space-3;
 }
 
 // -----------------------------------------------------------------------
