@@ -163,10 +163,9 @@ export class AuthService {
     private readonly router: Router,
     private readonly tenantContext: TenantContextService,
   ) {
-    // Field initializers have already hydrated `currentUser` from localStorage.
-    // Mirror that state into the tenant context so guards and directives see
-    // the correct plan/giro/features immediately on app boot.
-    this.syncTenantContext();
+    // No HTTP and no cross-service writes here. The tenant context is
+    // primed post-bootstrap from `AppComponent.ngOnInit` via the public
+    // `syncTenantContext()` method — see AUDIT-046 for the rationale.
   }
   //#endregion
 
@@ -714,15 +713,16 @@ export class AuthService {
   /**
    * Mirrors the current auth state into the tenant context so guards
    * and directives see a consistent plan/macro/feature snapshot.
-   * Called on boot, login, offline login, and subscription refresh.
+   * Called on boot (from `AppComponent.ngOnInit`), login, offline login,
+   * and subscription refresh.
    *
    * Hard guard: an unauthenticated session must never reach the tenant
-   * sync — Angular bootstraps `AuthService` before any component is
-   * rendered, and the public `/register` and `/login` routes both run
-   * with a null `currentUser`. Touching signals beyond the guard in
-   * that state previously crashed the app on Vercel (blank page).
+   * sync — `AppComponent.ngOnInit` runs even on the public `/register`
+   * and `/login` routes with a null `currentUser`. Touching signals
+   * beyond the guard in that state previously crashed the app on
+   * Vercel (blank page).
    */
-  private syncTenantContext(): void {
+  syncTenantContext(): void {
     if (!this.currentUser()) return;
 
     const macro = this.primaryMacroCategoryId();

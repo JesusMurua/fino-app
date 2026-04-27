@@ -1,5 +1,5 @@
 import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
-import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
+import { inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
 import { tap } from 'rxjs';
 
@@ -35,13 +35,7 @@ export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn,
 ) => {
-  // Capture the injector instead of resolving AuthService eagerly. AuthService's
-  // constructor triggers an HTTP call (catalog fetch via TenantContextService),
-  // which re-enters this interceptor — eager `inject(AuthService)` here would
-  // cycle (NG0200). The 401 handler uses `runInInjectionContext` below to lazy-
-  // inject AuthService only when actually needed; by then the constructor has
-  // returned and the cached instance is available.
-  const injector = inject(EnvironmentInjector);
+  const authService = inject(AuthService);
   const configService = inject(ConfigService);
   const deviceService = inject(DeviceService);
 
@@ -71,10 +65,7 @@ export const authInterceptor: HttpInterceptorFn = (
           const currentPath = window.location.pathname;
           const isPublicRoute = PUBLIC_ROUTES.some(route => currentPath.startsWith(route));
           if (!isPublicRoute) {
-            // Lazy-inject AuthService inside the captured injector context.
-            // By the time a 401 fires, AuthService is fully constructed and
-            // cached, so this resolves to the singleton without re-entering DI.
-            runInInjectionContext(injector, () => inject(AuthService).logout());
+            authService.logout();
           }
         }
 

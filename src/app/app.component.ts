@@ -73,6 +73,12 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Prime the tenant context from the rehydrated user FIRST — guards
+    // and directives read it on the very next tick. Moved here from
+    // AuthService.constructor to keep the auth ctor HTTP-free and break
+    // the DI cycle through the auth interceptor (see AUDIT-046).
+    this.authService.syncTenantContext();
+
     this.printerService.tryAutoConnect();
     this.catalogService.loadAll();
 
