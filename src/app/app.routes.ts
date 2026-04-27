@@ -1,4 +1,3 @@
-import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 
 import { adminShellGuard } from './core/guards/admin-shell.guard';
@@ -11,38 +10,16 @@ import { roleGuard } from './core/guards/role.guard';
 import { setupGuard } from './core/guards/setup.guard';
 import { terminalGuard } from './core/guards/terminal.guard';
 import { FeatureKey, UserRoleId } from './core/enums';
-import { LAST_AUTH_ENTRY_KEY } from './core/models';
-import { ConfigService } from './core/services/config.service';
-
-/**
- * Smart entry redirect for `''` and `'**'` routes.
- *
- * Order of preference:
- *   1. If localStorage records the browser was last on the email entry
- *      (Owner / Manager) → `/login`.
- *   2. Else, if a device has been provisioned on this browser → `/pin`
- *      (terminal entry — Cashier / Waiter / Host / Kitchen).
- *   3. Else, fall back to `/login` — safest for fresh installs because
- *      the device hasn't been paired yet, so a PIN-only flow can't run
- *      and an Owner needs the email entry to provision via codes.
- *
- * Runs in the router's DI context (same as `CanActivateFn`), so
- * `inject()` is valid here.
- */
-function entryRedirect(): string {
-  const configService = inject(ConfigService);
-  const lastEntry = localStorage.getItem(LAST_AUTH_ENTRY_KEY);
-
-  if (lastEntry === 'email') return '/login';
-  if (configService.isDeviceConfigured()) return '/pin';
-  return '/login';
-}
 
 export const appRoutes: Routes = [
+	// --- Root: dual-entry Auth Portal (Back Office vs Operational) ---
 	{
 		path: '',
-		redirectTo: entryRedirect,
 		pathMatch: 'full',
+		loadComponent: () =>
+			import('./modules/auth-portal/auth-portal.component').then(
+				(m) => m.AuthPortalComponent,
+			),
 	},
 
 	// --- Public routes ---
@@ -137,10 +114,10 @@ export const appRoutes: Routes = [
 			import('./modules/reception/reception.routes').then((m) => m.receptionRoutes),
 	},
 
-	// --- Catch-all: route-aware redirect — Back Office users go to /login,
-	//     terminal-bound browsers go to /pin, fresh installs default to /login ---
+	// --- Catch-all: send unknown URLs back to the Auth Portal so the user
+	//     re-picks an entry consciously instead of being silently rerouted. ---
 	{
 		path: '**',
-		redirectTo: entryRedirect,
+		redirectTo: '',
 	},
 ];

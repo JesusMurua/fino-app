@@ -1,0 +1,52 @@
+<div class="auth-portal-page">
+  <div class="auth-portal">
+
+    <header class="auth-portal__header">
+      <div class="auth-portal__brand">
+        <i class="pi pi-bolt"></i>
+        <span>POS Táctil</span>
+      </div>
+      <h1 class="auth-portal__title">¿Cómo vas a entrar?</h1>
+      <p class="auth-portal__sub">Elige el modo de acceso de este dispositivo</p>
+    </header>
+
+    <div class="auth-portal__cards">
+
+      <!-- Card A — Back Office (always /login) -->
+      <button
+        type="button"
+        class="auth-portal__card auth-portal__card--admin"
+        (click)="goToBackOffice()"
+      >
+        <span class="auth-portal__icon">
+          <i class="pi pi-briefcase"></i>
+        </span>
+        <span class="auth-portal__body">
+          <strong class="auth-portal__card-title">Back Office</strong>
+          <span class="auth-portal__card-sub">
+            Administra tu negocio con email y contraseña
+          </span>
+        </span>
+        <i class="pi pi-arrow-right auth-portal__arrow"></i>
+      </button>
+
+      <!-- Card B — Operational (vertical-aware) -->
+      <button
+        type="button"
+        class="auth-portal__card auth-portal__card--operational"
+        (click)="goToOperational()"
+      >
+        <span class="auth-portal__icon">
+          <i [class]="operationalCard().icon"></i>
+        </span>
+        <span class="auth-portal__body">
+          <strong class="auth-portal__card-title">{{ operationalCard().title }}</strong>
+          <span class="auth-portal__card-sub">{{ operationalCard().subtitle }}</span>
+        </span>
+        <i class="pi pi-arrow-right auth-portal__arrow"></i>
+      </button>
+
+    </div>
+
+  </div>
+</div>
