@@ -1,7 +1,7 @@
 @use '../../../../../styles/variables' as *;
 
 .cajas-container {
-  padding: $space-4;
+  // Horizontal padding removed — admin-shell provides $shell-inset-x.
   display: flex;
   flex-direction: column;
   gap: $space-3;

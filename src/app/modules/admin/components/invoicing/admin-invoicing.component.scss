@@ -7,8 +7,8 @@
   display: flex;
   flex-direction: column;
   gap: $space-5;
-  padding: $space-5;
-  max-width: 960px;
+  // Padding + max-width removed — shell provides $shell-inset-x and the
+  // .layout-standard preset (1080px) replaces the local 960px constraint.
 }
 
 // -----------------------------------------------------------------------

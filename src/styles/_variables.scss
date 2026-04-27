@@ -42,6 +42,29 @@ $category-bar-height:        64px;  // Category filter bar height (= touch targe
 $header-height:              60px;  // Top app bar height
 
 // -----------------------------------------------------------------------------
+// Back Office layout system — shell inset + page-width presets.
+// `_layout.scss` consumes these to emit `.layout-wide / -standard / -narrow`
+// utility classes that pages apply to their root container. The shell only
+// supplies horizontal breathing room; vertical spacing stays per-page so
+// sticky headers/footers don't get pushed away from the viewport edge.
+// -----------------------------------------------------------------------------
+$shell-inset-x:        24px;     // Gap between sidebar and content
+$shell-inset-top:      0;        // Vertical inset is 0 — pages own their top spacing
+$shell-inset-bottom:   0;        // (same — pages own their bottom spacing)
+
+$layout-wide:        1440px;     // Tables, listings, catalogs
+$layout-standard:    1080px;     // Forms, dashboards, settings
+$layout-narrow:       720px;     // Wizards, simple flows
+
+// Section spacing — semantic aliases over the spacing scale, used so
+// future components share a vocabulary. New code should prefer these
+// over raw `$space-*` numbers when the meaning is structural.
+$section-gap:    $space-5;       // 24px — gap between top-level sections
+$card-gap:       $space-4;       // 16px — gap between cards in a row
+$card-padding:   $space-5;       // 24px — padding inside a card
+$field-gap:      $space-2;       //  8px — gap between label and input
+
+// -----------------------------------------------------------------------------
 // POS Color overrides
 // -----------------------------------------------------------------------------
 $color-primary:        #16A34A;  // Green — primary brand color

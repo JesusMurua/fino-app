@@ -1,4 +1,4 @@
-<div class="admin-branches">
+<div class="admin-branches layout-wide">
 
   <!-- Header — hidden when embedded (the host page provides its own chrome) -->
   @if (!inline()) {
@@ -36,8 +36,11 @@
     </div>
   }
 
-  <!-- List -->
-  <section class="settings-card">
+  <!-- List — `.settings-card` only on the standalone /admin/branches route.
+       In inline mode the host page (Settings → Negocio) already provides
+       the card chrome, so doubling it caused 48px of nested padding (H2
+       in AUDIT-045). -->
+  <section [class.settings-card]="!inline()">
     <p-table
       [value]="branches()"
       [loading]="loadingBranches()"

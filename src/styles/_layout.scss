@@ -1,0 +1,30 @@
+// =============================================================================
+// Back Office layout presets
+// =============================================================================
+// Each page applies one of these utility classes to its root container so
+// the page max-width is decided at the leaf, not at the shell. Mirrors the
+// pattern Linear / Notion / Stripe use for their admin surfaces — wide
+// tables breathe, dashboards stay readable, wizards stay narrow.
+//
+// Tokens live in `_variables.scss` ($layout-wide / -standard / -narrow).
+// =============================================================================
+
+@use 'variables' as *;
+
+.layout-wide {
+  max-width: $layout-wide;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.layout-standard {
+  max-width: $layout-standard;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.layout-narrow {
+  max-width: $layout-narrow;
+  width: 100%;
+  margin: 0 auto;
+}
