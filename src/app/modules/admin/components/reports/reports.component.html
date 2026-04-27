@@ -1,10 +1,12 @@
 <div class="reports-page layout-wide">
 
   <!-- Header -->
-  <div class="reports-header">
-    <h1 class="reports-header__title">Reportes</h1>
+  <div class="page-header">
+    <div class="page-header__info">
+      <h1 class="page-header__title">Reportes</h1>
+    </div>
     @if (hasData()) {
-      <div class="reports-header__actions">
+      <div class="page-header__actions">
         <button type="button" class="btn-export btn-export--excel" [disabled]="loadingExcel()" (click)="onDownloadExcel()">
           <i [class]="loadingExcel() ? 'pi pi-spin pi-spinner' : 'pi pi-file-excel'"></i>
           Excel

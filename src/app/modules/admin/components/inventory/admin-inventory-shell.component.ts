@@ -16,12 +16,14 @@ import { SuppliersTabComponent } from './suppliers/suppliers-tab.component';
   standalone: true,
   imports: [TabViewModule, InventoryItemsTabComponent, InventoryLedgerTabComponent, StockReceiptsTabComponent, SuppliersTabComponent],
   template: `
-    <div class="flex flex-column gap-5 p-4">
+    <div class="layout-wide">
 
-      <!-- Header -->
-      <h1 class="text-900 text-2xl font-semibold m-0">Inventario</h1>
+      <div class="page-header">
+        <div class="page-header__info">
+          <h1 class="page-header__title">Inventario</h1>
+        </div>
+      </div>
 
-      <!-- Tabs -->
       <p-tabView
         [activeIndex]="activeTab()"
         (activeIndexChange)="onTabChange($event)"

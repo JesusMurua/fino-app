@@ -11,36 +11,8 @@
   // .layout-standard preset (1080px) replaces the local 960px constraint.
 }
 
-// -----------------------------------------------------------------------
-// Header
-// -----------------------------------------------------------------------
-.invoicing-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: $space-4;
-  flex-wrap: wrap;
-
-  &__left {
-    display: flex;
-    flex-direction: column;
-    gap: $space-1;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: $font-size-title;
-    font-weight: 700;
-    color: $color-text-title;
-  }
-
-  &__subtitle {
-    margin: 0;
-    font-size: $font-size-label;
-    color: $color-text-sub;
-  }
-}
-
+// Calendar inside .page-header__actions — keep its min-width so the
+// dd/mm/yy range placeholder doesn't truncate.
 :host ::ng-deep .invoicing-calendar {
   min-width: 260px;
 }

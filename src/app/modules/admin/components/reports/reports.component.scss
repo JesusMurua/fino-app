@@ -11,27 +11,8 @@
 }
 
 // -----------------------------------------------------------------------
-// Header
+// Export buttons (rendered inside .page-header__actions)
 // -----------------------------------------------------------------------
-.reports-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $space-4;
-
-  &__title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: $color-text-title;
-  }
-
-  &__actions {
-    display: flex;
-    gap: $space-2;
-  }
-}
-
 .btn-export {
   display: inline-flex;
   align-items: center;

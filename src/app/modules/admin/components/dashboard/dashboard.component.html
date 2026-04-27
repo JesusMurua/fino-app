@@ -5,10 +5,12 @@
   <!-- always reachable. Contextual controls (calendar, CSV export, "Ver   -->
   <!-- guía") only render when the Main Dashboard view is active.          -->
   <!-- ================================================================== -->
-  <header class="dashboard-header">
-    <h1 class="dashboard-header__title">Dashboard</h1>
+  <div class="page-header">
+    <div class="page-header__info">
+      <h1 class="page-header__title">Dashboard</h1>
+    </div>
 
-    <div class="dashboard-header__actions">
+    <div class="page-header__actions page-header__actions--dense">
       @if (checklistService.hiddenByUser() && !checklistService.isChecklistComplete()) {
         <p-button
           label="Ver guía de inicio"
@@ -42,7 +44,7 @@
       }
 
     </div>
-  </header>
+  </div>
 
   @if (checklistService.showChecklist()) {
 

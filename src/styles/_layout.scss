@@ -28,3 +28,66 @@
   width: 100%;
   margin: 0 auto;
 }
+
+// ============================================================================
+// Shared page header pattern
+// ============================================================================
+// Reusable across every Back Office page so the gap between the trial
+// bar (or top edge) and the page title is consistent. Pages apply this
+// to the wrapper `<div>` that holds the title + actions row.
+//
+// Markup contract:
+//   <div class="page-header">
+//     <div class="page-header__info">
+//       <h1 class="page-header__title">…</h1>
+//       <p class="page-header__subtitle">…</p>   <!-- optional -->
+//     </div>
+//     <div class="page-header__actions">…</div>  <!-- optional -->
+//   </div>
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-4;
+  padding-top: $space-5;     // 24 px breathing room against the trial bar / top
+  padding-bottom: $space-4;  // 16 px separation from the next section
+  flex-wrap: wrap;           // prevents overflow on narrow viewports
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;             // lets long titles ellipsize gracefully
+  }
+
+  &__title {
+    margin: 0;
+    font-size: $font-size-title;   // 22 px — matches existing admin titles
+    font-weight: 700;
+    color: $color-text-title;
+    line-height: 1.3;
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: $font-size-label;   // 14 px
+    color: $color-text-sub;
+    line-height: 1.4;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $space-2;            // 8 px between buttons by default
+    flex-shrink: 0;
+    flex-wrap: wrap;          // dashboard's calendar + dropdown + button row
+
+    // Dashboard-style dense action rows where a calendar / dropdown sits
+    // alongside buttons — slightly larger gap so the controls don't feel
+    // glued together.
+    &--dense {
+      gap: $space-3;          // 12 px
+    }
+  }
+}

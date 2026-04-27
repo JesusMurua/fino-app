@@ -2,23 +2,25 @@
 
   <!-- Header — hidden when embedded (the host page provides its own chrome) -->
   @if (!inline()) {
-    <div class="admin-branches__header">
-      <div>
-        <h1 class="admin-branches__title">Sucursales</h1>
-        <p class="admin-branches__subtitle">
+    <div class="page-header">
+      <div class="page-header__info">
+        <h1 class="page-header__title">Sucursales</h1>
+        <p class="page-header__subtitle">
           Administra las ubicaciones de tu negocio y la configuración de cada una
         </p>
       </div>
-      <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
-        <p-button
-          label="Nueva sucursal"
-          icon="pi pi-plus"
-          severity="secondary"
-          [outlined]="true"
-          [disabled]="atBranchLimit()"
-          (onClick)="openNewBranch()"
-        />
-      </span>
+      <div class="page-header__actions">
+        <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
+          <p-button
+            label="Nueva sucursal"
+            icon="pi pi-plus"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="atBranchLimit()"
+            (onClick)="openNewBranch()"
+          />
+        </span>
+      </div>
     </div>
   } @else {
     <div class="admin-branches__inline-actions">
