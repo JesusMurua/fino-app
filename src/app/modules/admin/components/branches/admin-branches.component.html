@@ -47,7 +47,9 @@
       <ng-template pTemplate="header">
         <tr>
           <th>Nombre</th>
-          <th>Ubicación</th>
+          <th>Dirección</th>
+          <th style="width: 11rem">Teléfono</th>
+          <th style="width: 14rem">Rol / Ubicación</th>
           @if (showKitchenToggle()) {
             <th style="width: 5rem; text-align: center">Cocina</th>
           }
@@ -60,17 +62,27 @@
 
       <ng-template pTemplate="body" let-branch>
         <tr>
+          <td>{{ branch.name }}</td>
           <td>
-            {{ branch.name }}
-            @if (branch.isMatrix) {
-              <span class="matrix-badge">Matriz</span>
+            @if (branch.address) {
+              {{ branch.address }}
+            } @else {
+              <span class="branch-empty-cell">Sin dirección registrada</span>
             }
           </td>
           <td>
-            @if (branch.locationName) {
-              {{ branch.locationName }}
+            @if (branch.phone) {
+              {{ branch.phone }}
             } @else {
-              <span class="branch-empty-cell">Sin dirección registrada</span>
+              <span class="branch-empty-cell">—</span>
+            }
+          </td>
+          <td>
+            <span class="role-badge" [class.role-badge--matrix]="branch.isMatrix">
+              {{ branch.isMatrix ? 'Matriz' : 'Sucursal' }}
+            </span>
+            @if (branch.locationName) {
+              <span class="branch-location">· {{ branch.locationName }}</span>
             }
           </td>
           @if (showKitchenToggle()) {

@@ -126,3 +126,12 @@ export const AUTH_TOKEN_KEY = 'pos_auth_token';
 export const AUTH_USER_KEY = 'pos_auth_user';
 export const ACTIVE_BRANCH_KEY = 'pos_active_branch_id';
 export const RETURN_URL_KEY = 'pos_return_url';
+
+/**
+ * Records which authentication entry the browser was last using —
+ * `'email'` for Back Office (Owner / Manager) or `'pin'` for terminal
+ * roles. Persisted across `logout()` so the routing layer can pick the
+ * correct re-entry point (`/login` vs `/pin`) when the session is gone.
+ */
+export const LAST_AUTH_ENTRY_KEY = 'pos_last_auth_entry';
+export type LastAuthEntry = 'email' | 'pin';

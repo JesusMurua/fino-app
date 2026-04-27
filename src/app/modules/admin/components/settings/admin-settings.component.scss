@@ -94,6 +94,16 @@
   &--full {
     grid-template-columns: 1fr;
   }
+
+  // Stacked layout — flex column where each child row controls its own
+  // grid (PrimeFlex `grid` for 3-col rows, full-width sections for tables).
+  // Used by the Negocio tab so the branches table can span 100% width
+  // independently from the cards above it.
+  &--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -115,11 +125,6 @@
     gap: $space-3;
     padding-top: $space-3;
     border-top: 1px solid $color-border-soft;
-
-    .btn-primary {
-      min-width: 140px;
-      justify-content: center;
-    }
   }
 
   &__ok {

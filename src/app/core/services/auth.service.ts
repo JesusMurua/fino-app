@@ -10,6 +10,8 @@ import {
   AuthUser,
   BranchInfo,
   EmployeeHash,
+  LAST_AUTH_ENTRY_KEY,
+  LastAuthEntry,
   LoginResponse,
   PlanInfo,
   RETURN_URL_KEY,
@@ -365,9 +367,24 @@ export class AuthService {
   }
 
   /**
-   * Clears auth state and redirects to /pin.
+   * Clears auth state and redirects to the entry point that matches the
+   * caller's session type:
+   *
+   *   - Email session OR Back Office role → `/login`
+   *   - PIN session OR unknown            → `/pin`
+   *
+   * Persists the resolved entry in `LAST_AUTH_ENTRY_KEY` BEFORE clearing
+   * the rest of the auth keys so the routing layer (root + catch-all)
+   * remembers who was using the browser even after the session is wiped.
    */
   logout(): void {
+    const lastEntry: LastAuthEntry =
+      this.sessionType() === 'email' || BACK_OFFICE_ROLES.includes(this.currentUser()?.roleId as never)
+        ? 'email'
+        : 'pin';
+
+    localStorage.setItem(LAST_AUTH_ENTRY_KEY, lastEntry);
+
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(ACTIVE_BRANCH_KEY);
@@ -382,7 +399,7 @@ export class AuthService {
     this.db.products.clear().catch(() => {});
     this.db.categories.clear().catch(() => {});
 
-    this.router.navigate(['/pin']);
+    this.router.navigate([lastEntry === 'email' ? '/login' : '/pin']);
   }
 
   /**
@@ -554,6 +571,14 @@ export class AuthService {
       features,
       sessionType,
     };
+
+    // Track which entry point this session uses so the routing layer can
+    // re-enter via the right surface after logout / token expiry.
+    const entry: LastAuthEntry =
+      sessionType === 'email' || BACK_OFFICE_ROLES.includes(user.roleId)
+        ? 'email'
+        : 'pin';
+    localStorage.setItem(LAST_AUTH_ENTRY_KEY, entry);
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));

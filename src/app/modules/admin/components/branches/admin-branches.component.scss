@@ -63,7 +63,7 @@
 }
 
 // -----------------------------------------------------------------------
-// Matrix badge (on the matrix branch row)
+// Matrix badge (on the matrix branch row, when shown alongside the name)
 // -----------------------------------------------------------------------
 .matrix-badge {
   display: inline-block;
@@ -75,6 +75,31 @@
   color: $color-primary;
   background: #F0FDF4;
   vertical-align: middle;
+}
+
+// -----------------------------------------------------------------------
+// Role badge (Matriz / Sucursal) — shown in the Rol/Ubicación column
+// -----------------------------------------------------------------------
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: $color-text-sub;
+  background: #F3F4F6;
+  vertical-align: middle;
+
+  &--matrix {
+    color: $color-primary;
+    background: #F0FDF4;
+  }
+}
+
+.branch-location {
+  margin-left: $space-2;
+  color: $color-text-sub;
+  font-size: 13px;
 }
 
 // -----------------------------------------------------------------------
