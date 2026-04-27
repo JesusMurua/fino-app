@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { MacroCategoryType } from '../../core/enums';
+import { LAST_AUTH_ENTRY_KEY, LastAuthEntry } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 
@@ -20,29 +21,27 @@ interface OperationalCardDescriptor {
 const DEFAULT_OPERATIONAL_CARD: OperationalCardDescriptor = {
   icon: 'pi pi-desktop',
   title: 'Terminal de Operación',
-  subtitle: 'Continuar a la pantalla operativa',
+  subtitle: 'Ventas, inventarios y caja.',
 };
 
-const OPERATIONAL_CARD_BY_MACRO: Record<MacroCategoryType, OperationalCardDescriptor> = {
-  [MacroCategoryType.FoodBeverage]: {
-    icon: 'pi pi-shopping-cart',
-    title: 'Punto de Venta y Comandas',
-    subtitle: 'Cobros, mesas y comandas a cocina',
-  },
-  [MacroCategoryType.QuickService]: {
-    icon: 'pi pi-shopping-cart',
-    title: 'Punto de Venta y Comandas',
-    subtitle: 'Cobros y comandas rápidas',
-  },
-  [MacroCategoryType.Retail]: {
-    icon: 'pi pi-tag',
-    title: 'Punto de Venta y Caja',
-    subtitle: 'Cobros, código de barras y stock',
-  },
+/**
+ * Vertical-specific card descriptors.
+ *
+ * Spec (only the listed verticals get bespoke copy; everything else,
+ * including Retail and QuickService, falls back to `DEFAULT_OPERATIONAL_CARD`):
+ *   - Services     → Recepción y Membresías (gym/spa/services)
+ *   - FoodBeverage → Punto de Venta (caja + comandas + mesas)
+ */
+const OPERATIONAL_CARD_BY_MACRO: Partial<Record<MacroCategoryType, OperationalCardDescriptor>> = {
   [MacroCategoryType.Services]: {
     icon: 'pi pi-id-card',
     title: 'Recepción y Membresías',
-    subtitle: 'Check-in, vigencias y cobros',
+    subtitle: 'Gestión de socios, accesos y vigencias.',
+  },
+  [MacroCategoryType.FoodBeverage]: {
+    icon: 'pi pi-shopping-cart',
+    title: 'Punto de Venta',
+    subtitle: 'Caja, comanderas y servicio a mesas.',
   },
 };
 
@@ -103,28 +102,36 @@ export class AuthPortalComponent {
   readonly operationalCard = computed<OperationalCardDescriptor>(() => {
     const macro = this.currentMacro();
     if (macro === null) return DEFAULT_OPERATIONAL_CARD;
-    return OPERATIONAL_CARD_BY_MACRO[macro];
+    return OPERATIONAL_CARD_BY_MACRO[macro] ?? DEFAULT_OPERATIONAL_CARD;
   });
 
   /**
-   * Card A handler — always sends the user to the email login screen,
-   * regardless of device or session state. Back Office surface.
+   * Card A — "Panel de Control". Always routes to `/login` and records
+   * the email entry so future redirects (catch-all, post-logout) re-enter
+   * via the Back Office surface.
    */
   goToBackOffice(): void {
+    this.rememberEntry('email');
     this.router.navigateByUrl('/login');
   }
 
   /**
-   * Card B handler — picks the operational entry based on whether this
-   * browser has a paired device. Configured devices have a stored device
-   * token + DeviceConfig in IndexedDB; fresh devices need to enter an
-   * activation code at `/setup`.
+   * Card B — vertical-aware operational entry. Records the PIN entry and
+   * routes to `/pin` when the device is paired, otherwise `/setup` so a
+   * fresh device can enter its 6-digit activation code.
    */
   goToOperational(): void {
+    this.rememberEntry('pin');
     if (this.configService.isDeviceConfigured()) {
       this.router.navigateByUrl('/pin');
     } else {
       this.router.navigateByUrl('/setup');
     }
+  }
+
+  /** Persists which entry the user chose so guards / catch-all redirects
+   *  can re-enter via the same surface after logout or a stale session. */
+  private rememberEntry(entry: LastAuthEntry): void {
+    localStorage.setItem(LAST_AUTH_ENTRY_KEY, entry);
   }
 }

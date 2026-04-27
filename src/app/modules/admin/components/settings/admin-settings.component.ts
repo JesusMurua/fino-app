@@ -466,6 +466,31 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.config.update(c => ({ ...c, [key]: value }));
   }
 
+  /**
+   * Unified save action for the Negocio tab — fires the business-info
+   * save and (when the tenant has CFDI / custom-folio access) the folio
+   * config save concurrently. Errors raised by either branch are already
+   * surfaced via individual toast handlers, so this just orchestrates.
+   *
+   * `Promise.all` (not `allSettled`) is intentional — if either save
+   * throws, we want the rejection to bubble so callers can `await` and
+   * branch on success. Each underlying save already swallows its own
+   * 402-billing rejection so the unified call only rejects on real
+   * server errors.
+   */
+  async saveAllBusinessSettings(): Promise<void> {
+    const tasks: Promise<unknown>[] = [this.saveBusinessConfig()];
+    if (this.canSeeCustomFolio()) {
+      tasks.push(this.saveFolioConfig());
+    }
+    await Promise.all(tasks);
+  }
+
+  /** True while any of the unified-save branches is in flight. */
+  readonly isSavingAllBusiness = computed(() =>
+    this.isSaving() || this.isSavingFolio(),
+  );
+
   //#endregion
 
   //#region Folio Configuration

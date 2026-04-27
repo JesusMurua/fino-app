@@ -2,7 +2,21 @@
 
   <!-- Sticky header with tabs (filtered by the feature shield) -->
   <div class="settings-header">
-    <h1 class="settings-header__title">Configuración</h1>
+    <div class="settings-header__row">
+      <h1 class="settings-header__title">Configuración</h1>
+
+      <!-- Unified Save — only the Negocio tab fans out to multiple
+           cards, so the page-level button is scoped to that tab. -->
+      @if (activeTab() === 'business') {
+        <p-button
+          label="Guardar cambios"
+          icon="pi pi-save"
+          [loading]="isSavingAllBusiness()"
+          (onClick)="saveAllBusinessSettings()"
+        />
+      }
+    </div>
+
     <nav class="settings-tabs" role="tablist">
       @for (tab of visibleTabs(); track tab.id) {
         <button
@@ -29,11 +43,11 @@
     @case ('business') {
       <div class="settings-content settings-content--stacked">
 
-        <!-- ROW 1: 3 equal columns — Info | Folios | Giro -->
+        <!-- ROW 1: 2 equal columns — Info (with embedded Giro) | Folios -->
         <div class="grid">
 
-          <!-- Column 1: Información del negocio -->
-          <div class="col-12 md:col-4">
+          <!-- Column 1: Información del negocio + Giro (read-only at the bottom) -->
+          <div class="col-12 md:col-6">
             <section class="settings-card h-full">
               <div class="settings-card-header">
                 <div class="card-icon"><i class="pi pi-building"></i></div>
@@ -58,25 +72,32 @@
                 </div>
               </div>
 
-              <div class="settings-card__footer flex justify-content-end">
-                @if (saveSuccess()) {
-                  <span class="settings-card__ok">
-                    <i class="pi pi-check-circle"></i> Guardado
-                  </span>
-                }
-                <p-button
-                  label="Guardar"
-                  icon="pi pi-save"
-                  [loading]="isSaving()"
-                  (onClick)="saveBusinessConfig()"
-                />
+              <!-- Giro del negocio — read-only block embedded inside Info.
+                   No primary action lives here; the WhatsApp link is the
+                   only escape hatch for changing the vertical. -->
+              <div class="settings-embedded-section">
+                <div class="settings-embedded-section__label">Giro del negocio</div>
+                <div class="settings-giro-display">
+                  <span class="settings-giro-display__icon">{{ currentGiroInfo().icon }}</span>
+                  <div>
+                    <div class="settings-giro-display__name">{{ currentGiroInfo().name }}</div>
+                    <div class="settings-giro-display__desc">{{ currentGiroInfo().description }}</div>
+                  </div>
+                </div>
+                <a
+                  class="settings-giro-contact"
+                  href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
+                  target="_blank"
+                >
+                  ¿Necesitas cambiar tu giro? Contáctanos por WhatsApp →
+                </a>
               </div>
             </section>
           </div>
 
           <!-- Column 2: Configuración de folios — gated by CustomFolios/CfdiInvoicing -->
           @if (canSeeCustomFolio()) {
-            <div class="col-12 md:col-4">
+            <div class="col-12 md:col-6">
               <section class="settings-card h-full">
                 <div class="settings-card-header">
                   <div class="card-icon"><i class="pi pi-receipt"></i></div>
@@ -122,52 +143,9 @@
                     <span class="folio-preview-card__value">{{ folioPreview() }}</span>
                   </div>
                 </div>
-
-                <div class="settings-card__footer flex justify-content-end">
-                  @if (saveFolioSuccess()) {
-                    <span class="settings-card__ok">
-                      <i class="pi pi-check-circle"></i> Guardado
-                    </span>
-                  }
-                  <p-button
-                    label="Guardar"
-                    icon="pi pi-save"
-                    [loading]="isSavingFolio()"
-                    (onClick)="saveFolioConfig()"
-                  />
-                </div>
               </section>
             </div>
           }
-
-          <!-- Column 3: Giro del negocio (read-only, subtler background) -->
-          <div class="col-12 md:col-4">
-            <section class="settings-card settings-card--readonly h-full">
-              <div class="settings-card-header">
-                <div class="card-icon"><i class="pi pi-globe"></i></div>
-                <div>
-                  <div class="card-title">Giro del negocio</div>
-                  <div class="card-subtitle">Tu tipo de negocio determina las funciones disponibles</div>
-                </div>
-              </div>
-
-              <div class="settings-giro-display">
-                <span class="settings-giro-display__icon">{{ currentGiroInfo().icon }}</span>
-                <div>
-                  <div class="settings-giro-display__name">{{ currentGiroInfo().name }}</div>
-                  <div class="settings-giro-display__desc">{{ currentGiroInfo().description }}</div>
-                </div>
-              </div>
-
-              <a
-                class="settings-giro-contact"
-                href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
-                target="_blank"
-              >
-                ¿Necesitas cambiar tu giro? Contáctanos por WhatsApp →
-              </a>
-            </section>
-          </div>
         </div>
 
         <!-- Branch operational config (read-only flags) — full-width row when shown -->

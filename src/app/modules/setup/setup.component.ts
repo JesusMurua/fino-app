@@ -140,7 +140,7 @@ export class SetupComponent implements OnInit {
 
   readonly modes: ModeOption[] = [
     { value: 'cashier', icon: '💳', label: 'Caja Registradora',  description: 'Cobro y venta directa' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',             description: 'Servicio a mesas (restaurante, bar)' },
+    { value: 'tables',  icon: '🪑', label: 'Gestión de Mesas',  description: 'Servicio a mesas (restaurante, bar)' },
     { value: 'kitchen', icon: '👨‍🍳', label: 'Pantalla de Cocina', description: 'Vista de pedidos para cocina' },
     { value: 'kiosk',   icon: '📱', label: 'Kiosko',            description: 'Autoservicio para clientes' },
   ];
@@ -156,19 +156,22 @@ export class SetupComponent implements OnInit {
 
   /**
    * Modes presented to the user, filtered by the tenant's vertical:
-   *   - `tables`  → only F&B tenants with tables enabled.
-   *   - `kitchen` → only tenants whose vertical preps food (F&B or
-   *                 QuickService) AND the branch has a kitchen flag.
+   *   - `tables`  and `kitchen` → only tenants in the food-prep verticals
+   *     (FoodBeverage or QuickService). Each mode also respects its own
+   *     operational flag (`hasTables` / `hasKitchen`) when present.
    *   - `cashier` and `kiosk` → universal.
    *
-   * When the backend hasn't shipped the vertical hints yet (`null`), the
-   * filter degrades open — all four modes are shown so existing flows
-   * keep working.
+   * When the backend hasn't shipped the vertical hints yet (`macro` is
+   * `null`), the filter degrades open — all four modes are shown so
+   * existing flows keep working until the backend enrichment ships.
    */
   readonly availableModes = computed<readonly ModeOption[]>(() => {
     const macro = this.tenantMacro();
     const hasKitchen = this.tenantHasKitchen();
     const hasTables = this.tenantHasTables();
+
+    const isFoodPrepVertical = macro === MacroCategoryType.FoodBeverage
+      || macro === MacroCategoryType.QuickService;
 
     return this.modes.filter(mode => {
       switch (mode.value) {
@@ -177,13 +180,10 @@ export class SetupComponent implements OnInit {
           return true;
         case 'tables':
           if (macro === null) return true;
-          return macro === MacroCategoryType.FoodBeverage && hasTables !== false;
+          return isFoodPrepVertical && hasTables !== false;
         case 'kitchen':
           if (macro === null) return true;
-          return (
-            (macro === MacroCategoryType.FoodBeverage || macro === MacroCategoryType.QuickService)
-            && hasKitchen !== false
-          );
+          return isFoodPrepVertical && hasKitchen !== false;
         default:
           return true;
       }

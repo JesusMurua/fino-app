@@ -29,16 +29,18 @@
     gap: $space-2;
   }
 
+  // Premium wordmark — subdued color, generous tracking, all-caps.
+  // Matches a Linear / Notion / Stripe-style "quiet luxury" header that
+  // doesn't compete with the question prompt below.
   &__brand {
-    display: inline-flex;
-    align-items: center;
-    gap: $space-2;
-    font-size: 14px;
-    font-weight: 600;
+    display: inline-block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     color: $color-primary;
-    margin-bottom: $space-3;
-
-    i { font-size: 18px; }
+    margin-bottom: $space-4;
+    line-height: 1;
   }
 
   &__title {

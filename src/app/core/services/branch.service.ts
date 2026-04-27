@@ -9,8 +9,7 @@ import { BranchDeliveryConfig } from '../models/branch-delivery-config.model';
 export interface Branch {
   id: number;
   name: string;
-  locationName: string;
-  /** Full street address — distinct from `locationName` (a short zone/area label) */
+  /** Full street address (e.g. "Av. Reforma 123, Col. Centro, CDMX") */
   address?: string;
   /** Contact phone for the branch */
   phone?: string;
@@ -24,7 +23,6 @@ export interface Branch {
 /** Mutable fields accepted by POST /branch and PUT /branch/:id */
 export interface BranchPayload {
   name: string;
-  locationName: string;
   address?: string;
   phone?: string;
   hasKitchen?: boolean;

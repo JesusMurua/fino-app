@@ -21,8 +21,19 @@
   top: 0;
   z-index: 10;
 
+  // Title + page-level action button live in a flex row so the unified
+  // "Guardar cambios" button anchors top-right while the title hugs left.
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-3;
+    margin-bottom: $space-4;
+    flex-wrap: wrap;
+  }
+
   &__title {
-    margin: 0 0 $space-4;
+    margin: 0;
     font-size: 20px;
     font-weight: 600;
     color: $color-text-title;
@@ -780,6 +791,27 @@
 // -----------------------------------------------------------------------
 // Negocio tab — giro display + branch config
 // -----------------------------------------------------------------------
+
+// Read-only section embedded inside an editable card (e.g. Giro inside
+// "Información del negocio"). A subtle divider + uppercase label make
+// the boundary obvious without introducing a second card frame.
+.settings-embedded-section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-top: $space-4;
+  padding-top: $space-4;
+  border-top: 1px solid $color-border-soft;
+
+  &__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $color-text-sub;
+  }
+}
+
 .settings-giro-display {
   display: flex;
   align-items: center;
