@@ -145,6 +145,18 @@ textarea.p-inputtextarea:enabled:focus {
   box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.2);
 }
 
+// TabView — active tab indicator (lara-light-indigo defaults to #6366F1
+// purple; align with the brand green so the underline matches the rest
+// of the UI). Covers both the active link color and the bottom border.
+.p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  color: #16A34A;
+  border-color: #16A34A;
+}
+
+.p-tabview .p-tabview-nav li .p-tabview-nav-link:not(.p-disabled):focus {
+  box-shadow: inset 0 0 0 0.15rem rgba(22, 163, 74, 0.2);
+}
+
 // -----------------------------------------------------------------------------
 // Price display utility
 // -----------------------------------------------------------------------------

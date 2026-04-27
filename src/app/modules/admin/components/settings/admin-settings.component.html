@@ -180,17 +180,24 @@
           </section>
         }
 
-        <!-- ROW 2: Sucursales — full-width data table -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-sitemap"></i></div>
-            <div>
-              <div class="card-title">Sucursales</div>
-              <div class="card-subtitle">Ubicaciones del negocio y configuración de cada una</div>
-            </div>
+        <!-- ROW 2: Sucursales — full-width data table.
+             Wrapped in a PrimeFlex grid so it inherits the same negative
+             horizontal margins as the 2-col row above it (Info + Folios),
+             keeping its left/right edges aligned with those cards. -->
+        <div class="grid">
+          <div class="col-12">
+            <section class="settings-card">
+              <div class="settings-card-header">
+                <div class="card-icon"><i class="pi pi-sitemap"></i></div>
+                <div>
+                  <div class="card-title">Sucursales</div>
+                  <div class="card-subtitle">Ubicaciones del negocio y configuración de cada una</div>
+                </div>
+              </div>
+              <app-admin-branches [inline]="true" />
+            </section>
           </div>
-          <app-admin-branches [inline]="true" />
-        </section>
+        </div>
 
       </div>
     }
