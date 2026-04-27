@@ -8,7 +8,7 @@ import {
   UpdateDevicePayload,
 } from '../models';
 import { ApiService } from './api.service';
-import { ConfigService } from './config.service';
+import { DeviceConfigStore } from './device-config.store';
 
 /** localStorage key for the stable device UUID */
 const DEVICE_UUID_KEY = 'kaja_device_uuid';
@@ -70,7 +70,7 @@ export class DeviceService implements OnDestroy {
   readonly deviceUuid: string;
 
   private readonly api = inject(ApiService);
-  private readonly configService = inject(ConfigService);
+  private readonly deviceConfigStore = inject(DeviceConfigStore);
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   //#endregion
@@ -96,9 +96,9 @@ export class DeviceService implements OnDestroy {
 
   /**
    * Registers this device with the backend.
-   * On success, persists the returned config to ConfigService and — when
-   * the backend returned a `deviceToken` — stores it as the long-lived
-   * infrastructure JWT used by KDS / Kiosk devices.
+   * On success, persists the returned config to `DeviceConfigStore` and —
+   * when the backend returned a `deviceToken` — stores it as the
+   * long-lived infrastructure JWT used by KDS / Kiosk devices.
    *
    * @param branchId Branch this device belongs to
    * @param mode Operating mode (cashier, kitchen, tables, kiosk, mobile)
@@ -123,7 +123,7 @@ export class DeviceService implements OnDestroy {
       deviceName:   response.name,
       configuredAt: new Date().toISOString(),
     };
-    this.configService.saveDeviceConfig(config);
+    this.deviceConfigStore.save(config);
 
     if (response.deviceToken) {
       this.saveDeviceToken(response.deviceToken);
@@ -138,8 +138,8 @@ export class DeviceService implements OnDestroy {
 
   /**
    * Validates this device against the backend.
-   * If the backend returns a valid config, overwrites local ConfigService
-   * to stay in sync with the server-side device record.
+   * If the backend returns a valid config, overwrites the local
+   * `DeviceConfigStore` to stay in sync with the server-side device record.
    * @returns true if the device is valid and active; false otherwise
    */
   async validateDevice(): Promise<boolean> {
@@ -157,9 +157,9 @@ export class DeviceService implements OnDestroy {
         branchName:   response.branchName,
         mode:         response.mode,
         deviceName:   response.name,
-        configuredAt: this.configService.deviceConfig$.getValue().configuredAt || new Date().toISOString(),
+        configuredAt: this.deviceConfigStore.deviceConfig$.getValue().configuredAt || new Date().toISOString(),
       };
-      this.configService.saveDeviceConfig(config);
+      this.deviceConfigStore.save(config);
 
       if (response.deviceToken) {
         this.saveDeviceToken(response.deviceToken);
@@ -183,7 +183,7 @@ export class DeviceService implements OnDestroy {
   startHeartbeat(): void {
     this.stopHeartbeat();
 
-    if (!this.configService.isDeviceConfigured()) return;
+    if (!this.deviceConfigStore.isConfigured()) return;
 
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeat();
