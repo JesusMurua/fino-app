@@ -1,4 +1,6 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormArray,
@@ -18,7 +20,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
-import { TabViewModule } from 'primeng/tabview';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
@@ -32,7 +33,7 @@ import {
   ProductModifierGroup,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
-import { MacroCategoryType } from '../../../../../core/enums';
+import { FeatureKey, MacroCategoryType } from '../../../../../core/enums';
 import { DatabaseService } from '../../../../../core/services/database.service';
 import { ProductService, SaveProductDto } from '../../../../../core/services/product.service';
 import { ScannerService } from '../../../../../core/services/scanner.service';
@@ -118,6 +119,7 @@ const modifierGroupMinMaxValidator: ValidatorFn = (
   selector: 'app-product-form',
   standalone: true,
   imports: [
+    CommonModule,
     ReactiveFormsModule,
     ButtonModule,
     DropdownModule,
@@ -125,7 +127,6 @@ const modifierGroupMinMaxValidator: ValidatorFn = (
     InputSwitchModule,
     InputTextModule,
     InputTextareaModule,
-    TabViewModule,
     ToastModule,
     TooltipModule,
   ],
@@ -223,17 +224,96 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   /** True while the save POST/PUT is in flight */
   readonly savingProduct = signal(false);
 
-  /** Active tab index in the page-level TabView */
-  activeTabIndex = 0;
-
   /** Images attached to the product (edit mode only) */
   readonly productImages = signal<ProductImage[]>([]);
 
   /** True while an image upload is in progress */
   readonly uploadingImage = signal(false);
 
+  /**
+   * Files staged in create mode. Uploaded sequentially after the
+   * `createProduct` POST returns the new product `id`. In edit mode
+   * uploads happen inline and this signal stays empty.
+   */
+  readonly pendingImageFiles = signal<File[]>([]);
+
+  /**
+   * Object URL for the first pending file — used to render an inline
+   * preview before the product is saved. Managed manually in the
+   * add/remove handlers and revoked in `ngOnDestroy` to avoid leaks.
+   */
+  readonly pendingPreviewUrl = signal<string | null>(null);
+
+  /** True while iterating `pendingImageFiles` post-save */
+  readonly uploadingPendingImages = signal(false);
+
+  /**
+   * Which collapsible sections are open. Drives `[attr.open]` on the
+   * `<details>` elements; the `(toggle)` event syncs back so user clicks
+   * stay reflected in the signal.
+   */
+  readonly expandedSections = signal<Set<string>>(
+    new Set(['identity', 'price']),
+  );
+
+  /**
+   * Whether the Modificadores section is shown for this tenant. Visible
+   * for tenants whose vertical preps food (F&B / QuickService) or whose
+   * branch flag has a kitchen — the same gate the original tab used.
+   */
+  readonly hasModifiersSection = computed(() => {
+    if (this.tenantContext.hasKitchen()) return true;
+    const macro = this.tenantContext.currentMacro();
+    return macro === MacroCategoryType.FoodBeverage
+      || macro === MacroCategoryType.QuickService;
+  });
+
+  /** Whether the Datos fiscales section is shown — gated by CFDI feature. */
+  readonly hasFiscalSection = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.CfdiInvoicing),
+  );
+
   /** Full reactive form for the page */
   readonly productForm: ProductFormGroup = this.buildProductForm();
+
+  /**
+   * Reactive snapshot of the form's value. Wraps `productForm.valueChanges`
+   * so `previewProduct` re-runs on every keystroke. Declared AFTER
+   * `productForm` so the property initializer runs in the right order.
+   */
+  private readonly formValue = toSignal(this.productForm.valueChanges, {
+    initialValue: this.productForm.getRawValue(),
+  });
+
+  /**
+   * Image source for the preview card. Uses the first uploaded image in
+   * edit mode and the staged pending blob URL in create mode.
+   */
+  readonly previewImageUrl = computed<string | null>(() => {
+    const uploaded = this.productImages();
+    if (uploaded.length > 0) return uploaded[0].url;
+    return this.pendingPreviewUrl();
+  });
+
+  /**
+   * Live preview model — reads from the form snapshot + image signals so
+   * the preview column updates in real time as the user types.
+   */
+  readonly previewProduct = computed(() => {
+    const v = this.formValue();
+    const categoryName = this.categories().find(c => c.id === v.categoryId)?.name ?? '';
+    return {
+      name: (v.name ?? '').trim(),
+      category: categoryName,
+      barcode: (v.barcode ?? '').trim(),
+      pricePesos: v.pricePesos ?? 0,
+      isAvailable: v.isAvailable ?? true,
+      currentStock: v.currentStock ?? 0,
+      isMembership: v.isMembership ?? false,
+      membershipDays: v.membershipDurationDays ?? 0,
+      image: this.previewImageUrl(),
+    };
+  });
 
   /** Convenience accessor — sizes FormArray */
   get sizesForm(): FormArray<SizeFormGroup> {
@@ -287,6 +367,11 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.scanSubscription?.unsubscribe();
     this.scannerService.stopListening();
+
+    // Revoke any blob URL we created for the pending image preview so
+    // we do not leak memory on long-lived sessions.
+    const pendingUrl = this.pendingPreviewUrl();
+    if (pendingUrl) URL.revokeObjectURL(pendingUrl);
   }
 
   //#endregion
@@ -445,7 +530,16 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
     this.savingProduct.set(true);
     save$.subscribe({
-      next: (saved) => {
+      next: async (saved) => {
+        // Upload any pending images BEFORE navigating away. The progress
+        // signal drives a thin progress bar in the form so the user sees
+        // the upload happening; the create-success toast already fired
+        // for the product itself, so we add a second toast only on
+        // upload failure.
+        if (!isEdit && this.pendingImageFiles().length > 0) {
+          await this.uploadPendingImages(saved.id);
+        }
+
         this.savingProduct.set(false);
         this.messageService.add({
           severity: 'success',
@@ -456,7 +550,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
         if (isEdit) {
           this.router.navigate(['/admin/products']);
         } else {
-          // Land on the edit page so the user can add images right away
+          // Land on the edit page so the user can add more images right away
           this.router.navigate(['/admin/products', saved.id, 'edit']);
         }
       },
@@ -470,6 +564,45 @@ export class ProductFormComponent implements OnInit, OnDestroy {
         });
       },
     });
+  }
+
+  /**
+   * Sequentially uploads every staged file to the freshly-created
+   * product. Failures are logged but don't block navigation — the
+   * product itself was created successfully and the user can re-attach
+   * images from the edit page.
+   */
+  private async uploadPendingImages(productId: number): Promise<void> {
+    const files = this.pendingImageFiles();
+    if (files.length === 0) return;
+
+    this.uploadingPendingImages.set(true);
+    try {
+      const uploaded: ProductImage[] = [];
+      for (const file of files) {
+        try {
+          const image = await this.productService.uploadProductImage(productId, file);
+          uploaded.push(image);
+        } catch (e) {
+          console.warn('Pending image upload failed:', e);
+        }
+      }
+
+      if (uploaded.length > 0) {
+        // Persist + reflect in the local signal so the edit-mode landing
+        // page renders the freshly-uploaded gallery without a refetch.
+        this.productImages.set(uploaded);
+        await this.db.products.update(productId, { images: uploaded });
+      }
+    } finally {
+      // Always clear the staging buffer + revoke blob URL, even if
+      // some uploads failed.
+      const blobUrl = this.pendingPreviewUrl();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      this.pendingPreviewUrl.set(null);
+      this.pendingImageFiles.set([]);
+      this.uploadingPendingImages.set(false);
+    }
   }
 
   /**
@@ -504,27 +637,79 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
   //#region Images
 
-  /** Handles image file selection and uploads to the API */
+  /**
+   * Total image slots used — uploaded + pending. Drives the "max 5"
+   * gate that hides the add button when capacity is reached.
+   */
+  imageSlotCount(): number {
+    return this.productImages().length + this.pendingImageFiles().length;
+  }
+
+  /**
+   * Handles image file selection. Splits behavior by mode:
+   *   - Edit: upload immediately to the existing product, persist to Dexie.
+   *   - Create: stage in `pendingImageFiles` and refresh the blob preview;
+   *             actual upload runs after `createProduct` returns the new id.
+   */
   async onImageSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const editing = this.editingProduct();
-    if (!input.files?.length || !editing) return;
-    if (this.productImages().length >= ProductFormComponent.MAX_IMAGES) return;
+    if (!input.files?.length) return;
 
-    this.uploadingImage.set(true);
-    try {
-      const image = await this.productService.uploadProductImage(
-        editing.id, input.files[0],
-      );
-      const updatedImages = [...this.productImages(), image];
-      this.productImages.set(updatedImages);
-      // Persist images to Dexie so they load on next page open
-      await this.db.products.update(editing.id, { images: updatedImages });
-    } catch (e) {
-      console.warn('Image upload failed:', e);
-    } finally {
-      this.uploadingImage.set(false);
+    const file = input.files[0];
+    if (this.imageSlotCount() >= ProductFormComponent.MAX_IMAGES) {
       input.value = '';
+      return;
+    }
+
+    const editing = this.editingProduct();
+
+    if (editing) {
+      // Edit mode — upload right away
+      this.uploadingImage.set(true);
+      try {
+        const image = await this.productService.uploadProductImage(editing.id, file);
+        const updatedImages = [...this.productImages(), image];
+        this.productImages.set(updatedImages);
+        await this.db.products.update(editing.id, { images: updatedImages });
+      } catch (e) {
+        console.warn('Image upload failed:', e);
+      } finally {
+        this.uploadingImage.set(false);
+        input.value = '';
+      }
+      return;
+    }
+
+    // Create mode — stage and refresh preview blob URL
+    this.addPendingImage(file);
+    input.value = '';
+  }
+
+  /** Stages a file for upload after the product is created. */
+  private addPendingImage(file: File): void {
+    this.pendingImageFiles.update(arr => [...arr, file]);
+    // Show the just-staged file in the preview if we don't already
+    // have one. Revoke the previous URL when we replace it.
+    if (this.pendingPreviewUrl() === null && this.productImages().length === 0) {
+      this.pendingPreviewUrl.set(URL.createObjectURL(file));
+    }
+  }
+
+  /** Removes a staged file (create mode only). */
+  removePendingImage(index: number): void {
+    const before = this.pendingImageFiles();
+    if (index < 0 || index >= before.length) return;
+
+    this.pendingImageFiles.set(before.filter((_, i) => i !== index));
+
+    // If the removed file was the one driving the preview blob, rebuild.
+    if (index === 0) {
+      const prev = this.pendingPreviewUrl();
+      if (prev) URL.revokeObjectURL(prev);
+      const remaining = this.pendingImageFiles();
+      this.pendingPreviewUrl.set(
+        remaining.length > 0 ? URL.createObjectURL(remaining[0]) : null,
+      );
     }
   }
 
@@ -541,6 +726,31 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('Image delete failed:', e);
     }
+  }
+
+  //#endregion
+
+  //#region Section Collapsibles
+
+  /** True when a section's `<details>` is currently open. */
+  isSectionOpen(id: string): boolean {
+    return this.expandedSections().has(id);
+  }
+
+  /**
+   * Sync handler for the native `(toggle)` event of `<details>`. Reads
+   * the current open state from the element and mirrors it into the
+   * signal so programmatic checks (and persistence, if added later)
+   * stay in sync with the user's clicks.
+   */
+  onSectionToggle(id: string, event: Event): void {
+    const el = event.target as HTMLDetailsElement;
+    this.expandedSections.update(set => {
+      const next = new Set(set);
+      if (el.open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   }
 
   //#endregion
