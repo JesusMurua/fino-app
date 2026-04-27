@@ -792,56 +792,57 @@
 // Negocio tab — giro display + branch config
 // -----------------------------------------------------------------------
 
-// Read-only section embedded inside an editable card (e.g. Giro inside
-// "Información del negocio"). A subtle divider + uppercase label make
-// the boundary obvious without introducing a second card frame.
-.settings-embedded-section {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-  margin-top: $space-4;
-  padding-top: $space-4;
-  border-top: 1px solid $color-border-soft;
-
-  &__label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: $color-text-sub;
-  }
-}
-
-.settings-giro-display {
+// Sleek read-only metadata row for the Giro inside "Información del
+// negocio". Single horizontal strip — label, value, and an inline
+// "Cambiar →" link aligned right. Subtle gray pill, no card frame.
+.settings-giro-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $space-3;
+  margin-top: $space-4;
   padding: $space-3 $space-4;
-  background: #F0FDF4;
-  border: 2px solid $color-primary;
-  border-radius: 12px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
 
-  &__icon { font-size: 28px; }
+  &__row {
+    display: flex;
+    align-items: baseline;
+    gap: $space-2;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
 
-  &__name {
-    font-size: 17px;
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    letter-spacing: 0.02em;
+  }
+
+  &__value {
+    font-size: 14px;
     font-weight: 700;
     color: $color-text-title;
   }
 
-  &__desc {
-    font-size: 12px;
+  &__sub {
+    margin-left: $space-1;
+    font-weight: 500;
     color: $color-text-sub;
   }
-}
 
-.settings-giro-contact {
-  font-size: $font-size-label;
-  color: $color-text-sub;
-  text-decoration: underline;
-  transition: color 0.15s;
+  &__link {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: color 0.15s;
 
-  &:hover { color: $color-primary; }
+    &:hover { color: $color-primary; }
+  }
 }
 
 .settings-branch-flags {

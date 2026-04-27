@@ -9,6 +9,7 @@
            cards, so the page-level button is scoped to that tab. -->
       @if (activeTab() === 'business') {
         <p-button
+          styleClass="w-auto"
           label="Guardar cambios"
           icon="pi pi-save"
           [loading]="isSavingAllBusiness()"
@@ -72,24 +73,25 @@
                 </div>
               </div>
 
-              <!-- Giro del negocio — read-only block embedded inside Info.
-                   No primary action lives here; the WhatsApp link is the
+              <!-- Giro del negocio — sleek read-only metadata row embedded
+                   inside Info. No primary action; WhatsApp link is the
                    only escape hatch for changing the vertical. -->
-              <div class="settings-embedded-section">
-                <div class="settings-embedded-section__label">Giro del negocio</div>
-                <div class="settings-giro-display">
-                  <span class="settings-giro-display__icon">{{ currentGiroInfo().icon }}</span>
-                  <div>
-                    <div class="settings-giro-display__name">{{ currentGiroInfo().name }}</div>
-                    <div class="settings-giro-display__desc">{{ currentGiroInfo().description }}</div>
-                  </div>
+              <div class="settings-giro-meta">
+                <div class="settings-giro-meta__row">
+                  <span class="settings-giro-meta__label">Giro:</span>
+                  <strong class="settings-giro-meta__value">
+                    {{ currentGiroInfo().icon }} {{ currentGiroInfo().name }}
+                    @if (currentGiroInfo().description) {
+                      <span class="settings-giro-meta__sub">/ {{ currentGiroInfo().description }}</span>
+                    }
+                  </strong>
                 </div>
                 <a
-                  class="settings-giro-contact"
+                  class="settings-giro-meta__link"
                   href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
                   target="_blank"
                 >
-                  ¿Necesitas cambiar tu giro? Contáctanos por WhatsApp →
+                  Cambiar →
                 </a>
               </div>
             </section>

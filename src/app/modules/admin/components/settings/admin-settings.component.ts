@@ -322,17 +322,30 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     return macro === MacroCategoryType.FoodBeverage;
   });
 
-  /** Current macro category info — read-only display from authService */
+  /**
+   * Macro + sub-category info shown in the Negocio tab.
+   *
+   * `name` is the macro label (e.g. "Servicios"). `description` is the
+   * tenant's specific business-type name (e.g. "Gimnasio"), pulled live
+   * from `TenantContextService.currentBusinessType()`. No more hardcoded
+   * lists of OTHER verticals — see AUDIT-044.
+   */
   readonly currentGiroInfo = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
-    const map: Record<MacroCategoryType, { icon: string; name: string; description: string }> = {
-      [MacroCategoryType.FoodBeverage]: { icon: '🍽️', name: MACRO_CATEGORY_LABELS[MacroCategoryType.FoodBeverage], description: 'Mesas, cocina, mesero, kiosko' },
-      [MacroCategoryType.QuickService]: { icon: '☕',  name: MACRO_CATEGORY_LABELS[MacroCategoryType.QuickService], description: 'Mostrador, comandas rápidas' },
-      [MacroCategoryType.Retail]:       { icon: '🛒',  name: MACRO_CATEGORY_LABELS[MacroCategoryType.Retail],       description: 'Inventario, código de barras, fiado' },
-      [MacroCategoryType.Services]:     { icon: '🛠️', name: MACRO_CATEGORY_LABELS[MacroCategoryType.Services],     description: 'Estéticas, consultorios, talleres' },
-    };
     if (macro === null) return { icon: '…', name: 'Cargando…', description: '' };
-    return map[macro];
+
+    const iconByMacro: Record<MacroCategoryType, string> = {
+      [MacroCategoryType.FoodBeverage]: '🍽️',
+      [MacroCategoryType.QuickService]: '☕',
+      [MacroCategoryType.Retail]:       '🛒',
+      [MacroCategoryType.Services]:     '🛠️',
+    };
+
+    return {
+      icon: iconByMacro[macro],
+      name: MACRO_CATEGORY_LABELS[macro],
+      description: this.tenantContext.currentBusinessType()?.name ?? '',
+    };
   });
 
   //#endregion
