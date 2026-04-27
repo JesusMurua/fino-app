@@ -1,8 +1,23 @@
-<div class="admin-settings">
+<div class="admin-settings layout-standard">
 
   <!-- Sticky header with tabs (filtered by the feature shield) -->
   <div class="settings-header">
-    <h1 class="settings-header__title">Configuración</h1>
+    <div class="settings-header__row">
+      <h1 class="settings-header__title">Configuración</h1>
+
+      <!-- Unified Save — only the Negocio tab fans out to multiple
+           cards, so the page-level button is scoped to that tab. -->
+      @if (activeTab() === 'business') {
+        <p-button
+          styleClass="w-auto"
+          label="Guardar cambios"
+          icon="pi pi-save"
+          [loading]="isSavingAllBusiness()"
+          (onClick)="saveAllBusinessSettings()"
+        />
+      }
+    </div>
+
     <nav class="settings-tabs" role="tablist">
       @for (tab of visibleTabs(); track tab.id) {
         <button
@@ -27,83 +42,115 @@
     <!-- TAB: Negocio                                                      -->
     <!-- ================================================================ -->
     @case ('business') {
-      <div class="settings-content">
+      <div class="settings-content settings-content--stacked">
 
-        <!-- Business info card -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-building"></i></div>
-            <div>
-              <div class="card-title">Información del negocio</div>
-              <div class="card-subtitle">Datos visibles en tickets y kiosko</div>
+        <!-- ROW 1: 2 equal columns — Info (with embedded Giro) | Folios -->
+        <div class="grid">
+
+          <!-- Column 1: Información del negocio + Giro (read-only at the bottom) -->
+          <div class="col-12 md:col-6">
+            <section class="settings-card h-full">
+              <div class="settings-card-header">
+                <div class="card-icon"><i class="pi pi-building"></i></div>
+                <div>
+                  <div class="card-title">Información del negocio</div>
+                  <div class="card-subtitle">Datos visibles en tickets y kiosko</div>
+                </div>
+              </div>
+
+              <div class="settings-form">
+                <div class="form-field">
+                  <label class="form-field__label" for="s-name">Nombre completo</label>
+                  <input
+                    id="s-name"
+                    type="text"
+                    pInputText
+                    [ngModel]="config().businessName"
+                    (ngModelChange)="updateConfig('businessName', $event)"
+                    placeholder="Ej. Sucursal Centro"
+                    class="form-field__input"
+                  />
+                </div>
+              </div>
+
+              <!-- Giro del negocio — sleek read-only metadata row embedded
+                   inside Info. No primary action; WhatsApp link is the
+                   only escape hatch for changing the vertical. -->
+              <div class="settings-giro-meta">
+                <div class="settings-giro-meta__row">
+                  <span class="settings-giro-meta__label">Giro:</span>
+                  <strong class="settings-giro-meta__value">
+                    {{ currentGiroInfo().icon }} {{ currentGiroInfo().name }}
+                    @if (currentGiroInfo().description) {
+                      <span class="settings-giro-meta__sub">/ {{ currentGiroInfo().description }}</span>
+                    }
+                  </strong>
+                </div>
+                <a
+                  class="settings-giro-meta__link"
+                  href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
+                  target="_blank"
+                >
+                  Cambiar →
+                </a>
+              </div>
+            </section>
+          </div>
+
+          <!-- Column 2: Configuración de folios — gated by CustomFolios/CfdiInvoicing -->
+          @if (canSeeCustomFolio()) {
+            <div class="col-12 md:col-6">
+              <section class="settings-card h-full">
+                <div class="settings-card-header">
+                  <div class="card-icon"><i class="pi pi-receipt"></i></div>
+                  <div>
+                    <div class="card-title">Configuración de folios</div>
+                    <div class="card-subtitle">El folio aparece en cada ticket y nota de venta</div>
+                  </div>
+                </div>
+
+                <div class="settings-form">
+                  <div class="form-field">
+                    <label class="form-field__label" for="folio-prefix">Prefijo del folio</label>
+                    <input
+                      id="folio-prefix"
+                      type="text"
+                      pInputText
+                      [(ngModel)]="folioPrefix"
+                      [maxlength]="10"
+                      placeholder="Ej. HMO, SUC1"
+                      class="form-field__input"
+                      style="text-transform: uppercase"
+                    />
+                    <span class="form-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
+                  </div>
+
+                  <div class="form-field">
+                    <label class="form-field__label" for="folio-format">Formato del folio</label>
+                    <input
+                      id="folio-format"
+                      type="text"
+                      pInputText
+                      [(ngModel)]="folioFormat"
+                      placeholder="{PREFIX}-{NUM:4}"
+                      class="form-field__input"
+                    />
+                    <span class="form-field__hint">
+                      Vista previa: <strong>{{ folioPreview() }}</strong>
+                    </span>
+                  </div>
+
+                  <div class="folio-preview-card">
+                    <span class="folio-preview-card__label">El siguiente folio será:</span>
+                    <span class="folio-preview-card__value">{{ folioPreview() }}</span>
+                  </div>
+                </div>
+              </section>
             </div>
-          </div>
+          }
+        </div>
 
-          <div class="settings-form">
-            <div class="form-field">
-              <label class="form-field__label" for="s-name">Nombre completo</label>
-              <input
-                id="s-name"
-                type="text"
-                pInputText
-                [ngModel]="config().businessName"
-                (ngModelChange)="updateConfig('businessName', $event)"
-                placeholder="Ej. Fonda El Sabor"
-                class="form-field__input"
-              />
-            </div>
-          </div>
-
-          <div class="settings-card__footer">
-            @if (saveSuccess()) {
-              <span class="settings-card__ok">
-                <i class="pi pi-check-circle"></i> Guardado
-              </span>
-            }
-            <button
-              type="button"
-              class="btn-primary"
-              [disabled]="isSaving()"
-              (click)="saveBusinessConfig()"
-            >
-              @if (isSaving()) {
-                <i class="pi pi-spin pi-spinner"></i>
-              } @else {
-                <i class="pi pi-save"></i>
-              }
-              Guardar
-            </button>
-          </div>
-        </section>
-
-        <!-- Business type (read-only — no primary action, subtler background) -->
-        <section class="settings-card settings-card--readonly">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-globe"></i></div>
-            <div>
-              <div class="card-title">Giro del negocio</div>
-              <div class="card-subtitle">Tu tipo de negocio determina las funciones disponibles</div>
-            </div>
-          </div>
-
-          <div class="settings-giro-display">
-            <span class="settings-giro-display__icon">{{ currentGiroInfo().icon }}</span>
-            <div>
-              <div class="settings-giro-display__name">{{ currentGiroInfo().name }}</div>
-              <div class="settings-giro-display__desc">{{ currentGiroInfo().description }}</div>
-            </div>
-          </div>
-
-          <a
-            class="settings-giro-contact"
-            href="https://wa.me/526671234567?text=Hola%2C%20necesito%20cambiar%20el%20giro%20de%20mi%20negocio"
-            target="_blank"
-          >
-            ¿Necesitas cambiar tu giro? Contáctanos por WhatsApp →
-          </a>
-        </section>
-
-        <!-- Branch operational config (read-only) — only for giros with kitchen/tables -->
+        <!-- Branch operational config (read-only flags) — full-width row when shown -->
         @if (showOperationalConfig()) {
           <section class="settings-card">
             <div class="settings-card-header">
@@ -133,88 +180,24 @@
           </section>
         }
 
-        <!-- Sucursales — embedded inline (replaces the former /admin/branches sidebar entry) -->
-        <section class="settings-card">
-          <div class="settings-card-header">
-            <div class="card-icon"><i class="pi pi-sitemap"></i></div>
-            <div>
-              <div class="card-title">Sucursales</div>
-              <div class="card-subtitle">Ubicaciones del negocio y configuración de cada una</div>
-            </div>
+        <!-- ROW 2: Sucursales — full-width data table.
+             Wrapped in a PrimeFlex grid so it inherits the same negative
+             horizontal margins as the 2-col row above it (Info + Folios),
+             keeping its left/right edges aligned with those cards. -->
+        <div class="grid">
+          <div class="col-12">
+            <section class="settings-card">
+              <div class="settings-card-header">
+                <div class="card-icon"><i class="pi pi-sitemap"></i></div>
+                <div>
+                  <div class="card-title">Sucursales</div>
+                  <div class="card-subtitle">Ubicaciones del negocio y configuración de cada una</div>
+                </div>
+              </div>
+              <app-admin-branches [inline]="true" />
+            </section>
           </div>
-          <app-admin-branches [inline]="true" />
-        </section>
-
-        <!-- Folio configuration — gated by CustomFolios or CfdiInvoicing -->
-        @if (canSeeCustomFolio()) {
-          <section class="settings-card">
-            <div class="settings-card-header">
-              <div class="card-icon"><i class="pi pi-receipt"></i></div>
-              <div>
-                <div class="card-title">Configuración de folios</div>
-                <div class="card-subtitle">El folio aparece en cada ticket y nota de venta</div>
-              </div>
-            </div>
-
-            <div class="settings-form">
-              <div class="form-field">
-                <label class="form-field__label" for="folio-prefix">Prefijo del folio</label>
-                <input
-                  id="folio-prefix"
-                  type="text"
-                  pInputText
-                  [(ngModel)]="folioPrefix"
-                  [maxlength]="10"
-                  placeholder="Ej. HMO, SUC1"
-                  class="form-field__input"
-                  style="text-transform: uppercase"
-                />
-                <span class="form-field__hint">Vacío = solo número secuencial (0001, 0002...)</span>
-              </div>
-
-              <div class="form-field">
-                <label class="form-field__label" for="folio-format">Formato del folio</label>
-                <input
-                  id="folio-format"
-                  type="text"
-                  pInputText
-                  [(ngModel)]="folioFormat"
-                  placeholder="{PREFIX}-{NUM:4}"
-                  class="form-field__input"
-                />
-                <span class="form-field__hint">
-                  Vista previa: <strong>{{ folioPreview() }}</strong>
-                </span>
-              </div>
-
-              <div class="folio-preview-card">
-                <span class="folio-preview-card__label">El siguiente folio será:</span>
-                <span class="folio-preview-card__value">{{ folioPreview() }}</span>
-              </div>
-            </div>
-
-            <div class="settings-card__footer">
-              @if (saveFolioSuccess()) {
-                <span class="settings-card__ok">
-                  <i class="pi pi-check-circle"></i> Guardado
-                </span>
-              }
-              <button
-                type="button"
-                class="btn-primary"
-                [disabled]="isSavingFolio()"
-                (click)="saveFolioConfig()"
-              >
-                @if (isSavingFolio()) {
-                  <i class="pi pi-spin pi-spinner"></i>
-                } @else {
-                  <i class="pi pi-save"></i>
-                }
-                Guardar
-              </button>
-            </div>
-          </section>
-        }
+        </div>
 
       </div>
     }

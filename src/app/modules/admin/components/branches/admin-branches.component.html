@@ -1,24 +1,26 @@
-<div class="admin-branches">
+<div class="admin-branches layout-wide">
 
   <!-- Header — hidden when embedded (the host page provides its own chrome) -->
   @if (!inline()) {
-    <div class="admin-branches__header">
-      <div>
-        <h1 class="admin-branches__title">Sucursales</h1>
-        <p class="admin-branches__subtitle">
+    <div class="page-header">
+      <div class="page-header__info">
+        <h1 class="page-header__title">Sucursales</h1>
+        <p class="page-header__subtitle">
           Administra las ubicaciones de tu negocio y la configuración de cada una
         </p>
       </div>
-      <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
-        <p-button
-          label="Nueva sucursal"
-          icon="pi pi-plus"
-          severity="secondary"
-          [outlined]="true"
-          [disabled]="atBranchLimit()"
-          (onClick)="openNewBranch()"
-        />
-      </span>
+      <div class="page-header__actions">
+        <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
+          <p-button
+            label="Nueva sucursal"
+            icon="pi pi-plus"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="atBranchLimit()"
+            (onClick)="openNewBranch()"
+          />
+        </span>
+      </div>
     </div>
   } @else {
     <div class="admin-branches__inline-actions">
@@ -36,8 +38,11 @@
     </div>
   }
 
-  <!-- List -->
-  <section class="settings-card">
+  <!-- List — `.settings-card` only on the standalone /admin/branches route.
+       In inline mode the host page (Settings → Negocio) already provides
+       the card chrome, so doubling it caused 48px of nested padding (H2
+       in AUDIT-045). -->
+  <section [class.settings-card]="!inline()">
     <p-table
       [value]="branches()"
       [loading]="loadingBranches()"
@@ -47,7 +52,9 @@
       <ng-template pTemplate="header">
         <tr>
           <th>Nombre</th>
-          <th>Ubicación</th>
+          <th>Dirección</th>
+          <th style="width: 11rem">Teléfono</th>
+          <th style="width: 8rem">Tipo</th>
           @if (showKitchenToggle()) {
             <th style="width: 5rem; text-align: center">Cocina</th>
           }
@@ -60,18 +67,25 @@
 
       <ng-template pTemplate="body" let-branch>
         <tr>
+          <td>{{ branch.name }}</td>
           <td>
-            {{ branch.name }}
-            @if (branch.isMatrix) {
-              <span class="matrix-badge">Matriz</span>
-            }
-          </td>
-          <td>
-            @if (branch.locationName) {
-              {{ branch.locationName }}
+            @if (branch.address) {
+              {{ branch.address }}
             } @else {
               <span class="branch-empty-cell">Sin dirección registrada</span>
             }
+          </td>
+          <td>
+            @if (branch.phone) {
+              {{ branch.phone }}
+            } @else {
+              <span class="branch-empty-cell">—</span>
+            }
+          </td>
+          <td>
+            <span class="role-badge" [class.role-badge--matrix]="branch.isMatrix">
+              {{ branch.isMatrix ? 'Matriz' : 'Sucursal' }}
+            </span>
           </td>
           @if (showKitchenToggle()) {
             <td style="text-align: center">{{ branch.hasKitchen ? '✅' : '❌' }}</td>
@@ -142,18 +156,6 @@
           pInputText
           class="form-field__input"
           placeholder="Ej. Centro"
-        />
-      </div>
-
-      <div class="form-field">
-        <label class="form-field__label" for="branch-location">Ubicación</label>
-        <input
-          [(ngModel)]="branchForm.locationName"
-          id="branch-location"
-          type="text"
-          pInputText
-          class="form-field__input"
-          placeholder="Ej. Centro, Polanco, Norte"
         />
       </div>
 
@@ -229,19 +231,19 @@
     </div>
 
     <ng-template pTemplate="footer">
-      <div class="dialog-footer">
+      <div class="flex justify-content-end gap-2">
         <p-button
           label="Cancelar"
           severity="secondary"
           [outlined]="true"
           [disabled]="savingBranch()"
-          (onClick)="showBranchDialog.set(false)"
+          (onClick)="closeDialog()"
         />
         <p-button
           label="Guardar"
-          icon="pi pi-check"
+          icon="pi pi-save"
           [loading]="savingBranch()"
-          [disabled]="savingBranch() || !branchForm.name.trim() || !branchForm.locationName.trim()"
+          [disabled]="savingBranch() || !branchForm.name.trim()"
           (onClick)="saveBranch()"
         />
       </div>

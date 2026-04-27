@@ -1,7 +1,7 @@
 {
-  "name": "POS Táctil",
-  "short_name": "POS Táctil",
-  "description": "Sistema punto de venta táctil para fondas, food trucks y cafeterías",
+  "name": "Fino",
+  "short_name": "Fino",
+  "description": "Plataforma de gestión y operación para negocios — punto de venta, recepción y back office.",
   "theme_color": "#6366f1",
   "background_color": "#f5f5f5",
   "display": "standalone",

@@ -10,14 +10,6 @@
   min-height: 100%;
   transition: background-color 0.3s ease;
 
-  &__title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text1);
-    transition: color 0.3s ease;
-  }
-
   &__loading {
     display: flex;
     align-items: center;
@@ -449,35 +441,11 @@
 }
 
 // -----------------------------------------------------------------------
-// Shared Dashboard header — always rendered, consolidates title + toggle
-// + contextual controls (calendar, CSV export, "Ver guía de inicio").
-// Replaces the legacy `.charts-toolbar` + `.ftue-toolbar` pair.
+// Calendar inside the Dashboard's .page-header__actions row — styleClass
+// hook on <p-calendar> so the date-range placeholder doesn't truncate.
 // -----------------------------------------------------------------------
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $space-4;
-  flex-wrap: wrap;
-
-  &__title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text1);
-    transition: color 0.3s ease;
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: $space-3;
-    flex-wrap: wrap;
-  }
-
-  &__calendar {
-    min-width: 240px;
-  }
+:host ::ng-deep .dashboard-header__calendar {
+  min-width: 240px;
 }
 
 // -----------------------------------------------------------------------

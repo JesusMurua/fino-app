@@ -54,7 +54,10 @@ export class AppComponent implements OnInit {
       }
     });
 
-    // Enable/disable pull sync based on current route
+    // Enable/disable pull sync AND toggle the global `touch-shell` body
+    // class based on current route. The body class scopes the touch-target
+    // rules in `_touch.scss` to terminal surfaces only — Back Office stays
+    // with PrimeNG default button sizing. (See AUDIT-044.)
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
       takeUntilDestroyed(),
@@ -65,10 +68,17 @@ export class AppComponent implements OnInit {
       } else {
         this.syncService.disablePull();
       }
+      document.body.classList.toggle('touch-shell', isPosRoute);
     });
   }
 
   ngOnInit(): void {
+    // Prime the tenant context from the rehydrated user FIRST — guards
+    // and directives read it on the very next tick. Moved here from
+    // AuthService.constructor to keep the auth ctor HTTP-free and break
+    // the DI cycle through the auth interceptor (see AUDIT-046).
+    this.authService.syncTenantContext();
+
     this.printerService.tryAutoConnect();
     this.catalogService.loadAll();
 

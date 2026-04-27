@@ -66,7 +66,7 @@
             >
               <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
               @if (!isCollapsed()) {
-                <span class="nav-item__label">{{ item.label }}</span>
+                <span class="nav-item__label">{{ labelFor(item) }}</span>
               }
               @if (item.badge && lowStockCount() > 0) {
                 <span class="nav-item__badge">{{ lowStockCount() }}</span>
@@ -80,12 +80,12 @@
               class="nav-item"
               [routerLink]="item.path"
               routerLinkActive="nav-item--active"
-              [pTooltip]="isCollapsed() ? item.label : ''"
+              [pTooltip]="isCollapsed() ? labelFor(item) : ''"
               tooltipPosition="right"
             >
               <i [class]="'pi ' + item.icon + ' nav-item__icon'"></i>
               @if (!isCollapsed()) {
-                <span class="nav-item__label">{{ item.label }}</span>
+                <span class="nav-item__label">{{ labelFor(item) }}</span>
               }
               @if (item.badge && lowStockCount() > 0) {
                 <span class="nav-item__badge">{{ lowStockCount() }}</span>

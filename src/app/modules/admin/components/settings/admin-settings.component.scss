@@ -4,6 +4,10 @@
 // Admin Settings — Tabbed layout
 // ============================================================================
 
+:host {
+  display: block;
+}
+
 .admin-settings {
   display: flex;
   flex-direction: column;
@@ -21,8 +25,19 @@
   top: 0;
   z-index: 10;
 
+  // Title + page-level action button live in a flex row so the unified
+  // "Guardar cambios" button anchors top-right while the title hugs left.
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-3;
+    margin-bottom: $space-4;
+    flex-wrap: wrap;
+  }
+
   &__title {
-    margin: 0 0 $space-4;
+    margin: 0;
     font-size: 20px;
     font-weight: 600;
     color: $color-text-title;
@@ -94,6 +109,21 @@
   &--full {
     grid-template-columns: 1fr;
   }
+
+  // Stacked layout — flex column where each child row controls its own
+  // grid (PrimeFlex `grid` for 3-col rows, full-width sections for tables).
+  // Used by the Negocio tab so the branches table can span 100% width
+  // independently from the cards above it.
+  //
+  // `padding: 0` overrides the base $space-5 — the inner PrimeFlex grids
+  // use their own negative-margin gutter and we don't want a double
+  // indent inside the layout-standard column.
+  &--stacked {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+    padding: 0;
+  }
 }
 
 // -----------------------------------------------------------------------
@@ -115,11 +145,6 @@
     gap: $space-3;
     padding-top: $space-3;
     border-top: 1px solid $color-border-soft;
-
-    .btn-primary {
-      min-width: 140px;
-      justify-content: center;
-    }
   }
 
   &__ok {
@@ -775,36 +800,58 @@
 // -----------------------------------------------------------------------
 // Negocio tab — giro display + branch config
 // -----------------------------------------------------------------------
-.settings-giro-display {
+
+// Sleek read-only metadata row for the Giro inside "Información del
+// negocio". Single horizontal strip — label, value, and an inline
+// "Cambiar →" link aligned right. Subtle gray pill, no card frame.
+.settings-giro-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $space-3;
+  margin-top: $space-4;
   padding: $space-3 $space-4;
-  background: #F0FDF4;
-  border: 2px solid $color-primary;
-  border-radius: 12px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
 
-  &__icon { font-size: 28px; }
+  &__row {
+    display: flex;
+    align-items: baseline;
+    gap: $space-2;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
 
-  &__name {
-    font-size: 17px;
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    letter-spacing: 0.02em;
+  }
+
+  &__value {
+    font-size: 14px;
     font-weight: 700;
     color: $color-text-title;
   }
 
-  &__desc {
-    font-size: 12px;
+  &__sub {
+    margin-left: $space-1;
+    font-weight: 500;
     color: $color-text-sub;
   }
-}
 
-.settings-giro-contact {
-  font-size: $font-size-label;
-  color: $color-text-sub;
-  text-decoration: underline;
-  transition: color 0.15s;
+  &__link {
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-text-sub;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: color 0.15s;
 
-  &:hover { color: $color-primary; }
+    &:hover { color: $color-primary; }
+  }
 }
 
 .settings-branch-flags {

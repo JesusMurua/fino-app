@@ -20,7 +20,6 @@ import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-co
 /** Form shape bound to the branch create/edit dialog */
 interface BranchFormValue {
   name: string;
-  locationName: string;
   address: string;
   phone: string;
   hasKitchen: boolean;
@@ -30,7 +29,6 @@ interface BranchFormValue {
 /** Empty defaults reused by openNewBranch and the initial declaration */
 const EMPTY_BRANCH_FORM: BranchFormValue = {
   name: '',
-  locationName: '',
   address: '',
   phone: '',
   hasKitchen: false,
@@ -226,7 +224,6 @@ export class AdminBranchesComponent implements OnInit {
     this.editingBranch.set(branch);
     this.branchForm = {
       name: branch.name,
-      locationName: branch.locationName,
       address: branch.address ?? '',
       phone: branch.phone ?? '',
       hasKitchen: branch.hasKitchen ?? false,
@@ -235,18 +232,23 @@ export class AdminBranchesComponent implements OnInit {
     this.showBranchDialog.set(true);
   }
 
+  /** Closes the create/edit dialog. Wraps the signal write so the
+   *  template can call a single named method. */
+  closeDialog(): void {
+    this.showBranchDialog.set(false);
+  }
+
   /**
    * Persists the dialog form. Creates on absent `editingBranch`, updates
    * otherwise. On 402 the global interceptor handles the toast; we only
    * clear the local `savingBranch` flag.
    */
   async saveBranch(): Promise<void> {
-    const { name, locationName, address, phone, hasKitchen, hasTables } = this.branchForm;
-    if (!name.trim() || !locationName.trim()) return;
+    const { name, address, phone, hasKitchen, hasTables } = this.branchForm;
+    if (!name.trim()) return;
 
     const payload: BranchPayload = {
       name: name.trim(),
-      locationName: locationName.trim(),
       address: address.trim() || undefined,
       phone: phone.trim() || undefined,
       hasKitchen,

@@ -5,26 +5,6 @@
   flex-direction: column;
   gap: $space-5;
 
-  &__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: $space-4;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 700;
-    color: $color-text-title;
-  }
-
-  &__subtitle {
-    margin: 4px 0 0;
-    font-size: $font-size-base;
-    color: $color-text-sub;
-  }
-
   &__loading {
     display: flex;
     align-items: center;

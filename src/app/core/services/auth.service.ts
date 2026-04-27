@@ -3,13 +3,14 @@ import { Router } from '@angular/router';
 import { Observable, firstValueFrom, map, tap } from 'rxjs';
 
 import {
-  ACTIVE_BRANCH_KEY,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   AuthSessionType,
   AuthUser,
   BranchInfo,
   EmployeeHash,
+  LAST_AUTH_ENTRY_KEY,
+  LastAuthEntry,
   LoginResponse,
   PlanInfo,
   RETURN_URL_KEY,
@@ -19,6 +20,7 @@ import {
 } from '../models';
 import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { ApiService } from './api.service';
+import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
 import { TenantContextService } from './tenant-context.service';
 
@@ -75,12 +77,13 @@ export class AuthService {
   /**
    * Reactive branch ID — components use effect() on this signal
    * to reload data when the active branch changes.
-   * Restores from localStorage so the last-selected branch persists
-   * across navigation and page refreshes.
+   *
+   * Re-exports the signal owned by `BranchContextService` (not a
+   * derived signal) so consumers retain the same reactive identity
+   * they had before the extraction. Mutations go through the store
+   * via the writer methods on this service.
    */
-  readonly activeBranchId = signal<number>(
-    this.loadStoredBranchId(),
-  );
+  get activeBranchId() { return this.branchContext.activeBranchId; }
 
   /** Current subscription plan tier — restored from storage on init */
   readonly planTypeId = signal<PlanTypeId>(
@@ -160,11 +163,21 @@ export class AuthService {
     private readonly db: DatabaseService,
     private readonly router: Router,
     private readonly tenantContext: TenantContextService,
+    private readonly branchContext: BranchContextService,
   ) {
-    // Field initializers have already hydrated `currentUser` from localStorage.
-    // Mirror that state into the tenant context so guards and directives see
-    // the correct plan/giro/features immediately on app boot.
-    this.syncTenantContext();
+    // No HTTP and no cross-service writes here. The tenant context is
+    // primed post-bootstrap from `AppComponent.ngOnInit` via the public
+    // `syncTenantContext()` method — see AUDIT-046 for the rationale.
+
+    // Seed the branch context from the stored user when the dedicated
+    // ACTIVE_BRANCH_KEY entry is empty (covers legacy sessions written
+    // before that key existed). Pure synchronous localStorage work, no
+    // HTTP — safe in the constructor.
+    if (this.branchContext.activeBranchId() === 0) {
+      const user = this.loadUserFromStorage();
+      const fallback = user?.currentBranchId || user?.branchId || 0;
+      if (fallback) this.branchContext.setBranchId(fallback);
+    }
   }
   //#endregion
 
@@ -184,8 +197,7 @@ export class AuthService {
    * @param branchId Branch ID to activate
    */
   setActiveBranch(branchId: number): void {
-    this.activeBranchId.set(branchId);
-    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    this.branchContext.setBranchId(branchId);
     const user = this.currentUser();
     if (user) {
       const updated = { ...user, currentBranchId: branchId };
@@ -205,7 +217,7 @@ export class AuthService {
       this.api.post<LoginResponse>('/auth/switch-branch', { branchId }),
     );
     // Write the target branch BEFORE handleLoginSuccess so it takes priority
-    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    this.branchContext.setBranchId(branchId);
     if (!response.currentBranchId) {
       response.currentBranchId = branchId;
     }
@@ -318,9 +330,8 @@ export class AuthService {
 
       localStorage.setItem(AUTH_TOKEN_KEY, user.token);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-      localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
       this.currentUser.set(user);
-      this.activeBranchId.set(branchId);
+      this.branchContext.setBranchId(branchId);
       this.syncTenantContext();
 
       return user;
@@ -365,14 +376,28 @@ export class AuthService {
   }
 
   /**
-   * Clears auth state and redirects to /pin.
+   * Clears auth state and redirects to the entry point that matches the
+   * caller's session type:
+   *
+   *   - Email session OR Back Office role → `/login`
+   *   - PIN session OR unknown            → `/pin`
+   *
+   * Persists the resolved entry in `LAST_AUTH_ENTRY_KEY` BEFORE clearing
+   * the rest of the auth keys so the routing layer (root + catch-all)
+   * remembers who was using the browser even after the session is wiped.
    */
   logout(): void {
+    const lastEntry: LastAuthEntry =
+      this.sessionType() === 'email' || BACK_OFFICE_ROLES.includes(this.currentUser()?.roleId as never)
+        ? 'email'
+        : 'pin';
+
+    localStorage.setItem(LAST_AUTH_ENTRY_KEY, lastEntry);
+
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
-    localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
-    this.activeBranchId.set(0);
+    this.branchContext.clear();
     this.planTypeId.set(PlanTypeId.Free);
     this.primaryMacroCategoryId.set(null);
     this.trialEndsAt.set(null);
@@ -382,7 +407,7 @@ export class AuthService {
     this.db.products.clear().catch(() => {});
     this.db.categories.clear().catch(() => {});
 
-    this.router.navigate(['/pin']);
+    this.router.navigate([lastEntry === 'email' ? '/login' : '/pin']);
   }
 
   /**
@@ -524,7 +549,7 @@ export class AuthService {
   handleLoginSuccess(response: LoginResponse): AuthUser {
     const responseBranchId = response.currentBranchId ?? response.branchId;
     // Preserve the user's last-selected branch across re-authentication
-    const storedBranchId = parseInt(localStorage.getItem(ACTIVE_BRANCH_KEY) ?? '', 10);
+    const storedBranchId = this.branchContext.activeBranchId();
     const effectiveBranchId = storedBranchId || responseBranchId;
 
     // Prefer the JWT `features` claim when present — it's what the
@@ -555,28 +580,24 @@ export class AuthService {
       sessionType,
     };
 
+    // Track which entry point this session uses so the routing layer can
+    // re-enter via the right surface after logout / token expiry.
+    const entry: LastAuthEntry =
+      sessionType === 'email' || BACK_OFFICE_ROLES.includes(user.roleId)
+        ? 'email'
+        : 'pin';
+    localStorage.setItem(LAST_AUTH_ENTRY_KEY, entry);
+
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    localStorage.setItem(ACTIVE_BRANCH_KEY, effectiveBranchId.toString());
     this.currentUser.set(user);
-    this.activeBranchId.set(effectiveBranchId);
+    this.branchContext.setBranchId(effectiveBranchId);
     this.planTypeId.set(user.planTypeId);
     this.primaryMacroCategoryId.set(user.primaryMacroCategoryId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
     this.syncTenantContext();
 
     return user;
-  }
-
-  /**
-   * Restores the active branch ID from localStorage.
-   * Priority: ACTIVE_BRANCH_KEY → user.currentBranchId → user.branchId → 0.
-   */
-  private loadStoredBranchId(): number {
-    const stored = localStorage.getItem(ACTIVE_BRANCH_KEY);
-    if (stored) return parseInt(stored, 10) || 0;
-    const user = this.loadUserFromStorage();
-    return user?.currentBranchId || user?.branchId || 0;
   }
 
   /**
@@ -689,15 +710,16 @@ export class AuthService {
   /**
    * Mirrors the current auth state into the tenant context so guards
    * and directives see a consistent plan/macro/feature snapshot.
-   * Called on boot, login, offline login, and subscription refresh.
+   * Called on boot (from `AppComponent.ngOnInit`), login, offline login,
+   * and subscription refresh.
    *
    * Hard guard: an unauthenticated session must never reach the tenant
-   * sync — Angular bootstraps `AuthService` before any component is
-   * rendered, and the public `/register` and `/login` routes both run
-   * with a null `currentUser`. Touching signals beyond the guard in
-   * that state previously crashed the app on Vercel (blank page).
+   * sync — `AppComponent.ngOnInit` runs even on the public `/register`
+   * and `/login` routes with a null `currentUser`. Touching signals
+   * beyond the guard in that state previously crashed the app on
+   * Vercel (blank page).
    */
-  private syncTenantContext(): void {
+  syncTenantContext(): void {
     if (!this.currentUser()) return;
 
     const macro = this.primaryMacroCategoryId();

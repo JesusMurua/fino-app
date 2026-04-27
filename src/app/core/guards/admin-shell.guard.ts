@@ -15,8 +15,12 @@ import { SessionRehydrationService } from '../services/session-rehydration.servi
  * Outcomes:
  *   - `ok` / `stale-ok` → allow traversal.
  *   - `unauthorized`    → `SessionRehydrationService` already cleared
- *                         the session; send the user to /pin.
- *   - `no-session`      → defensive fallback to /pin.
+ *                         the session; send the user back to `/login`
+ *                         since this is a Back Office surface.
+ *   - `no-session`      → defensive fallback to `/login` for the same
+ *                         reason — the user reached `/admin/*` so they
+ *                         are an Admin who needs the email entry, not
+ *                         the terminal PIN entry.
  */
 export const adminShellGuard: CanActivateFn = async () => {
   const rehydration = inject(SessionRehydrationService);
@@ -25,7 +29,7 @@ export const adminShellGuard: CanActivateFn = async () => {
   const result = await rehydration.hydrateForShell('admin');
 
   if (result === 'unauthorized' || result === 'no-session') {
-    return router.createUrlTree(['/pin']);
+    return router.createUrlTree(['/login']);
   }
 
   return true;

@@ -4,15 +4,15 @@ import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import {
   AppConfig,
   DEFAULT_APP_CONFIG,
-  DEFAULT_DEVICE_CONFIG,
-  DEVICE_CONFIG_KEY,
   DeviceConfig,
   PosExperience,
 } from '../models';
 import { MacroCategoryType } from '../enums';
 import { ApiService } from './api.service';
-import { AuthService } from './auth.service';
+import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
+import { DeviceConfigStore } from './device-config.store';
+import { TenantContextService } from './tenant-context.service';
 
 /** Derives the default POS experience variant from the primary macro category. */
 function posExperienceForMacro(macro: MacroCategoryType): PosExperience {
@@ -89,16 +89,24 @@ export class ConfigService {
   /** Returns true if config has been loaded from API or Dexie */
   isLoaded(): boolean { return this._isLoaded; }
 
-  /** Reactive device config stream — emits on every loadDeviceConfig() and saveDeviceConfig() */
-  readonly deviceConfig$ = new BehaviorSubject<DeviceConfig>({ ...DEFAULT_DEVICE_CONFIG });
+  /**
+   * Reactive device config stream — emits on every `loadDeviceConfig()`
+   * and `saveDeviceConfig()`. Re-exports the subject owned by
+   * `DeviceConfigStore` (not a derived stream) so consumers using
+   * `toSignal()` / `.getValue()` keep their reactive identity after
+   * the extraction. See AUDIT-046.
+   */
+  get deviceConfig$() { return this.deviceConfigStore.deviceConfig$; }
 
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
-    private readonly authService: AuthService,
+    private readonly branchContext: BranchContextService,
+    private readonly tenantContext: TenantContextService,
+    private readonly deviceConfigStore: DeviceConfigStore,
   ) {
-    // Eagerly load device config so subscribers get the real value immediately
-    this.loadDeviceConfig();
+    // DeviceConfigStore hydrates itself in its own constructor —
+    // no need to call loadDeviceConfig() here.
   }
 
   //#region Business config (Dexie + API)
@@ -129,14 +137,14 @@ export class ConfigService {
     // Step 2 — Try to fetch from API in background
     try {
       const remote = await firstValueFrom(
-        this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
+        this.api.get<BranchConfigResponse>(`/branch/${this.branchContext.activeBranchId()}/config`),
       );
 
       // Derive the POS experience from the branch payload when available,
-      // or fall back to the macro category from the JWT. Macro → experience
-      // is deterministic (see `posExperienceForMacro`), so we never need to
-      // hit the catalog service for this resolution.
-      const macroId = this.authService.primaryMacroCategoryId();
+      // or fall back to the macro category from the tenant context.
+      // Macro → experience is deterministic (see `posExperienceForMacro`),
+      // so we never need to hit the catalog service for this resolution.
+      const macroId = this.tenantContext.currentMacro();
       const posExperience: PosExperience | undefined =
         (remote.posExperience as PosExperience | undefined)
         ?? (macroId !== null ? posExperienceForMacro(macroId) : config.businessTypeCatalog?.posExperience);
@@ -206,68 +214,31 @@ export class ConfigService {
 
   //#endregion
 
-  //#region Device config (localStorage)
+  //#region Device config (proxy over DeviceConfigStore)
 
   /**
    * Returns true if the device has been configured with a valid
    * businessId and branchId (set during the /setup flow).
    */
   isDeviceConfigured(): boolean {
-    const config = this.deviceConfig$.getValue();
-    return config.businessId > 0 && config.branchId > 0;
+    return this.deviceConfigStore.isConfigured();
   }
 
   /**
-   * Reads the device config from localStorage and emits to deviceConfig$.
-   * Falls back to DEFAULT_DEVICE_CONFIG if no value has been saved yet.
-   *
-   * Storage format: Base64-encoded JSON (obfuscated to prevent casual DevTools edits).
-   * Includes backward-compatible fallback for legacy raw JSON entries.
+   * Reads the device config from localStorage and emits to `deviceConfig$`.
+   * Delegates to `DeviceConfigStore` — see that service for the storage
+   * format and legacy migration rules.
    */
   loadDeviceConfig(): DeviceConfig {
-    try {
-      const raw = localStorage.getItem(DEVICE_CONFIG_KEY);
-      if (!raw) {
-        this.deviceConfig$.next({ ...DEFAULT_DEVICE_CONFIG });
-        return { ...DEFAULT_DEVICE_CONFIG };
-      }
-
-      let config: DeviceConfig;
-
-      try {
-        // Primary: decode Base64-obfuscated value
-        config = JSON.parse(decodeURIComponent(atob(raw)));
-      } catch {
-        // Fallback: legacy raw JSON — migrate to obfuscated format
-        config = JSON.parse(raw);
-        this.saveDeviceConfig(config);
-      }
-
-      // Migrate deprecated modes
-      const mode = config.mode as string;
-      if (mode === 'counter') config.mode = 'cashier';
-      if (mode === 'waiter') config.mode = 'tables';
-      if (mode !== config.mode) this.saveDeviceConfig(config);
-
-      this.deviceConfig$.next(config);
-      return config;
-    } catch {
-      this.deviceConfig$.next({ ...DEFAULT_DEVICE_CONFIG });
-      return { ...DEFAULT_DEVICE_CONFIG };
-    }
+    return this.deviceConfigStore.load();
   }
 
   /**
-   * Persists the device config to localStorage and emits to deviceConfig$.
-   * Only affects this physical device — other devices are unchanged.
-   *
-   * Stored as Base64-encoded JSON to prevent casual DevTools manipulation.
-   * @param config Updated device config to save
+   * Persists the device config to localStorage and emits to `deviceConfig$`.
+   * Delegates to `DeviceConfigStore`.
    */
   saveDeviceConfig(config: DeviceConfig): void {
-    const encoded = btoa(encodeURIComponent(JSON.stringify(config)));
-    localStorage.setItem(DEVICE_CONFIG_KEY, encoded);
-    this.deviceConfig$.next(config);
+    this.deviceConfigStore.save(config);
   }
 
   //#endregion

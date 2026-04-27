@@ -12,10 +12,14 @@ import { terminalGuard } from './core/guards/terminal.guard';
 import { FeatureKey, UserRoleId } from './core/enums';
 
 export const appRoutes: Routes = [
+	// --- Root: dual-entry Auth Portal (Back Office vs Operational) ---
 	{
 		path: '',
-		redirectTo: 'pin',
 		pathMatch: 'full',
+		loadComponent: () =>
+			import('./modules/auth-portal/auth-portal.component').then(
+				(m) => m.AuthPortalComponent,
+			),
 	},
 
 	// --- Public routes ---
@@ -110,9 +114,10 @@ export const appRoutes: Routes = [
 			import('./modules/reception/reception.routes').then((m) => m.receptionRoutes),
 	},
 
-	// --- Catch-all: redirect to /pin so unknown URLs resolve to the terminal entry ---
+	// --- Catch-all: send unknown URLs back to the Auth Portal so the user
+	//     re-picks an entry consciously instead of being silently rerouted. ---
 	{
 		path: '**',
-		redirectTo: 'pin',
+		redirectTo: '',
 	},
 ];

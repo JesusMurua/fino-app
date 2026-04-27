@@ -63,7 +63,7 @@
       <i class="pi pi-search"></i>
       <input
         type="text"
-        placeholder="Buscar platillo…"
+        placeholder="Buscar producto…"
         [value]="searchTerm()"
         (input)="onSearchInput($event)"
       />
@@ -147,7 +147,7 @@
         <div>
           <h2 class="waiter-sheet__title">Comanda de {{ table.name }}</h2>
           <p class="waiter-sheet__meta">
-            {{ cartItemCount() }} {{ cartItemCount() === 1 ? 'platillo' : 'platillos' }}
+            {{ cartItemCount() }} {{ cartItemCount() === 1 ? 'producto' : 'productos' }}
             · {{ cartTotal() | price }}
           </p>
         </div>
@@ -233,7 +233,7 @@
       type="text"
       pInputText
       class="waiter-note__input"
-      placeholder="Ej. Sin cebolla, término medio…"
+      placeholder="Ej. Notas o instrucciones…"
       [(ngModel)]="noteDraft"
       [maxlength]="120"
       autofocus

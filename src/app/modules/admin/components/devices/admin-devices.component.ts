@@ -12,7 +12,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { DeviceConfig, DeviceListItem } from '../../../../core/models';
-import { FeatureKey } from '../../../../core/enums';
+import { FeatureKey, MacroCategoryType, SubCategoryType } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { DeviceService } from '../../../../core/services/device.service';
@@ -42,11 +42,12 @@ const ONLINE_WINDOW_MS = 10 * 60_000;
 
 /** Human-readable labels for the mode column */
 const MODE_LABELS: Record<DeviceConfig['mode'], string> = {
-  cashier: 'Cajero',
-  tables:  'Mesas',
-  kitchen: 'Cocina',
-  kiosk:   'Kiosko',
-  mobile:  'Móvil',
+  cashier:   'Cajero',
+  tables:    'Mesas',
+  kitchen:   'Cocina',
+  kiosk:     'Kiosko',
+  mobile:    'Móvil',
+  reception: 'Recepción / Check-in',
 };
 
 /**
@@ -115,6 +116,10 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    * Device mode options, filtered dynamically by the tenant's active
    * features. Cashier is always available; the rest require specific
    * plan features per the business-rules-matrix.
+   *
+   * `reception` (member check-in) is offered to Gym sub-category tenants
+   * and to any Services-macro tenant — it has no FeatureKey gate because
+   * it ships as a vertical-default screen rather than a paid add-on.
    */
   readonly modes = computed<ModeOption[]>(() => {
     const modes: ModeOption[] = [
@@ -128,6 +133,11 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     }
     if (this.tenantContext.hasFeature(FeatureKey.KioskMode)) {
       modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
+    }
+    const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
+    const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
+    if (isGym || isServices) {
+      modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
     return modes;
   });

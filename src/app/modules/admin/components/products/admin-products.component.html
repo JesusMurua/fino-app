@@ -1,18 +1,22 @@
-<div class="admin-products">
+<div class="admin-products layout-wide">
 
   <p-toast />
 
   <!-- Header -->
-  <div class="admin-products__header">
-    <h1 class="admin-products__title">Catálogo de productos</h1>
-    <button
-      type="button"
-      class="btn-ghost"
-      (click)="showImportDialog.set(true)"
-    >
-      <i class="pi pi-upload"></i>
-      Importar Excel
-    </button>
+  <div class="page-header">
+    <div class="page-header__info">
+      <h1 class="page-header__title">Catálogo de productos</h1>
+    </div>
+    <div class="page-header__actions">
+      <button
+        type="button"
+        class="btn-ghost"
+        (click)="showImportDialog.set(true)"
+      >
+        <i class="pi pi-upload"></i>
+        Importar Excel
+      </button>
+    </div>
   </div>
 
   <!-- Tabs: Productos / Categorías -->
@@ -331,7 +335,7 @@
         type="text"
         pInputText
         [(ngModel)]="catForm.name"
-        placeholder="Ej. Bebidas"
+        [placeholder]="categoryNamePlaceholder()"
         class="form-field__input"
       />
     </div>

@@ -1,29 +1,10 @@
 @use '../../../../../styles/variables' as *;
 
 .cajas-container {
-  padding: $space-4;
+  // Horizontal padding removed — admin-shell provides $shell-inset-x.
   display: flex;
   flex-direction: column;
   gap: $space-3;
-
-  &__header {
-    display: flex;
-    flex-direction: column;
-    gap: $space-1;
-  }
-
-  &__title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-  }
-
-  &__subtitle {
-    font-size: 14px;
-    color: #6B7280;
-    margin: 0;
-  }
 
   &__tabs {
     :host ::ng-deep .p-tabview-nav {

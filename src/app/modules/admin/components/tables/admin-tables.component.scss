@@ -5,20 +5,6 @@
   flex-direction: column;
   gap: $space-4;
 
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: $space-4;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: $color-text-title;
-  }
-
   &__tabs {
     display: flex;
     gap: 0;

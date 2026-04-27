@@ -7,61 +7,29 @@
   display: flex;
   flex-direction: column;
   gap: $space-5;
-  padding: $space-5;
+  // Horizontal padding removed — admin-shell provides $shell-inset-x.
 }
 
 // -----------------------------------------------------------------------
-// Header
+// "Nuevo cliente" button (rendered inside .page-header__actions)
 // -----------------------------------------------------------------------
-.customers-header {
-  display: flex;
+.customers-header__btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: $space-4;
-  flex-wrap: wrap;
+  gap: $space-2;
+  min-height: 40px;
+  padding: $space-2 $space-4;
+  border: none;
+  border-radius: $radius-button;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
 
-  &__left {
-    display: flex;
-    align-items: baseline;
-    gap: $space-3;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: $font-size-title;
-    font-weight: 700;
-    color: $color-text-title;
-  }
-
-  &__count {
-    font-size: $font-size-label;
-    color: $color-text-sub;
-  }
-
-  &__right {
-    display: flex;
-    align-items: center;
-    gap: $space-3;
-  }
-
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    gap: $space-2;
-    min-height: 40px;
-    padding: $space-2 $space-4;
-    border: none;
-    border-radius: $radius-button;
-    background: $color-primary;
-    color: white;
-    font-size: $font-size-label;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.15s;
-
-    &:hover { background: #15803D; }
-  }
+  &:hover { background: #15803D; }
 }
 
 // -----------------------------------------------------------------------

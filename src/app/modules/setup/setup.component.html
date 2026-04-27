@@ -15,53 +15,8 @@
     }
 
     <!-- ============================================================== -->
-    <!-- STEP: Choose method                                             -->
-    <!-- ============================================================== -->
-    @if (!isValidating() && step() === 'choose') {
-      <div class="setup-header">
-        <div class="setup-header__icon">
-          @if (isUnbound()) {
-            <i class="pi pi-exclamation-triangle"></i>
-          } @else {
-            <i class="pi pi-cog"></i>
-          }
-        </div>
-        @if (isUnbound()) {
-          <h1 class="setup-header__title">Dispositivo no vinculado</h1>
-          <p class="setup-header__sub">Ingresa el código de activación</p>
-        } @else {
-          <h1 class="setup-header__title">Configurar dispositivo</h1>
-          <p class="setup-header__sub">Primera vez en este equipo</p>
-        }
-      </div>
-
-      <div class="setup-options">
-        <button class="setup-option" (click)="goToEmail()">
-          <span class="setup-option__icon">
-            <i class="pi pi-envelope"></i>
-          </span>
-          <span class="setup-option__text">
-            <strong>Soy el administrador</strong>
-            <span>Iniciar con email y contraseña</span>
-          </span>
-          <i class="pi pi-chevron-right setup-option__arrow"></i>
-        </button>
-
-        <button class="setup-option" (click)="goToCode()">
-          <span class="setup-option__icon">
-            <i class="pi pi-key"></i>
-          </span>
-          <span class="setup-option__text">
-            <strong>Tengo un código</strong>
-            <span>Código de activación de 6 dígitos</span>
-          </span>
-          <i class="pi pi-chevron-right setup-option__arrow"></i>
-        </button>
-      </div>
-    }
-
-    <!-- ============================================================== -->
-    <!-- STEP: Email + Password                                          -->
+    <!-- STEP: Email + Password (legacy email-pairing flow, deep-link    -->
+    <!--   only — the upstream Auth Portal owns the entry choice now)    -->
     <!-- ============================================================== -->
     @if (!isValidating() && step() === 'email') {
       <div class="setup-header">
@@ -195,14 +150,14 @@
             type="text"
             pInputText
             [(ngModel)]="deviceName"
-            placeholder="Ej. Caja 1"
+            placeholder="Ej. Terminal 1"
             class="setup-field__input"
           />
         </div>
 
         <label class="setup-field__label">Modo de operación</label>
         <div class="setup-modes">
-          @for (mode of modes; track mode.value) {
+          @for (mode of availableModes(); track mode.value) {
             <button
               class="setup-mode"
               [class.setup-mode--active]="selectedMode === mode.value"

@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { DeviceConfig } from '../../core/models';
+import { MacroCategoryType } from '../../core/enums';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -25,15 +26,27 @@ interface BranchOption {
   name: string;
 }
 
+/**
+ * Tenant-vertical hints carried by both setup and activate responses so
+ * the UI can filter the mode selector without a second round-trip.
+ * All three are optional for backwards compatibility — older backends
+ * that haven't shipped the enrichment yet will simply skip filtering.
+ */
+interface VerticalHints {
+  primaryMacroCategoryId?: MacroCategoryType;
+  hasKitchen?: boolean;
+  hasTables?: boolean;
+}
+
 /** Response from POST /api/device/setup */
-interface SetupResponse {
+interface SetupResponse extends VerticalHints {
   businessId: number;
   businessName: string;
   branches: BranchOption[];
 }
 
 /** Response from POST /api/device/activate */
-interface ActivateResponse {
+interface ActivateResponse extends VerticalHints {
   businessId: number;
   businessName: string;
   branchId: number;
@@ -71,16 +84,18 @@ export class SetupComponent implements OnInit {
 
   /**
    * Current step of the setup state machine:
-   *   choose       → pick between email or 6-digit code
-   *   email        → admin email + password form
-   *   branch       → (email flow) pick the branch this device belongs to
-   *   mode         → (email flow) pick device mode + name
-   *   code         → enter 6-digit code
-   *   code-review  → (code flow) read-only summary of the pre-configured
-   *                  branch/mode/name; a single "Confirmar" button runs
-   *                  registerDevice and navigates away
+   *   code         → enter 6-digit code (default landing — the upstream
+   *                  Auth Portal is the dual-entry surface; pairing only
+   *                  happens via codes issued from `/admin/devices`).
+   *   code-review  → read-only summary of the pre-configured assignment;
+   *                  a single "Confirmar" runs registerDevice and routes
+   *                  away.
+   *   email/branch/mode → legacy email-pairing flow, kept available via
+   *                  deep-link only (`/setup?flow=email`) for tenants who
+   *                  prefer browser-side pairing. Not surfaced in default
+   *                  navigation since the Portal owns the entry choice.
    */
-  readonly step = signal<string>('choose');
+  readonly step = signal<string>('code');
 
   /** Error message displayed to the user */
   readonly error = signal('');
@@ -124,18 +139,71 @@ export class SetupComponent implements OnInit {
   private activateData: ActivateResponse | null = null;
 
   readonly modes: ModeOption[] = [
-    { value: 'cashier', icon: '💳', label: 'Caja Registradora',  description: 'Cobro y venta directa' },
-    { value: 'tables',  icon: '🪑', label: 'Mesas',             description: 'Servicio a mesas (restaurante, bar)' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Pantalla de Cocina', description: 'Vista de pedidos para cocina' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',            description: 'Autoservicio para clientes' },
+    { value: 'cashier',   icon: '💳', label: 'Caja Registradora',           description: 'Cobro y venta directa' },
+    { value: 'tables',    icon: '🪑', label: 'Gestión de Mesas',            description: 'Servicio a mesas (restaurante, bar)' },
+    { value: 'kitchen',   icon: '👨‍🍳', label: 'Pantalla de Cocina',         description: 'Vista de pedidos para cocina' },
+    { value: 'kiosk',     icon: '📱', label: 'Kiosko',                      description: 'Autoservicio para clientes' },
+    { value: 'reception', icon: '🪪', label: 'Pantalla de Recepción',       description: 'Check-in y control de acceso (gimnasios, servicios)' },
   ];
+
+  /**
+   * Tenant-vertical hints captured from the setup/activate response.
+   * Populated by `submitEmail` and `submitCode` so `availableModes`
+   * can filter the picker before the user gets to it.
+   */
+  private readonly tenantMacro = signal<MacroCategoryType | null>(null);
+  private readonly tenantHasKitchen = signal<boolean | null>(null);
+  private readonly tenantHasTables = signal<boolean | null>(null);
+
+  /**
+   * Modes presented to the user, filtered by the tenant's vertical:
+   *   - `tables`  and `kitchen` → only tenants in the food-prep verticals
+   *     (FoodBeverage or QuickService). Each mode also respects its own
+   *     operational flag (`hasTables` / `hasKitchen`) when present.
+   *   - `cashier` and `kiosk` → universal.
+   *
+   * When the backend hasn't shipped the vertical hints yet (`macro` is
+   * `null`), the filter degrades open — all four modes are shown so
+   * existing flows keep working until the backend enrichment ships.
+   */
+  readonly availableModes = computed<readonly ModeOption[]>(() => {
+    const macro = this.tenantMacro();
+    const hasKitchen = this.tenantHasKitchen();
+    const hasTables = this.tenantHasTables();
+
+    const isFoodPrepVertical = macro === MacroCategoryType.FoodBeverage
+      || macro === MacroCategoryType.QuickService;
+
+    return this.modes.filter(mode => {
+      switch (mode.value) {
+        case 'cashier':
+        case 'kiosk':
+          return true;
+        case 'tables':
+          if (macro === null) return true;
+          return isFoodPrepVertical && hasTables !== false;
+        case 'kitchen':
+          if (macro === null) return true;
+          return isFoodPrepVertical && hasKitchen !== false;
+        case 'reception':
+          // Member check-in is a Services-vertical screen (gym today,
+          // generic Services tomorrow). Hide it for Food/Quick/Retail.
+          // Degrade open when the macro hint hasn't shipped yet.
+          if (macro === null) return true;
+          return macro === MacroCategoryType.Services;
+        default:
+          return true;
+      }
+    });
+  });
 
   /** Human-readable labels for device modes — used in code flow badge */
   private readonly modeLabels: Record<string, string> = {
-    cashier: '💳 Cajero',
-    tables:  '🪑 Mesas',
-    kitchen: '👨‍🍳 Cocina',
-    kiosk:   '📱 Kiosko',
+    cashier:   '💳 Cajero',
+    tables:    '🪑 Mesas',
+    kitchen:   '👨‍🍳 Cocina',
+    kiosk:     '📱 Kiosko',
+    reception: '🪪 Recepción',
   };
 
   /** Returns the display label for the activation code's pre-assigned mode */
@@ -228,6 +296,9 @@ export class SetupComponent implements OnInit {
       case 'kitchen':
         this.router.navigate(['/kitchen']);
         break;
+      case 'reception':
+        this.router.navigate(['/reception/access-control']);
+        break;
       default:
         this.router.navigate(['/pin']);
         break;
@@ -238,20 +309,30 @@ export class SetupComponent implements OnInit {
 
   //#region Navigation
 
+  /** Switches to the legacy email-pairing flow. Reachable via deep-link
+   *  / `?flow=email` only — the default UI does not offer this path. */
   goToEmail(): void {
     this.error.set('');
     this.step.set('email');
   }
 
+  /** Returns to the activation-code step. Used after the email flow
+   *  navigates forward and the user wants to back out. */
   goToCode(): void {
     this.error.set('');
     this.codeDigits.set(['', '', '', '', '', '']);
     this.step.set('code');
   }
 
+  /**
+   * "Back" action — leaves the setup flow entirely and returns to the
+   * dual-entry Portal so the user can re-pick Back Office vs Operational.
+   * Replaces the old `step.set('choose')` since the choose step lives in
+   * the Portal now.
+   */
   goBack(): void {
     this.error.set('');
-    this.step.set('choose');
+    this.router.navigateByUrl('/');
   }
 
   //#endregion
@@ -311,6 +392,7 @@ export class SetupComponent implements OnInit {
       this.businessId = response.businessId;
       this.businessName = response.businessName;
       this.branches.set(response.branches);
+      this.captureVerticalHints(response);
       this.step.set('branch');
     } catch {
       this.error.set('Email o contraseña incorrectos.');
@@ -373,11 +455,29 @@ export class SetupComponent implements OnInit {
       );
 
       this.activateData = response;
+      this.captureVerticalHints(response);
       this.step.set('code-review');
     } catch {
       this.error.set('Código inválido o expirado.');
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Records the tenant's macro and operational flags so `availableModes`
+   * can filter the picker. Tolerant of older backends that don't ship the
+   * fields yet — leaves the signals at `null` and the filter degrades open.
+   */
+  private captureVerticalHints(hints: VerticalHints): void {
+    if (hints.primaryMacroCategoryId !== undefined) {
+      this.tenantMacro.set(hints.primaryMacroCategoryId);
+    }
+    if (hints.hasKitchen !== undefined) {
+      this.tenantHasKitchen.set(hints.hasKitchen);
+    }
+    if (hints.hasTables !== undefined) {
+      this.tenantHasTables.set(hints.hasTables);
     }
   }
 

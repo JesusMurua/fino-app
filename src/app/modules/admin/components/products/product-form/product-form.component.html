@@ -3,30 +3,58 @@
   <p-toast />
 
   <!-- ====================================================================== -->
-  <!-- Sticky page header — back button + title                                -->
+  <!-- Sticky page header — back button + title (left) + actions (right)       -->
   <!-- ====================================================================== -->
   <header class="product-form-page__toolbar">
-    <button type="button" class="btn-ghost btn-back" (click)="cancel()">
-      <i class="pi pi-arrow-left"></i>
-      <span>Volver</span>
-    </button>
-    <h1 class="product-form-page__title">
-      {{ editingProduct() ? 'Editar producto' : 'Nuevo producto' }}
-    </h1>
+    <div class="product-form-page__toolbar-left">
+      <button type="button" class="btn-ghost btn-back" (click)="cancel()">
+        <i class="pi pi-arrow-left"></i>
+        <span>Volver</span>
+      </button>
+      <h1 class="product-form-page__title">
+        {{ editingProduct() ? 'Editar producto' : 'Nuevo producto' }}
+      </h1>
+    </div>
+    <div class="product-form-page__toolbar-actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        label="Guardar"
+        icon="pi pi-save"
+        [loading]="savingProduct() || uploadingPendingImages()"
+        (onClick)="save()"
+      />
+    </div>
   </header>
 
   <!-- ====================================================================== -->
-  <!-- Body — TabView with the same 3 tabs as the prior dialog                 -->
+  <!-- Body — 2-col grid: form (left) + live preview (right). Preview hides   -->
+  <!-- below 1024px so the form takes the full width.                          -->
   <!-- ====================================================================== -->
   <div class="product-form-page__body" [formGroup]="productForm">
-    <p-tabView styleClass="product-form-tabs" [(activeIndex)]="activeTabIndex">
+
+    <!-- Form column -->
+    <div class="product-form-page__form">
 
       <!-- ================================================================ -->
-      <!-- TAB 1 — Info básica                                               -->
+      <!-- Section: Identidad — abierta por default                          -->
       <!-- ================================================================ -->
-      <p-tabPanel header="Info básica">
-        <div class="product-form">
+      <details
+        class="form-section"
+        [attr.open]="isSectionOpen('identity') ? '' : null"
+        (toggle)="onSectionToggle('identity', $event)"
+      >
+        <summary class="form-section__summary">
+          <i class="pi pi-id-card form-section__icon"></i>
+          <span class="form-section__title">Identidad</span>
+          <i class="pi pi-chevron-down form-section__chevron"></i>
+        </summary>
 
+        <div class="form-section__body">
           <div class="form-field">
             <label class="form-field__label" for="pf-name">Nombre</label>
             <input
@@ -39,53 +67,42 @@
             />
           </div>
 
-          <div class="form-field">
-            <label class="form-field__label" for="pf-barcode">Código de barras</label>
-            <div class="p-inputgroup">
-              <input
-                id="pf-barcode"
-                type="text"
-                pInputText
-                formControlName="barcode"
-                placeholder="Ej. 7501234567890"
-                class="form-field__input"
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label class="form-field__label" for="pf-category">Categoría</label>
+              <p-dropdown
+                inputId="pf-category"
+                [options]="categories()"
+                optionLabel="name"
+                optionValue="id"
+                formControlName="categoryId"
+                placeholder="Seleccionar categoría"
+                styleClass="form-field__input"
+                [appendTo]="'body'"
               />
-              <button
-                pButton
-                type="button"
-                icon="pi pi-qrcode"
-                class="p-button-outlined"
-                pTooltip="Escanear código"
-                (click)="activateBarcodeScanner()"
-              ></button>
             </div>
-          </div>
 
-          <div class="form-field">
-            <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
-            <p-inputNumber
-              inputId="pf-price"
-              mode="currency"
-              currency="MXN"
-              locale="es-MX"
-              [min]="0"
-              formControlName="pricePesos"
-              styleClass="form-field__input"
-            />
-          </div>
-
-          <div class="form-field">
-            <label class="form-field__label" for="pf-category">Categoría</label>
-            <p-dropdown
-              inputId="pf-category"
-              [options]="categories()"
-              optionLabel="name"
-              optionValue="id"
-              formControlName="categoryId"
-              placeholder="Seleccionar categoría"
-              styleClass="form-field__input"
-              [appendTo]="'body'"
-            />
+            <div class="form-field">
+              <label class="form-field__label" for="pf-barcode">Código de barras</label>
+              <div class="p-inputgroup">
+                <input
+                  id="pf-barcode"
+                  type="text"
+                  pInputText
+                  formControlName="barcode"
+                  placeholder="Ej. 7501234567890"
+                  class="form-field__input"
+                />
+                <button
+                  pButton
+                  type="button"
+                  icon="pi pi-qrcode"
+                  class="p-button-outlined"
+                  pTooltip="Escanear código"
+                  (click)="activateBarcodeScanner()"
+                ></button>
+              </div>
+            </div>
           </div>
 
           <div class="form-field">
@@ -102,18 +119,147 @@
             <span class="form-hint">{{ (productForm.controls.description.value || '').length }} / 1000</span>
           </div>
 
+          <!-- Drop zone + thumbnails. In create mode files are staged in
+               `pendingImageFiles` and uploaded after the create POST
+               returns the new id; in edit mode upload happens immediately. -->
+          <div class="form-field">
+            <label class="form-field__label">Imágenes</label>
+            <p class="form-hint">Máximo 5 imágenes por producto.</p>
+
+            <div class="image-grid">
+              <!-- Edit mode: server-side images -->
+              @for (img of productImages(); track img.id) {
+                <div class="image-grid__item">
+                  <img [src]="img.url" alt="Imagen del producto" class="image-grid__img" />
+                  <button
+                    type="button"
+                    class="image-grid__remove"
+                    aria-label="Eliminar imagen"
+                    (click)="deleteImage(img.id)"
+                  >
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
+              }
+
+              <!-- Create mode: staged files (preview blob URL, not yet uploaded) -->
+              @for (file of pendingImageFiles(); track $index; let fi = $index) {
+                <div class="image-grid__item image-grid__item--pending">
+                  <span class="image-grid__pending-label">
+                    <i class="pi pi-clock"></i>
+                    Pendiente
+                  </span>
+                  <span class="image-grid__filename">{{ file.name }}</span>
+                  <button
+                    type="button"
+                    class="image-grid__remove"
+                    aria-label="Quitar archivo pendiente"
+                    (click)="removePendingImage(fi)"
+                  >
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
+              }
+
+              @if (imageSlotCount() < 5) {
+                <label class="image-grid__add">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onImageSelected($event)"
+                    hidden
+                  />
+                  @if (uploadingImage() || uploadingPendingImages()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  } @else {
+                    <i class="pi pi-plus"></i>
+                    <span>Agregar</span>
+                  }
+                </label>
+              }
+            </div>
+
+            @if (uploadingPendingImages()) {
+              <p class="form-hint">
+                <i class="pi pi-spin pi-spinner"></i>
+                Subiendo imágenes pendientes…
+              </p>
+            }
+          </div>
+
           <div class="form-field form-field--row">
             <label class="form-field__label" for="pf-active">Disponible</label>
             <p-inputSwitch inputId="pf-active" formControlName="isAvailable" />
           </div>
+        </div>
+      </details>
 
+      <!-- ================================================================ -->
+      <!-- Section: Precio — abierta por default                             -->
+      <!-- ================================================================ -->
+      <details
+        class="form-section"
+        [attr.open]="isSectionOpen('price') ? '' : null"
+        (toggle)="onSectionToggle('price', $event)"
+      >
+        <summary class="form-section__summary">
+          <i class="pi pi-tag form-section__icon"></i>
+          <span class="form-section__title">Precio</span>
+          <i class="pi pi-chevron-down form-section__chevron"></i>
+        </summary>
+
+        <div class="form-section__body">
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
+              <p-inputNumber
+                inputId="pf-price"
+                mode="currency"
+                currency="MXN"
+                locale="es-MX"
+                [min]="0"
+                formControlName="pricePesos"
+                styleClass="form-field__input"
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
+              <p-dropdown
+                inputId="pf-tax-rate"
+                formControlName="taxRate"
+                [options]="ivaRateOptions"
+                optionValue="value"
+                optionLabel="label"
+                styleClass="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ================================================================ -->
+      <!-- Section: Inventario — cerrada por default                         -->
+      <!-- ================================================================ -->
+      <details
+        class="form-section"
+        [attr.open]="isSectionOpen('inventory') ? '' : null"
+        (toggle)="onSectionToggle('inventory', $event)"
+      >
+        <summary class="form-section__summary">
+          <i class="pi pi-box form-section__icon"></i>
+          <span class="form-section__title">Inventario</span>
+          <i class="pi pi-chevron-down form-section__chevron"></i>
+        </summary>
+
+        <div class="form-section__body">
           <div class="form-field form-field--row">
             <label class="form-field__label" for="pf-track-stock">Controlar stock</label>
             <p-inputSwitch inputId="pf-track-stock" formControlName="trackStock" />
           </div>
 
           @if (productForm.controls.trackStock.value) {
-            <div class="form-row">
+            <div class="form-grid form-grid--2col">
               <div class="form-field">
                 <label class="form-field__label" for="pf-stock">Stock inicial</label>
                 <p-inputNumber
@@ -136,9 +282,26 @@
               </div>
             </div>
           }
+        </div>
+      </details>
 
-          <!-- Membership / vigencia configuration (Services macro) -->
-          @if (showsMembership()) {
+      <!-- ================================================================ -->
+      <!-- Section: Vigencia y membresía — sólo macro Services               -->
+      <!-- ================================================================ -->
+      @if (showsMembership()) {
+        <details
+          class="form-section"
+          [attr.open]="isSectionOpen('membership') ? '' : null"
+          (toggle)="onSectionToggle('membership', $event)"
+        >
+          <summary class="form-section__summary">
+            <i class="pi pi-clock form-section__icon"></i>
+            <span class="form-section__title">Vigencia y membresía</span>
+            <span class="form-section__badge form-section__badge--purple">Servicios</span>
+            <i class="pi pi-chevron-down form-section__chevron"></i>
+          </summary>
+
+          <div class="form-section__body">
             <div class="form-field form-field--row">
               <label class="form-field__label" for="pf-is-membership">¿Es un producto con vigencia?</label>
               <p-inputSwitch inputId="pf-is-membership" formControlName="isMembership" />
@@ -158,54 +321,247 @@
                 <span class="form-hint">Al cobrar este producto, la vigencia del cliente se extenderá por este número de días.</span>
               </div>
             }
-          }
-
-          <!-- Printing destination — only relevant for tenants with a kitchen -->
-          @if (tenantContext.hasKitchen()) {
-            <div class="form-section-divider"></div>
-            <span class="form-section-title">Impresión de cocina</span>
-
-            @if (hasPrinters()) {
-              <div class="form-field">
-                <label class="form-field__label" for="pf-print-dest">Destino de impresión</label>
-                <p-dropdown
-                  inputId="pf-print-dest"
-                  [options]="printingDestinationOptions()"
-                  optionLabel="name"
-                  optionValue="id"
-                  formControlName="printingDestinationId"
-                  placeholder="Sin impresión de cocina"
-                  [showClear]="true"
-                  styleClass="form-field__input"
-                  [appendTo]="'body'"
-                />
-                <span class="form-hint">El ticket de cocina se enviará a este destino al completar la venta.</span>
-              </div>
-            } @else {
-              <p class="form-hint">
-                <i class="pi pi-info-circle"></i>
-                Configura impresoras en <strong>Ajustes → Impresoras</strong> para activar esta función.
-              </p>
-            }
-          }
-
-          <!-- Fiscal / SAT metadata -->
-          <div class="form-section-divider"></div>
-          <span class="form-section-title">Datos fiscales (CFDI)</span>
-
-          <div class="form-field">
-            <label class="form-field__label" for="pf-sat-code">Clave SAT del producto</label>
-            <input
-              id="pf-sat-code"
-              type="text"
-              pInputText
-              formControlName="satProductCode"
-              placeholder="Ej. 90101500 (Alimentos)"
-              class="w-full"
-            />
           </div>
+        </details>
+      }
 
-          <div class="form-row">
+      <!-- ================================================================ -->
+      <!-- Section: Modificadores — sólo F&B / QuickService / kitchen        -->
+      <!-- ================================================================ -->
+      @if (hasModifiersSection()) {
+        <details
+          class="form-section"
+          [attr.open]="isSectionOpen('modifiers') ? '' : null"
+          (toggle)="onSectionToggle('modifiers', $event)"
+        >
+          <summary class="form-section__summary">
+            <i class="pi pi-sliders-h form-section__icon"></i>
+            <span class="form-section__title">Modificadores</span>
+            <span class="form-section__badge form-section__badge--blue">F&amp;B</span>
+            <i class="pi pi-chevron-down form-section__chevron"></i>
+          </summary>
+
+          <div class="form-section__body">
+            <p class="form-hint">Tamaños y modificadores son opcionales. Sólo agrégalos si tu producto los necesita.</p>
+
+            <!-- Sizes -->
+            <div class="form-subsection">
+              <div class="form-subsection__header">
+                <span class="form-subsection__title">Tamaños</span>
+                <span class="form-subsection__hint">Precio = base + cargo extra</span>
+              </div>
+
+              <div formArrayName="sizes">
+                @for (sizeCtrl of sizesForm.controls; track $index; let si = $index) {
+                  <div class="variant-row" [formGroupName]="si">
+                    <input
+                      type="text"
+                      pInputText
+                      formControlName="label"
+                      placeholder="Ej. Chico, Grande"
+                      class="variant-row__name"
+                    />
+                    <p-inputNumber
+                      mode="currency"
+                      currency="MXN"
+                      locale="es-MX"
+                      [min]="0"
+                      formControlName="priceDeltaPesos"
+                      styleClass="variant-row__price"
+                      placeholder="+$0.00"
+                    />
+                    <button
+                      type="button"
+                      class="btn-icon btn-icon--danger"
+                      aria-label="Eliminar tamaño"
+                      (click)="removeSize(si)"
+                    >
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <button type="button" class="btn-add-variant" (click)="addSize()">
+                <i class="pi pi-plus"></i>
+                Agregar tamaño
+              </button>
+            </div>
+
+            <!-- Modifier groups -->
+            <div class="form-subsection">
+              <div class="form-subsection__header">
+                <span class="form-subsection__title">Grupos de modificadores</span>
+                <span class="form-subsection__hint">Agrupa los extras con reglas de selección</span>
+              </div>
+
+              <div formArrayName="modifierGroups">
+                @for (groupCtrl of modifierGroupsForm.controls; track $index; let gi = $index) {
+                  <div class="modifier-group" [formGroupName]="gi">
+                    <div class="modifier-group__header">
+                      <input
+                        type="text"
+                        pInputText
+                        formControlName="name"
+                        [placeholder]="modifierGroupPlaceholder()"
+                        class="modifier-group__name-input"
+                      />
+                      <button
+                        type="button"
+                        class="btn-icon btn-icon--danger"
+                        aria-label="Eliminar grupo"
+                        (click)="removeGroup(gi)"
+                      >
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+
+                    @if (groupCtrl.controls.name.touched && groupCtrl.controls.name.invalid) {
+                      <p class="modifier-group__error">El nombre del grupo es obligatorio</p>
+                    }
+
+                    <div class="modifier-group__rules">
+                      <label class="modifier-group__field">
+                        <span class="modifier-group__field-label">Mín.</span>
+                        <p-inputNumber
+                          formControlName="minSelectable"
+                          [min]="0"
+                          [showButtons]="true"
+                          styleClass="modifier-group__field-input"
+                        />
+                      </label>
+                      <label class="modifier-group__field">
+                        <span class="modifier-group__field-label">Máx.</span>
+                        <p-inputNumber
+                          formControlName="maxSelectable"
+                          [min]="0"
+                          [showButtons]="true"
+                          styleClass="modifier-group__field-input"
+                        />
+                      </label>
+                      <label class="modifier-group__field modifier-group__field--switch">
+                        <span class="modifier-group__field-label">Obligatorio</span>
+                        <p-inputSwitch formControlName="isRequired" />
+                      </label>
+                    </div>
+
+                    @if (groupCtrl.errors?.['minMax']) {
+                      <p class="modifier-group__error">El mínimo no puede superar al máximo</p>
+                    }
+
+                    <div class="modifier-group__extras" formArrayName="extras">
+                      @for (extraCtrl of extrasArrayForGroup(gi).controls; track $index; let ei = $index) {
+                        <div class="variant-row" [formGroupName]="ei">
+                          <input
+                            type="text"
+                            pInputText
+                            formControlName="label"
+                            [placeholder]="modifierExtraPlaceholder()"
+                            class="variant-row__name"
+                          />
+                          <p-inputNumber
+                            formControlName="pricePesos"
+                            mode="currency"
+                            currency="MXN"
+                            locale="es-MX"
+                            [min]="0"
+                            styleClass="variant-row__price"
+                            placeholder="$0.00"
+                          />
+                          <button
+                            type="button"
+                            class="btn-icon btn-icon--danger"
+                            aria-label="Eliminar extra"
+                            (click)="removeExtraFromGroup(gi, ei)"
+                          >
+                            <i class="pi pi-trash"></i>
+                          </button>
+                        </div>
+                      }
+
+                      <button
+                        type="button"
+                        class="btn-add-variant btn-add-variant--nested"
+                        (click)="addExtraToGroup(gi)"
+                      >
+                        <i class="pi pi-plus"></i>
+                        Agregar extra al grupo
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <button type="button" class="btn-add-variant" (click)="addGroup()">
+                <i class="pi pi-plus"></i>
+                Agregar grupo de modificadores
+              </button>
+            </div>
+
+            <!-- Printing destination — only when the kitchen flag is on -->
+            @if (tenantContext.hasKitchen()) {
+              <div class="form-subsection">
+                <div class="form-subsection__header">
+                  <span class="form-subsection__title">Impresión de cocina</span>
+                </div>
+
+                @if (hasPrinters()) {
+                  <div class="form-field">
+                    <label class="form-field__label" for="pf-print-dest">Destino de impresión</label>
+                    <p-dropdown
+                      inputId="pf-print-dest"
+                      [options]="printingDestinationOptions()"
+                      optionLabel="name"
+                      optionValue="id"
+                      formControlName="printingDestinationId"
+                      placeholder="Sin impresión de cocina"
+                      [showClear]="true"
+                      styleClass="form-field__input"
+                      [appendTo]="'body'"
+                    />
+                    <span class="form-hint">El ticket de cocina se enviará a este destino al completar la venta.</span>
+                  </div>
+                } @else {
+                  <p class="form-hint">
+                    <i class="pi pi-info-circle"></i>
+                    Configura impresoras en <strong>Ajustes → Impresoras</strong> para activar esta función.
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        </details>
+      }
+
+      <!-- ================================================================ -->
+      <!-- Section: Datos fiscales — sólo si el tenant tiene CFDI            -->
+      <!-- ================================================================ -->
+      @if (hasFiscalSection()) {
+        <details
+          class="form-section"
+          [attr.open]="isSectionOpen('fiscal') ? '' : null"
+          (toggle)="onSectionToggle('fiscal', $event)"
+        >
+          <summary class="form-section__summary">
+            <i class="pi pi-file-edit form-section__icon"></i>
+            <span class="form-section__title">Datos fiscales</span>
+            <span class="form-section__badge form-section__badge--amber">CFDI</span>
+            <i class="pi pi-chevron-down form-section__chevron"></i>
+          </summary>
+
+          <div class="form-section__body">
+            <div class="form-field">
+              <label class="form-field__label" for="pf-sat-code">Clave SAT del producto</label>
+              <input
+                id="pf-sat-code"
+                type="text"
+                pInputText
+                formControlName="satProductCode"
+                placeholder="Ej. 90101500 (Alimentos)"
+                class="w-full"
+              />
+            </div>
+
             <div class="form-field">
               <label class="form-field__label" for="pf-sat-unit">Unidad SAT</label>
               <p-dropdown
@@ -218,273 +574,129 @@
                 styleClass="w-full"
               />
             </div>
-            <div class="form-field">
-              <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
-              <p-dropdown
-                inputId="pf-tax-rate"
-                formControlName="taxRate"
-                [options]="ivaRateOptions"
-                optionValue="value"
-                optionLabel="label"
-                styleClass="w-full"
-              />
-            </div>
           </div>
+        </details>
+      }
 
-        </div>
-      </p-tabPanel>
+    </div>
 
-      <!-- ================================================================ -->
-      <!-- TAB 2 — Imágenes                                                  -->
-      <!-- ================================================================ -->
-      <p-tabPanel>
-        <ng-template pTemplate="header">
-          <span>Imágenes</span>
-          @if (productImages().length > 0) {
-            <span class="tab-badge">{{ productImages().length }}</span>
-          }
-        </ng-template>
+    <!-- ================================================================== -->
+    <!-- Preview column — vertical-aware live render of the product on POS   -->
+    <!-- ================================================================== -->
+    <aside class="product-form-page__preview">
+      <div class="preview__label">Vista previa</div>
 
-        <div class="product-form">
-          @if (!editingProduct()) {
-            <div class="tab-empty-state">
-              <i class="pi pi-image tab-empty-state__icon"></i>
-              <p class="tab-empty-state__text">Guarda el producto primero para agregar imágenes.</p>
-            </div>
-          } @else {
-            <p class="form-hint" style="margin-bottom: 8px">Máximo 5 imágenes por producto.</p>
-            <div class="image-grid">
-              @for (img of productImages(); track img.id) {
-                <div class="image-grid__item">
-                  <img [src]="img.url" [alt]="'Imagen del producto'" class="image-grid__img" />
-                  <button
-                    type="button"
-                    class="image-grid__remove"
-                    aria-label="Eliminar imagen"
-                    (click)="deleteImage(img.id)"
-                  >
-                    <i class="pi pi-times"></i>
-                  </button>
-                </div>
-              }
+      @switch (tenantContext.currentMacro()) {
 
-              @if (productImages().length < 5) {
-                <label class="image-grid__add">
-                  <input
-                    #imgInput
-                    type="file"
-                    accept="image/*"
-                    (change)="onImageSelected($event)"
-                    hidden
-                  />
-                  @if (uploadingImage()) {
-                    <i class="pi pi-spin pi-spinner"></i>
-                  } @else {
-                    <i class="pi pi-plus"></i>
-                    <span>Agregar</span>
-                  }
-                </label>
+        @case (MacroCategoryType.FoodBeverage) {
+          <div class="preview-card preview-card--fb">
+            <div class="preview-card__image">
+              @if (previewProduct().image) {
+                <img [src]="previewProduct().image" [alt]="previewProduct().name" />
+              } @else {
+                <i class="pi pi-image"></i>
               }
             </div>
-          }
-        </div>
-      </p-tabPanel>
-
-      <!-- ================================================================ -->
-      <!-- TAB 3 — Precios y modificadores                                   -->
-      <!-- ================================================================ -->
-      <p-tabPanel>
-        <ng-template pTemplate="header">
-          <span>Precios y modificadores</span>
-          @if (sizesForm.length > 0 || modifierGroupsForm.length > 0) {
-            <span class="tab-badge">{{ sizesForm.length + totalExtrasCount() }}</span>
-          }
-        </ng-template>
-
-        <div class="product-form">
-
-          <p class="form-hint">Los tamaños y modificadores son opcionales. Solo agrégalos si tu producto los necesita.</p>
-
-          <!-- Sizes -->
-          <div class="form-section">
-            <div class="form-section__header">
-              <span class="form-section__title">Tamaños</span>
-              <span class="form-section__hint">Precio = base + cargo extra</span>
+            <div class="preview-card__body">
+              @if (previewProduct().category) {
+                <div class="preview-card__category">{{ previewProduct().category }}</div>
+              }
+              <div class="preview-card__name">
+                {{ previewProduct().name || 'Nombre del producto' }}
+              </div>
+              <div class="preview-card__price">
+                ${{ previewProduct().pricePesos | number:'1.2-2' }}
+              </div>
             </div>
+            @if (!previewProduct().isAvailable) {
+              <span class="preview-card__unavailable">No disponible</span>
+            }
+          </div>
+        }
 
-            <div formArrayName="sizes">
-              @for (sizeCtrl of sizesForm.controls; track $index; let si = $index) {
-                <div class="variant-row" [formGroupName]="si">
-                  <input
-                    type="text"
-                    pInputText
-                    formControlName="label"
-                    placeholder="Ej. Chico, Grande"
-                    class="variant-row__name"
-                  />
-                  <p-inputNumber
-                    mode="currency"
-                    currency="MXN"
-                    locale="es-MX"
-                    [min]="0"
-                    formControlName="priceDeltaPesos"
-                    styleClass="variant-row__price"
-                    placeholder="+$0.00"
-                  />
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon--danger"
-                    aria-label="Eliminar tamaño"
-                    (click)="removeSize(si)"
-                  >
-                    <i class="pi pi-trash"></i>
-                  </button>
+        @case (MacroCategoryType.QuickService) {
+          <button class="preview-quick-btn" type="button" disabled>
+            <span class="preview-quick-btn__name">
+              {{ previewProduct().name || 'Nombre del producto' }}
+            </span>
+            <span class="preview-quick-btn__price">
+              ${{ previewProduct().pricePesos | number:'1.2-2' }}
+            </span>
+            @if (!previewProduct().isAvailable) {
+              <span class="preview-quick-btn__unavailable">No disponible</span>
+            }
+          </button>
+        }
+
+        @case (MacroCategoryType.Retail) {
+          <div class="preview-row">
+            <div class="preview-row__image">
+              @if (previewProduct().image) {
+                <img [src]="previewProduct().image" [alt]="previewProduct().name" />
+              } @else {
+                <i class="pi pi-image"></i>
+              }
+            </div>
+            <div class="preview-row__info">
+              <div class="preview-row__name">
+                {{ previewProduct().name || 'Nombre del producto' }}
+              </div>
+              <div class="preview-row__sku">
+                SKU: {{ previewProduct().barcode || '—' }}
+              </div>
+              @if (productForm.controls.trackStock.value) {
+                <div class="preview-row__stock">
+                  Stock: {{ previewProduct().currentStock }}
                 </div>
               }
             </div>
-
-            <button type="button" class="btn-add-variant" (click)="addSize()">
-              <i class="pi pi-plus"></i>
-              Agregar tamaño
-            </button>
-          </div>
-
-          <!-- Modifier groups — relevant for tenants with kitchen prep or any F&B macro -->
-          @if (tenantContext.hasKitchen() || tenantContext.currentMacro() === MacroCategoryType.FoodBeverage) {
-          <div class="form-section">
-            <div class="form-section__header">
-              <span class="form-section__title">Grupos de modificadores</span>
-              <span class="form-section__hint">Agrupa los extras con reglas de selección</span>
+            <div class="preview-row__price">
+              ${{ previewProduct().pricePesos | number:'1.2-2' }}
             </div>
-
-            <div formArrayName="modifierGroups">
-              @for (groupCtrl of modifierGroupsForm.controls; track $index; let gi = $index) {
-                <div class="modifier-group" [formGroupName]="gi">
-                  <div class="modifier-group__header">
-                    <input
-                      type="text"
-                      pInputText
-                      formControlName="name"
-                      [placeholder]="modifierGroupPlaceholder()"
-                      class="modifier-group__name-input"
-                    />
-                    <button
-                      type="button"
-                      class="btn-icon btn-icon--danger"
-                      aria-label="Eliminar grupo"
-                      (click)="removeGroup(gi)"
-                    >
-                      <i class="pi pi-trash"></i>
-                    </button>
-                  </div>
-
-                  @if (groupCtrl.controls.name.touched && groupCtrl.controls.name.invalid) {
-                    <p class="modifier-group__error">El nombre del grupo es obligatorio</p>
-                  }
-
-                  <div class="modifier-group__rules">
-                    <label class="modifier-group__field">
-                      <span class="modifier-group__field-label">Mín.</span>
-                      <p-inputNumber
-                        formControlName="minSelectable"
-                        [min]="0"
-                        [showButtons]="true"
-                        styleClass="modifier-group__field-input"
-                      />
-                    </label>
-                    <label class="modifier-group__field">
-                      <span class="modifier-group__field-label">Máx.</span>
-                      <p-inputNumber
-                        formControlName="maxSelectable"
-                        [min]="0"
-                        [showButtons]="true"
-                        styleClass="modifier-group__field-input"
-                      />
-                    </label>
-                    <label class="modifier-group__field modifier-group__field--switch">
-                      <span class="modifier-group__field-label">Obligatorio</span>
-                      <p-inputSwitch formControlName="isRequired" />
-                    </label>
-                  </div>
-
-                  @if (groupCtrl.errors?.['minMax']) {
-                    <p class="modifier-group__error">El mínimo no puede superar al máximo</p>
-                  }
-
-                  <div class="modifier-group__extras" formArrayName="extras">
-                    @for (extraCtrl of extrasArrayForGroup(gi).controls; track $index; let ei = $index) {
-                      <div class="variant-row" [formGroupName]="ei">
-                        <input
-                          type="text"
-                          pInputText
-                          formControlName="label"
-                          [placeholder]="modifierExtraPlaceholder()"
-                          class="variant-row__name"
-                        />
-                        <p-inputNumber
-                          formControlName="pricePesos"
-                          mode="currency"
-                          currency="MXN"
-                          locale="es-MX"
-                          [min]="0"
-                          styleClass="variant-row__price"
-                          placeholder="$0.00"
-                        />
-                        <button
-                          type="button"
-                          class="btn-icon btn-icon--danger"
-                          aria-label="Eliminar extra"
-                          (click)="removeExtraFromGroup(gi, ei)"
-                        >
-                          <i class="pi pi-trash"></i>
-                        </button>
-                      </div>
-                    }
-
-                    <button
-                      type="button"
-                      class="btn-add-variant btn-add-variant--nested"
-                      (click)="addExtraToGroup(gi)"
-                    >
-                      <i class="pi pi-plus"></i>
-                      Agregar extra al grupo
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-
-            <button type="button" class="btn-add-variant" (click)="addGroup()">
-              <i class="pi pi-plus"></i>
-              Agregar grupo de modificadores
-            </button>
           </div>
-          }
+        }
 
-        </div>
-      </p-tabPanel>
+        @case (MacroCategoryType.Services) {
+          <div class="preview-service">
+            <i class="pi pi-clock preview-service__icon"></i>
+            <div class="preview-service__name">
+              {{ previewProduct().name || 'Nombre del producto' }}
+            </div>
+            @if (previewProduct().isMembership && previewProduct().membershipDays > 0) {
+              <div class="preview-service__duration">
+                {{ previewProduct().membershipDays }} días de vigencia
+              </div>
+            }
+            <div class="preview-service__price">
+              ${{ previewProduct().pricePesos | number:'1.2-2' }}
+            </div>
+            @if (!previewProduct().isAvailable) {
+              <span class="preview-service__unavailable">No disponible</span>
+            }
+          </div>
+        }
 
-    </p-tabView>
+        @default {
+          <div class="preview-card">
+            <div class="preview-card__body">
+              <div class="preview-card__name">
+                {{ previewProduct().name || 'Nombre del producto' }}
+              </div>
+              <div class="preview-card__price">
+                ${{ previewProduct().pricePesos | number:'1.2-2' }}
+              </div>
+            </div>
+          </div>
+        }
+      }
+
+      <p class="preview__hint">
+        Así se verá este producto en el punto de venta.
+      </p>
+    </aside>
+
   </div>
 
-  <!-- ====================================================================== -->
-  <!-- Sticky page footer — Cancel + Save                                      -->
-  <!-- ====================================================================== -->
-  <footer class="product-form-page__actions">
-    <button type="button" class="btn-ghost" (click)="cancel()">Cancelar</button>
-    <button
-      type="button"
-      class="btn-primary"
-      [disabled]="savingProduct()"
-      (click)="save()"
-    >
-      @if (savingProduct()) {
-        <i class="pi pi-spin pi-spinner"></i>
-        Guardando...
-      } @else {
-        Guardar
-      }
-    </button>
-  </footer>
+  <!-- (Cancel + Save now live in the sticky toolbar above) -->
 
 </div>

@@ -1,31 +1,43 @@
 // =============================================================================
-// Touch UX Utilities — POS Táctil
+// Touch UX Utilities — Fino
 // =============================================================================
-// Global rules that enforce touch-first constraints defined in CLAUDE.md.
-// Applied once here so individual components don't need to repeat them.
+// Touch-first constraints from CLAUDE.md (64×64 targets, 16 px min font).
+//
+// Scoped under `.touch-shell` so the rules ONLY apply to surfaces that
+// run on physical terminals (POS, Kitchen, Kiosk). Back Office (admin
+// shell) renders with PrimeNG's default sizing — compact buttons that
+// fit a desk/laptop UX. (See AUDIT-044 for the diagnosis.)
+//
+// To opt a surface in: add `class="touch-shell"` (or
+// `host: { class: 'touch-shell' }`) on the top-level component for
+// that surface.
 
 @use 'variables' as *;
 
-// All PrimeNG buttons meet the minimum touch target
-.p-button {
-  min-height: $touch-target-min;
-  min-width: $touch-target-min;
-  font-size: $font-size-base;
+.touch-shell {
+  // All PrimeNG buttons meet the minimum touch target
+  .p-button {
+    min-height: $touch-target-min;
+    min-width: $touch-target-min;
+    font-size: $font-size-base;
+  }
+
+  // Icon-only buttons (e.g. cart +/-) keep the square touch target
+  .p-button.p-button-icon-only {
+    width: $touch-target-min;
+    height: $touch-target-min;
+  }
+
+  // PrimeNG InputNumber controls
+  .p-inputnumber-button {
+    min-width: $touch-target-min;
+    min-height: $touch-target-min;
+  }
 }
 
-// Icon-only buttons (e.g. cart +/-) keep the square touch target
-.p-button.p-button-icon-only {
-  width: $touch-target-min;
-  height: $touch-target-min;
-}
-
-// PrimeNG InputNumber controls
-.p-inputnumber-button {
-  min-width: $touch-target-min;
-  min-height: $touch-target-min;
-}
-
-// Ensure no hover-only interactions — pointer events work for touch too
+// Ensure no hover-only interactions — pointer events work for touch too.
+// Kept global because suppressing the tap-highlight is harmless on
+// non-touch contexts and useful on hybrid devices.
 * {
   -webkit-tap-highlight-color: transparent;
 }

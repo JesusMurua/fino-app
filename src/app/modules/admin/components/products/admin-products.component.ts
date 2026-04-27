@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -18,8 +18,9 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImportPreview, ProductImportResult } from '../../../../core/models';
-import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
+import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES, MacroCategoryType, SubCategoryType } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ProductCategoryService } from '../../../../core/services/product-category.service';
 import { DiscountService } from '../../../../core/services/discount.service';
@@ -76,6 +77,27 @@ export class AdminProductsComponent implements OnInit {
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly tenantContext = inject(TenantContextService);
+
+  /**
+   * Placeholder for the "Nombre" field of the new-category dialog.
+   * Routes by vertical so a Gym admin sees "Membresías" instead of the
+   * F&B-flavored "Bebidas". Falls back to a neutral hint elsewhere.
+   */
+  readonly categoryNamePlaceholder = computed(() => {
+    if (this.tenantContext.currentSubCategory() === SubCategoryType.Gym) {
+      return 'Ej. Membresías';
+    }
+    switch (this.tenantContext.currentMacro()) {
+      case MacroCategoryType.FoodBeverage:
+      case MacroCategoryType.QuickService:
+        return 'Ej. Bebidas';
+      case MacroCategoryType.Retail:
+        return 'Ej. Categoría o departamento';
+      default:
+        return 'Ej. Categoría';
+    }
+  });
 
   readonly products = signal<Product[]>([]);
   readonly categories = signal<Category[]>([]);
