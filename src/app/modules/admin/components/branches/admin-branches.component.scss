@@ -48,6 +48,12 @@
   gap: $space-3;
 }
 
+// Muted placeholder for empty location cells in the branches table.
+.branch-empty-cell {
+  font-style: italic;
+  color: #9CA3AF;
+}
+
 // Card reuses the global settings-card style — only local tweaks here
 .settings-card {
   background: white;
