@@ -11,8 +11,9 @@ import {
 } from '../models';
 import { MacroCategoryType } from '../enums';
 import { ApiService } from './api.service';
-import { AuthService } from './auth.service';
+import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
+import { TenantContextService } from './tenant-context.service';
 
 /** Derives the default POS experience variant from the primary macro category. */
 function posExperienceForMacro(macro: MacroCategoryType): PosExperience {
@@ -95,7 +96,8 @@ export class ConfigService {
   constructor(
     private readonly db: DatabaseService,
     private readonly api: ApiService,
-    private readonly authService: AuthService,
+    private readonly branchContext: BranchContextService,
+    private readonly tenantContext: TenantContextService,
   ) {
     // Eagerly load device config so subscribers get the real value immediately
     this.loadDeviceConfig();
@@ -129,14 +131,14 @@ export class ConfigService {
     // Step 2 — Try to fetch from API in background
     try {
       const remote = await firstValueFrom(
-        this.api.get<BranchConfigResponse>(`/branch/${this.authService.branchId}/config`),
+        this.api.get<BranchConfigResponse>(`/branch/${this.branchContext.activeBranchId()}/config`),
       );
 
       // Derive the POS experience from the branch payload when available,
-      // or fall back to the macro category from the JWT. Macro → experience
-      // is deterministic (see `posExperienceForMacro`), so we never need to
-      // hit the catalog service for this resolution.
-      const macroId = this.authService.primaryMacroCategoryId();
+      // or fall back to the macro category from the tenant context.
+      // Macro → experience is deterministic (see `posExperienceForMacro`),
+      // so we never need to hit the catalog service for this resolution.
+      const macroId = this.tenantContext.currentMacro();
       const posExperience: PosExperience | undefined =
         (remote.posExperience as PosExperience | undefined)
         ?? (macroId !== null ? posExperienceForMacro(macroId) : config.businessTypeCatalog?.posExperience);

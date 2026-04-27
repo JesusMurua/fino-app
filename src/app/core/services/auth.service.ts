@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { Observable, firstValueFrom, map, tap } from 'rxjs';
 
 import {
-  ACTIVE_BRANCH_KEY,
   AUTH_TOKEN_KEY,
   AUTH_USER_KEY,
   AuthSessionType,
@@ -21,6 +20,7 @@ import {
 } from '../models';
 import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { ApiService } from './api.service';
+import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
 import { TenantContextService } from './tenant-context.service';
 
@@ -77,12 +77,13 @@ export class AuthService {
   /**
    * Reactive branch ID — components use effect() on this signal
    * to reload data when the active branch changes.
-   * Restores from localStorage so the last-selected branch persists
-   * across navigation and page refreshes.
+   *
+   * Re-exports the signal owned by `BranchContextService` (not a
+   * derived signal) so consumers retain the same reactive identity
+   * they had before the extraction. Mutations go through the store
+   * via the writer methods on this service.
    */
-  readonly activeBranchId = signal<number>(
-    this.loadStoredBranchId(),
-  );
+  get activeBranchId() { return this.branchContext.activeBranchId; }
 
   /** Current subscription plan tier — restored from storage on init */
   readonly planTypeId = signal<PlanTypeId>(
@@ -162,10 +163,21 @@ export class AuthService {
     private readonly db: DatabaseService,
     private readonly router: Router,
     private readonly tenantContext: TenantContextService,
+    private readonly branchContext: BranchContextService,
   ) {
     // No HTTP and no cross-service writes here. The tenant context is
     // primed post-bootstrap from `AppComponent.ngOnInit` via the public
     // `syncTenantContext()` method — see AUDIT-046 for the rationale.
+
+    // Seed the branch context from the stored user when the dedicated
+    // ACTIVE_BRANCH_KEY entry is empty (covers legacy sessions written
+    // before that key existed). Pure synchronous localStorage work, no
+    // HTTP — safe in the constructor.
+    if (this.branchContext.activeBranchId() === 0) {
+      const user = this.loadUserFromStorage();
+      const fallback = user?.currentBranchId || user?.branchId || 0;
+      if (fallback) this.branchContext.setBranchId(fallback);
+    }
   }
   //#endregion
 
@@ -185,8 +197,7 @@ export class AuthService {
    * @param branchId Branch ID to activate
    */
   setActiveBranch(branchId: number): void {
-    this.activeBranchId.set(branchId);
-    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    this.branchContext.setBranchId(branchId);
     const user = this.currentUser();
     if (user) {
       const updated = { ...user, currentBranchId: branchId };
@@ -206,7 +217,7 @@ export class AuthService {
       this.api.post<LoginResponse>('/auth/switch-branch', { branchId }),
     );
     // Write the target branch BEFORE handleLoginSuccess so it takes priority
-    localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
+    this.branchContext.setBranchId(branchId);
     if (!response.currentBranchId) {
       response.currentBranchId = branchId;
     }
@@ -319,9 +330,8 @@ export class AuthService {
 
       localStorage.setItem(AUTH_TOKEN_KEY, user.token);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-      localStorage.setItem(ACTIVE_BRANCH_KEY, branchId.toString());
       this.currentUser.set(user);
-      this.activeBranchId.set(branchId);
+      this.branchContext.setBranchId(branchId);
       this.syncTenantContext();
 
       return user;
@@ -386,9 +396,8 @@ export class AuthService {
 
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
-    localStorage.removeItem(ACTIVE_BRANCH_KEY);
     this.currentUser.set(null);
-    this.activeBranchId.set(0);
+    this.branchContext.clear();
     this.planTypeId.set(PlanTypeId.Free);
     this.primaryMacroCategoryId.set(null);
     this.trialEndsAt.set(null);
@@ -540,7 +549,7 @@ export class AuthService {
   handleLoginSuccess(response: LoginResponse): AuthUser {
     const responseBranchId = response.currentBranchId ?? response.branchId;
     // Preserve the user's last-selected branch across re-authentication
-    const storedBranchId = parseInt(localStorage.getItem(ACTIVE_BRANCH_KEY) ?? '', 10);
+    const storedBranchId = this.branchContext.activeBranchId();
     const effectiveBranchId = storedBranchId || responseBranchId;
 
     // Prefer the JWT `features` claim when present — it's what the
@@ -581,26 +590,14 @@ export class AuthService {
 
     localStorage.setItem(AUTH_TOKEN_KEY, user.token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    localStorage.setItem(ACTIVE_BRANCH_KEY, effectiveBranchId.toString());
     this.currentUser.set(user);
-    this.activeBranchId.set(effectiveBranchId);
+    this.branchContext.setBranchId(effectiveBranchId);
     this.planTypeId.set(user.planTypeId);
     this.primaryMacroCategoryId.set(user.primaryMacroCategoryId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
     this.syncTenantContext();
 
     return user;
-  }
-
-  /**
-   * Restores the active branch ID from localStorage.
-   * Priority: ACTIVE_BRANCH_KEY → user.currentBranchId → user.branchId → 0.
-   */
-  private loadStoredBranchId(): number {
-    const stored = localStorage.getItem(ACTIVE_BRANCH_KEY);
-    if (stored) return parseInt(stored, 10) || 0;
-    const user = this.loadUserFromStorage();
-    return user?.currentBranchId || user?.branchId || 0;
   }
 
   /**
