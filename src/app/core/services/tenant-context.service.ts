@@ -161,7 +161,15 @@ export class TenantContextService {
     // Kick off the dynamic plan-catalog fetch as soon as the tenant
     // context is hydrated. Fire-and-forget — the service handles its
     // own errors and falls back to the static catalog on failure.
-    this.catalogService.fetchPlanCatalog();
+    //
+    // Deferred to a microtask: callers may invoke `setContext` from
+    // inside their own constructor (e.g. `AuthService.syncTenantContext`
+    // runs during DI graph resolution). If we fire the HTTP call
+    // synchronously, the auth interceptor's `inject(AuthService)` triggers
+    // an NG0200 circular dependency because AuthService is still being
+    // constructed. Running on the next microtask lets the constructor
+    // return first so the cached instance is available to the interceptor.
+    queueMicrotask(() => this.catalogService.fetchPlanCatalog());
   }
 
   /**
