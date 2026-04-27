@@ -66,14 +66,18 @@
               [disabled]="isSaving()"
               (click)="saveBusinessConfig()"
             >
-              @if (isSaving()) { <i class="pi pi-spin pi-spinner"></i> }
-              Guardar cambios
+              @if (isSaving()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-save"></i>
+              }
+              Guardar
             </button>
           </div>
         </section>
 
-        <!-- Business type (read-only) -->
-        <section class="settings-card">
+        <!-- Business type (read-only — no primary action, subtler background) -->
+        <section class="settings-card settings-card--readonly">
           <div class="settings-card-header">
             <div class="card-icon"><i class="pi pi-globe"></i></div>
             <div>
@@ -201,8 +205,12 @@
                 [disabled]="isSavingFolio()"
                 (click)="saveFolioConfig()"
               >
-                @if (isSavingFolio()) { <i class="pi pi-spin pi-spinner"></i> }
-                Guardar configuración
+                @if (isSavingFolio()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                } @else {
+                  <i class="pi pi-save"></i>
+                }
+                Guardar
               </button>
             </div>
           </section>

@@ -4,6 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
 import { MessageService } from 'primeng/api';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
@@ -11,7 +12,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
 import { FeatureKey, MacroCategoryType, OrderSource } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
-import { Branch, BranchService } from '../../../../core/services/branch.service';
+import { Branch, BranchPayload, BranchService } from '../../../../core/services/branch.service';
 import { BranchDeliveryConfigService } from '../../../../core/services/branch-delivery-config.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-config-card.component';
@@ -20,9 +21,21 @@ import { DeliveryConfigCardComponent } from '../delivery-config-card/delivery-co
 interface BranchFormValue {
   name: string;
   locationName: string;
+  address: string;
+  phone: string;
   hasKitchen: boolean;
   hasTables: boolean;
 }
+
+/** Empty defaults reused by openNewBranch and the initial declaration */
+const EMPTY_BRANCH_FORM: BranchFormValue = {
+  name: '',
+  locationName: '',
+  address: '',
+  phone: '',
+  hasKitchen: false,
+  hasTables: false,
+};
 
 /**
  * Back Office branch management screen.
@@ -48,6 +61,7 @@ interface BranchFormValue {
     DialogModule,
     DropdownModule,
     InputTextModule,
+    InputTextareaModule,
     TableModule,
     TooltipModule,
     DeliveryConfigCardComponent,
@@ -89,7 +103,7 @@ export class AdminBranchesComponent implements OnInit {
   readonly editingBranch = signal<Branch | null>(null);
 
   /** Form bound to the branch dialog */
-  branchForm: BranchFormValue = { name: '', locationName: '', hasKitchen: false, hasTables: false };
+  branchForm: BranchFormValue = { ...EMPTY_BRANCH_FORM };
 
   /** Branch targeted for catalog copy */
   readonly copyTarget = signal<Branch | null>(null);
@@ -124,6 +138,29 @@ export class AdminBranchesComponent implements OnInit {
   readonly showDeliverySection = computed(() =>
     this.editingBranch() !== null
     && this.tenantContext.hasFeature(FeatureKey.DeliveryPlatforms),
+  );
+
+  //#endregion
+
+  //#region Plan limits — multi-branch gating
+  //
+  // The catalog models multi-branch as a binary `MultiBranch` feature, not
+  // a numeric quota. So the rule is: a tenant without `MultiBranch` may
+  // only own the auto-created matrix branch (1). Tenants with the feature
+  // are unlimited from the client's perspective; the backend enforces any
+  // higher caps.
+
+  /** True when the tenant cannot create another branch under their plan. */
+  readonly atBranchLimit = computed(() => {
+    if (this.tenantContext.hasFeature(FeatureKey.MultiBranch)) return false;
+    return this.branches().length >= 1;
+  });
+
+  /** Tooltip copy for the "Nueva sucursal" button when gated. */
+  readonly branchLimitTooltip = computed(() =>
+    this.atBranchLimit()
+      ? 'Has alcanzado el límite de sucursales de tu plan.'
+      : '',
   );
 
   //#endregion
@@ -171,8 +208,17 @@ export class AdminBranchesComponent implements OnInit {
   }
 
   openNewBranch(): void {
+    if (this.atBranchLimit()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Límite alcanzado',
+        detail: this.branchLimitTooltip(),
+        life: 4000,
+      });
+      return;
+    }
     this.editingBranch.set(null);
-    this.branchForm = { name: '', locationName: '', hasKitchen: false, hasTables: false };
+    this.branchForm = { ...EMPTY_BRANCH_FORM };
     this.showBranchDialog.set(true);
   }
 
@@ -181,6 +227,8 @@ export class AdminBranchesComponent implements OnInit {
     this.branchForm = {
       name: branch.name,
       locationName: branch.locationName,
+      address: branch.address ?? '',
+      phone: branch.phone ?? '',
       hasKitchen: branch.hasKitchen ?? false,
       hasTables: branch.hasTables ?? false,
     };
@@ -193,21 +241,30 @@ export class AdminBranchesComponent implements OnInit {
    * clear the local `savingBranch` flag.
    */
   async saveBranch(): Promise<void> {
-    const { name, locationName, hasKitchen, hasTables } = this.branchForm;
+    const { name, locationName, address, phone, hasKitchen, hasTables } = this.branchForm;
     if (!name.trim() || !locationName.trim()) return;
+
+    const payload: BranchPayload = {
+      name: name.trim(),
+      locationName: locationName.trim(),
+      address: address.trim() || undefined,
+      phone: phone.trim() || undefined,
+      hasKitchen,
+      hasTables,
+    };
 
     this.savingBranch.set(true);
     try {
       const editing = this.editingBranch();
       if (editing) {
-        await this.branchService.update(editing.id, name.trim(), locationName.trim(), hasKitchen, hasTables);
+        await this.branchService.update(editing.id, payload);
         this.messageService.add({
           severity: 'success',
           summary: 'Sucursal',
           detail: 'Sucursal actualizada',
         });
       } else {
-        await this.branchService.create(name.trim(), locationName.trim());
+        await this.branchService.create(payload);
         this.messageService.add({
           severity: 'success',
           summary: 'Sucursal',

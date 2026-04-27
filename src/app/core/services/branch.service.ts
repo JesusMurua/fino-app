@@ -10,11 +10,25 @@ export interface Branch {
   id: number;
   name: string;
   locationName: string;
+  /** Full street address — distinct from `locationName` (a short zone/area label) */
+  address?: string;
+  /** Contact phone for the branch */
+  phone?: string;
   isMatrix: boolean;
   hasKitchen?: boolean;
   hasTables?: boolean;
   hasDelivery?: boolean;
   deliveryConfigs?: BranchDeliveryConfig[];
+}
+
+/** Mutable fields accepted by POST /branch and PUT /branch/:id */
+export interface BranchPayload {
+  name: string;
+  locationName: string;
+  address?: string;
+  phone?: string;
+  hasKitchen?: boolean;
+  hasTables?: boolean;
 }
 
 /**
@@ -40,28 +54,24 @@ export class BranchService {
 
   /**
    * Creates a new branch.
-   * @param name Display name for the branch
-   * @param locationName Physical location description
+   * @param payload Branch fields to create
    * @returns The newly created branch
    */
-  async create(name: string, locationName: string): Promise<Branch> {
+  async create(payload: BranchPayload): Promise<Branch> {
     return firstValueFrom(
-      this.api.post<Branch>('/branch', { name, locationName }),
+      this.api.post<Branch>('/branch', payload),
     );
   }
 
   /**
    * Updates an existing branch.
    * @param id Branch ID to update
-   * @param name Updated display name
-   * @param locationName Updated physical location
-   * @param hasKitchen Whether this branch has a kitchen
-   * @param hasTables Whether this branch uses table management
+   * @param payload Branch fields to overwrite
    * @returns The updated branch
    */
-  async update(id: number, name: string, locationName: string, hasKitchen?: boolean, hasTables?: boolean): Promise<Branch> {
+  async update(id: number, payload: BranchPayload): Promise<Branch> {
     return firstValueFrom(
-      this.api.put<Branch>(`/branch/${id}`, { name, locationName, hasKitchen, hasTables }),
+      this.api.put<Branch>(`/branch/${id}`, payload),
     );
   }
 

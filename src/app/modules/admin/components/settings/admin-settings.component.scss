@@ -111,9 +111,15 @@
   &__footer {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: $space-3;
     padding-top: $space-3;
     border-top: 1px solid $color-border-soft;
+
+    .btn-primary {
+      min-width: 140px;
+      justify-content: center;
+    }
   }
 
   &__ok {
@@ -128,6 +134,13 @@
   &--placeholder {
     align-items: center;
     text-align: center;
+  }
+
+  // Read-only / informational variant — subtler background so the user
+  // can tell at a glance that no primary action is expected from this card.
+  &--readonly {
+    background: #F9FAFB;
+    border-color: #E5E7EB;
   }
 }
 

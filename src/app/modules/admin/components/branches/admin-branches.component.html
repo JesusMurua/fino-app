@@ -9,20 +9,30 @@
           Administra las ubicaciones de tu negocio y la configuración de cada una
         </p>
       </div>
-      <p-button
-        label="Nueva sucursal"
-        icon="pi pi-plus"
-        (onClick)="openNewBranch()"
-      />
+      <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
+        <p-button
+          label="Nueva sucursal"
+          icon="pi pi-plus"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="atBranchLimit()"
+          (onClick)="openNewBranch()"
+        />
+      </span>
     </div>
   } @else {
     <div class="admin-branches__inline-actions">
-      <p-button
-        label="Nueva sucursal"
-        icon="pi pi-plus"
-        size="small"
-        (onClick)="openNewBranch()"
-      />
+      <span [pTooltip]="branchLimitTooltip()" tooltipPosition="left">
+        <p-button
+          label="Nueva sucursal"
+          icon="pi pi-plus"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          [disabled]="atBranchLimit()"
+          (onClick)="openNewBranch()"
+        />
+      </span>
     </div>
   }
 
@@ -56,7 +66,13 @@
               <span class="matrix-badge">Matriz</span>
             }
           </td>
-          <td>{{ branch.locationName }}</td>
+          <td>
+            @if (branch.locationName) {
+              {{ branch.locationName }}
+            } @else {
+              <span class="branch-empty-cell">Sin dirección registrada</span>
+            }
+          </td>
           @if (showKitchenToggle()) {
             <td style="text-align: center">{{ branch.hasKitchen ? '✅' : '❌' }}</td>
           }
@@ -137,7 +153,31 @@
           type="text"
           pInputText
           class="form-field__input"
-          placeholder="Ej. Av. Reforma 123, CDMX"
+          placeholder="Ej. Centro, Polanco, Norte"
+        />
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="branch-address">Dirección</label>
+        <textarea
+          [(ngModel)]="branchForm.address"
+          id="branch-address"
+          pInputTextarea
+          rows="2"
+          class="form-field__input"
+          placeholder="Ej. Av. Reforma 123, Col. Centro, CDMX"
+        ></textarea>
+      </div>
+
+      <div class="form-field">
+        <label class="form-field__label" for="branch-phone">Teléfono</label>
+        <input
+          [(ngModel)]="branchForm.phone"
+          id="branch-phone"
+          type="tel"
+          pInputText
+          class="form-field__input"
+          placeholder="Ej. 667 123 4567"
         />
       </div>
 
