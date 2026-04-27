@@ -48,11 +48,20 @@ export class DeviceRoutingService {
   getPostLoginRoute(roleId: UserRoleId, deviceMode?: string): PostLoginRoute {
     const mode = deviceMode ?? this.configService.deviceConfig$.getValue().mode;
 
-    switch (roleId) {
-      case UserRoleId.Owner:
-      case UserRoleId.Manager:
-        return { kind: 'route', route: '/admin' };
+    // Back Office roles always land on /admin regardless of device mode —
+    // an Owner signing in on a Reception tablet still expects management.
+    if (roleId === UserRoleId.Owner || roleId === UserRoleId.Manager) {
+      return { kind: 'route', route: '/admin' };
+    }
 
+    // Reception (member check-in) terminals route every operational role
+    // straight to the access-control banner. Treated as a vertical-shell
+    // override so Host / Cashier / Waiter all converge on the same screen.
+    if (mode === 'reception') {
+      return { kind: 'route', route: '/reception/access-control' };
+    }
+
+    switch (roleId) {
       case UserRoleId.Kitchen:
         // Kitchen role users exist, but the /kitchen shell is device-auth
         // only. Send them to /orders so they can triage tickets with the

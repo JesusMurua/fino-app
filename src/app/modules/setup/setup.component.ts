@@ -139,10 +139,11 @@ export class SetupComponent implements OnInit {
   private activateData: ActivateResponse | null = null;
 
   readonly modes: ModeOption[] = [
-    { value: 'cashier', icon: '💳', label: 'Caja Registradora',  description: 'Cobro y venta directa' },
-    { value: 'tables',  icon: '🪑', label: 'Gestión de Mesas',  description: 'Servicio a mesas (restaurante, bar)' },
-    { value: 'kitchen', icon: '👨‍🍳', label: 'Pantalla de Cocina', description: 'Vista de pedidos para cocina' },
-    { value: 'kiosk',   icon: '📱', label: 'Kiosko',            description: 'Autoservicio para clientes' },
+    { value: 'cashier',   icon: '💳', label: 'Caja Registradora',           description: 'Cobro y venta directa' },
+    { value: 'tables',    icon: '🪑', label: 'Gestión de Mesas',            description: 'Servicio a mesas (restaurante, bar)' },
+    { value: 'kitchen',   icon: '👨‍🍳', label: 'Pantalla de Cocina',         description: 'Vista de pedidos para cocina' },
+    { value: 'kiosk',     icon: '📱', label: 'Kiosko',                      description: 'Autoservicio para clientes' },
+    { value: 'reception', icon: '🪪', label: 'Pantalla de Recepción',       description: 'Check-in y control de acceso (gimnasios, servicios)' },
   ];
 
   /**
@@ -184,6 +185,12 @@ export class SetupComponent implements OnInit {
         case 'kitchen':
           if (macro === null) return true;
           return isFoodPrepVertical && hasKitchen !== false;
+        case 'reception':
+          // Member check-in is a Services-vertical screen (gym today,
+          // generic Services tomorrow). Hide it for Food/Quick/Retail.
+          // Degrade open when the macro hint hasn't shipped yet.
+          if (macro === null) return true;
+          return macro === MacroCategoryType.Services;
         default:
           return true;
       }
@@ -192,10 +199,11 @@ export class SetupComponent implements OnInit {
 
   /** Human-readable labels for device modes — used in code flow badge */
   private readonly modeLabels: Record<string, string> = {
-    cashier: '💳 Cajero',
-    tables:  '🪑 Mesas',
-    kitchen: '👨‍🍳 Cocina',
-    kiosk:   '📱 Kiosko',
+    cashier:   '💳 Cajero',
+    tables:    '🪑 Mesas',
+    kitchen:   '👨‍🍳 Cocina',
+    kiosk:     '📱 Kiosko',
+    reception: '🪪 Recepción',
   };
 
   /** Returns the display label for the activation code's pre-assigned mode */
@@ -287,6 +295,9 @@ export class SetupComponent implements OnInit {
         break;
       case 'kitchen':
         this.router.navigate(['/kitchen']);
+        break;
+      case 'reception':
+        this.router.navigate(['/reception/access-control']);
         break;
       default:
         this.router.navigate(['/pin']);

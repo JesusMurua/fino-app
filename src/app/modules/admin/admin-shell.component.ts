@@ -6,7 +6,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { FeatureKey, SubCategoryType, UserRoleId } from '../../core/enums';
+import { FeatureKey, MacroCategoryType, SubCategoryType, UserRoleId } from '../../core/enums';
 import { PLAN_HIERARCHY, pricingGroupForMacro } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogService } from '../../core/services/catalog.service';
@@ -151,6 +151,22 @@ export class AdminShellComponent implements OnInit {
   }
 
   /**
+   * Resolves the displayed label for a nav item. Currently only the
+   * "Dispositivos" entry rebrands per vertical: a Gym tenant manages
+   * check-in screens, not POS terminals, so "Pantallas y Accesos" reads
+   * truer than the generic device label. Every other item returns the
+   * declared label verbatim so the static array stays the source of truth.
+   */
+  labelFor(item: NavItem): string {
+    if (item.path === 'devices') {
+      const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
+      const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
+      if (isGym || isServices) return 'Pantallas y Accesos';
+    }
+    return item.label;
+  }
+
+  /**
    * Resolves the directive mode for a nav item based on the current giro:
    *   - `lock` when the feature is applicable to this giro (user can upgrade)
    *   - `hide` when the feature is not applicable (never shown for this giro)
@@ -187,7 +203,7 @@ export class AdminShellComponent implements OnInit {
         return `Disponible en Plan ${info.plan}<br><small>Desde $${info.price.toLocaleString('es-MX')}/mes</small>`;
       }
     }
-    return this.isCollapsed() ? item.label : '';
+    return this.isCollapsed() ? this.labelFor(item) : '';
   }
 
   /**
