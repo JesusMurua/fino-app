@@ -3,16 +3,32 @@
   <p-toast />
 
   <!-- ====================================================================== -->
-  <!-- Sticky page header — back button + title                                -->
+  <!-- Sticky page header — back button + title (left) + actions (right)       -->
   <!-- ====================================================================== -->
   <header class="product-form-page__toolbar">
-    <button type="button" class="btn-ghost btn-back" (click)="cancel()">
-      <i class="pi pi-arrow-left"></i>
-      <span>Volver</span>
-    </button>
-    <h1 class="product-form-page__title">
-      {{ editingProduct() ? 'Editar producto' : 'Nuevo producto' }}
-    </h1>
+    <div class="product-form-page__toolbar-left">
+      <button type="button" class="btn-ghost btn-back" (click)="cancel()">
+        <i class="pi pi-arrow-left"></i>
+        <span>Volver</span>
+      </button>
+      <h1 class="product-form-page__title">
+        {{ editingProduct() ? 'Editar producto' : 'Nuevo producto' }}
+      </h1>
+    </div>
+    <div class="product-form-page__toolbar-actions">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="cancel()"
+      />
+      <p-button
+        label="Guardar"
+        icon="pi pi-save"
+        [loading]="savingProduct() || uploadingPendingImages()"
+        (onClick)="save()"
+      />
+    </div>
   </header>
 
   <!-- ====================================================================== -->
@@ -39,7 +55,7 @@
         </summary>
 
         <div class="form-section__body">
-          <div class="form-field form-field--name">
+          <div class="form-field">
             <label class="form-field__label" for="pf-name">Nombre</label>
             <input
               id="pf-name"
@@ -681,22 +697,6 @@
 
   </div>
 
-  <!-- ====================================================================== -->
-  <!-- Sticky page footer — Cancel + Save                                      -->
-  <!-- ====================================================================== -->
-  <footer class="product-form-page__actions">
-    <p-button
-      label="Cancelar"
-      severity="secondary"
-      [outlined]="true"
-      (onClick)="cancel()"
-    />
-    <p-button
-      label="Guardar"
-      icon="pi pi-save"
-      [loading]="savingProduct() || uploadingPendingImages()"
-      (onClick)="save()"
-    />
-  </footer>
+  <!-- (Cancel + Save now live in the sticky toolbar above) -->
 
 </div>

@@ -14,14 +14,33 @@
   height: 100%;
   min-height: 0;
 
+  // Sticky toolbar — back-button + title on the left, page actions on
+  // the right. `flex-wrap: wrap` lets the actions drop below the title
+  // on narrow viewports instead of overflowing horizontally.
   &__toolbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: $space-3;
     padding: $space-3 $space-5;
     background: white;
     border-bottom: 1px solid $color-border-soft;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  &__toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    min-width: 0;
+  }
+
+  &__toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
     flex-shrink: 0;
   }
 
@@ -62,18 +81,6 @@
     flex-direction: column;
     gap: $space-3;
     min-width: 0;
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: $space-3;
-    padding: $space-3 $space-5;
-    background: white;
-    border-top: 1px solid $color-border-soft;
-    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
-    flex-shrink: 0;
   }
 
   // Below 1024px: collapse to single column, hide preview.
@@ -200,6 +207,10 @@
     flex-direction: column;
     gap: $space-3;
     border-top: 1px solid $color-border-soft;
+    // Caps the field column so inputs don't stretch to absurd widths on
+    // wide viewports — the form column has plenty of room to breathe but
+    // a single input never gets > 640 px which keeps it readable.
+    max-width: 640px;
   }
 
   &__badge {
@@ -267,15 +278,19 @@
   gap: $space-2;
   min-width: 0;
 
+  // Compact toggle row — auto-sized pill so the label doesn't sit 600 px
+  // away from the switch. Used for boolean controls (Disponible,
+  // Controlar stock, ¿Es un producto con vigencia?).
   &--row {
+    align-self: flex-start;        // don't stretch inside the flex column
+    display: inline-flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
-  }
-
-  // Name input is wider but capped so it doesn't span huge widths.
-  &--name &__input {
-    max-width: 480px;
+    gap: $space-3;                 // 12 px between label and switch
+    padding: $space-2 $space-4;    //  8 px / 16 px
+    border: 1px solid $color-border-soft;
+    border-radius: 8px;
+    background: #F9FAFB;
   }
 
   &__label {
