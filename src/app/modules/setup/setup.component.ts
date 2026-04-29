@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -414,9 +415,12 @@ export class SetupComponent implements OnInit {
         name,
       );
       this.navigateByMode();
-    } catch (err) {
-      console.error('[SetupComponent] Email-flow device registration failed:', err);
-      this.error.set('No se pudo vincular el dispositivo. Verifica tu conexión e intenta de nuevo.');
+    } catch (error) {
+      console.error('[SetupComponent] Email-flow device registration failed:', error);
+      this.error.set(this.resolveActivationError(
+        error,
+        'No se pudo vincular el dispositivo. Verifica tu conexión e intenta de nuevo.',
+      ));
     } finally {
       this.isLoading.set(false);
     }
@@ -445,11 +449,29 @@ export class SetupComponent implements OnInit {
       this.activateData = response;
       this.captureVerticalHints(response);
       this.step.set('code-review');
-    } catch {
-      this.error.set('Código inválido o expirado.');
+    } catch (error) {
+      this.error.set(this.resolveActivationError(error, 'Código inválido o expirado.'));
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  /**
+   * Maps an activation/registration error to the message shown in the
+   * red banner. A 403 from the backend means the tenant has hit its
+   * device quota — we surface its `message` / `detail` verbatim so the
+   * user sees the actionable upgrade hint instead of a misleading
+   * "código inválido" or "verifica tu conexión". Anything else falls
+   * through to the caller-supplied generic message.
+   */
+  private resolveActivationError(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse && error.status === 403) {
+      const body = error.error as { message?: string; detail?: string } | null;
+      return body?.message
+        ?? body?.detail
+        ?? 'Has alcanzado el límite de dispositivos de tu plan.';
+    }
+    return fallback;
   }
 
   /**

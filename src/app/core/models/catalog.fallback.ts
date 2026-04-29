@@ -32,7 +32,7 @@ const BASIC_FEATURES: readonly FeatureKey[] = [
   FeatureKey.StockAlerts,
   FeatureKey.CfdiInvoicing,
   FeatureKey.CustomFolios,
-  FeatureKey.KdsBasic,
+  FeatureKey.MaxKdsScreens,
   FeatureKey.DeliveryPlatforms,
   FeatureKey.RecipeInventory,
 ];
@@ -43,7 +43,7 @@ const PRO_FEATURES: readonly FeatureKey[] = [
   FeatureKey.MultiBranch,
   FeatureKey.MultiWarehouseInventory,
   FeatureKey.LoyaltyCrm,
-  FeatureKey.KioskMode,
+  FeatureKey.MaxKiosks,
   FeatureKey.WaiterApp,
   FeatureKey.Reminders,
 ];

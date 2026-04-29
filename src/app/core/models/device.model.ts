@@ -34,6 +34,47 @@ export interface ToggleActiveResponse {
   isActive: boolean;
 }
 
+/** Request body for `POST /api/device/generate-code`. */
+export interface GenerateCodePayload {
+  branchId: number;
+  mode: DeviceConfig['mode'];
+  name: string;
+}
+
+/**
+ * Response from `POST /api/device/generate-code`. Returns the freshly
+ * minted 6-digit code together with the metadata the admin pre-configured
+ * so the UI can render the success card without re-reading the form
+ * (which is reset right after a successful generation).
+ */
+export interface GenerateCodeResponse {
+  code: string;
+  name: string;
+  mode: DeviceConfig['mode'];
+  branchName: string;
+  /** ISO date string — when the code was issued */
+  createdAt: string;
+  /** ISO date string — when the code stops being valid (24 h window) */
+  expiresAt: string;
+}
+
+/**
+ * Row shape returned by `GET /api/device/pending-codes`. Lists every
+ * activation code that has been issued but not yet redeemed by a device,
+ * letting the admin verify which pairings are still in flight.
+ */
+export interface PendingDeviceCodeDto {
+  code: string;
+  name: string;
+  mode: DeviceConfig['mode'];
+  branchId: number;
+  branchName: string;
+  /** ISO date string — when the code was issued */
+  createdAt: string;
+  /** ISO date string — when the code stops being valid */
+  expiresAt: string;
+}
+
 /** Request body for `POST /api/device/activate`. */
 export interface ActivateDevicePayload {
   /** 6-digit pairing code issued from `/admin/devices` */

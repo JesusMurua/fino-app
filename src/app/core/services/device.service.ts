@@ -5,6 +5,9 @@ import {
   ActivateDeviceResponse,
   DeviceConfig,
   DeviceListItem,
+  GenerateCodePayload,
+  GenerateCodeResponse,
+  PendingDeviceCodeDto,
   ToggleActiveResponse,
   UpdateDevicePayload,
 } from '../models';
@@ -341,6 +344,37 @@ export class DeviceService implements OnDestroy {
    */
   update(id: number, payload: UpdateDevicePayload): Observable<DeviceListItem> {
     return this.api.patch<DeviceListItem>(`/devices/${id}`, payload);
+  }
+
+  //#endregion
+
+  //#region Activation Codes (Back Office)
+
+  /**
+   * Generates a 6-digit activation code for the given branch / mode / name.
+   * The backend may respond with HTTP 403 when the tenant has hit the
+   * device limit on its current plan — callers handle that case explicitly
+   * to surface the backend's `message` / `detail` to the user.
+   *
+   * @param payload Branch, mode and name pre-configured for the new device.
+   */
+  generateCode(payload: GenerateCodePayload): Observable<GenerateCodeResponse> {
+    return this.api.post<GenerateCodeResponse>('/device/generate-code', payload);
+  }
+
+  /**
+   * Lists every activation code that has been issued but not yet redeemed.
+   * Optionally scoped to a single branch via `?branchId={id}` so the Back
+   * Office can keep the pending list in sync with the fleet table when the
+   * admin filters by branch. Non-positive ids are treated as "no filter".
+   *
+   * @param branchId Optional branch filter.
+   */
+  getPendingCodes(branchId?: number): Observable<PendingDeviceCodeDto[]> {
+    const path = typeof branchId === 'number' && branchId > 0
+      ? `/device/pending-codes?branchId=${branchId}`
+      : '/device/pending-codes';
+    return this.api.get<PendingDeviceCodeDto[]>(path);
   }
 
   //#endregion

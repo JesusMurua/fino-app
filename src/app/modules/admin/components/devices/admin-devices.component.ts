@@ -1,3 +1,5 @@
+import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, NonNullableFormBuilder } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -11,9 +13,13 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { DeviceConfig, DeviceListItem } from '../../../../core/models';
+import {
+  DeviceConfig,
+  DeviceListItem,
+  GenerateCodeResponse,
+  PendingDeviceCodeDto,
+} from '../../../../core/models';
 import { FeatureKey, MacroCategoryType } from '../../../../core/enums';
-import { ApiService } from '../../../../core/services/api.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { DeviceService } from '../../../../core/services/device.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
@@ -64,6 +70,7 @@ const MODE_LABELS: Record<DeviceConfig['mode'], string> = {
   selector: 'app-admin-devices',
   standalone: true,
   imports: [
+    DatePipe,
     FormsModule,
     ReactiveFormsModule,
     ButtonModule,
@@ -83,7 +90,6 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#region Injections
 
-  private readonly api = inject(ApiService);
   private readonly branchService = inject(BranchService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly deviceService = inject(DeviceService);
@@ -93,29 +99,50 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region Branches & activation code state (existing)
+  //#region Branches & activation code state
 
   readonly branches = signal<Branch[]>([]);
   readonly loadingBranches = signal(false);
 
-  /** Currently displayed activation code — blank until `generateActivationCode()` resolves */
-  readonly activationCode = signal('');
+  /**
+   * Snapshot of the most recently generated code. Powers the success card
+   * shown right under the form — the card reads from this signal (not from
+   * the form) so that resetting the form post-generation does not blank
+   * the on-screen summary.
+   */
+  readonly lastGeneratedCode = signal<GenerateCodeResponse | null>(null);
   readonly generatingCode = signal(false);
 
-  /** Form values for the activation code generator */
-  codeBranchId = 0;
-  codeMode: DeviceConfig['mode'] = 'cashier';
   /**
-   * Human-readable name the terminal will adopt after activation.
-   * Travels with the code so the field-tech only has to type 6 digits —
-   * the terminal never asks for a name again.
+   * Reactive form for the activation-code generator.
+   *
+   * Validators mirror the backend constraints: a positive `branchId`
+   * (defaulting to `0` would slip past `Validators.required`), one of the
+   * known device modes, and a non-blank human-readable name capped at the
+   * column length used by the backend.
    */
-  codeDeviceName = '';
+  readonly generateForm = this.fb.group({
+    branchId: this.fb.control(0, [Validators.required, Validators.min(1)]),
+    mode: this.fb.control<DeviceConfig['mode']>('cashier', [Validators.required]),
+    name: this.fb.control('', [
+      Validators.required,
+      Validators.maxLength(60),
+      AdminDevicesComponent.nonBlankValidator,
+    ]),
+  });
 
   /**
    * Device mode options, filtered dynamically by the tenant's active
-   * features. Cashier is always available; the rest require specific
-   * plan features per the business-rules-matrix.
+   * features. Cashier is always available; the rest require the matching
+   * quantitative feature key from the monetization architecture.
+   *
+   * Note on quantitative keys: `MaxKdsScreens`, `MaxKiosks` and
+   * `MaxReceptionsPerBranch` are emitted by the backend on every plan,
+   * even when the cap is 0. Their *presence* in the JWT means "this
+   * mode exists for your vertical"; the *actual quota* is enforced
+   * server-side via 403 on `/device/generate-code`. Treating presence
+   * as visibility (instead of capacity) is intentional — Free tenants
+   * can discover the upsell path and the 403 toast handles the rest.
    *
    * `reception` (member check-in) layers two checks:
    *   1. Macro gate — only Services tenants see the option, so other
@@ -123,9 +150,10 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    *      check-in screen they can't actually use. We gate on macro rather
    *      than sub-category because the JWT does not yet carry the
    *      `subCategory` claim and the backend already restricts the
-   *      `GymReception` feature flag to the Services macro at issue time.
-   *   2. Feature gate — `GymReception` is a paid add-on emitted by the
-   *      backend in the JWT claim. Without it the option stays hidden
+   *      `MaxReceptionsPerBranch` feature flag to the Services macro at
+   *      issue time.
+   *   2. Feature gate — `MaxReceptionsPerBranch` must be present in the
+   *      JWT features claim. Without it the option stays hidden
    *      regardless of vertical.
    */
   readonly modes = computed<ModeOption[]>(() => {
@@ -135,14 +163,14 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (this.tenantContext.hasAnyFeature([FeatureKey.TableMap, FeatureKey.WaiterApp])) {
       modes.push({ value: 'tables', label: 'Mesas', icon: 'pi pi-th-large' });
     }
-    if (this.tenantContext.hasAnyFeature([FeatureKey.KdsBasic, FeatureKey.RealtimeKds])) {
+    if (this.tenantContext.hasFeature(FeatureKey.MaxKdsScreens)) {
       modes.push({ value: 'kitchen', label: 'Cocina', icon: 'pi pi-box' });
     }
-    if (this.tenantContext.hasFeature(FeatureKey.KioskMode)) {
+    if (this.tenantContext.hasFeature(FeatureKey.MaxKiosks)) {
       modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
     }
     const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
-    if (isServices && this.tenantContext.hasFeature(FeatureKey.GymReception)) {
+    if (isServices && this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
     return modes;
@@ -170,6 +198,16 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   /** Row id currently being toggled; other rows keep their action buttons enabled */
   readonly togglingDeviceId = signal<number | null>(null);
+
+  //#endregion
+
+  //#region Pending-codes state
+
+  /** Activation codes issued but not yet redeemed by a device */
+  readonly pendingCodes = signal<PendingDeviceCodeDto[]>([]);
+
+  /** True while `GET /api/device/pending-codes` is in flight */
+  readonly loadingPending = signal(false);
 
   //#endregion
 
@@ -225,11 +263,16 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // Load branches and devices in parallel so first paint has both.
-    await Promise.all([this.loadBranches(), this.loadDevices()]);
+    // Load branches, devices and pending codes in parallel so first paint
+    // has the full picture without sequential round-trips.
+    await Promise.all([
+      this.loadBranches(),
+      this.loadDevices(),
+      this.loadPendingCodes(),
+    ]);
 
     const first = this.branches()[0];
-    if (first) this.codeBranchId = first.id;
+    if (first) this.generateForm.controls.branchId.setValue(first.id);
 
     // Tick every minute so status badges / relative-time labels
     // refresh without re-fetching over the network.
@@ -273,37 +316,108 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#region Activation Code
 
   /**
-   * Generates a 6-digit activation code for the selected branch/mode/name.
-   * The code is valid for 24 hours on the backend side.
+   * Generates a 6-digit activation code for the form's branch/mode/name.
+   *
+   * Three side-effects on success:
+   *   1. Stores the enriched response in `lastGeneratedCode` so the
+   *      summary card can render `code`, `name`, `branchName`, `mode`
+   *      and `expiresAt` without depending on the form (which is reset
+   *      below).
+   *   2. Resets the form, keeping the default mode of `cashier` so the
+   *      next code can be issued without re-typing common fields.
+   *   3. Refreshes the pending-codes table so the new entry shows up
+   *      immediately under the form.
+   *
+   * On HTTP 403 (plan limit exceeded) the backend message is surfaced
+   * verbatim — the interceptor only handles 401/402 globally, so this
+   * 403 path stays scoped to the device-limit semantics for this screen.
    */
   async generateActivationCode(): Promise<void> {
-    if (this.generatingCode() || !this.codeBranchId) return;
+    if (this.generatingCode()) return;
+    if (this.generateForm.invalid) {
+      this.generateForm.markAllAsTouched();
+      return;
+    }
 
-    const name = this.codeDeviceName.trim();
-    if (!name) return;
+    const { branchId, mode, name } = this.generateForm.getRawValue();
+    const payload = { branchId, mode, name: name.trim() };
 
     this.generatingCode.set(true);
-    this.activationCode.set('');
+    this.lastGeneratedCode.set(null);
 
     try {
       const response = await firstValueFrom(
-        this.api.post<{ code: string }>('/device/generate-code', {
-          branchId: this.codeBranchId,
-          mode: this.codeMode,
-          name,
-        }),
+        this.deviceService.generateCode(payload),
       );
-      this.activationCode.set(response.code);
+      this.lastGeneratedCode.set(response);
+      this.generateForm.reset({ branchId: 0, mode: 'cashier', name: '' });
+      const first = this.branches()[0];
+      if (first) this.generateForm.controls.branchId.setValue(first.id);
+      await this.loadPendingCodes();
     } catch (error) {
       console.error('[AdminDevices] Failed to generate activation code:', error);
+      this.handleGenerateError(error);
+    } finally {
+      this.generatingCode.set(false);
+    }
+  }
+
+  /**
+   * Surfaces the backend's plan-limit message on 403, falling back to a
+   * generic toast for every other failure mode (network, 5xx, etc.).
+   * The fallback chain `message ?? detail` covers both the project's
+   * usual `{ message }` envelope and the .NET `ProblemDetails` shape.
+   */
+  private handleGenerateError(error: unknown): void {
+    if (error instanceof HttpErrorResponse && error.status === 403) {
+      const body = error.error as { message?: string; detail?: string } | null;
+      const detail = body?.message
+        ?? body?.detail
+        ?? 'Has alcanzado el límite de dispositivos de tu plan.';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Límite alcanzado',
+        detail,
+        life: 6000,
+      });
+      return;
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No se pudo generar el código',
+      life: 4000,
+    });
+  }
+
+  //#endregion
+
+  //#region Pending codes
+
+  /**
+   * Loads (or reloads) the pending-codes list, honoring the current
+   * `branchFilterId` so the table stays in sync with the fleet table
+   * when the admin scopes the view to a single branch.
+   */
+  async loadPendingCodes(): Promise<void> {
+    this.loadingPending.set(true);
+    try {
+      const branchId = this.branchFilterId();
+      const list = await firstValueFrom(
+        this.deviceService.getPendingCodes(branchId ?? undefined),
+      );
+      this.pendingCodes.set(list);
+    } catch (error) {
+      console.error('[AdminDevices] Failed to load pending codes:', error);
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'No se pudo generar el código',
+        detail: 'No se pudieron cargar los códigos pendientes',
         life: 4000,
       });
     } finally {
-      this.generatingCode.set(false);
+      this.loadingPending.set(false);
     }
   }
 
@@ -351,15 +465,21 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Re-fires `loadDevices` without changing the filter */
+  /** Re-fires both fleet and pending-codes loads without changing the filter */
   refresh(): void {
     this.loadDevices({ refreshing: true });
+    this.loadPendingCodes();
   }
 
-  /** Handler for the branch filter dropdown */
+  /**
+   * Handler for the branch filter dropdown. Drives both the fleet table
+   * and the pending-codes table so the admin's mental model — "I'm
+   * looking at branch X" — applies consistently across the page.
+   */
   onBranchFilterChange(value: number | null): void {
     this.branchFilterId.set(value);
     this.loadDevices({ refreshing: true });
+    this.loadPendingCodes();
   }
 
   //#endregion
@@ -546,18 +666,11 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#region Template helpers
 
-  /** Display name for the currently selected branch in the activation form */
-  codeBranchLabel(): string {
-    return this.branches().find(b => b.id === this.codeBranchId)?.name ?? '';
-  }
-
-  /** Display label for the currently selected mode in the activation form */
-  codeModeLabel(): string {
-    return this.modes().find(m => m.value === this.codeMode)?.label ?? this.codeMode;
-  }
-
   /** TrackBy so a single-row patch does not rebuild the entire table DOM */
   trackByDeviceId = (_: number, device: DeviceListItem): number => device.id;
+
+  /** TrackBy for the pending-codes table — the 6-digit code is unique */
+  trackByPendingCode = (_: number, row: PendingDeviceCodeDto): string => row.code;
 
   //#endregion
 

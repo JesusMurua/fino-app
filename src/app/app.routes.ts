@@ -59,7 +59,7 @@ export const appRoutes: Routes = [
 	{
 		path: 'kiosk',
 		canActivate: [deviceAuthGuard, featureGuard],
-		data: { requiredFeature: FeatureKey.KioskMode },
+		data: { requiredFeature: FeatureKey.MaxKiosks },
 		loadChildren: () =>
 			import('./modules/kiosk/kiosk.routes').then((m) => m.kioskRoutes),
 	},
@@ -67,7 +67,12 @@ export const appRoutes: Routes = [
 		path: 'kitchen',
 		canActivate: [deviceAuthGuard, featureGuard],
 		data: {
-			requiredFeature: [FeatureKey.KdsBasic, FeatureKey.RealtimeKds],
+			// MaxKdsScreens is the gate for the kitchen mode (quantitative
+			// quota — backend enforces actual limits via 403 on activation).
+			// RealtimeKds is an internal toggle layered on top, dictating
+			// whether KDS uses SignalR sockets vs polling — not an access
+			// gate, so it stays out of the route guard.
+			requiredFeature: FeatureKey.MaxKdsScreens,
 		},
 		loadChildren: () =>
 			import('./modules/kitchen/kitchen.routes').then((m) => m.kitchenRoutes),
