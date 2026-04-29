@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
-import { DeviceConfig } from '../../core/models';
+import { ActivateDeviceResponse, DeviceConfig } from '../../core/models';
 import { MacroCategoryType } from '../../core/enums';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -43,21 +43,6 @@ interface SetupResponse extends VerticalHints {
   businessId: number;
   businessName: string;
   branches: BranchOption[];
-}
-
-/** Response from POST /api/device/activate */
-interface ActivateResponse extends VerticalHints {
-  businessId: number;
-  businessName: string;
-  branchId: number;
-  branchName: string;
-  mode: DeviceConfig['mode'];
-  /**
-   * Human-readable name pre-configured by the admin when generating the
-   * code. Optional to stay backwards compatible with codes issued before
-   * this field shipped; the UI falls back to 'POS Principal'.
-   */
-  deviceName?: string;
 }
 
 @Component({
@@ -136,7 +121,7 @@ export class SetupComponent implements OnInit {
   deviceName = 'POS Principal';
 
   /** Activate response data (code flow) */
-  private activateData: ActivateResponse | null = null;
+  private activateData: ActivateDeviceResponse | null = null;
 
   readonly modes: ModeOption[] = [
     { value: 'cashier',   icon: '💳', label: 'Caja Registradora',           description: 'Cobro y venta directa' },
@@ -441,7 +426,13 @@ export class SetupComponent implements OnInit {
 
   //#region Code Flow
 
-  /** Step 2B: Activate device with 6-digit code */
+  /**
+   * Step 2B: Activate device with the 6-digit code. The atomic
+   * `/device/activate` endpoint provisions the device, persists the
+   * local config, and stores the long-lived device token in a single
+   * round-trip — by the time we land on `code-review` the device is
+   * fully bound and the user only confirms before navigating away.
+   */
   async submitCode(): Promise<void> {
     const code = this.codeDigits().join('');
     if (code.length !== 6) return;
@@ -450,10 +441,7 @@ export class SetupComponent implements OnInit {
     this.isLoading.set(true);
 
     try {
-      const response = await firstValueFrom(
-        this.api.post<ActivateResponse>('/device/activate', { code }),
-      );
-
+      const response = await this.deviceService.activateDevice(code);
       this.activateData = response;
       this.captureVerticalHints(response);
       this.step.set('code-review');
@@ -482,38 +470,14 @@ export class SetupComponent implements OnInit {
   }
 
   /**
-   * Code flow confirmation: registers the device using the name, branch
-   * and mode the admin pre-configured when issuing the code. The user
-   * does not type anything here — they only confirm.
-   *
-   * Awaits `registerDevice` before navigating so the device token is in
-   * localStorage before `deviceAuthGuard` on /kitchen or /kiosk can
-   * rebound us to /setup.
+   * Code flow confirmation: the device was already provisioned atomically
+   * by `submitCode` via `/device/activate`, so this step only routes the
+   * user to the mode-specific entry point. No network call, no token
+   * write — all of that happened before we reached `code-review`.
    */
-  async saveCodeSetup(): Promise<void> {
+  saveCodeSetup(): void {
     if (!this.activateData) return;
-    if (this.isLoading()) return;
-
-    // Defensive fallback: codes issued before the admin deviceName field
-    // shipped won't carry a name — keep a sensible default so the
-    // activation does not fail.
-    const name = this.activateData.deviceName?.trim() || 'POS Principal';
-
-    this.error.set('');
-    this.isLoading.set(true);
-    try {
-      await this.deviceService.registerDevice(
-        this.activateData.branchId,
-        this.activateData.mode,
-        name,
-      );
-      this.navigateByMode();
-    } catch (err) {
-      console.error('[SetupComponent] Code-flow device registration failed:', err);
-      this.error.set('No se pudo vincular el dispositivo. Verifica tu conexión e intenta de nuevo.');
-    } finally {
-      this.isLoading.set(false);
-    }
+    this.navigateByMode();
   }
 
   //#endregion

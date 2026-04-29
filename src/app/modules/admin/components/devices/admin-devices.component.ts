@@ -12,7 +12,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { DeviceConfig, DeviceListItem } from '../../../../core/models';
-import { FeatureKey, MacroCategoryType, SubCategoryType } from '../../../../core/enums';
+import { FeatureKey, MacroCategoryType } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { DeviceService } from '../../../../core/services/device.service';
@@ -117,9 +117,16 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    * features. Cashier is always available; the rest require specific
    * plan features per the business-rules-matrix.
    *
-   * `reception` (member check-in) is offered to Gym sub-category tenants
-   * and to any Services-macro tenant — it has no FeatureKey gate because
-   * it ships as a vertical-default screen rather than a paid add-on.
+   * `reception` (member check-in) layers two checks:
+   *   1. Macro gate — only Services tenants see the option, so other
+   *      macros (FoodBeverage, QuickService, Retail) never get a member
+   *      check-in screen they can't actually use. We gate on macro rather
+   *      than sub-category because the JWT does not yet carry the
+   *      `subCategory` claim and the backend already restricts the
+   *      `GymReception` feature flag to the Services macro at issue time.
+   *   2. Feature gate — `GymReception` is a paid add-on emitted by the
+   *      backend in the JWT claim. Without it the option stays hidden
+   *      regardless of vertical.
    */
   readonly modes = computed<ModeOption[]>(() => {
     const modes: ModeOption[] = [
@@ -134,9 +141,8 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (this.tenantContext.hasFeature(FeatureKey.KioskMode)) {
       modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
     }
-    const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
     const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
-    if (isGym || isServices) {
+    if (isServices && this.tenantContext.hasFeature(FeatureKey.GymReception)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
     return modes;

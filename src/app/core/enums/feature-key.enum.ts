@@ -67,6 +67,8 @@ export enum FeatureKey {
   CustomerHistory = 'CustomerHistory',
   /** Appointment reminders */
   Reminders = 'Reminders',
+  /** Member check-in / access-control screen for gym (and gym-like) tenants */
+  GymReception = 'GymReception',
 
   // --- Reporting ----------------------------------------------------------
   /** Generic advanced reports module (sales, trends, exports) */
@@ -128,6 +130,7 @@ const RETAIL_FEATURES: readonly FeatureKey[] = [
 const SERVICES_FEATURES: readonly FeatureKey[] = [
   ...UNIVERSAL_FEATURES,
   FeatureKey.CustomFolios, FeatureKey.CustomerHistory, FeatureKey.Reminders,
+  FeatureKey.GymReception,
 ];
 
 /**

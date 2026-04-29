@@ -85,5 +85,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   [FeatureKey.CustomFolios]:            'Folios personalizados',
   [FeatureKey.CustomerHistory]:         'Historial por cliente',
   [FeatureKey.Reminders]:               'Recordatorios de citas',
+  [FeatureKey.GymReception]:            'Pantalla de recepción / check-in',
   [FeatureKey.AdvancedReports]:         'Reportes avanzados',
 };

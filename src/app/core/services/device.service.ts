@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import {
+  ActivateDeviceResponse,
   DeviceConfig,
   DeviceListItem,
   ToggleActiveResponse,
@@ -128,6 +129,37 @@ export class DeviceService implements OnDestroy {
     if (response.deviceToken) {
       this.saveDeviceToken(response.deviceToken);
     }
+
+    return response;
+  }
+
+  /**
+   * Activates this device with a 6-digit pairing code issued from
+   * `/admin/devices`. The endpoint is atomic: a single call validates
+   * the code, provisions the device server-side, persists the local
+   * config, and stores the long-lived device JWT.
+   *
+   * @param code 6-digit pairing code
+   */
+  async activateDevice(code: string): Promise<ActivateDeviceResponse> {
+    const response = await firstValueFrom(
+      this.api.post<ActivateDeviceResponse>('/device/activate', {
+        code,
+        deviceUuid: this.deviceUuid,
+      }),
+    );
+
+    const config: DeviceConfig = {
+      businessId:   response.businessId,
+      branchId:     response.branchId,
+      businessName: response.businessName,
+      branchName:   response.branchName,
+      mode:         response.mode,
+      deviceName:   response.name,
+      configuredAt: new Date().toISOString(),
+    };
+    this.deviceConfigStore.save(config);
+    this.saveDeviceToken(response.deviceToken);
 
     return response;
   }
