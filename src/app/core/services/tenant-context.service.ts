@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
+import { extractFeaturesFromJwt } from '../utils/jwt.utils';
 import { CatalogService } from './catalog.service';
 
 /**
@@ -172,6 +173,35 @@ export class TenantContextService {
    */
   setSubCategory(subCategory: SubCategoryType | null): void {
     this._currentSubCategory.set(subCategory);
+  }
+
+  /**
+   * Populates the active features set from a device JWT.
+   *
+   * Used by unattended hardware shells (kiosk / kitchen / reception)
+   * that never go through the user-login → `setContext()` path. Without
+   * this, the device boots with an empty features set and `featureGuard`
+   * rebounds it to /admin/upgrade → /login the moment it tries to enter
+   * its own shell — which is exactly what we are curing here.
+   *
+   * Deliberately leaner than `setContext()`:
+   *   - Touches ONLY `_activeFeatures`. Plan / macro / sub-category stay
+   *     untouched because the device JWT does not consistently carry
+   *     them (the `macroCategory` claim has been observed empty).
+   *   - Does NOT trigger `catalogService.fetchPlanCatalog()`. Callers
+   *     run from constructors and bootstrap paths where an HTTP call
+   *     would close the auth-interceptor DI cycle (see AUDIT-046).
+   *
+   * Malformed JWTs and missing claims resolve to a no-op rather than an
+   * exception, so callers can invoke this freely without try/catch.
+   *
+   * @param token Raw device JWT string.
+   */
+  hydrateFromDeviceToken(token: string): void {
+    const features = extractFeaturesFromJwt(token);
+    if (features !== undefined) {
+      this._activeFeatures.set(this.parseFeatures(features));
+    }
   }
 
   /** Clears the tenant context — called on logout */

@@ -1,10 +1,16 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { MacroCategoryType } from '../../core/enums';
-import { LAST_AUTH_ENTRY_KEY, LastAuthEntry } from '../../core/models';
+import {
+  DeviceConfig,
+  LAST_AUTH_ENTRY_KEY,
+  LastAuthEntry,
+  RETURN_URL_KEY,
+} from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
+import { DeviceService } from '../../core/services/device.service';
 
 /**
  * Visual descriptor for the Operational entry card. Picked dynamically
@@ -78,11 +84,53 @@ function macroFromPosExperience(experience: string | undefined): MacroCategoryTy
   templateUrl: './auth-portal.component.html',
   styleUrl: './auth-portal.component.scss',
 })
-export class AuthPortalComponent {
+export class AuthPortalComponent implements OnInit {
 
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
+  private readonly deviceService = inject(DeviceService);
   private readonly router = inject(Router);
+
+  /**
+   * Cold-boot recovery for unattended devices.
+   *
+   * A wall-mounted Reception / Kiosk / Kitchen screen has no human
+   * operator to click an entry card after a power cycle or browser
+   * refresh — it must reach its shell on its own. When we detect a
+   * valid device token paired with an unattended mode, we redirect
+   * past the portal entirely. Attended devices (cashier / tables) and
+   * fresh / unbound devices keep seeing the dual-card landing.
+   *
+   * Also clears the legacy `pos_return_url` left over by older sessions
+   * (pre-Modelo A, when /reception was authGuard-protected). Stale
+   * return URLs would otherwise be consumed by the next PIN/email login
+   * and bounce the user to a route that no longer fits the new flow.
+   */
+  ngOnInit(): void {
+    if (!this.deviceService.hasValidDeviceToken()) return;
+
+    const mode = this.configService.deviceConfig$.getValue().mode;
+    const shellRoute = this.unattendedShellRoute(mode);
+    if (shellRoute === null) return;
+
+    localStorage.removeItem(RETURN_URL_KEY);
+    this.router.navigateByUrl(shellRoute);
+  }
+
+  /**
+   * Returns the shell URL for unattended device modes, or `null` when
+   * the mode still expects a human session (cashier, tables, mobile).
+   * Single source of truth used by both the cold-boot redirect and the
+   * defensive click handler so the two paths can never diverge.
+   */
+  private unattendedShellRoute(mode: DeviceConfig['mode']): string | null {
+    switch (mode) {
+      case 'kiosk':     return '/kiosk';
+      case 'kitchen':   return '/kitchen';
+      case 'reception': return '/reception/access-control';
+      default:          return null;
+    }
+  }
 
   /**
    * Resolves the active macro for label rendering.
@@ -116,17 +164,31 @@ export class AuthPortalComponent {
   }
 
   /**
-   * Card B — vertical-aware operational entry. Records the PIN entry and
-   * routes to `/pin` when the device is paired, otherwise `/setup` so a
-   * fresh device can enter its 6-digit activation code.
+   * Card B — vertical-aware operational entry.
+   *
+   *   - Unbound device → `/setup` to consume a 6-digit activation code.
+   *   - Unattended modes (kiosk / kitchen / reception) → shortcut to the
+   *     mode shell. They have no PIN flow; landing on `/pin` would
+   *     simply trap the user behind a credential they cannot satisfy.
+   *   - Attended modes (cashier / tables / mobile) → `/pin` for the
+   *     operator to authenticate with their 4-digit code.
    */
   goToOperational(): void {
     this.rememberEntry('pin');
-    if (this.configService.isDeviceConfigured()) {
-      this.router.navigateByUrl('/pin');
-    } else {
+
+    if (!this.configService.isDeviceConfigured()) {
       this.router.navigateByUrl('/setup');
+      return;
     }
+
+    const mode = this.configService.deviceConfig$.getValue().mode;
+    const shellRoute = this.unattendedShellRoute(mode);
+    if (shellRoute !== null) {
+      this.router.navigateByUrl(shellRoute);
+      return;
+    }
+
+    this.router.navigateByUrl('/pin');
   }
 
   /** Persists which entry the user chose so guards / catch-all redirects

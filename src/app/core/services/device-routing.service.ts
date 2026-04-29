@@ -19,7 +19,7 @@ const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, 'Restaurant' | 'Counter' |
  */
 export type PostLoginRoute =
   | { kind: 'route'; route: string }
-  | { kind: 'error'; error: 'hardware-shell'; mode: 'kitchen' | 'kiosk' };
+  | { kind: 'error'; error: 'hardware-shell'; mode: 'kitchen' | 'kiosk' | 'reception' };
 
 /**
  * Determines the correct landing route after authentication
@@ -54,13 +54,6 @@ export class DeviceRoutingService {
       return { kind: 'route', route: '/admin' };
     }
 
-    // Reception (member check-in) terminals route every operational role
-    // straight to the access-control banner. Treated as a vertical-shell
-    // override so Host / Cashier / Waiter all converge on the same screen.
-    if (mode === 'reception') {
-      return { kind: 'route', route: '/reception/access-control' };
-    }
-
     switch (roleId) {
       case UserRoleId.Kitchen:
         // Kitchen role users exist, but the /kitchen shell is device-auth
@@ -76,7 +69,7 @@ export class DeviceRoutingService {
         return { kind: 'route', route: '/pos/waiter' };
 
       case UserRoleId.Cashier: {
-        if (mode === 'kitchen' || mode === 'kiosk') {
+        if (mode === 'kitchen' || mode === 'kiosk' || mode === 'reception') {
           return { kind: 'error', error: 'hardware-shell', mode };
         }
         if (mode === 'tables') return { kind: 'route', route: '/tables' };
@@ -84,7 +77,7 @@ export class DeviceRoutingService {
       }
 
       case UserRoleId.Kiosk: {
-        if (mode === 'kitchen' || mode === 'kiosk') {
+        if (mode === 'kitchen' || mode === 'kiosk' || mode === 'reception') {
           return { kind: 'error', error: 'hardware-shell', mode };
         }
         return { kind: 'route', route: '/pin' };

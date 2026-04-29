@@ -260,12 +260,12 @@ export class SetupComponent implements OnInit {
   /**
    * Returns true when the recovered config is safe to auto-redirect.
    * Infrastructure modes MUST have a valid device token, otherwise the
-   * `deviceAuthGuard` on `/kitchen` / `/kiosk` will immediately rebound
-   * back to `/setup` and create a navigation loop.
+   * `deviceAuthGuard` on `/kitchen` / `/kiosk` / `/reception` will
+   * immediately rebound back to `/setup` and create a navigation loop.
    */
   private canAutoRedirect(): boolean {
     const mode = this.configService.deviceConfig$.getValue().mode;
-    const needsDeviceToken = mode === 'kitchen' || mode === 'kiosk';
+    const needsDeviceToken = mode === 'kitchen' || mode === 'kiosk' || mode === 'reception';
     if (needsDeviceToken) {
       return this.deviceService.hasValidDeviceToken();
     }

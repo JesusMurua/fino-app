@@ -13,6 +13,7 @@ import {
 } from '../models';
 import { ApiService } from './api.service';
 import { DeviceConfigStore } from './device-config.store';
+import { TenantContextService } from './tenant-context.service';
 
 /** localStorage key for the stable device UUID */
 const DEVICE_UUID_KEY = 'kaja_device_uuid';
@@ -75,6 +76,7 @@ export class DeviceService implements OnDestroy {
 
   private readonly api = inject(ApiService);
   private readonly deviceConfigStore = inject(DeviceConfigStore);
+  private readonly tenantContext = inject(TenantContextService);
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   //#endregion
@@ -88,6 +90,17 @@ export class DeviceService implements OnDestroy {
       localStorage.setItem(DEVICE_UUID_KEY, uuid);
     }
     this.deviceUuid = uuid;
+
+    // Cold-boot recovery for unattended hardware shells (kiosk / kitchen
+    // / reception): the user-login path that normally hydrates the
+    // tenant context never runs on these devices, so we seed
+    // `_activeFeatures` from the persisted device JWT here. Skipped
+    // when the token is missing or expired — anything else would
+    // populate the UI with stale capabilities.
+    if (this.hasValidDeviceToken()) {
+      const token = this.getDeviceToken();
+      if (token !== null) this.tenantContext.hydrateFromDeviceToken(token);
+    }
   }
 
   ngOnDestroy(): void {
@@ -256,10 +269,17 @@ export class DeviceService implements OnDestroy {
    * after a successful `registerDevice` or `validateDevice` when the
    * backend returned a token. Public so the setup/activation-code flows
    * can also call it directly if needed.
+   *
+   * Re-hydrates the tenant context immediately so any consumer reading
+   * `TenantContextService.activeFeatures()` on the next tick (route
+   * guards, computed signals, the modes dropdown) sees the updated
+   * capability set without waiting for a user login.
+   *
    * @param token Raw JWT string — should have `type: 'device'` claim
    */
   saveDeviceToken(token: string): void {
     localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    this.tenantContext.hydrateFromDeviceToken(token);
   }
 
   /**

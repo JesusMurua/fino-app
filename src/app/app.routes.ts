@@ -113,8 +113,12 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'reception',
-		canActivate: [authGuard, roleGuard, terminalGuard],
-		data: { roles: [UserRoleId.Host, UserRoleId.Cashier, UserRoleId.Manager, UserRoleId.Owner] },
+		// Reception is a wall-mounted, unattended check-in screen — same
+		// architectural pattern as /kiosk and /kitchen. Device-token only,
+		// no human PIN session involved. Quota enforced backend-side via
+		// MaxReceptionsPerBranch (per-branch scope, see monetization doc).
+		canActivate: [deviceAuthGuard, featureGuard],
+		data: { requiredFeature: FeatureKey.MaxReceptionsPerBranch },
 		loadChildren: () =>
 			import('./modules/reception/reception.routes').then((m) => m.receptionRoutes),
 	},
