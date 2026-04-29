@@ -33,29 +33,7 @@
     i { font-size: 12px; }
   }
 
-  // ---- Device info strip ----
-  &__device-info {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-3 $space-4;
-    background: #F8FAFC;
-    border: 1px solid $color-border-soft;
-    border-radius: 8px;
-    font-size: $font-size-label;
-    color: $color-text-sub;
-    flex-wrap: wrap;
-  }
-
-  &__uuid {
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    background: #F1F5F9;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: $color-text-title;
-  }
-
+  // ---- Device link badges (read-only) ----
   &__linked-badge {
     display: inline-flex;
     align-items: center;
@@ -153,28 +131,11 @@
     }
   }
 
-  &__row--linked {
-    background: #F0FDF4 !important;
-  }
-
   &__name-cell {
     display: flex;
     align-items: center;
     gap: $space-2;
     font-weight: 500;
-  }
-
-  &__this-device-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 12px;
-    background: $color-primary;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
   }
 
   &__actions {

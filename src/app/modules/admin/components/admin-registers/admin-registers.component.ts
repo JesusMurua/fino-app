@@ -9,7 +9,6 @@ import { TooltipModule } from 'primeng/tooltip';
 import { CashRegister } from '../../../../core/models';
 import { FeatureKey } from '../../../../core/enums';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
-import { DeviceService } from '../../../../core/services/device.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 
 /** Shape of the register form used in create/edit dialog */
@@ -36,7 +35,6 @@ export class AdminRegistersComponent implements OnInit {
   //#region Injections
 
   private readonly cashRegisterService = inject(CashRegisterService);
-  private readonly deviceService = inject(DeviceService);
   private readonly messageService = inject(MessageService);
   private readonly tenantContext = inject(TenantContextService);
 
@@ -52,14 +50,6 @@ export class AdminRegistersComponent implements OnInit {
   readonly nameError = signal('');
 
   form: RegisterForm = this.emptyForm();
-
-  /** Current device UUID (to highlight the linked register) */
-  readonly currentDeviceUuid = this.deviceService.deviceUuid;
-
-  /** Computed: register linked to this device (if any) */
-  readonly linkedToThisDevice = computed(() =>
-    this.registers().find(r => r.deviceUuid === this.currentDeviceUuid) ?? null,
-  );
 
   /**
    * True when the user can add a NEW cash register.
@@ -161,70 +151,6 @@ export class AdminRegistersComponent implements OnInit {
     } finally {
       this.isSaving.set(false);
     }
-  }
-
-  //#endregion
-
-  //#region Device Linking
-
-  /**
-   * Links the current browser/device to a specific register.
-   * Sets the register's deviceUuid to this device's UUID.
-   */
-  async linkDevice(register: CashRegister): Promise<void> {
-    try {
-      await this.cashRegisterService.linkDevice(register.id, this.currentDeviceUuid);
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Dispositivo vinculado',
-        detail: `Este dispositivo ahora está vinculado a "${register.name}".`,
-        life: 4000,
-      });
-      await this.loadRegisters();
-      await this.cashRegisterService.resolveLinkedRegister();
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo vincular el dispositivo.',
-        life: 5000,
-      });
-    }
-  }
-
-  /**
-   * Unlinks the current device from its assigned register.
-   */
-  async unlinkDevice(register: CashRegister): Promise<void> {
-    try {
-      await this.cashRegisterService.unlinkDevice(register.id);
-      this.messageService.add({
-        severity: 'info',
-        summary: 'Dispositivo desvinculado',
-        detail: `Este dispositivo ya no está vinculado a "${register.name}".`,
-        life: 4000,
-      });
-      await this.loadRegisters();
-      await this.cashRegisterService.resolveLinkedRegister();
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo desvincular el dispositivo.',
-        life: 5000,
-      });
-    }
-  }
-
-  /** Whether the given register is linked to THIS device */
-  isLinkedToThisDevice(register: CashRegister): boolean {
-    return register.deviceUuid === this.currentDeviceUuid;
-  }
-
-  /** Truncates a UUID for display (first 8 chars) */
-  truncateUuid(uuid: string | undefined): string {
-    if (!uuid) return '—';
-    return uuid.substring(0, 8) + '...';
   }
 
   //#endregion

@@ -5,6 +5,8 @@
  * without triggering the auth interceptor → AuthService cycle.
  */
 
+import { MacroCategoryType } from '../enums';
+
 /**
  * Extracts the `features` claim from a JWT payload as a string array.
  *
@@ -33,5 +35,54 @@ export function extractFeaturesFromJwt(token: string): readonly string[] | undef
     return Array.isArray(feats) ? feats : undefined;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Maps a backend `macroCategory` claim string to the typed
+ * `MacroCategoryType` enum.
+ *
+ * Tolerant by design: the backend may emit casing variations
+ * (`"services"`, `"Services"`), spaces (`"Quick Service"`), ampersands
+ * (`"Food&Beverage"`), or punctuation we have not seen yet. We
+ * normalise to lowercase alphabetic-only before comparing so a future
+ * backend tweak does not silently break tenant context hydration. An
+ * unknown / empty value resolves to `null`.
+ */
+export function parseMacroCategoryClaim(value: unknown): MacroCategoryType | null {
+  if (typeof value !== 'string') return null;
+  const normalised = value.toLowerCase().replace(/[^a-z]/g, '');
+  switch (normalised) {
+    case 'foodbeverage':
+    case 'foodandbeverage':
+      return MacroCategoryType.FoodBeverage;
+    case 'quickservice':
+      return MacroCategoryType.QuickService;
+    case 'retail':
+      return MacroCategoryType.Retail;
+    case 'services':
+      return MacroCategoryType.Services;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Extracts and parses the `macroCategory` claim from a JWT payload.
+ *
+ * Returns `null` for missing / empty / unrecognised values so callers
+ * can use the idiomatic `if (macro !== null) …` pattern. Never throws.
+ *
+ * @param token Raw JWT string — must be the standard three-segment
+ *              `header.payload.signature` shape.
+ */
+export function extractMacroCategoryFromJwt(token: string): MacroCategoryType | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return parseMacroCategoryClaim(payload.macroCategory);
+  } catch {
+    return null;
   }
 }

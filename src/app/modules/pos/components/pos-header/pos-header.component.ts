@@ -42,7 +42,9 @@ import { PwaService } from '../../../../core/services/pwa.service';
 import { StockReceiptService } from '../../../../core/services/stock-receipt.service';
 import { SupplierService } from '../../../../core/services/supplier.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { ThemeService } from '../../../../core/services/theme.service';
 import { environment } from '../../../../../environments/environment';
+import { ShiftPanelComponent } from '../shift-panel/shift-panel.component';
 
 /** PIN numpad key */
 type NumpadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'del';
@@ -81,6 +83,7 @@ interface VerifyPinResponse {
     TableModule,
     TooltipModule,
     PricePipe,
+    ShiftPanelComponent,
   ],
   providers: [ConfirmationService],
   templateUrl: './pos-header.component.html',
@@ -101,6 +104,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   readonly deliveryService = inject(DeliveryService);
   readonly pwaService = inject(PwaService);
   readonly syncService = inject(SyncService);
+  readonly themeService = inject(ThemeService);
   private readonly tenantContext = inject(TenantContextService);
 
   private readonly destroy$ = new Subject<void>();
@@ -251,6 +255,19 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       if (this.configService.hasDelivery()) {
         this.deliveryService.loadActiveOrders();
       }
+    }, { allowSignalWrites: true });
+
+    // Pulse the chip amount whenever `expectedAmount` changes. We track
+    // the value as a dependency, ignore the first emission (component
+    // mount) by comparing against a baseline, and bump a counter on
+    // every subsequent change. The template binds the counter to a CSS
+    // attribute that re-triggers a keyframe animation on each tick.
+    let lastAmount = this.cashRegisterService.expectedAmount();
+    effect(() => {
+      const next = this.cashRegisterService.expectedAmount();
+      if (next === lastAmount) return;
+      lastAmount = next;
+      this.amountPulseKey.update(v => v + 1);
     }, { allowSignalWrites: true });
   }
 
@@ -564,6 +581,18 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   //#endregion
 
+  //#region Chip Amount Pulse
+
+  /**
+   * Monotonic counter that ticks each time `expectedAmount` changes,
+   * driving a brief scale-pulse on the chip's amount node. Bound to a
+   * CSS class via `attr.data-pulse` in the template — toggling the value
+   * triggers the keyframe animation owned by `.shift-chip__amount`.
+   */
+  readonly amountPulseKey = signal(0);
+
+  //#endregion
+
   //#region Session Blocker (FDD-002)
 
   private readonly deviceService = inject(DeviceService);
@@ -585,7 +614,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
    * - 'isOpen'       → register linked and a session is open (blocker is hidden)
    */
   readonly setupState = computed<'loading' | 'needsLinking' | 'needsOpening' | 'isOpen'>(() => {
-    if (this.isLinkingDevice() || this.isOpeningSession()) return 'loading';
+    if (this.isLinkingDevice()) return 'loading';
     if (this.cashRegisterService.hasOpenSession()) return 'isOpen';
     if (!this.linkedRegister()) return 'needsLinking';
     return 'needsOpening';
@@ -608,12 +637,6 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     const roleId = this.authService.currentUser()?.roleId;
     return roleId === UserRoleId.Owner || roleId === UserRoleId.Manager;
   });
-
-  /** Opening amount for the new session (in pesos) */
-  readonly sessionAmountPesos = signal(0);
-
-  /** True while the session is being opened */
-  readonly isOpeningSession = signal(false);
 
   /** True while the self-link flow is in progress */
   readonly isLinkingDevice = signal(false);
@@ -727,30 +750,11 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     this.pendingHasOpenSession.set(false);
   }
 
-  /** Opens a new cash register session and dismisses the blocker */
-  async openSessionFromBlocker(): Promise<void> {
-    if (this.isOpeningSession()) return;
-
-    this.isOpeningSession.set(true);
-    try {
-      const amountCents = Math.round(this.sessionAmountPesos() * 100);
-      const user = this.authService.currentUser();
-      await this.cashRegisterService.openSession({
-        initialAmountCents: amountCents,
-        openedBy: user?.name ?? 'Cajero',
-      });
-      this.sessionAmountPesos.set(0);
-    } catch {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error al abrir turno',
-        detail: 'No se pudo abrir la caja. Verifica tu conexión.',
-        life: 5000,
-      });
-    } finally {
-      this.isOpeningSession.set(false);
-    }
-  }
+  // Note: the legacy `openSessionFromBlocker` was removed in Phase 3.
+  // The blocker's "Abrir Turno" CTA now calls
+  // `cashRegisterService.requestOpenDialog()` so the cashier always lands
+  // on the shared `<app-shift-management>` open dialog (drawer-pop,
+  // $0-confirm and HTTP error mapping included for free).
 
   //#endregion
 

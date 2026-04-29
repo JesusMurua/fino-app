@@ -7,6 +7,14 @@ export interface CashRegister {
   name: string;
   isActive: boolean;
   deviceUuid?: string;
+  /**
+   * Server-side strict device identifier. The backend resolves the
+   * caller's `deviceUuid` to this `deviceId` and exposes both on the
+   * DTO so future flows can prefer the strict ID for queries while
+   * the device itself only ever knows its local UUID. Optional until
+   * the backend always emits it.
+   */
+  deviceId?: number;
   createdAt?: string;
 }
 
@@ -39,14 +47,26 @@ export interface CashMovement {
   createdAt: Date;
 }
 
-/** Request body for opening a new session */
+/**
+ * Request body for opening a new session.
+ *
+ * The acting user (`openedBy` on the response) is resolved server-side
+ * from the JWT — the client must NOT send it in the body. The backend
+ * also resolves the caller's device UUID into a strict `deviceId`, so
+ * `cashRegisterId` is the only register-scoping field the client needs
+ * to provide.
+ */
 export interface OpenSessionRequest {
   initialAmountCents: number;
-  openedBy: string;
   cashRegisterId?: number;
 }
 
-/** Request body for closing the current session */
+/**
+ * Request body for closing the current session.
+ *
+ * The acting user (`closedBy` on the response) is resolved server-side
+ * from the JWT — the client must NOT send it in the body.
+ */
 export interface CloseSessionRequest {
   /**
    * Explicit identifier of the session being closed. Making this
@@ -58,15 +78,19 @@ export interface CloseSessionRequest {
    */
   sessionId: number;
   countedAmountCents: number;
-  closedBy: string;
   notes?: string;
 }
 
-/** Request body for adding a cash movement */
+/**
+ * Request body for adding a cash movement.
+ *
+ * The acting user (`createdBy` on the response) is resolved server-side
+ * from the JWT — the client must NOT send it in the body. The backend
+ * scopes the movement to the active session via the JWT + device.
+ */
 export interface AddMovementRequest {
   /** 1=In, 2=Out, 3=Adjustment */
   cashMovementTypeId: CashMovementType;
   amountCents: number;
   description: string;
-  createdBy: string;
 }

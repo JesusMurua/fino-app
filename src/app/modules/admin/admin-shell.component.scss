@@ -10,13 +10,20 @@ $topbar-height: 48px;
 $transition: 0.25s ease;
 
 // ============================================================================
-// Global theme tokens — `.shell.l` / `.shell.d` define CSS custom properties
-// that cascade into every admin page (dashboard, settings, products, …).
-// Applied via `[class.l]`/`[class.d]` on the shell root, driven by the
-// `isDarkMode` signal. Pages consume with `var(--bg)`, `var(--surface)`, etc.
+// Global theme tokens — applied at `:root` so they cascade to every shell
+// (admin, POS, kitchen, kiosk) without each owning a scoped copy. The
+// classes (`app-light` / `app-dark`) are toggled on `<html>` by
+// `ThemeService` so the very first render after boot already has the right
+// surfaces. Pages consume with `var(--bg)`, `var(--surface)`, etc.
+//
+// `:root` is a global selector — these blocks must NOT be nested inside
+// `:host` or the component's element scope; they are deliberately defined
+// here (rather than in `styles.scss`) so the admin-shell's existing
+// consumers continue to see them in this stylesheet's history.
 // ============================================================================
 
-.shell.l {
+:root,
+:root.app-light {
   --bg:          #f8fafc;
   --surface:     #ffffff;
   --surface2:    #f1f5f9;
@@ -33,7 +40,7 @@ $transition: 0.25s ease;
   --upsell-border:    #e2e8f0;
 }
 
-.shell.d {
+:root.app-dark {
   --bg:          #0f172a;
   --surface:     #131e30;
   --surface2:    #0d1625;
@@ -114,39 +121,6 @@ $transition: 0.25s ease;
     background: var(--border);
     margin: 0 $space-3;
     transition: background-color 0.3s ease;
-  }
-
-  // ---- Branch Selector ----
-  &__branch {
-    padding: $space-3;
-  }
-
-  &__branch-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: $space-1;
-    transition: color 0.3s ease;
-  }
-
-  &__branch-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 36px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text2);
-    font-size: 16px;
-    cursor: default;
-    transition: background-color 0.15s, color 0.3s ease;
-
-    &:hover { background: var(--surface2); }
   }
 
   // ---- Navigation ----
@@ -291,7 +265,7 @@ $transition: 0.25s ease;
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   height: $topbar-height;
   padding: 0 $space-4;
   background: var(--surface);
@@ -299,10 +273,56 @@ $transition: 0.25s ease;
   flex-shrink: 0;
   transition: background-color 0.3s ease, border-color 0.3s ease;
 
+  // ---- Branch selector (left side of topbar) ----
+  &__branch {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    color: var(--text2);
+    transition: color 0.3s ease;
+  }
+
+  &__branch-icon {
+    font-size: 14px;
+    color: var(--text2);
+    transition: color 0.3s ease;
+  }
+
+  // The PrimeNG dropdown surface is themed via custom properties so it
+  // matches both .l and .d shell skins without overriding the global
+  // PrimeNG theme.
+  ::ng-deep .topbar__branch-dropdown {
+    min-width: 180px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+
+    .p-dropdown-label {
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text1);
+      line-height: 1;
+    }
+
+    .p-dropdown-trigger {
+      width: 28px;
+      color: var(--text2);
+    }
+
+    &:not(.p-disabled):hover {
+      border-color: var(--border2);
+    }
+  }
+
+  // Pushes actions to the right whether the branch selector is rendered
+  // or not (covers Cashiers / single-branch tenants where the @if hides
+  // the selector and only one child remains).
   &__actions {
     display: flex;
     align-items: center;
     gap: $space-3;
+    margin-left: auto;
   }
 
   &__btn {

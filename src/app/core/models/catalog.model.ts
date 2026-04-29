@@ -32,8 +32,18 @@ export interface DeviceModeCatalog {
   description: string;
 }
 
-/** POS experience variant — determines which POS UI is loaded */
-export type PosExperience = 'Restaurant' | 'Counter' | 'Retail' | 'Quick';
+/**
+ * POS experience variant — determines which POS UI is loaded.
+ *
+ * `'Services'` is accepted from the backend as the canonical value for
+ * Services-macro tenants (gym, barbería, taller, consultorio). The
+ * frontend treats it as a synonym of `'Quick'` in routing — both land
+ * on `/pos/quick` — so backend can roll out the new value without
+ * waiting on a coordinated frontend deploy. The internal catalog
+ * (offline fallback) still emits `'Quick'` for backwards compatibility;
+ * a future migration may unify these to `'Services'`.
+ */
+export type PosExperience = 'Restaurant' | 'Counter' | 'Retail' | 'Quick' | 'Services';
 
 /** Business type catalog entry with feature flags */
 export interface BusinessTypeCatalog {

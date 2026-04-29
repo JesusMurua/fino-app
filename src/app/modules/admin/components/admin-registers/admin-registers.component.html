@@ -20,24 +20,6 @@
     }
   </div>
 
-  <!-- Device UUID info strip -->
-  <div class="admin-registers__device-info">
-    <i class="pi pi-desktop"></i>
-    <span>UUID de este dispositivo:</span>
-    <code class="admin-registers__uuid">{{ truncateUuid(currentDeviceUuid) }}</code>
-    @if (linkedToThisDevice(); as linked) {
-      <span class="admin-registers__linked-badge">
-        <i class="pi pi-link"></i>
-        Vinculado a "{{ linked.name }}"
-      </span>
-    } @else {
-      <span class="admin-registers__unlinked-badge">
-        <i class="pi pi-exclamation-circle"></i>
-        Sin vincular
-      </span>
-    }
-  </div>
-
   <!-- Loading skeleton -->
   @if (isLoading()) {
     <div class="admin-registers__loading">
@@ -51,7 +33,7 @@
     <div class="admin-registers__empty">
       <i class="pi pi-desktop admin-registers__empty-icon"></i>
       <p class="admin-registers__empty-title">No hay cajas registradoras</p>
-      <p class="admin-registers__empty-sub">Crea una caja física para vincularla a este dispositivo.</p>
+      <p class="admin-registers__empty-sub">Crea una caja física. La vinculación con un dispositivo se realiza desde el POS.</p>
       <button type="button" class="btn-primary" (click)="openCreateDialog()">
         <i class="pi pi-plus"></i>
         Crear primera caja
@@ -74,13 +56,10 @@
         </thead>
         <tbody>
           @for (reg of registers(); track reg.id) {
-            <tr [class.admin-registers__row--linked]="isLinkedToThisDevice(reg)">
+            <tr>
               <td>{{ reg.id }}</td>
               <td class="admin-registers__name-cell">
                 {{ reg.name }}
-                @if (isLinkedToThisDevice(reg)) {
-                  <span class="admin-registers__this-device-tag">Este dispositivo</span>
-                }
               </td>
               <td>
                 @if (reg.isActive) {
@@ -90,11 +69,21 @@
                 }
               </td>
               <td>
-                <code
-                  class="admin-registers__uuid"
-                  [pTooltip]="reg.deviceUuid ?? 'Sin vincular'"
-                  tooltipPosition="top"
-                >{{ truncateUuid(reg.deviceUuid) }}</code>
+                @if (reg.deviceUuid) {
+                  <span
+                    class="admin-registers__linked-badge"
+                    [pTooltip]="reg.deviceUuid"
+                    tooltipPosition="top"
+                  >
+                    <i class="pi pi-link"></i>
+                    Vinculado
+                  </span>
+                } @else {
+                  <span class="admin-registers__unlinked-badge">
+                    <i class="pi pi-exclamation-circle"></i>
+                    Sin vincular
+                  </span>
+                }
               </td>
               <td class="admin-registers__actions">
                 <button
@@ -106,28 +95,6 @@
                 >
                   <i class="pi pi-pencil"></i>
                 </button>
-
-                @if (isLinkedToThisDevice(reg)) {
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon--danger"
-                    pTooltip="Desvincular este dispositivo"
-                    tooltipPosition="top"
-                    (click)="unlinkDevice(reg)"
-                  >
-                    <i class="pi pi-link"></i>
-                  </button>
-                } @else if (!reg.deviceUuid) {
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon--primary"
-                    pTooltip="Vincular este dispositivo"
-                    tooltipPosition="top"
-                    (click)="linkDevice(reg)"
-                  >
-                    <i class="pi pi-link"></i>
-                  </button>
-                }
               </td>
             </tr>
           }

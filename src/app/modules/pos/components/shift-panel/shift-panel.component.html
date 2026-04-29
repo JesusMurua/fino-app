@@ -1,0 +1,33 @@
+<p-sidebar
+  appendTo="body"
+  [visible]="cashRegisterService.isPanelOpen()"
+  (visibleChange)="$event ? null : cashRegisterService.closePanel()"
+  position="right"
+  [style]="{ width: '480px', padding: '0' }"
+  [showCloseIcon]="false"
+  styleClass="shift-sidebar"
+>
+  <!-- Custom header (matches delivery-panel visual language) -->
+  <ng-template pTemplate="header">
+    <div class="shift-panel__header">
+      <div class="shift-panel__title">
+        <i class="pi pi-wallet shift-panel__icon"></i>
+        <span>Caja</span>
+      </div>
+      <button
+        type="button"
+        class="shift-panel__close"
+        aria-label="Cerrar panel"
+        (click)="cashRegisterService.closePanel()"
+      >
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  </ng-template>
+
+  <!-- Body: the shared shift-management component handles the entire flow. -->
+  <div class="shift-panel__content">
+    <app-shift-management mode="pos" />
+  </div>
+
+</p-sidebar>

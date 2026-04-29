@@ -22,6 +22,29 @@
   <!-- Right side: sync indicator + actions + user -->
   <div class="pos-header__right">
 
+    <!-- Shift status chip — interactive entry point to the shift panel.
+         Always visible in both states so the cashier sees the till context
+         at a glance and can pop the panel without hunting in a menu. -->
+    <button
+      type="button"
+      class="shift-chip"
+      [class.shift-chip--open]="cashRegisterService.hasOpenSession()"
+      [class.shift-chip--closed]="!cashRegisterService.hasOpenSession()"
+      [attr.aria-label]="cashRegisterService.hasOpenSession() ? 'Caja abierta — abrir panel de turno' : 'Caja cerrada — abrir panel de turno'"
+      (click)="cashRegisterService.togglePanel()"
+    >
+      <span class="shift-chip__dot" aria-hidden="true"></span>
+      @if (cashRegisterService.hasOpenSession()) {
+        <span class="shift-chip__label">Turno abierto</span>
+        <span
+          class="shift-chip__amount"
+          [attr.data-pulse]="amountPulseKey()"
+        >{{ cashRegisterService.expectedAmount() | price }}</span>
+      } @else {
+        <span class="shift-chip__label">Caja cerrada</span>
+      }
+    </button>
+
     <!-- Sync status indicator -->
     @if (syncService.permanentlyFailedCount() > 0) {
       <button
@@ -164,7 +187,30 @@
             <div class="pos-header__user-panel__role">{{ userRoleLabel() }}</div>
           </div>
         </div>
+
         <div class="pos-header__user-panel__divider"></div>
+
+        <!-- Theme toggle — shares the global preference with the admin
+             shell via ThemeService, so a flip here also affects the back
+             office on next visit. -->
+        <button
+          type="button"
+          class="pos-header__user-panel__theme"
+          (click)="themeService.toggle()"
+          [attr.aria-pressed]="themeService.isDarkMode()"
+          [attr.aria-label]="themeService.isDarkMode() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+        >
+          <i [class]="themeService.isDarkMode() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+          <span>{{ themeService.isDarkMode() ? 'Modo claro' : 'Modo oscuro' }}</span>
+          <span class="pos-header__user-panel__theme-track"
+                [class.pos-header__user-panel__theme-track--on]="themeService.isDarkMode()"
+                aria-hidden="true">
+            <span class="pos-header__user-panel__theme-thumb"></span>
+          </span>
+        </button>
+
+        <div class="pos-header__user-panel__divider"></div>
+
         <button type="button" class="pos-header__user-panel__logout" (click)="logout(); userMenu.hide()">
           <i class="pi pi-sign-out"></i>
           <span>Cerrar sesión</span>
@@ -188,13 +234,16 @@
   </div>
 }
 
-<!-- Cash session warning banner -->
-@if (!cashRegisterService.hasOpenSession()) {
-  <div class="pos-header__no-session" role="alert">
-    <i class="pi pi-exclamation-triangle"></i>
-    <span>Sin turno de caja — ve al Back Office para abrir uno</span>
-  </div>
-}
+<!-- Shift management sidebar (right slide-in). Visibility is owned by
+     `cashRegisterService.isPanelOpen` so any consumer (this header chip,
+     a future home-screen tile, a keyboard shortcut, …) can flip it. -->
+<app-shift-panel />
+
+<!-- Note: the legacy "Sin turno de caja — ve al Back Office" banner was
+     removed; the shift chip in the header now communicates the state and
+     opens the sidebar. The full-screen `session-blocker` below still
+     gates ventas when there's no open session — that's the fail-state
+     guardian, while the chip is the happy-path entry point. -->
 
 <!-- ====================================================================== -->
 <!-- PIN verification dialog                                                -->
@@ -635,7 +684,12 @@
         }
 
         <!-- ============================================================ -->
-        <!-- State: needsOpening — register linked, awaiting opening cash  -->
+        <!-- State: needsOpening — register linked, awaiting opening cash. -->
+        <!-- The CTA delegates to the shared `<app-shift-management>`'s     -->
+        <!-- "Open Shift" dialog via `cashRegisterService.requestOpenDialog()`-->
+        <!-- so the cashier always lands on the full-fidelity flow         -->
+        <!-- (drawer-pop + $0-confirm + error mapping) regardless of the   -->
+        <!-- entry point (chip, blocker, future shortcut).                 -->
         <!-- ============================================================ -->
         @case ('needsOpening') {
           @if (linkedRegister(); as reg) {
@@ -645,25 +699,10 @@
             </div>
           }
 
-          <div class="session-blocker__field">
-            <label for="session-amount">Monto inicial en caja (MXN)</label>
-            <p-inputNumber
-              inputId="session-amount"
-              [ngModel]="sessionAmountPesos()"
-              (ngModelChange)="sessionAmountPesos.set($event)"
-              mode="currency"
-              currency="MXN"
-              locale="es-MX"
-              [min]="0"
-              [style]="{ width: '100%' }"
-              inputStyleClass="session-blocker__input"
-            />
-          </div>
-
           <button
             type="button"
             class="session-blocker__btn"
-            (click)="openSessionFromBlocker()"
+            (click)="cashRegisterService.requestOpenDialog()"
           >
             <i class="pi pi-lock-open"></i>
             Abrir Turno
@@ -671,7 +710,8 @@
         }
 
         <!-- ============================================================ -->
-        <!-- State: loading — async action in flight                       -->
+        <!-- State: loading — linking flow in flight (the open-shift        -->
+        <!-- spinner is now owned by the shared dialog).                   -->
         <!-- ============================================================ -->
         @case ('loading') {
           <button
@@ -680,11 +720,7 @@
             [disabled]="true"
           >
             <i class="pi pi-spin pi-spinner"></i>
-            @if (isLinkingDevice()) {
-              Vinculando...
-            } @else {
-              Abriendo turno...
-            }
+            Vinculando...
           </button>
         }
       }

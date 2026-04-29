@@ -15,11 +15,11 @@ import { InventoryService } from '../../core/services/inventory.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { AppFeatureDirective, AppFeatureMode } from '../../shared/directives/app-feature.directive';
 import { TrialBannerComponent } from '../../shared/components/trial-banner/trial-banner.component';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
-const DARK_MODE_KEY = 'brio.dashboard.darkMode';
 
 /**
  * Single nav item declaration. The template uses `*appFeature` with the
@@ -66,6 +66,7 @@ export class AdminShellComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
   private readonly tenantContext = inject(TenantContextService);
+  private readonly themeService = inject(ThemeService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -77,15 +78,11 @@ export class AdminShellComponent implements OnInit {
   readonly isCollapsed = signal(false);
 
   /**
-   * Global light/dark theme flag. Applied as `.l` or `.d` on the `.shell`
-   * root so CSS custom properties (`--bg`, `--surface`, …) cascade to
-   * every admin page that consumes them. Persisted so preference sticks
-   * across refreshes. Key is kept from the prior (dashboard-local)
-   * implementation so existing users don't lose their setting.
+   * Re-export of the global theme signal owned by `ThemeService`.
+   * The actual class toggle lives on `<html>` via the service's effect,
+   * so this is read-only state for the topbar's mode-toggle UI.
    */
-  readonly isDarkMode = signal<boolean>(
-    localStorage.getItem(DARK_MODE_KEY) === 'true',
-  );
+  readonly isDarkMode = this.themeService.isDarkMode;
 
   /** True while a branch switch is in progress */
   readonly isSwitchingBranch = signal(false);
@@ -317,11 +314,9 @@ export class AdminShellComponent implements OnInit {
     this.router.navigate(['/pos']);
   }
 
-  /** Flips the global theme and persists the preference. */
+  /** Flips the global theme — delegates to the singleton ThemeService. */
   toggleTheme(): void {
-    const next = !this.isDarkMode();
-    this.isDarkMode.set(next);
-    localStorage.setItem(DARK_MODE_KEY, String(next));
+    this.themeService.toggle();
   }
 
   /** Logs out and returns to the PIN screen */
