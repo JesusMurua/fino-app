@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
+import { extractFeaturesFromJwt, extractMacroCategoryFromJwt } from '../utils/jwt.utils';
 import { CatalogService } from './catalog.service';
 
 /**
@@ -172,6 +173,47 @@ export class TenantContextService {
    */
   setSubCategory(subCategory: SubCategoryType | null): void {
     this._currentSubCategory.set(subCategory);
+  }
+
+  /**
+   * Populates tenant state from a device JWT.
+   *
+   * Used by unattended hardware shells (kiosk / kitchen / reception)
+   * that never go through the user-login → `setContext()` path. Without
+   * this, the device boots with an empty features set and `featureGuard`
+   * rebounds it to /admin/upgrade → /login the moment it tries to enter
+   * its own shell — which is exactly what we are curing here.
+   *
+   * Deliberately leaner than `setContext()`:
+   *   - Touches `_activeFeatures` and (when present) `_currentMacro`.
+   *     Plan and sub-category stay untouched — the device JWT does not
+   *     carry the plan tier and the sub-category is hydrated by a
+   *     separate sub-giro fetch.
+   *   - Does NOT trigger `catalogService.fetchPlanCatalog()`. Callers
+   *     run from constructors and bootstrap paths where an HTTP call
+   *     would close the auth-interceptor DI cycle (see AUDIT-046).
+   *
+   * The `macroCategory` extraction was added after AUDIT-049 traced a
+   * bug where unattended shells in the Services vertical landed on the
+   * Restaurant POS because `currentMacro` stayed null. Empty / unknown
+   * claim values resolve to a no-op so legacy device tokens (which
+   * historically emitted `"macroCategory": ""`) keep working.
+   *
+   * Malformed JWTs and missing claims resolve to a no-op rather than an
+   * exception, so callers can invoke this freely without try/catch.
+   *
+   * @param token Raw device JWT string.
+   */
+  hydrateFromDeviceToken(token: string): void {
+    const features = extractFeaturesFromJwt(token);
+    if (features !== undefined) {
+      this._activeFeatures.set(this.parseFeatures(features));
+    }
+
+    const macro = extractMacroCategoryFromJwt(token);
+    if (macro !== null) {
+      this._currentMacro.set(macro);
+    }
   }
 
   /** Clears the tenant context — called on logout */

@@ -21,16 +21,12 @@ export enum FeatureKey {
   // --- Food & Beverage ----------------------------------------------------
   /** Printed kitchen tickets — no screen (Free tier fallback) */
   PrintedTickets = 'PrintedTickets',
-  /** KDS with auto-refresh polling, no sockets */
-  KdsBasic = 'KdsBasic',
-  /** Realtime KDS via SignalR sockets */
+  /** Realtime KDS via SignalR sockets — internal toggle layered on top of MaxKdsScreens */
   RealtimeKds = 'RealtimeKds',
   /** Interactive floor/table map */
   TableMap = 'TableMap',
   /** Mobile waiter ordering app */
   WaiterApp = 'WaiterApp',
-  /** Self-service customer kiosk */
-  KioskMode = 'KioskMode',
   /** More than one cash register per branch */
   MultiTill = 'MultiTill',
   /** Multi-branch / franchise support */
@@ -68,6 +64,20 @@ export enum FeatureKey {
   /** Appointment reminders */
   Reminders = 'Reminders',
 
+  // --- Hardware quotas (quantitative — backend emits the key on every plan;
+  //     the numeric limit lives in the plan catalog and is enforced via 403
+  //     on `/device/generate-code`. Frontend treats presence as "this lane
+  //     exists" so users can see the upsell path for plans where the cap is
+  //     0, e.g. Free tenants discovering the Kiosk option). ------------------
+  /** Cashier + Hostess terminals — shared global quota */
+  MaxCashRegisters = 'MaxCashRegisters',
+  /** Kitchen Display screens — global quota */
+  MaxKdsScreens = 'MaxKdsScreens',
+  /** Self-service kiosks — global quota */
+  MaxKiosks = 'MaxKiosks',
+  /** Member check-in / access-control screens — per-branch quota */
+  MaxReceptionsPerBranch = 'MaxReceptionsPerBranch',
+
   // --- Reporting ----------------------------------------------------------
   /** Generic advanced reports module (sales, trends, exports) */
   AdvancedReports = 'AdvancedReports',
@@ -100,13 +110,14 @@ const UNIVERSAL_FEATURES: readonly FeatureKey[] = [
   FeatureKey.MultiWarehouseInventory,
   FeatureKey.MultiBranch,
   FeatureKey.PublicApi,
+  FeatureKey.MaxCashRegisters,
 ];
 
 const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
   ...UNIVERSAL_FEATURES,
   FeatureKey.UnlimitedProducts,
-  FeatureKey.PrintedTickets, FeatureKey.KdsBasic, FeatureKey.RealtimeKds,
-  FeatureKey.TableMap, FeatureKey.WaiterApp, FeatureKey.KioskMode,
+  FeatureKey.PrintedTickets, FeatureKey.MaxKdsScreens, FeatureKey.RealtimeKds,
+  FeatureKey.TableMap, FeatureKey.WaiterApp, FeatureKey.MaxKiosks,
   FeatureKey.MultiTill, FeatureKey.LoyaltyCrm,
   FeatureKey.RecipeInventory, FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
@@ -114,7 +125,7 @@ const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
 const QUICK_SERVICE_FEATURES: readonly FeatureKey[] = [
   ...UNIVERSAL_FEATURES,
   FeatureKey.UnlimitedProducts,
-  FeatureKey.KdsBasic, FeatureKey.RealtimeKds, FeatureKey.KioskMode,
+  FeatureKey.MaxKdsScreens, FeatureKey.RealtimeKds, FeatureKey.MaxKiosks,
   FeatureKey.LoyaltyCrm, FeatureKey.MultiTill,
   FeatureKey.DeliveryPlatforms, FeatureKey.AdvancedReports,
 ];
@@ -128,6 +139,7 @@ const RETAIL_FEATURES: readonly FeatureKey[] = [
 const SERVICES_FEATURES: readonly FeatureKey[] = [
   ...UNIVERSAL_FEATURES,
   FeatureKey.CustomFolios, FeatureKey.CustomerHistory, FeatureKey.Reminders,
+  FeatureKey.MaxReceptionsPerBranch,
 ];
 
 /**

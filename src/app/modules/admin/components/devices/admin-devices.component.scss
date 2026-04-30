@@ -100,6 +100,17 @@
   align-items: center;
   gap: $space-2;
   padding: $space-6 0;
+  transform-origin: center;
+
+  // Scale-pulse fired on each `data-pulse` change (driven by
+  // `codePulseKey` in the component). Tells the admin "the card just
+  // refreshed" so the freshly-minted code is unmissable. Hidden behind
+  // the reduced-motion guard for accessibility.
+  @media (prefers-reduced-motion: no-preference) {
+    &[data-pulse] {
+      animation: activation-code-pulse 0.5s ease-out;
+    }
+  }
 
   &__value {
     font-size: 36px;
@@ -119,6 +130,154 @@
     color: $color-text-sub;
     text-align: center;
   }
+}
+
+@keyframes activation-code-pulse {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+// ----------------------------------------------------------------------------
+// Quota counter — proactive UI for `GET /api/Devices/limits`.
+//
+// Three modifier classes drive the visual state:
+//   --unlimited : neutral surface, infinity glyph
+//   --normal    : green accent, success tone
+//   --reached   : amber/red accent paired with the lockout banner below
+//
+// Layout: icon left, label + value right. Value uses a monospace-ish
+// rhythm so `3 / 5` aligns reliably across modes regardless of digits.
+// ----------------------------------------------------------------------------
+
+.quota-counter {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-3 $space-4;
+  border-radius: 12px;
+  border: 1px solid var(--border, #E5E7EB);
+  background: var(--surface, white);
+  margin-bottom: $space-3;
+  transition: background 0.2s, border-color 0.2s;
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    flex-shrink: 0;
+
+    i { font-size: 18px; }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2, $color-text-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text1, $color-text-title);
+    font-variant-numeric: tabular-nums;
+
+    strong { font-weight: 800; }
+  }
+
+  &__sep {
+    color: var(--text3, #9CA3AF);
+    font-weight: 500;
+  }
+
+  &__infinity {
+    font-size: 26px;
+    line-height: 1;
+    color: var(--text2, $color-text-sub);
+  }
+
+  &__caption {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2, $color-text-sub);
+    margin-left: 4px;
+  }
+
+  // ---- States -------------------------------------------------------------
+
+  &--unlimited {
+    .quota-counter__icon {
+      background: #F1F5F9;
+      color: #475569;
+    }
+  }
+
+  &--normal {
+    border-color: #BBF7D0;
+    background: #F0FDF4;
+
+    .quota-counter__icon {
+      background: #DCFCE7;
+      color: $color-primary;
+    }
+    .quota-counter__label { color: #14532D; }
+  }
+
+  &--reached {
+    border-color: #FECACA;
+    background: #FEF2F2;
+
+    .quota-counter__icon {
+      background: #FEE2E2;
+      color: #DC2626;
+    }
+    .quota-counter__label { color: #7F1D1D; }
+    .quota-counter__value { color: #7F1D1D; }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Quota lockout banner — paired with `.quota-counter--reached`.
+// Permanent (until quota frees up) so the disabled submit button has
+// a visible explanation right below the counter.
+// ----------------------------------------------------------------------------
+
+.quota-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  border-radius: 10px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: $space-3;
+
+  i {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #D97706;
+  }
+
+  &__body strong { font-weight: 700; }
 }
 
 // ----------------------------------------------------------------------------
@@ -310,4 +469,15 @@
 .form-error {
   font-size: 12px;
   color: #DC2626;
+}
+
+// ----------------------------------------------------------------------------
+// Pending codes table — code value styled like the activation-code preview so
+// the eye finds the 6-digit string instantly without leaving the row context.
+// ----------------------------------------------------------------------------
+.pending-code__value {
+  font-family: monospace;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: $color-primary;
 }

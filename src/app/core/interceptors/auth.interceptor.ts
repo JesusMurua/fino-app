@@ -19,7 +19,7 @@ const PUBLIC_ROUTES = ['/register', '/setup', '/onboarding', '/login'];
  * token. Admin-mode devices still use the user token because back
  * office API calls need the human context (who created this report).
  */
-const DEVICE_TOKEN_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk'];
+const DEVICE_TOKEN_MODES: readonly DeviceConfig['mode'][] = ['kitchen', 'kiosk', 'reception'];
 
 /**
  * Functional HTTP interceptor (Angular 18+).

@@ -1,3 +1,5 @@
+import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, NonNullableFormBuilder } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -11,10 +13,18 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { DeviceConfig, DeviceListItem } from '../../../../core/models';
-import { FeatureKey, MacroCategoryType, SubCategoryType } from '../../../../core/enums';
-import { ApiService } from '../../../../core/services/api.service';
+import {
+  CashRegister,
+  DeviceConfig,
+  DeviceLimitsDto,
+  DeviceListItem,
+  DeviceModeQuotaDto,
+  GenerateCodeResponse,
+  PendingDeviceCodeDto,
+} from '../../../../core/models';
+import { FeatureKey, MacroCategoryType } from '../../../../core/enums';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
+import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DeviceService } from '../../../../core/services/device.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 
@@ -64,6 +74,7 @@ const MODE_LABELS: Record<DeviceConfig['mode'], string> = {
   selector: 'app-admin-devices',
   standalone: true,
   imports: [
+    DatePipe,
     FormsModule,
     ReactiveFormsModule,
     ButtonModule,
@@ -83,8 +94,8 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#region Injections
 
-  private readonly api = inject(ApiService);
   private readonly branchService = inject(BranchService);
+  private readonly cashRegisterService = inject(CashRegisterService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly deviceService = inject(DeviceService);
   private readonly fb = inject(NonNullableFormBuilder);
@@ -93,33 +104,183 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#endregion
 
-  //#region Branches & activation code state (existing)
+  //#region Branches & activation code state
 
   readonly branches = signal<Branch[]>([]);
   readonly loadingBranches = signal(false);
 
-  /** Currently displayed activation code — blank until `generateActivationCode()` resolves */
-  readonly activationCode = signal('');
+  /**
+   * Snapshot of the most recently generated code. Powers the success card
+   * shown right under the form — the card reads from this signal (not from
+   * the form) so that resetting the form post-generation does not blank
+   * the on-screen summary.
+   */
+  readonly lastGeneratedCode = signal<GenerateCodeResponse | null>(null);
   readonly generatingCode = signal(false);
 
-  /** Form values for the activation code generator */
-  codeBranchId = 0;
-  codeMode: DeviceConfig['mode'] = 'cashier';
   /**
-   * Human-readable name the terminal will adopt after activation.
-   * Travels with the code so the field-tech only has to type 6 digits —
-   * the terminal never asks for a name again.
+   * Monotonic counter that ticks each time `lastGeneratedCode` is replaced.
+   * Bound to a `[data-pulse]` attribute on the success card so the CSS
+   * scale-pulse animation re-fires for every new generation — gives the
+   * admin a clear "this card just changed" signal without overhauling
+   * the layout. Same pattern used by the POS shift chip.
    */
-  codeDeviceName = '';
+  readonly codePulseKey = signal(0);
+
+  /**
+   * All cash registers fetched at init — the cashier dropdown filters
+   * this list by the currently-selected branch + unlinked status. Cached
+   * for the lifetime of the screen since registers are rarely added on
+   * the fly. A manual refresh would re-fetch alongside the fleet table.
+   */
+  readonly cashRegisters = signal<CashRegister[]>([]);
+
+  /**
+   * Mirror of `generateForm.controls.branchId.value` as a signal.
+   * Reactive Forms expose `valueChanges` (rxjs) but not a signal, so we
+   * subscribe in `ngOnInit` and feed the value here. Allows the
+   * `availableCashRegistersForBranch` computed to react when the admin
+   * switches branches.
+   */
+  private readonly selectedBranchSignal = signal(0);
+
+  /**
+   * Mirror of `generateForm.controls.mode.value` as a signal — drives
+   * the visibility of the cash-register dropdown so it appears only
+   * for the `cashier` mode (the only one that uses a register).
+   */
+  private readonly selectedModeSignal = signal<DeviceConfig['mode']>('cashier');
+
+  /**
+   * Cash registers the admin can pick from when generating a `cashier`
+   * activation code. Filtered to:
+   *   - the form's currently-selected branch (a code is always scoped
+   *     to one branch, so cross-branch links do not make sense),
+   *   - not yet linked to any device (no silent steals).
+   */
+  readonly availableCashRegistersForBranch = computed<CashRegister[]>(() => {
+    const branchId = this.selectedBranchSignal();
+    if (!branchId) return [];
+    return this.cashRegisters().filter(r =>
+      r.branchId === branchId && !r.deviceUuid && r.isActive,
+    );
+  });
+
+  /**
+   * True when the cash-register dropdown should render. Hidden for any
+   * non-cashier mode and when no unlinked registers are available so
+   * the form does not surface a useless empty dropdown.
+   */
+  readonly showCashRegisterPicker = computed(() =>
+    this.selectedModeSignal() === 'cashier'
+      && this.availableCashRegistersForBranch().length > 0,
+  );
+
+  /** Dropdown options for the cash register picker (label + value pair) */
+  readonly cashRegisterOptions = computed(() => [
+    { label: '— No vincular caja por ahora —', value: null },
+    ...this.availableCashRegistersForBranch().map(r => ({
+      label: r.name,
+      value: r.id,
+    })),
+  ]);
+
+  //#endregion
+
+  //#region Device limits (proactive quota UI)
+
+  /**
+   * Latest quota envelope from `GET /api/Devices/limits` for the branch
+   * currently selected in the form. Re-fetched on init, on branch
+   * change, on successful generation, and on revoke / restore so the
+   * counter is always trustworthy. `null` while loading or when the
+   * fetch failed (counter card is hidden in that case — backend 403
+   * stays as the safety net).
+   */
+  readonly deviceLimits = signal<DeviceLimitsDto | null>(null);
+  readonly loadingLimits = signal(false);
+
+  /**
+   * Quota row for the mode currently selected in the form. Looked up
+   * by `mode` since the backend returns ALL modes the tenant could use
+   * — modes outside the plan's coverage simply do not appear in the
+   * array and resolve to `null` here, which the UI treats as "no
+   * quota information for this mode" and hides the counter.
+   */
+  readonly currentModeQuota = computed<DeviceModeQuotaDto | null>(() => {
+    const limits = this.deviceLimits();
+    if (!limits) return null;
+    const mode = this.selectedModeSignal();
+    return limits.modes.find(m => m.mode === mode) ?? null;
+  });
+
+  /**
+   * Tri-state derived from `currentModeQuota` — `null` while quota is
+   * unknown so the template can render exactly one of the three
+   * variants (unlimited / normal / reached) without a fallback bucket.
+   */
+  readonly counterState = computed<'unlimited' | 'normal' | 'reached' | null>(() => {
+    const q = this.currentModeQuota();
+    if (!q) return null;
+    if (q.isUnlimited) return 'unlimited';
+    if (q.isLimitReached) return 'reached';
+    return 'normal';
+  });
+
+  /** Convenience flag — true when the submit button must stay disabled. */
+  readonly isQuotaLocked = computed(() => this.counterState() === 'reached');
+
+  //#endregion
+
+  /**
+   * Reactive form for the activation-code generator.
+   *
+   * Validators mirror the backend constraints: a positive `branchId`
+   * (defaulting to `0` would slip past `Validators.required`), one of the
+   * known device modes, and a non-blank human-readable name capped at the
+   * column length used by the backend.
+   */
+  readonly generateForm = this.fb.group({
+    branchId: this.fb.control(0, [Validators.required, Validators.min(1)]),
+    mode: this.fb.control<DeviceConfig['mode']>('cashier', [Validators.required]),
+    name: this.fb.control('', [
+      Validators.required,
+      Validators.maxLength(60),
+      AdminDevicesComponent.nonBlankValidator,
+    ]),
+    /**
+     * Optional cash register pre-binding. `null` = "do not link a
+     * register now"; the field is hidden by `showCashRegisterPicker`
+     * for non-cashier modes so it never reaches the backend with an
+     * inapplicable value.
+     */
+    cashRegisterId: this.fb.control<number | null>(null),
+  });
 
   /**
    * Device mode options, filtered dynamically by the tenant's active
-   * features. Cashier is always available; the rest require specific
-   * plan features per the business-rules-matrix.
+   * features. Cashier is always available; the rest require the matching
+   * quantitative feature key from the monetization architecture.
    *
-   * `reception` (member check-in) is offered to Gym sub-category tenants
-   * and to any Services-macro tenant — it has no FeatureKey gate because
-   * it ships as a vertical-default screen rather than a paid add-on.
+   * Note on quantitative keys: `MaxKdsScreens`, `MaxKiosks` and
+   * `MaxReceptionsPerBranch` are emitted by the backend on every plan,
+   * even when the cap is 0. Their *presence* in the JWT means "this
+   * mode exists for your vertical"; the *actual quota* is enforced
+   * server-side via 403 on `/device/generate-code`. Treating presence
+   * as visibility (instead of capacity) is intentional — Free tenants
+   * can discover the upsell path and the 403 toast handles the rest.
+   *
+   * `reception` (member check-in) layers two checks:
+   *   1. Macro gate — only Services tenants see the option, so other
+   *      macros (FoodBeverage, QuickService, Retail) never get a member
+   *      check-in screen they can't actually use. We gate on macro rather
+   *      than sub-category because the JWT does not yet carry the
+   *      `subCategory` claim and the backend already restricts the
+   *      `MaxReceptionsPerBranch` feature flag to the Services macro at
+   *      issue time.
+   *   2. Feature gate — `MaxReceptionsPerBranch` must be present in the
+   *      JWT features claim. Without it the option stays hidden
+   *      regardless of vertical.
    */
   readonly modes = computed<ModeOption[]>(() => {
     const modes: ModeOption[] = [
@@ -128,15 +289,14 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (this.tenantContext.hasAnyFeature([FeatureKey.TableMap, FeatureKey.WaiterApp])) {
       modes.push({ value: 'tables', label: 'Mesas', icon: 'pi pi-th-large' });
     }
-    if (this.tenantContext.hasAnyFeature([FeatureKey.KdsBasic, FeatureKey.RealtimeKds])) {
+    if (this.tenantContext.hasFeature(FeatureKey.MaxKdsScreens)) {
       modes.push({ value: 'kitchen', label: 'Cocina', icon: 'pi pi-box' });
     }
-    if (this.tenantContext.hasFeature(FeatureKey.KioskMode)) {
+    if (this.tenantContext.hasFeature(FeatureKey.MaxKiosks)) {
       modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
     }
-    const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
     const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
-    if (isGym || isServices) {
+    if (isServices && this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
     return modes;
@@ -164,6 +324,16 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   /** Row id currently being toggled; other rows keep their action buttons enabled */
   readonly togglingDeviceId = signal<number | null>(null);
+
+  //#endregion
+
+  //#region Pending-codes state
+
+  /** Activation codes issued but not yet redeemed by a device */
+  readonly pendingCodes = signal<PendingDeviceCodeDto[]>([]);
+
+  /** True while `GET /api/device/pending-codes` is in flight */
+  readonly loadingPending = signal(false);
 
   //#endregion
 
@@ -219,17 +389,84 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // Load branches and devices in parallel so first paint has both.
-    await Promise.all([this.loadBranches(), this.loadDevices()]);
+    // Wire form-value mirrors for the dropdown reactivity. Subscribed
+    // here (not in field initializers) so we can use the branch /
+    // mode signals from a `computed` without dragging in `toSignal`'s
+    // injection-context plumbing.
+    this.generateForm.controls.branchId.valueChanges.subscribe(value => {
+      this.selectedBranchSignal.set(value ?? 0);
+      // Reset the cash-register pick whenever the branch changes — the
+      // previously-selected register may belong to the old branch.
+      this.generateForm.controls.cashRegisterId.setValue(null);
+      // Quotas are per-branch — re-fetch so the counter card reflects
+      // the new context. Skipped when the branch is reset to 0 during
+      // form clears.
+      if (value && value > 0) {
+        void this.loadDeviceLimits(value);
+      }
+    });
+    this.generateForm.controls.mode.valueChanges.subscribe(value => {
+      this.selectedModeSignal.set(value ?? 'cashier');
+      // Non-cashier modes do not use a register; clear any stale pick
+      // so we never POST `cashRegisterId` for a kitchen / kiosk code.
+      if (value !== 'cashier') {
+        this.generateForm.controls.cashRegisterId.setValue(null);
+      }
+    });
+
+    // Load branches, devices, pending codes AND cash registers in parallel
+    // so the dropdown is ready by first paint instead of populating after
+    // an extra round-trip.
+    await Promise.all([
+      this.loadBranches(),
+      this.loadDevices(),
+      this.loadPendingCodes(),
+      this.loadCashRegisters(),
+    ]);
 
     const first = this.branches()[0];
-    if (first) this.codeBranchId = first.id;
+    if (first) this.generateForm.controls.branchId.setValue(first.id);
 
     // Tick every minute so status badges / relative-time labels
     // refresh without re-fetching over the network.
     this.tickInterval = setInterval(() => {
       this.nowTick.set(Date.now());
     }, NOW_TICK_INTERVAL_MS);
+  }
+
+  /**
+   * Loads cash registers once at init. Errors are non-fatal — the
+   * dropdown simply stays empty (`showCashRegisterPicker` returns
+   * false) so the form remains operable for activation without
+   * register pre-binding.
+   */
+  private async loadCashRegisters(): Promise<void> {
+    try {
+      const list = await this.cashRegisterService.getRegisters();
+      this.cashRegisters.set(list);
+    } catch (error) {
+      console.warn('[AdminDevices] Failed to load cash registers:', error);
+    }
+  }
+
+  /**
+   * Loads per-mode quotas for `branchId`. Errors resolve to `null` so
+   * the counter card hides instead of showing stale or wrong data —
+   * the backend's 403 on `/device/generate-code` remains the
+   * authoritative safety net.
+   */
+  private async loadDeviceLimits(branchId: number): Promise<void> {
+    if (!branchId || branchId <= 0) return;
+    this.loadingLimits.set(true);
+    try {
+      const limits = await firstValueFrom(this.deviceService.getDeviceLimits(branchId));
+      this.deviceLimits.set(limits);
+    } catch (error) {
+      console.warn('[AdminDevices] Failed to load device limits:', error);
+      this.deviceLimits.set(null);
+    } finally {
+      this.loadingLimits.set(false);
+    }
   }
 
   ngOnDestroy(): void {
@@ -267,37 +504,135 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#region Activation Code
 
   /**
-   * Generates a 6-digit activation code for the selected branch/mode/name.
-   * The code is valid for 24 hours on the backend side.
+   * Generates a 6-digit activation code for the form's branch/mode/name.
+   *
+   * Three side-effects on success:
+   *   1. Stores the enriched response in `lastGeneratedCode` so the
+   *      summary card can render `code`, `name`, `branchName`, `mode`
+   *      and `expiresAt` without depending on the form (which is reset
+   *      below).
+   *   2. Resets the form, keeping the default mode of `cashier` so the
+   *      next code can be issued without re-typing common fields.
+   *   3. Refreshes the pending-codes table so the new entry shows up
+   *      immediately under the form.
+   *
+   * On HTTP 403 (plan limit exceeded) the backend message is surfaced
+   * verbatim — the interceptor only handles 401/402 globally, so this
+   * 403 path stays scoped to the device-limit semantics for this screen.
    */
   async generateActivationCode(): Promise<void> {
-    if (this.generatingCode() || !this.codeBranchId) return;
+    if (this.generatingCode()) return;
+    if (this.generateForm.invalid) {
+      this.generateForm.markAllAsTouched();
+      return;
+    }
 
-    const name = this.codeDeviceName.trim();
-    if (!name) return;
+    const { branchId, mode, name, cashRegisterId } = this.generateForm.getRawValue();
+    // Only forward `cashRegisterId` to the backend for cashier-mode codes.
+    // Other modes never have a meaningful register selection (the field
+    // is hidden in the UI for them), so omitting the property keeps the
+    // payload tight and unambiguous.
+    const payload = mode === 'cashier' && cashRegisterId !== null
+      ? { branchId, mode, name: name.trim(), cashRegisterId }
+      : { branchId, mode, name: name.trim() };
 
     this.generatingCode.set(true);
-    this.activationCode.set('');
+    this.lastGeneratedCode.set(null);
 
     try {
       const response = await firstValueFrom(
-        this.api.post<{ code: string }>('/device/generate-code', {
-          branchId: this.codeBranchId,
-          mode: this.codeMode,
-          name,
-        }),
+        this.deviceService.generateCode(payload),
       );
-      this.activationCode.set(response.code);
+      this.lastGeneratedCode.set(response);
+      this.codePulseKey.update(v => v + 1);
+      this.generateForm.reset({
+        branchId: 0,
+        mode: 'cashier',
+        name: '',
+        cashRegisterId: null,
+      });
+      const first = this.branches()[0];
+      if (first) this.generateForm.controls.branchId.setValue(first.id);
+      await this.loadPendingCodes();
+      // Pull the freshest quota — the new pending code counts toward
+      // `usage` per the backend so the counter must reflect it before
+      // the admin can issue another. Scoped to the branch we just
+      // generated for so a stale signal from a previous branch does
+      // not bleed into the new context.
+      await this.loadDeviceLimits(branchId);
+      // Confirmation toast — clarifies the form has been cleared so the
+      // admin does not wonder why their inputs disappeared while the
+      // success card up top shows the freshly minted code.
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Código generado',
+        detail: 'Formulario listo para el siguiente código.',
+        life: 2500,
+      });
     } catch (error) {
       console.error('[AdminDevices] Failed to generate activation code:', error);
+      this.handleGenerateError(error);
+    } finally {
+      this.generatingCode.set(false);
+    }
+  }
+
+  /**
+   * Surfaces the backend's plan-limit message on 403, falling back to a
+   * generic toast for every other failure mode (network, 5xx, etc.).
+   * The fallback chain `message ?? detail` covers both the project's
+   * usual `{ message }` envelope and the .NET `ProblemDetails` shape.
+   */
+  private handleGenerateError(error: unknown): void {
+    if (error instanceof HttpErrorResponse && error.status === 403) {
+      const body = error.error as { message?: string; detail?: string } | null;
+      const detail = body?.message
+        ?? body?.detail
+        ?? 'Has alcanzado el límite de dispositivos de tu plan.';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Límite alcanzado',
+        detail,
+        life: 6000,
+      });
+      return;
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'No se pudo generar el código',
+      life: 4000,
+    });
+  }
+
+  //#endregion
+
+  //#region Pending codes
+
+  /**
+   * Loads (or reloads) the pending-codes list, honoring the current
+   * `branchFilterId` so the table stays in sync with the fleet table
+   * when the admin scopes the view to a single branch.
+   */
+  async loadPendingCodes(): Promise<void> {
+    this.loadingPending.set(true);
+    try {
+      const branchId = this.branchFilterId();
+      const list = await firstValueFrom(
+        this.deviceService.getPendingCodes(branchId ?? undefined),
+      );
+      this.pendingCodes.set(list);
+    } catch (error) {
+      console.error('[AdminDevices] Failed to load pending codes:', error);
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'No se pudo generar el código',
+        detail: 'No se pudieron cargar los códigos pendientes',
         life: 4000,
       });
     } finally {
-      this.generatingCode.set(false);
+      this.loadingPending.set(false);
     }
   }
 
@@ -345,15 +680,21 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Re-fires `loadDevices` without changing the filter */
+  /** Re-fires both fleet and pending-codes loads without changing the filter */
   refresh(): void {
     this.loadDevices({ refreshing: true });
+    this.loadPendingCodes();
   }
 
-  /** Handler for the branch filter dropdown */
+  /**
+   * Handler for the branch filter dropdown. Drives both the fleet table
+   * and the pending-codes table so the admin's mental model — "I'm
+   * looking at branch X" — applies consistently across the page.
+   */
   onBranchFilterChange(value: number | null): void {
     this.branchFilterId.set(value);
     this.loadDevices({ refreshing: true });
+    this.loadPendingCodes();
   }
 
   //#endregion
@@ -397,6 +738,13 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
         summary: response.isActive ? 'Dispositivo reactivado' : 'Dispositivo revocado',
         life: 3000,
       });
+      // Revoking frees a quota seat, restoring consumes one — re-fetch
+      // so the counter card and submit lockout reflect reality before
+      // the admin tries to issue the next code.
+      const branchId = this.selectedBranchSignal();
+      if (branchId > 0) {
+        await this.loadDeviceLimits(branchId);
+      }
     } catch (error) {
       console.error('[AdminDevices] Failed to toggle device:', error);
       this.messageService.add({
@@ -540,18 +888,11 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#region Template helpers
 
-  /** Display name for the currently selected branch in the activation form */
-  codeBranchLabel(): string {
-    return this.branches().find(b => b.id === this.codeBranchId)?.name ?? '';
-  }
-
-  /** Display label for the currently selected mode in the activation form */
-  codeModeLabel(): string {
-    return this.modes().find(m => m.value === this.codeMode)?.label ?? this.codeMode;
-  }
-
   /** TrackBy so a single-row patch does not rebuild the entire table DOM */
   trackByDeviceId = (_: number, device: DeviceListItem): number => device.id;
+
+  /** TrackBy for the pending-codes table — the 6-digit code is unique */
+  trackByPendingCode = (_: number, row: PendingDeviceCodeDto): string => row.code;
 
   //#endregion
 

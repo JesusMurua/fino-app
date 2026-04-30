@@ -20,24 +20,6 @@
     }
   </div>
 
-  <!-- Device UUID info strip -->
-  <div class="admin-registers__device-info">
-    <i class="pi pi-desktop"></i>
-    <span>UUID de este dispositivo:</span>
-    <code class="admin-registers__uuid">{{ truncateUuid(currentDeviceUuid) }}</code>
-    @if (linkedToThisDevice(); as linked) {
-      <span class="admin-registers__linked-badge">
-        <i class="pi pi-link"></i>
-        Vinculado a "{{ linked.name }}"
-      </span>
-    } @else {
-      <span class="admin-registers__unlinked-badge">
-        <i class="pi pi-exclamation-circle"></i>
-        Sin vincular
-      </span>
-    }
-  </div>
-
   <!-- Loading skeleton -->
   @if (isLoading()) {
     <div class="admin-registers__loading">
@@ -51,7 +33,7 @@
     <div class="admin-registers__empty">
       <i class="pi pi-desktop admin-registers__empty-icon"></i>
       <p class="admin-registers__empty-title">No hay cajas registradoras</p>
-      <p class="admin-registers__empty-sub">Crea una caja física para vincularla a este dispositivo.</p>
+      <p class="admin-registers__empty-sub">Crea una caja física. La vinculación con un dispositivo se realiza desde el POS.</p>
       <button type="button" class="btn-primary" (click)="openCreateDialog()">
         <i class="pi pi-plus"></i>
         Crear primera caja
@@ -74,13 +56,10 @@
         </thead>
         <tbody>
           @for (reg of registers(); track reg.id) {
-            <tr [class.admin-registers__row--linked]="isLinkedToThisDevice(reg)">
+            <tr>
               <td>{{ reg.id }}</td>
               <td class="admin-registers__name-cell">
                 {{ reg.name }}
-                @if (isLinkedToThisDevice(reg)) {
-                  <span class="admin-registers__this-device-tag">Este dispositivo</span>
-                }
               </td>
               <td>
                 @if (reg.isActive) {
@@ -90,13 +69,35 @@
                 }
               </td>
               <td>
-                <code
-                  class="admin-registers__uuid"
-                  [pTooltip]="reg.deviceUuid ?? 'Sin vincular'"
-                  tooltipPosition="top"
-                >{{ truncateUuid(reg.deviceUuid) }}</code>
+                @if (reg.deviceUuid) {
+                  <span
+                    class="admin-registers__linked-badge"
+                    [pTooltip]="reg.deviceUuid"
+                    tooltipPosition="top"
+                  >
+                    <i class="pi pi-link"></i>
+                    Vinculado
+                  </span>
+                } @else {
+                  <span class="admin-registers__unlinked-badge">
+                    <i class="pi pi-exclamation-circle"></i>
+                    Sin vincular
+                  </span>
+                }
               </td>
               <td class="admin-registers__actions">
+                @if (!reg.deviceUuid) {
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--primary"
+                    pTooltip="Generar código de vinculación"
+                    tooltipPosition="top"
+                    [disabled]="generatingLinkCode()"
+                    (click)="openLinkCodeDialog(reg)"
+                  >
+                    <i class="pi pi-link"></i>
+                  </button>
+                }
                 <button
                   type="button"
                   class="btn-icon"
@@ -106,28 +107,6 @@
                 >
                   <i class="pi pi-pencil"></i>
                 </button>
-
-                @if (isLinkedToThisDevice(reg)) {
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon--danger"
-                    pTooltip="Desvincular este dispositivo"
-                    tooltipPosition="top"
-                    (click)="unlinkDevice(reg)"
-                  >
-                    <i class="pi pi-link"></i>
-                  </button>
-                } @else if (!reg.deviceUuid) {
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon--primary"
-                    pTooltip="Vincular este dispositivo"
-                    tooltipPosition="top"
-                    (click)="linkDevice(reg)"
-                  >
-                    <i class="pi pi-link"></i>
-                  </button>
-                }
               </td>
             </tr>
           }
@@ -172,6 +151,31 @@
         inputId="registerActive"
       />
     </div>
+
+    <!-- Manual device picker — only in edit mode (a freshly-created
+         register has no id yet to link to). Lists active cashier-mode
+         devices on the same branch, hiding any device already linked
+         to a different register so the admin cannot silently steal. -->
+    @if (editingRegister()) {
+      <div class="register-form__field">
+        <label for="registerDevice">Dispositivo vinculado</label>
+        <p-dropdown
+          inputId="registerDevice"
+          [options]="deviceOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="form.deviceUuid"
+          [disabled]="loadingBranchDevices()"
+          [placeholder]="loadingBranchDevices() ? 'Cargando dispositivos...' : '— Ninguno / Desvincular —'"
+          styleClass="register-form__input"
+          appendTo="body"
+        />
+        <small class="register-form__hint">
+          Sólo se muestran dispositivos activos en modo cajero de esta sucursal,
+          no vinculados a otra caja.
+        </small>
+      </div>
+    }
   </div>
 
   <ng-template pTemplate="footer">
@@ -193,3 +197,87 @@
     </button>
   </ng-template>
 </p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Link-code dialog — generated for an unlinked register so the cashier    -->
+<!-- on the iPad can redeem it without an Owner/Manager being on-site.       -->
+<!-- ====================================================================== -->
+<p-dialog
+  [header]="linkCodeRegister() ? 'Código para ' + linkCodeRegister()!.name : 'Código de vinculación'"
+  [visible]="showLinkCodeDialog()"
+  (visibleChange)="$event ? null : closeLinkCodeDialog()"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '440px' }"
+  [draggable]="false"
+  appendTo="body"
+>
+  <div class="link-code">
+    @let data = linkCodeData();
+    @if (generatingLinkCode()) {
+      <div class="link-code__loading">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Generando código...</span>
+      </div>
+    } @else if (data) {
+      <p class="link-code__intro">
+        Dictale este código al cajero. Lo ingresará en el iPad cuando vea
+        <strong>"Dispositivo no vinculado"</strong>.
+      </p>
+
+      <div class="link-code__code">
+        <span class="link-code__value">{{ data.code }}</span>
+        <button
+          type="button"
+          class="link-code__copy"
+          [class.link-code__copy--ok]="linkCodeCopied()"
+          (click)="copyLinkCode()"
+          pTooltip="Copiar al portapapeles"
+          tooltipPosition="top"
+        >
+          @if (linkCodeCopied()) {
+            <i class="pi pi-check"></i>
+          } @else {
+            <i class="pi pi-copy"></i>
+          }
+        </button>
+      </div>
+
+      <div class="link-code__countdown"
+           [class.link-code__countdown--expired]="linkCodeSecondsLeft() <= 0">
+        @if (linkCodeSecondsLeft() > 0) {
+          <i class="pi pi-clock"></i>
+          <span>Vence en {{ formatCountdown(linkCodeSecondsLeft()) }}</span>
+        } @else {
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Código expirado — genera uno nuevo</span>
+        }
+      </div>
+
+      <p class="link-code__hint">
+        El código se invalida automáticamente al usarse. Si lo escribiste
+        mal, cierra este diálogo y genera uno nuevo.
+      </p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      type="button"
+      class="btn-ghost"
+      (click)="closeLinkCodeDialog()"
+    >Cerrar</button>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Confirm dialog — fires when the admin tries to switch a device on a    -->
+<!-- register that has an open cash session.                                -->
+<!-- ====================================================================== -->
+<p-confirmDialog
+  key="register-device-reassign"
+  [style]="{ width: '440px' }"
+  acceptButtonStyleClass="p-button-warning"
+  rejectButtonStyleClass="btn-ghost"
+  appendTo="body"
+/>

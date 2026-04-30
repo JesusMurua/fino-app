@@ -1,11 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 
 import { MacroCategoryType, UserRoleId } from '../enums';
+import { PosExperience } from '../models/catalog.model';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
+import { TenantContextService } from './tenant-context.service';
 
-/** Deterministic macro → POS experience mapping used as fallback. */
-const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, 'Restaurant' | 'Counter' | 'Retail' | 'Quick'> = {
+/**
+ * Deterministic macro → POS experience mapping used as fallback when
+ * neither the tenant context nor the branch config can answer. The
+ * Services macro maps to `'Quick'` here for backwards compatibility
+ * with the offline catalog seed; the resolver also accepts `'Services'`
+ * straight from the backend (see the switch in `resolvePosRoute`).
+ */
+const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, PosExperience> = {
   [MacroCategoryType.FoodBeverage]: 'Restaurant',
   [MacroCategoryType.QuickService]: 'Counter',
   [MacroCategoryType.Retail]:       'Retail',
@@ -19,7 +27,7 @@ const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, 'Restaurant' | 'Counter' |
  */
 export type PostLoginRoute =
   | { kind: 'route'; route: string }
-  | { kind: 'error'; error: 'hardware-shell'; mode: 'kitchen' | 'kiosk' };
+  | { kind: 'error'; error: 'hardware-shell'; mode: 'kitchen' | 'kiosk' | 'reception' };
 
 /**
  * Determines the correct landing route after authentication
@@ -32,6 +40,7 @@ export class DeviceRoutingService {
 
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
+  private readonly tenantContext = inject(TenantContextService);
 
   //#region Public API
 
@@ -54,13 +63,6 @@ export class DeviceRoutingService {
       return { kind: 'route', route: '/admin' };
     }
 
-    // Reception (member check-in) terminals route every operational role
-    // straight to the access-control banner. Treated as a vertical-shell
-    // override so Host / Cashier / Waiter all converge on the same screen.
-    if (mode === 'reception') {
-      return { kind: 'route', route: '/reception/access-control' };
-    }
-
     switch (roleId) {
       case UserRoleId.Kitchen:
         // Kitchen role users exist, but the /kitchen shell is device-auth
@@ -76,7 +78,7 @@ export class DeviceRoutingService {
         return { kind: 'route', route: '/pos/waiter' };
 
       case UserRoleId.Cashier: {
-        if (mode === 'kitchen' || mode === 'kiosk') {
+        if (mode === 'kitchen' || mode === 'kiosk' || mode === 'reception') {
           return { kind: 'error', error: 'hardware-shell', mode };
         }
         if (mode === 'tables') return { kind: 'route', route: '/tables' };
@@ -84,7 +86,7 @@ export class DeviceRoutingService {
       }
 
       case UserRoleId.Kiosk: {
-        if (mode === 'kitchen' || mode === 'kiosk') {
+        if (mode === 'kitchen' || mode === 'kiosk' || mode === 'reception') {
           return { kind: 'error', error: 'hardware-shell', mode };
         }
         return { kind: 'route', route: '/pin' };
@@ -102,15 +104,28 @@ export class DeviceRoutingService {
   /**
    * Resolves the POS route variant based on the tenant's posExperience.
    *
-   * Resolution order:
-   *   1. configService.posExperience() — loaded from Dexie/API during preload
-   *   2. Fallback: derive deterministically from the JWT macro category
-   *   3. Last resort: /pos (Restaurant default)
+   * Resolution order (most reliable first):
+   *   1. `tenantContext.posExperience()` — derived from the hydrated
+   *      sub-category + business-type catalog. Most authoritative when
+   *      the sub-giro fetch has resolved, because it is keyed by the
+   *      tenant's actual business type, not a macro-level approximation.
+   *   2. `configService.posExperience()` — loaded from Dexie/branch API
+   *      during preload. Reflects whatever the backend stored on the
+   *      branch row.
+   *   3. `MACRO_POS_EXPERIENCE[macroId]` — deterministic fallback from
+   *      the JWT macro category. Covers the cold-boot window before the
+   *      sub-giro fetch resolves and acts as a safety net when the
+   *      branch config is missing the field entirely.
+   *   4. Neutral fail-safe — `/pos/quick` (a generic product grid that
+   *      lets the cashier sell). The legacy fallback was `/pos` (the
+   *      Restaurant Hub) which silently dropped Services / Retail
+   *      tenants into a tables view they did not configure (AUDIT-049).
    *
    * Public so the POS entry guard can reuse the same logic.
    */
   resolvePosRoute(): string {
-    let experience = this.configService.posExperience();
+    let experience: PosExperience | undefined =
+      this.tenantContext.posExperience() ?? this.configService.posExperience();
 
     if (!experience) {
       const macroId = this.authService.primaryMacroCategoryId();
@@ -124,8 +139,17 @@ export class DeviceRoutingService {
       case 'Retail':     return '/pos/retail';
       // 'Counter' posExperience now maps to Quick Service (standard ProductGrid)
       case 'Counter':    return '/pos/quick-service';
-      case 'Quick':      return '/pos/quick';
-      default:           return '/pos';
+      // 'Services' is the canonical value emitted by the backend for the
+      // Services macro; the offline catalog still emits 'Quick' for the
+      // same tenants, so we accept both as synonyms in this PR.
+      case 'Quick':
+      case 'Services':   return '/pos/quick';
+      default:
+        console.warn(
+          '[DeviceRouting] No POS experience resolved — falling back to /pos/quick. ' +
+          'Check the branch config and JWT `macroCategory` claim for the active tenant.',
+        );
+        return '/pos/quick';
     }
   }
 

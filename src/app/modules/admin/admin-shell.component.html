@@ -1,7 +1,5 @@
 <div class="shell"
-     [class.shell--collapsed]="isCollapsed()"
-     [class.l]="!isDarkMode()"
-     [class.d]="isDarkMode()">
+     [class.shell--collapsed]="isCollapsed()">
 
   <!-- ================================================================== -->
   <!-- SIDEBAR                                                             -->
@@ -19,35 +17,6 @@
     </div>
 
     <div class="sidebar__divider"></div>
-
-    <!-- Branch Selector -->
-    @if (canSwitchBranch()) {
-      <div class="sidebar__branch">
-        @if (!isCollapsed()) {
-          <span class="sidebar__branch-label">Sucursal activa</span>
-          <p-dropdown
-            [options]="authService.availableBranches()"
-            optionLabel="name"
-            optionValue="id"
-            [(ngModel)]="selectedBranchId"
-            (onChange)="changeBranch($event.value)"
-            styleClass="w-full"
-            [disabled]="isSwitchingBranch()"
-          />
-        } @else {
-          <button
-            type="button"
-            class="sidebar__branch-icon"
-            [pTooltip]="currentBranchName()"
-            tooltipPosition="right"
-          >
-            <i class="pi pi-building"></i>
-          </button>
-        }
-      </div>
-
-      <div class="sidebar__divider"></div>
-    }
 
     <!-- Navigation -->
     <nav class="sidebar__nav" aria-label="Navegación del back office">
@@ -115,6 +84,21 @@
 
     <!-- Top bar -->
     <header class="topbar">
+      @if (canSwitchBranch()) {
+        <div class="topbar__branch">
+          <i class="pi pi-building topbar__branch-icon" aria-hidden="true"></i>
+          <p-dropdown
+            [options]="authService.availableBranches()"
+            optionLabel="name"
+            optionValue="id"
+            [(ngModel)]="selectedBranchId"
+            (onChange)="changeBranch($event.value)"
+            styleClass="topbar__branch-dropdown"
+            [disabled]="isSwitchingBranch()"
+            [ariaLabel]="'Sucursal activa'"
+          />
+        </div>
+      }
       <div class="topbar__actions">
         <div
           class="mode-toggle"

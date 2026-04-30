@@ -59,7 +59,7 @@ export const appRoutes: Routes = [
 	{
 		path: 'kiosk',
 		canActivate: [deviceAuthGuard, featureGuard],
-		data: { requiredFeature: FeatureKey.KioskMode },
+		data: { requiredFeature: FeatureKey.MaxKiosks },
 		loadChildren: () =>
 			import('./modules/kiosk/kiosk.routes').then((m) => m.kioskRoutes),
 	},
@@ -67,7 +67,12 @@ export const appRoutes: Routes = [
 		path: 'kitchen',
 		canActivate: [deviceAuthGuard, featureGuard],
 		data: {
-			requiredFeature: [FeatureKey.KdsBasic, FeatureKey.RealtimeKds],
+			// MaxKdsScreens is the gate for the kitchen mode (quantitative
+			// quota — backend enforces actual limits via 403 on activation).
+			// RealtimeKds is an internal toggle layered on top, dictating
+			// whether KDS uses SignalR sockets vs polling — not an access
+			// gate, so it stays out of the route guard.
+			requiredFeature: FeatureKey.MaxKdsScreens,
 		},
 		loadChildren: () =>
 			import('./modules/kitchen/kitchen.routes').then((m) => m.kitchenRoutes),
@@ -108,8 +113,12 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'reception',
-		canActivate: [authGuard, roleGuard, terminalGuard],
-		data: { roles: [UserRoleId.Host, UserRoleId.Cashier, UserRoleId.Manager, UserRoleId.Owner] },
+		// Reception is a wall-mounted, unattended check-in screen — same
+		// architectural pattern as /kiosk and /kitchen. Device-token only,
+		// no human PIN session involved. Quota enforced backend-side via
+		// MaxReceptionsPerBranch (per-branch scope, see monetization doc).
+		canActivate: [deviceAuthGuard, featureGuard],
+		data: { requiredFeature: FeatureKey.MaxReceptionsPerBranch },
 		loadChildren: () =>
 			import('./modules/reception/reception.routes').then((m) => m.receptionRoutes),
 	},

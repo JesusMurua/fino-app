@@ -15,6 +15,9 @@
     <!-- =================================================================== -->
     <!-- Section 1 — Activation code generator                                -->
     <!-- =================================================================== -->
+    <!-- Layout flow: Generator (Section 1) → Pending codes (Section 2) →     -->
+    <!--   Linked devices (Section 3). Stacked vertically per the SCSS grid.  -->
+    <!-- =================================================================== -->
     <section class="settings-card">
       <div class="settings-card-header">
         <div class="card-icon"><i class="pi pi-key"></i></div>
@@ -24,7 +27,62 @@
         </div>
       </div>
 
-      <div class="settings-form">
+      <!-- Per-mode quota counter — only renders when the backend has
+           answered with a quota row for the selected mode. Three visual
+           states (unlimited / normal / reached) keep the admin oriented
+           on capacity without surprises at submit time. -->
+      @if (currentModeQuota(); as quota) {
+        <div
+          class="quota-counter"
+          [class.quota-counter--unlimited]="counterState() === 'unlimited'"
+          [class.quota-counter--normal]="counterState() === 'normal'"
+          [class.quota-counter--reached]="counterState() === 'reached'"
+        >
+          <div class="quota-counter__icon">
+            @if (counterState() === 'reached') {
+              <i class="pi pi-exclamation-triangle"></i>
+            } @else if (counterState() === 'unlimited') {
+              <i class="pi pi-infinity"></i>
+            } @else {
+              <i class="pi pi-check-circle"></i>
+            }
+          </div>
+          <div class="quota-counter__body">
+            <div class="quota-counter__label">
+              {{ modeLabel(quota.mode) }}
+            </div>
+            <div class="quota-counter__value">
+              @if (quota.isUnlimited) {
+                <strong>{{ quota.usage }}</strong>
+                <span class="quota-counter__sep">/</span>
+                <span class="quota-counter__infinity" aria-label="ilimitado">∞</span>
+              } @else {
+                <strong>{{ quota.usage }}</strong>
+                <span class="quota-counter__sep">/</span>
+                <span>{{ quota.effectiveLimit }}</span>
+              }
+              <span class="quota-counter__caption">dispositivos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Permanent lockout banner — replaces a tooltip on the disabled
+             button (PrimeNG tooltips do not fire on disabled elements).
+             The banner stays in place while the limit is reached so the
+             admin always sees the next-step copy. -->
+        @if (counterState() === 'reached') {
+          <div class="quota-banner" role="alert">
+            <i class="pi pi-info-circle"></i>
+            <div class="quota-banner__body">
+              <strong>Has alcanzado el límite de tu plan.</strong>
+              Revoca un dispositivo de la lista de abajo o mejora tu suscripción
+              para liberar más espacios.
+            </div>
+          </div>
+        }
+      }
+
+      <form [formGroup]="generateForm" class="settings-form" (ngSubmit)="generateActivationCode()">
         <div class="form-field">
           <label class="form-field__label" for="device-branch">Sucursal</label>
           <p-dropdown
@@ -32,7 +90,7 @@
             [options]="branches()"
             optionLabel="name"
             optionValue="id"
-            [(ngModel)]="codeBranchId"
+            formControlName="branchId"
             placeholder="Seleccionar sucursal"
             styleClass="w-full"
             [disabled]="loadingBranches()"
@@ -46,7 +104,7 @@
             [options]="modes()"
             optionLabel="label"
             optionValue="value"
-            [(ngModel)]="codeMode"
+            formControlName="mode"
             styleClass="w-full"
           />
         </div>
@@ -57,7 +115,7 @@
             id="device-name"
             type="text"
             pInputText
-            [(ngModel)]="codeDeviceName"
+            formControlName="name"
             placeholder="Ej. Caja Principal, Recepción"
             maxlength="60"
             class="w-full"
@@ -66,18 +124,40 @@
             El terminal adoptará este nombre automáticamente al activar el código.
           </small>
         </div>
-      </div>
 
-      @if (activationCode()) {
-        <div class="activation-code">
-          <span class="activation-code__value">{{ activationCode() }}</span>
+        @if (showCashRegisterPicker()) {
+          <div class="form-field">
+            <label class="form-field__label" for="device-cashregister">
+              Vincular a caja (opcional)
+            </label>
+            <p-dropdown
+              inputId="device-cashregister"
+              [options]="cashRegisterOptions()"
+              optionLabel="label"
+              optionValue="value"
+              formControlName="cashRegisterId"
+              styleClass="w-full"
+              placeholder="— No vincular caja por ahora —"
+            />
+            <small class="form-field__hint">
+              Solo se muestran cajas sin vincular de la sucursal seleccionada.
+              Al activar el código, el dispositivo quedará automáticamente
+              asignado a la caja elegida.
+            </small>
+          </div>
+        }
+      </form>
+
+      @if (lastGeneratedCode(); as last) {
+        <div class="activation-code" [attr.data-pulse]="codePulseKey()">
+          <span class="activation-code__value">{{ last.code }}</span>
           <span class="activation-code__summary">
-            Código para: <strong>{{ codeBranchLabel() }}</strong>
-            — Modo: <strong>{{ codeModeLabel() }}</strong>
-            — Nombre: <strong>{{ codeDeviceName.trim() }}</strong>
+            Código para: <strong>{{ last.branchName }}</strong>
+            — Modo: <strong>{{ modeLabel(last.mode) }}</strong>
+            — Nombre: <strong>{{ last.name }}</strong>
           </span>
           <span class="activation-code__hint">
-            Ingresa este código en el nuevo dispositivo desde la pantalla "Dispositivo no vinculado".
+            Válido hasta {{ last.expiresAt | date:'short' }}. Ingrésalo en el nuevo dispositivo desde "Dispositivo no vinculado".
           </span>
         </div>
       }
@@ -86,7 +166,7 @@
         <p-button
           label="Generar código"
           icon="pi pi-qrcode"
-          [disabled]="generatingCode() || !codeBranchId || !codeDeviceName.trim()"
+          [disabled]="generatingCode() || generateForm.invalid || isQuotaLocked()"
           [loading]="generatingCode()"
           (onClick)="generateActivationCode()"
         />
@@ -94,7 +174,68 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- Section 2 — Fleet table                                              -->
+    <!-- Section 2 — Pending activation codes                                 -->
+    <!-- =================================================================== -->
+    <section class="settings-card">
+      <div class="settings-card-header">
+        <div class="card-icon"><i class="pi pi-clock"></i></div>
+        <div>
+          <div class="card-title">Códigos pendientes de activación</div>
+          <div class="card-subtitle">
+            Códigos generados que aún no han sido canjeados por un dispositivo
+          </div>
+        </div>
+      </div>
+
+      @if (pendingCodes().length > 0 || loadingPending()) {
+        <p-table
+          [value]="pendingCodes()"
+          [loading]="loadingPending()"
+          [rowTrackBy]="trackByPendingCode"
+          dataKey="code"
+          styleClass="p-datatable-sm fleet-table"
+          responsiveLayout="scroll"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              <th scope="col">Código</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Sucursal</th>
+              <th scope="col">Modo</th>
+              <th scope="col">Creado</th>
+              <th scope="col">Expira</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              <td>
+                <span class="pending-code__value">{{ row.code }}</span>
+              </td>
+              <td>
+                <span class="fleet-table__name">{{ row.name }}</span>
+              </td>
+              <td>{{ row.branchName }}</td>
+              <td>{{ modeLabel(row.mode) }}</td>
+              <td>{{ row.createdAt | date:'short' }}</td>
+              <td>{{ row.expiresAt | date:'short' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      } @else {
+        <div class="devices-empty">
+          <i class="pi pi-clock devices-empty__icon"></i>
+          <p class="devices-empty__title">Sin códigos pendientes</p>
+          <p class="devices-empty__text">
+            Todos los códigos generados ya fueron canjeados o expiraron. Genera uno
+            nuevo con el formulario de arriba.
+          </p>
+        </div>
+      }
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- Section 3 — Fleet table                                              -->
     <!-- =================================================================== -->
     <section class="settings-card">
       <div class="settings-card-header">

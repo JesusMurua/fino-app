@@ -33,29 +33,7 @@
     i { font-size: 12px; }
   }
 
-  // ---- Device info strip ----
-  &__device-info {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    padding: $space-3 $space-4;
-    background: #F8FAFC;
-    border: 1px solid $color-border-soft;
-    border-radius: 8px;
-    font-size: $font-size-label;
-    color: $color-text-sub;
-    flex-wrap: wrap;
-  }
-
-  &__uuid {
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    background: #F1F5F9;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: $color-text-title;
-  }
-
+  // ---- Device link badges (read-only) ----
   &__linked-badge {
     display: inline-flex;
     align-items: center;
@@ -153,28 +131,11 @@
     }
   }
 
-  &__row--linked {
-    background: #F0FDF4 !important;
-  }
-
   &__name-cell {
     display: flex;
     align-items: center;
     gap: $space-2;
     font-weight: 500;
-  }
-
-  &__this-device-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 12px;
-    background: $color-primary;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
   }
 
   &__actions {
@@ -318,5 +279,122 @@
   &__error {
     color: #DC2626;
     font-size: 13px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--text2, $color-text-sub);
+    line-height: 1.4;
+  }
+}
+
+// =========================================================================
+// Link-code dialog — minted for an unlinked register so the cashier on the
+// iPad can redeem it (production-grade alternative to the Owner/Manager
+// self-link shortcut). Visual language echoes the device activation code
+// in /admin/devices so the admin recognises the surface immediately.
+// =========================================================================
+
+.link-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-3 0;
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    color: var(--text2, $color-text-sub);
+    padding: $space-5 0;
+
+    i { font-size: 18px; }
+  }
+
+  &__intro {
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text2, $color-text-sub);
+    line-height: 1.5;
+  }
+
+  &__code {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-4 $space-5;
+    background: var(--surface2, #F8FAFC);
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 12px;
+  }
+
+  &__value {
+    font-family: monospace;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: $color-primary;
+    user-select: all;
+  }
+
+  &__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 8px;
+    background: var(--surface, white);
+    color: var(--text2, $color-text-sub);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    i { font-size: 16px; }
+
+    &:hover {
+      background: var(--surface2, #F3F4F6);
+      color: var(--text1, $color-text-title);
+    }
+
+    &--ok {
+      background: #DCFCE7;
+      border-color: #BBF7D0;
+      color: $color-primary;
+
+      &:hover {
+        background: #BBF7D0;
+        color: $color-primary;
+      }
+    }
+  }
+
+  &__countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-3;
+    border-radius: 9999px;
+    background: #F0FDF4;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 600;
+
+    i { font-size: 13px; }
+
+    &--expired {
+      background: #FEF2F2;
+      color: #DC2626;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3, #9CA3AF);
+    line-height: 1.5;
   }
 }

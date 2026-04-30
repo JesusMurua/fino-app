@@ -3,11 +3,12 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 
 /** Hardware mode that triggered the block. */
-export type HardwareOnlyMode = 'kitchen' | 'kiosk';
+export type HardwareOnlyMode = 'kitchen' | 'kiosk' | 'reception';
 
 /**
  * Modal shown when a human tries to sign in with a PIN on a device
- * that is provisioned as a hardware-only shell (KDS or Kiosk).
+ * that is provisioned as a hardware-only shell (KDS, Kiosk, or
+ * Reception check-in).
  *
  * Contract (per FDD-013 §4.2.9):
  *   - Pure presentational — no state, no services.
@@ -41,16 +42,23 @@ export class HardwareOnlyScreenDialogComponent {
 
   /** Spanish title for the selected mode. */
   get title(): string {
-    return this.mode === 'kiosk'
-      ? 'Esta pantalla es un Kiosko'
-      : 'Esta pantalla es de Cocina';
+    switch (this.mode) {
+      case 'kiosk':     return 'Esta pantalla es un Kiosko';
+      case 'reception': return 'Esta pantalla es de Recepción';
+      case 'kitchen':   return 'Esta pantalla es de Cocina';
+    }
   }
 
   /** Spanish body copy for the selected mode. */
   get body(): string {
-    return this.mode === 'kiosk'
-      ? 'Este dispositivo está configurado como Kiosko. No se puede iniciar sesión con PIN aquí. Si necesitas usarlo como POS, re-vincúlalo desde Configuración.'
-      : 'Este dispositivo está configurado como pantalla de cocina (KDS). No se puede iniciar sesión con PIN aquí. Si necesitas usarlo como POS, re-vincúlalo desde Configuración.';
+    switch (this.mode) {
+      case 'kiosk':
+        return 'Este dispositivo está configurado como Kiosko. No se puede iniciar sesión con PIN aquí. Si necesitas usarlo como POS, re-vincúlalo desde Configuración.';
+      case 'reception':
+        return 'Este dispositivo está configurado como pantalla de Recepción / Check-in. No se puede iniciar sesión con PIN aquí. Si necesitas usarlo como POS, re-vincúlalo desde Configuración.';
+      case 'kitchen':
+        return 'Este dispositivo está configurado como pantalla de cocina (KDS). No se puede iniciar sesión con PIN aquí. Si necesitas usarlo como POS, re-vincúlalo desde Configuración.';
+    }
   }
 
   onDismiss(): void {

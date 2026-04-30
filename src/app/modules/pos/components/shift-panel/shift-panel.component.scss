@@ -1,0 +1,94 @@
+@use '../../../../../styles/variables' as *;
+
+// =========================================================================
+// Shift Panel — POS sidebar wrapper around <app-shift-management>.
+// Visual language mirrors delivery-panel (right slide-in, 480px desktop /
+// 100vw mobile, custom header with title + close button) so cashiers
+// recognise the pattern.
+//
+// All surfaces route through CSS custom properties owned by `ThemeService`
+// (`--bg`, `--surface`, `--border`, `--text1`, `--text2`, `--surface2`) so
+// the panel flips themes from a single source of truth on `<html>`. Each
+// `var()` carries a light-theme fallback for graceful degradation.
+// =========================================================================
+
+.shift-panel {
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: $space-4 $space-5;
+    background: var(--surface, #FFFFFF);
+    border-bottom: 1px solid var(--border, #E5E7EB);
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text1, #111827);
+  }
+
+  &__icon {
+    font-size: 20px;
+    color: $color-primary;
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text2, #6B7280);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    i { font-size: 18px; }
+
+    &:hover {
+      background: var(--surface2, #F3F4F6);
+      color: var(--text1, #111827);
+    }
+  }
+
+  &__content {
+    padding: $space-4;
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+// =========================================================================
+// PrimeNG sidebar overrides
+// =========================================================================
+
+:host ::ng-deep .p-sidebar.shift-sidebar {
+  background: var(--bg, #F8FAFC) !important;
+  border-left: 0.5px solid var(--border, #E5E7EB);
+}
+
+:host ::ng-deep .p-sidebar.shift-sidebar .p-sidebar-header {
+  padding: 0;
+  background: var(--surface, #FFFFFF);
+}
+
+:host ::ng-deep .p-sidebar.shift-sidebar .p-sidebar-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// Responsive: full-width on mobile so touch targets remain large.
+@media (max-width: $breakpoint-md) {
+  :host ::ng-deep .p-sidebar.shift-sidebar {
+    width: 100vw !important;
+  }
+}

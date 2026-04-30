@@ -26,7 +26,7 @@ import { TenantContextService } from '../services/tenant-context.service';
  *   {
  *     path: 'kitchen',
  *     canActivate: [featureGuard],
- *     data: { requiredFeature: [FeatureKey.KdsBasic, FeatureKey.RealtimeKds] }
+ *     data: { requiredFeature: [FeatureKey.MaxKdsScreens, FeatureKey.RealtimeKds] }
  *   }
  */
 export const featureGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {

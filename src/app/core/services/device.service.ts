@@ -2,13 +2,19 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import {
+  ActivateDeviceResponse,
   DeviceConfig,
+  DeviceLimitsDto,
   DeviceListItem,
+  GenerateCodePayload,
+  GenerateCodeResponse,
+  PendingDeviceCodeDto,
   ToggleActiveResponse,
   UpdateDevicePayload,
 } from '../models';
 import { ApiService } from './api.service';
 import { DeviceConfigStore } from './device-config.store';
+import { TenantContextService } from './tenant-context.service';
 
 /** localStorage key for the stable device UUID */
 const DEVICE_UUID_KEY = 'kaja_device_uuid';
@@ -71,6 +77,7 @@ export class DeviceService implements OnDestroy {
 
   private readonly api = inject(ApiService);
   private readonly deviceConfigStore = inject(DeviceConfigStore);
+  private readonly tenantContext = inject(TenantContextService);
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   //#endregion
@@ -84,6 +91,17 @@ export class DeviceService implements OnDestroy {
       localStorage.setItem(DEVICE_UUID_KEY, uuid);
     }
     this.deviceUuid = uuid;
+
+    // Cold-boot recovery for unattended hardware shells (kiosk / kitchen
+    // / reception): the user-login path that normally hydrates the
+    // tenant context never runs on these devices, so we seed
+    // `_activeFeatures` from the persisted device JWT here. Skipped
+    // when the token is missing or expired — anything else would
+    // populate the UI with stale capabilities.
+    if (this.hasValidDeviceToken()) {
+      const token = this.getDeviceToken();
+      if (token !== null) this.tenantContext.hydrateFromDeviceToken(token);
+    }
   }
 
   ngOnDestroy(): void {
@@ -128,6 +146,37 @@ export class DeviceService implements OnDestroy {
     if (response.deviceToken) {
       this.saveDeviceToken(response.deviceToken);
     }
+
+    return response;
+  }
+
+  /**
+   * Activates this device with a 6-digit pairing code issued from
+   * `/admin/devices`. The endpoint is atomic: a single call validates
+   * the code, provisions the device server-side, persists the local
+   * config, and stores the long-lived device JWT.
+   *
+   * @param code 6-digit pairing code
+   */
+  async activateDevice(code: string): Promise<ActivateDeviceResponse> {
+    const response = await firstValueFrom(
+      this.api.post<ActivateDeviceResponse>('/device/activate', {
+        code,
+        deviceUuid: this.deviceUuid,
+      }),
+    );
+
+    const config: DeviceConfig = {
+      businessId:   response.businessId,
+      branchId:     response.branchId,
+      businessName: response.businessName,
+      branchName:   response.branchName,
+      mode:         response.mode,
+      deviceName:   response.name,
+      configuredAt: new Date().toISOString(),
+    };
+    this.deviceConfigStore.save(config);
+    this.saveDeviceToken(response.deviceToken);
 
     return response;
   }
@@ -221,10 +270,17 @@ export class DeviceService implements OnDestroy {
    * after a successful `registerDevice` or `validateDevice` when the
    * backend returned a token. Public so the setup/activation-code flows
    * can also call it directly if needed.
+   *
+   * Re-hydrates the tenant context immediately so any consumer reading
+   * `TenantContextService.activeFeatures()` on the next tick (route
+   * guards, computed signals, the modes dropdown) sees the updated
+   * capability set without waiting for a user login.
+   *
    * @param token Raw JWT string — should have `type: 'device'` claim
    */
   saveDeviceToken(token: string): void {
     localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    this.tenantContext.hydrateFromDeviceToken(token);
   }
 
   /**
@@ -309,6 +365,59 @@ export class DeviceService implements OnDestroy {
    */
   update(id: number, payload: UpdateDevicePayload): Observable<DeviceListItem> {
     return this.api.patch<DeviceListItem>(`/devices/${id}`, payload);
+  }
+
+  //#endregion
+
+  //#region Activation Codes (Back Office)
+
+  /**
+   * Generates a 6-digit activation code for the given branch / mode / name.
+   * The backend may respond with HTTP 403 when the tenant has hit the
+   * device limit on its current plan — callers handle that case explicitly
+   * to surface the backend's `message` / `detail` to the user.
+   *
+   * @param payload Branch, mode and name pre-configured for the new device.
+   */
+  generateCode(payload: GenerateCodePayload): Observable<GenerateCodeResponse> {
+    return this.api.post<GenerateCodeResponse>('/device/generate-code', payload);
+  }
+
+  /**
+   * Lists every activation code that has been issued but not yet redeemed.
+   * Optionally scoped to a single branch via `?branchId={id}` so the Back
+   * Office can keep the pending list in sync with the fleet table when the
+   * admin filters by branch. Non-positive ids are treated as "no filter".
+   *
+   * @param branchId Optional branch filter.
+   */
+  getPendingCodes(branchId?: number): Observable<PendingDeviceCodeDto[]> {
+    const path = typeof branchId === 'number' && branchId > 0
+      ? `/device/pending-codes?branchId=${branchId}`
+      : '/device/pending-codes';
+    return this.api.get<PendingDeviceCodeDto[]>(path);
+  }
+
+  /**
+   * Fetches per-mode device quotas for a given branch. The backend
+   * resolves `businessId` from the JWT — passing it client-side would
+   * be redundant and a soft attack surface (admin tampering with the
+   * id), so the signature only takes the branch.
+   *
+   * The response is a `{ modes }` envelope where each entry carries
+   * `usage`, `effectiveLimit`, `isLimitReached` and `isUnlimited`. The
+   * UI looks up the row matching the currently-selected mode via
+   * `.find(m => m.mode === selectedMode)` and renders the counter card
+   * + lockout banner accordingly.
+   *
+   * Endpoint path matches the controller registration on the backend
+   * (`/api/Devices/limits`, plural-cap). ASP.NET Core is case-insensitive
+   * but staying literal avoids any future routing mishap.
+   *
+   * @param branchId Branch to query — required (limits are per-branch).
+   */
+  getDeviceLimits(branchId: number): Observable<DeviceLimitsDto> {
+    return this.api.get<DeviceLimitsDto>(`/Devices/limits?branchId=${branchId}`);
   }
 
   //#endregion

@@ -11,6 +11,7 @@ import { CatalogService } from './core/services/catalog.service';
 import { IdleService } from './core/services/idle.service';
 import { PrinterService } from './core/services/printer.service';
 import { SyncService } from './core/services/sync.service';
+import { ThemeService } from './core/services/theme.service';
 import { ExpiredOverlayComponent } from './shared/components/expired-overlay/expired-overlay.component';
 import { InstallBannerComponent } from './shared/components/install-banner/install-banner.component';
 import { UpdateBannerComponent } from './shared/components/update-banner/update-banner.component';
@@ -31,6 +32,11 @@ export class AppComponent implements OnInit {
   private readonly catalogService = inject(CatalogService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
+
+  // Eagerly instantiated so its constructor effect applies the
+  // `app-light` / `app-dark` class to <html> before any shell mounts.
+  // Not consumed inside this component — the side-effect is the point.
+  private readonly themeService = inject(ThemeService);
 
   /** URLs excluded from the global loading spinner (polling endpoints) */
   readonly filteredUrls = [

@@ -190,8 +190,21 @@ export class PinComponent implements OnInit {
         console.warn('[PinComponent] Preload failed — components will retry on mount:', error);
       }
 
-      // Background loads — don't block navigation
-      this.cashRegisterService.loadActiveSession(this.authService.activeBranchId()).catch(() => {});
+      // Block navigation on the cash session lookup so the POS shell
+      // never flashes the "Caja Cerrada" blocker on cold-boot — the
+      // service ordering (`ensureLinkedRegisterResolved` → `getOpenSession`)
+      // guarantees the query carries the right `registerId` filter.
+      // Fail-open: if the API hiccups (offline, 5xx) we still navigate
+      // so the cashier is not trapped on the PIN screen; the polling
+      // tick will rehydrate the session as soon as the network recovers.
+      try {
+        await this.cashRegisterService.loadActiveSession(this.authService.activeBranchId());
+      } catch {
+        // Intentionally swallowed — see comment above.
+      }
+
+      // Other background loads stay fire-and-forget — they do not gate
+      // the POS shell rendering.
       this.syncService.pullTodayOrders().catch(() => {});
       this.authService.refreshSubscriptionStatus();
 

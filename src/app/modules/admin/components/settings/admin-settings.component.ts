@@ -126,7 +126,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   /** Print destinations visible when any kitchen-printing feature is on */
   readonly canSeePrintDestinations = computed(() =>
     this.tenantContext.hasAnyFeature([
-      FeatureKey.KdsBasic,
+      FeatureKey.MaxKdsScreens,
       FeatureKey.RealtimeKds,
       FeatureKey.PrintedTickets,
     ]),

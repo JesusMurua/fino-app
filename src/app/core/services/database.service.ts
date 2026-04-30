@@ -21,6 +21,12 @@ import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, C
  *   v16 — Added customers table for CRM (phone, name, isActive indexes)
  *   v17 — Added printerDestinations table (Phase 19)
  *   v18 — Added pendingPrintJobs table for KDS offline-first (Phase 20c)
+ *   v19 — Added cashRegisters table for multi-till
+ *   v20 — Migrated cashSessions/cashMovements status strings → numeric IDs
+ *   v21 — Migrated orders/restaurantTables/inventoryMovements to numeric IDs
+ *   v22 — Added sortOrder index to printerDestinations
+ *   v23 — Re-keyed pendingPrintJobs as numeric, added pendingPrintJobUpdates
+ *   v24 — Symbolic bump for CashRegister `deviceId` addition (no schema change)
  */
 @Injectable({ providedIn: 'root' })
 export class DatabaseService extends Dexie {
@@ -230,6 +236,17 @@ export class DatabaseService extends Dexie {
       // Clear stale string-keyed rows — they'll be re-fetched from the API
       return tx.table('pendingPrintJobs').clear();
     });
+
+    // v24 — Symbolic bump for the CashRegister `deviceId` addition.
+    //
+    // The change is runtime-compatible (an optional property — Dexie
+    // auto-stores any property on `put()` regardless of schema) so no
+    // index update is needed. We still bump the version so the
+    // transition is recorded in Dexie's internal log alongside the
+    // backend modernization (DeviceUuid → DeviceId resolution server-side).
+    // Records persisted before this version simply load with `deviceId`
+    // undefined; subsequent writes will carry the field.
+    this.version(24).stores({}).upgrade(() => Promise.resolve());
   }
   //#endregion
 

@@ -19,9 +19,11 @@ import {
   sha256Hex,
 } from '../models';
 import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { extractFeaturesFromJwt } from '../utils/jwt.utils';
 import { ApiService } from './api.service';
 import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
+import { DeviceService } from './device.service';
 import { TenantContextService } from './tenant-context.service';
 
 /**
@@ -164,6 +166,7 @@ export class AuthService {
     private readonly router: Router,
     private readonly tenantContext: TenantContextService,
     private readonly branchContext: BranchContextService,
+    private readonly deviceService: DeviceService,
   ) {
     // No HTTP and no cross-service writes here. The tenant context is
     // primed post-bootstrap from `AppComponent.ngOnInit` via the public
@@ -403,6 +406,20 @@ export class AuthService {
     this.trialEndsAt.set(null);
     this.tenantContext.clear();
 
+    // Defensive: if this is an attended device that ALSO holds a valid
+    // long-lived device token (e.g. cashier mode with kitchen token, or
+    // any future hybrid scenario), `tenantContext.clear()` would leave
+    // the unattended shell with an empty features set until a fresh
+    // login. Re-seed from the device token so device-only routes that
+    // use `featureGuard` keep working post-logout. No-op for browsers
+    // without a device token (the common Back Office case).
+    if (this.deviceService.hasValidDeviceToken()) {
+      const deviceToken = this.deviceService.getDeviceToken();
+      if (deviceToken !== null) {
+        this.tenantContext.hydrateFromDeviceToken(deviceToken);
+      }
+    }
+
     // Clear cached catalog from IndexedDB (orders are preserved)
     this.db.products.clear().catch(() => {});
     this.db.categories.clear().catch(() => {});
@@ -553,9 +570,11 @@ export class AuthService {
     const effectiveBranchId = storedBranchId || responseBranchId;
 
     // Prefer the JWT `features` claim when present — it's what the
-    // backend signs — and fall back to the response body field.
-    const jwtFeatures = this.extractFeaturesFromJwt(response.token);
-    const features = jwtFeatures ?? response.features ?? [];
+    // backend signs — and fall back to the response body field. Spread
+    // so a readonly tuple from the JWT util can flow into the mutable
+    // `AuthUser.features` shape without a type-cast.
+    const jwtFeatures = extractFeaturesFromJwt(response.token);
+    const features: string[] = jwtFeatures ? [...jwtFeatures] : (response.features ?? []);
 
     // Prefer the JWT `sessionType` claim so stored sessions and guards
     // see the backend-signed value. Fall back to the response body for
@@ -645,31 +664,6 @@ export class AuthService {
   }
 
   /**
-   * Extracts the `features` claim from a JWT payload.
-   * Returns undefined when the token is not a real JWT
-   * (e.g. `offline-session-*`) or when the claim is missing.
-   *
-   * The .NET backend serializes the claim as a JSON-encoded string
-   * (e.g. `"features": "[\"CustomerDatabase\"]"`) instead of a native
-   * JSON array, so we transparently parse strings back into arrays
-   * before handing them to the tenant context.
-   */
-  private extractFeaturesFromJwt(token: string): string[] | undefined {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return undefined;
-      const payload = JSON.parse(atob(parts[1]));
-      let feats = payload.features;
-      if (typeof feats === 'string') {
-        try { feats = JSON.parse(feats); } catch { return undefined; }
-      }
-      return Array.isArray(feats) ? feats : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
    * Extracts the `sessionType` claim from a JWT payload.
    * Returns undefined for offline marker tokens or malformed JWTs.
    */
@@ -729,7 +723,7 @@ export class AuthService {
     if (macro === null) return;
 
     const user = this.currentUser()!;
-    const jwtFeatures = this.extractFeaturesFromJwt(user.token);
+    const jwtFeatures = extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
     const subCategory = this.extractSubCategoryFromJwt(user.token);
     this.tenantContext.setContext(this.planTypeId(), macro, features, subCategory);

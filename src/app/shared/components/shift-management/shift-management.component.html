@@ -1,0 +1,530 @@
+<div class="shift-mgmt">
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="shift-mgmt__loading">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>Cargando...</span>
+    </div>
+  }
+
+  <!-- ================================================================ -->
+  <!-- NO SESSION OPEN                                                    -->
+  <!-- ================================================================ -->
+  @if (!loading() && !isSessionOpen()) {
+
+    <div class="shift-empty">
+      <i class="pi pi-wallet shift-empty__icon"></i>
+      <h2 class="shift-empty__title">No hay turno abierto</h2>
+      <p class="shift-empty__text">Abre un turno para comenzar a registrar ventas del día</p>
+      <button type="button" class="btn-primary btn-primary--lg" (click)="openOpenDialog()">
+        <i class="pi pi-plus"></i>
+        Abrir turno
+      </button>
+
+      @if (mode === 'admin') {
+        <button type="button" class="btn-ghost shift-empty__history" (click)="loadHistory()">
+          <i class="pi pi-history"></i>
+          Ver historial
+        </button>
+      }
+    </div>
+
+  }
+
+  <!-- ================================================================ -->
+  <!-- SESSION OPEN                                                       -->
+  <!-- ================================================================ -->
+  @if (!loading() && isSessionOpen() && activeSession(); as session) {
+
+    <!-- Session header bar -->
+    <div class="session-bar">
+      <div class="session-bar__left">
+        <span class="badge badge--open">Turno abierto</span>
+        <span class="session-bar__time">
+          <i class="pi pi-clock"></i>
+          Abierto a las {{ formatTime(session.openedAt) }}
+        </span>
+      </div>
+      <div class="session-bar__actions">
+        @if (mode === 'admin') {
+          <button type="button" class="btn-ghost" (click)="loadHistory()">
+            <i class="pi pi-history"></i>
+            Historial
+          </button>
+        }
+        <button type="button" class="btn-ghost" (click)="openMovementDialog()">
+          <i class="pi pi-arrow-down-left"></i>
+          Retiro / Gasto
+        </button>
+        <button type="button" class="btn-ghost" (click)="triggerCashDrawer()">
+          <i class="pi pi-box"></i>
+          Abrir cajón
+        </button>
+        <button type="button" class="btn-danger" (click)="openCloseDialog()">
+          <i class="pi pi-lock"></i>
+          Cerrar turno
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <section class="kpi-grid" [class.kpi-grid--compact]="mode === 'pos'">
+
+      <div class="kpi-card">
+        <span class="kpi-card__label">Fondo inicial</span>
+        <span class="kpi-card__value">{{ session.initialAmountCents | price }}</span>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-card__label">Ventas efectivo</span>
+        <span class="kpi-card__value kpi-card__value--green">{{ cashSalesTotalCents() | price }}</span>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-card__label">Movimientos</span>
+        <span class="kpi-card__value" [class.kpi-card__value--red]="movementsTotal() > 0">
+          @if (movementsTotal() > 0) { - }{{ movementsTotal() | price }}
+        </span>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-card__label">Esperado en caja</span>
+        <span class="kpi-card__value kpi-card__value--green">{{ expectedAmount() | price }}</span>
+      </div>
+
+    </section>
+
+    <!-- Movements table -->
+    <section class="section-card">
+      <h2 class="section-card__title">Movimientos del turno</h2>
+
+      @if (movements().length === 0) {
+        <p class="section-card__empty">Sin movimientos en este turno</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Hora</th>
+                <th>Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of movements(); track m.id) {
+                <tr>
+                  <td>
+                    <span class="badge" [ngClass]="m.cashMovementTypeId | statusClass:'cashMovement'">
+                      {{ m.cashMovementTypeId | statusLabel:'cashMovement' }}
+                    </span>
+                  </td>
+                  <td>{{ m.description }}</td>
+                  <td class="data-table__time">{{ formatTime(m.createdAt) }}</td>
+                  <td class="data-table__amount data-table__amount--negative">-{{ m.amountCents | price }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+  }
+
+</div>
+
+<!-- ====================================================================== -->
+<!-- Dialog: Open Session                                                    -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Abrir turno de caja"
+  [(visible)]="showOpenDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+  appendTo="body"
+>
+  <div class="dialog-form">
+
+    <div class="dialog-field">
+      <label class="dialog-field__label" for="open-amount">Fondo inicial</label>
+      <p-inputNumber
+        inputId="open-amount"
+        [(ngModel)]="openAmount"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        [min]="0"
+        styleClass="dialog-field__input-lg"
+        inputStyleClass="dialog-field__input-lg-inner"
+        placeholder="$0.00"
+        posSelectOnFocus
+      />
+    </div>
+
+    <p class="dialog-hint">El fondo es el dinero disponible para dar cambio</p>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isOpeningSession()"
+        (click)="showOpenDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="openAmount == null || openAmount < 0 || isOpeningSession()"
+        (click)="openSession()"
+      >
+        @if (isOpeningSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Abrir turno
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Dialog: Close Session                                                   -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Cerrar turno"
+  [(visible)]="showCloseDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '480px' }"
+  [draggable]="false"
+  appendTo="body"
+>
+  @if (activeSession(); as session) {
+    <div class="dialog-form">
+
+      @if (closeStep() === 'counting') {
+        <p class="close-step-hint">
+          <i class="pi pi-info-circle"></i>
+          Cuenta el dinero físico de la caja. El sistema te mostrará el esperado
+          <strong>después</strong> de confirmar tu conteo.
+        </p>
+      }
+
+      <div class="close-summary">
+        <div class="close-summary__row">
+          <span>Fondo inicial</span>
+          <span>{{ session.initialAmountCents | price }}</span>
+        </div>
+
+        @if (closeStep() === 'reveal') {
+          <div class="close-summary__row">
+            <span>Ventas efectivo</span>
+            <span>{{ cashSalesTotalCents() | price }}</span>
+          </div>
+          <div class="close-summary__row">
+            <span>Movimientos</span>
+            <span>-{{ movementsTotal() | price }}</span>
+          </div>
+          <div class="close-summary__row close-summary__row--total">
+            <span>Esperado en caja</span>
+            <span>{{ expectedAmount() | price }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="dialog-divider"></div>
+
+      <div class="dialog-field">
+        <label class="dialog-field__label" for="close-amount">¿Cuánto hay físicamente en caja?</label>
+        <p-inputNumber
+          inputId="close-amount"
+          [(ngModel)]="closeAmount"
+          mode="currency"
+          currency="MXN"
+          locale="es-MX"
+          [min]="0"
+          [readonly]="closeStep() === 'reveal'"
+          styleClass="dialog-field__input-lg"
+          inputStyleClass="dialog-field__input-lg-inner"
+          placeholder="$0.00"
+          posSelectOnFocus
+        />
+      </div>
+
+      @if (closeStep() === 'reveal' && difference() !== null) {
+        <div class="close-diff" [class.close-diff--ok]="difference()! >= 0" [class.close-diff--bad]="difference()! < 0">
+          @if (difference()! >= 0) {
+            <i class="pi pi-check-circle"></i>
+            <span>Diferencia: {{ difference()! | price }} — Cuadra</span>
+          } @else {
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>Faltante: {{ (difference()! * -1) | price }}</span>
+          }
+        </div>
+      }
+
+      <div class="dialog-field">
+        <label class="dialog-field__label" for="close-notes">Notas (opcional)</label>
+        <textarea
+          pInputTextarea
+          id="close-notes"
+          [(ngModel)]="closeNotes"
+          [rows]="3"
+          placeholder="Observaciones del cierre..."
+          class="dialog-field__textarea"
+        ></textarea>
+      </div>
+
+    </div>
+  }
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      @if (closeStep() === 'counting') {
+        <button
+          type="button"
+          class="btn-ghost"
+          (click)="showCloseDialog.set(false)"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="closeAmount == null || closeAmount <= 0"
+          (click)="verifyCount()"
+        >
+          Verificar conteo
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="btn-ghost"
+          [disabled]="isClosingSession()"
+          (click)="backToCounting()"
+        >
+          <i class="pi pi-arrow-left"></i>
+          Volver a contar
+        </button>
+        <button
+          type="button"
+          [class]="difference() !== null && difference()! >= 0 ? 'btn-primary' : 'btn-warning'"
+          [disabled]="closeAmount == null || closeAmount <= 0 || isClosingSession()"
+          (click)="onCloseSession()"
+        >
+          @if (isClosingSession()) {
+            <i class="pi pi-spin pi-spinner"></i>
+          }
+          Cerrar turno
+        </button>
+      }
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Dialog: Movement (Withdrawal / Expense / Adjustment)                   -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Registrar movimiento"
+  [(visible)]="showMovementDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '460px' }"
+  [draggable]="false"
+  appendTo="body"
+>
+  <div class="dialog-form">
+
+    <div class="movement-types">
+      @for (opt of movementTypes; track opt.key) {
+        <button
+          type="button"
+          class="movement-type-btn"
+          [class.movement-type-btn--active]="movementType === opt.key"
+          (click)="movementType = opt.key"
+        >
+          <span class="movement-type-btn__icon">{{ opt.icon }}</span>
+          <span>{{ opt.label }}</span>
+        </button>
+      }
+    </div>
+
+    <p class="dialog-hint">{{ selectedMovementType().description }}</p>
+
+    <div class="dialog-field">
+      <label class="dialog-field__label" for="mov-amount">Monto</label>
+      <p-inputNumber
+        inputId="mov-amount"
+        [(ngModel)]="movementAmount"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        [min]="1"
+        styleClass="dialog-field__input-lg"
+        inputStyleClass="dialog-field__input-lg-inner"
+        placeholder="$0.00"
+      />
+    </div>
+
+    <div class="dialog-field">
+      <label class="dialog-field__label" for="mov-desc">Descripción</label>
+      <input
+        id="mov-desc"
+        type="text"
+        pInputText
+        [(ngModel)]="movementDescription"
+        [placeholder]="selectedMovementType().placeholder"
+        class="dialog-field__input"
+      />
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <button type="button" class="btn-ghost" (click)="showMovementDialog.set(false)">Cancelar</button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="movementAmount <= 0 || !movementDescription.trim()"
+        (click)="addMovement()"
+      >
+        Registrar
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Dialog: History (admin-only)                                            -->
+<!-- ====================================================================== -->
+@if (mode === 'admin') {
+  <p-dialog
+    header="Historial de cortes"
+    [(visible)]="showHistoryDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{ width: '800px' }"
+    [draggable]="false"
+    appendTo="body"
+  >
+    @if (loadingHistory()) {
+      <div class="shift-mgmt__loading">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Cargando historial...</span>
+      </div>
+    } @else if (history().length === 0) {
+      <p class="section-card__empty">Sin cortes anteriores</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Abrió</th>
+              <th>Cerró</th>
+              <th>Fondo</th>
+              <th>Contado</th>
+              <th>Diferencia</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of history(); track s.id) {
+              <tr>
+                <td>{{ formatDate(s.openedAt) }}</td>
+                <td>{{ s.openedBy }}</td>
+                <td>{{ s.closedBy ?? '—' }}</td>
+                <td>{{ s.initialAmountCents | price }}</td>
+                <td>{{ s.countedAmountCents !== null ? (s.countedAmountCents | price) : '—' }}</td>
+                <td>
+                  @if (s.countedAmountCents !== null && s.cashRegisterStatusId === CashRegisterStatus.Closed) {
+                    <span [class.text-green]="(s.countedAmountCents - s.initialAmountCents) >= 0"
+                          [class.text-red]="(s.countedAmountCents - s.initialAmountCents) < 0">
+                      {{ (s.countedAmountCents - s.initialAmountCents) | price }}
+                    </span>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="s.cashRegisterStatusId | statusClass:'cashRegister'">
+                    {{ s.cashRegisterStatusId | statusLabel:'cashRegister' }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </p-dialog>
+}
+
+<!-- ====================================================================== -->
+<!-- Unpaid orders confirmation                                              -->
+<!-- ====================================================================== -->
+<p-dialog
+  header="Órdenes sin cobrar"
+  [visible]="showCloseConfirm()"
+  (visibleChange)="showCloseConfirm.set($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '400px' }"
+  [draggable]="false"
+  appendTo="body"
+>
+  <div class="close-confirm">
+    <i class="pi pi-exclamation-triangle close-confirm__icon"></i>
+    <p class="close-confirm__text">
+      Hay <strong>{{ unpaidOrderCount() }}</strong> orden{{ unpaidOrderCount() > 1 ? 'es' : '' }}
+      activa{{ unpaidOrderCount() > 1 ? 's' : '' }} sin cobrar.
+      ¿Deseas cerrar de todas formas?
+    </p>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="close-confirm__footer">
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isClosingSession()"
+        (click)="showCloseConfirm.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-warning"
+        [disabled]="isClosingSession()"
+        (click)="closeSession()"
+      >
+        @if (isClosingSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        } @else {
+          <i class="pi pi-lock"></i>
+        }
+        Sí, cerrar
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ====================================================================== -->
+<!-- Confirmation dialog — $0 opening warning                                -->
+<!-- ====================================================================== -->
+<p-confirmDialog
+  key="shiftManagementConfirm"
+  [style]="{ width: '420px' }"
+  acceptButtonStyleClass="btn-primary"
+  rejectButtonStyleClass="btn-ghost"
+  [closable]="false"
+/>
