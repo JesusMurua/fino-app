@@ -15,6 +15,17 @@ export interface CashRegister {
    * the backend always emits it.
    */
   deviceId?: number;
+  /**
+   * True when the register currently has an OPEN cash session.
+   *
+   * Optional because not every backend response populates it — the
+   * `/cashregister/registers` list endpoint may include it for the
+   * admin view, while `/by-device/{uuid}` may omit it. Consumers MUST
+   * fall back to a session-fetch when this field is undefined and the
+   * decision depends on session state (see admin-registers' device
+   * reassignment flow).
+   */
+  hasOpenSession?: boolean;
   createdAt?: string;
 }
 
@@ -93,4 +104,31 @@ export interface AddMovementRequest {
   cashMovementTypeId: CashMovementType;
   amountCents: number;
   description: string;
+}
+
+/**
+ * Response from `POST /api/cashregister/registers/{id}/generate-link-code`.
+ *
+ * Issues a short-lived, one-shot pairing code that an unattended device
+ * (no Owner/Manager physically present) can redeem to bind itself to the
+ * cash register. The admin reads the `code` to the cashier, the cashier
+ * types it on the iPad's session blocker — same UX language as the
+ * device activation code, distinct domain (caja-binding, not device
+ * provisioning).
+ */
+export interface GenerateLinkCodeResponse {
+  /** Alphanumeric uppercase code (charset excludes O/I/0/1) */
+  code: string;
+  /** Cash register the code is scoped to */
+  cashRegisterId: number;
+  /** ISO date — when the code was issued */
+  createdAt: string;
+  /** ISO date — when the code stops being valid */
+  expiresAt: string;
+}
+
+/** Request body for `POST /api/cashregister/registers/redeem-link-code`. */
+export interface RedeemLinkCodeRequest {
+  /** Alphanumeric uppercase 6-char code dictated by the admin */
+  code: string;
 }

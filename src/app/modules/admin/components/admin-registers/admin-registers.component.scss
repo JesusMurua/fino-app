@@ -280,4 +280,121 @@
     color: #DC2626;
     font-size: 13px;
   }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--text2, $color-text-sub);
+    line-height: 1.4;
+  }
+}
+
+// =========================================================================
+// Link-code dialog — minted for an unlinked register so the cashier on the
+// iPad can redeem it (production-grade alternative to the Owner/Manager
+// self-link shortcut). Visual language echoes the device activation code
+// in /admin/devices so the admin recognises the surface immediately.
+// =========================================================================
+
+.link-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-3 0;
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    color: var(--text2, $color-text-sub);
+    padding: $space-5 0;
+
+    i { font-size: 18px; }
+  }
+
+  &__intro {
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text2, $color-text-sub);
+    line-height: 1.5;
+  }
+
+  &__code {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    padding: $space-4 $space-5;
+    background: var(--surface2, #F8FAFC);
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 12px;
+  }
+
+  &__value {
+    font-family: monospace;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: $color-primary;
+    user-select: all;
+  }
+
+  &__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 8px;
+    background: var(--surface, white);
+    color: var(--text2, $color-text-sub);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    i { font-size: 16px; }
+
+    &:hover {
+      background: var(--surface2, #F3F4F6);
+      color: var(--text1, $color-text-title);
+    }
+
+    &--ok {
+      background: #DCFCE7;
+      border-color: #BBF7D0;
+      color: $color-primary;
+
+      &:hover {
+        background: #BBF7D0;
+        color: $color-primary;
+      }
+    }
+  }
+
+  &__countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-3;
+    border-radius: 9999px;
+    background: #F0FDF4;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 600;
+
+    i { font-size: 13px; }
+
+    &--expired {
+      background: #FEF2F2;
+      color: #DC2626;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3, #9CA3AF);
+    line-height: 1.5;
+  }
 }

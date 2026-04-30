@@ -1338,6 +1338,111 @@ $bp-desktop: 1024px;
 
     i { font-size: 18px; flex-shrink: 0; }
   }
+
+  // ---- "Or" divider between self-link and redeem code ----
+  // Renders only when the user is Owner/Manager and sees both options.
+  &__or {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+    width: 100%;
+    color: $color-text-sub;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #E5E7EB;
+    }
+  }
+
+  // ---- Redeem-code form (Cashier-friendly path) ----
+  // Available to every role so an Owner with a pre-configured caja can
+  // skip the auto-create-Caja-Principal shortcut and redeem a backoffice
+  // code instead.
+  &__redeem {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+    width: 100%;
+    text-align: left;
+  }
+
+  &__redeem-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__redeem-input {
+    width: 100%;
+    min-height: $touch-target-pos;
+    padding: $space-3 $space-4;
+    border: 1.5px solid #E5E7EB;
+    border-radius: $radius-button;
+    background: #F8FAFC;
+    color: $color-text-title;
+    font-family: monospace;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-align: center;
+    text-transform: uppercase;
+    transition: border-color 0.15s, background 0.15s;
+
+    &::placeholder {
+      letter-spacing: 0.2em;
+      color: #CBD5E1;
+      font-weight: 600;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      background: white;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__redeem-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    width: 100%;
+    min-height: 52px;
+    padding: $space-3 $space-5;
+    border: none;
+    border-radius: $radius-button;
+    background: $color-primary;
+    color: white;
+    font-size: $font-size-base;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: #15803D; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    i { font-size: 18px; }
+  }
+
+  &__redeem-hint {
+    font-size: 12px;
+    color: $color-text-sub;
+    line-height: 1.4;
+    text-align: center;
+  }
 }
 
 // ============================================================================

@@ -666,6 +666,9 @@
         <!-- State: needsLinking — no register tied to this device yet     -->
         <!-- ============================================================ -->
         @case ('needsLinking') {
+          <!-- Owner / Manager shortcut: 1-click create-and-link "Caja Principal".
+               Stays as the primary CTA for tenants where the dueño is
+               physically on the iPad during initial setup. -->
           @if (canSelfLink()) {
             <button
               type="button"
@@ -675,12 +678,57 @@
               <i class="pi pi-link"></i>
               Vincular este equipo como Caja Principal
             </button>
-          } @else {
-            <div class="session-blocker__register-danger">
-              <i class="pi pi-exclamation-triangle"></i>
-              Dispositivo no vinculado. Asigna una caja en el panel de Admin para poder vender.
-            </div>
+            <div class="session-blocker__or">o</div>
           }
+
+          <!-- Cashier-friendly redeem flow: admin generates a code from
+               /admin/registers and the cashier types it here. Available
+               to every role so an Owner who already has a configured
+               caja in backoffice can also use this path instead of the
+               auto-create shortcut above. -->
+          <div class="session-blocker__redeem">
+            <label
+              class="session-blocker__redeem-label"
+              for="session-blocker-code"
+            >
+              Ingresa el código de vinculación
+            </label>
+            <input
+              id="session-blocker-code"
+              type="text"
+              class="session-blocker__redeem-input"
+              [value]="linkCodeInput()"
+              (input)="onLinkCodeInput($any($event.target).value)"
+              maxlength="6"
+              autocapitalize="characters"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              inputmode="text"
+              placeholder="ABC123"
+              [disabled]="isRedeemingCode()"
+            />
+            <button
+              type="button"
+              class="session-blocker__redeem-btn"
+              [disabled]="!canRedeemCode()"
+              (click)="redeemLinkCodeFromBlocker()"
+            >
+              @if (isRedeemingCode()) {
+                <i class="pi pi-spin pi-spinner"></i>
+                Vinculando...
+              } @else {
+                <i class="pi pi-check"></i>
+                Vincular Caja
+              }
+            </button>
+            @if (!canSelfLink()) {
+              <small class="session-blocker__redeem-hint">
+                Pide el código al administrador. Lo genera desde Backoffice
+                en la sección Cajas.
+              </small>
+            }
+          </div>
         }
 
         <!-- ============================================================ -->

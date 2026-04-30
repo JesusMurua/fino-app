@@ -27,6 +27,61 @@
         </div>
       </div>
 
+      <!-- Per-mode quota counter — only renders when the backend has
+           answered with a quota row for the selected mode. Three visual
+           states (unlimited / normal / reached) keep the admin oriented
+           on capacity without surprises at submit time. -->
+      @if (currentModeQuota(); as quota) {
+        <div
+          class="quota-counter"
+          [class.quota-counter--unlimited]="counterState() === 'unlimited'"
+          [class.quota-counter--normal]="counterState() === 'normal'"
+          [class.quota-counter--reached]="counterState() === 'reached'"
+        >
+          <div class="quota-counter__icon">
+            @if (counterState() === 'reached') {
+              <i class="pi pi-exclamation-triangle"></i>
+            } @else if (counterState() === 'unlimited') {
+              <i class="pi pi-infinity"></i>
+            } @else {
+              <i class="pi pi-check-circle"></i>
+            }
+          </div>
+          <div class="quota-counter__body">
+            <div class="quota-counter__label">
+              {{ modeLabel(quota.mode) }}
+            </div>
+            <div class="quota-counter__value">
+              @if (quota.isUnlimited) {
+                <strong>{{ quota.usage }}</strong>
+                <span class="quota-counter__sep">/</span>
+                <span class="quota-counter__infinity" aria-label="ilimitado">∞</span>
+              } @else {
+                <strong>{{ quota.usage }}</strong>
+                <span class="quota-counter__sep">/</span>
+                <span>{{ quota.effectiveLimit }}</span>
+              }
+              <span class="quota-counter__caption">dispositivos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Permanent lockout banner — replaces a tooltip on the disabled
+             button (PrimeNG tooltips do not fire on disabled elements).
+             The banner stays in place while the limit is reached so the
+             admin always sees the next-step copy. -->
+        @if (counterState() === 'reached') {
+          <div class="quota-banner" role="alert">
+            <i class="pi pi-info-circle"></i>
+            <div class="quota-banner__body">
+              <strong>Has alcanzado el límite de tu plan.</strong>
+              Revoca un dispositivo de la lista de abajo o mejora tu suscripción
+              para liberar más espacios.
+            </div>
+          </div>
+        }
+      }
+
       <form [formGroup]="generateForm" class="settings-form" (ngSubmit)="generateActivationCode()">
         <div class="form-field">
           <label class="form-field__label" for="device-branch">Sucursal</label>
@@ -69,10 +124,32 @@
             El terminal adoptará este nombre automáticamente al activar el código.
           </small>
         </div>
+
+        @if (showCashRegisterPicker()) {
+          <div class="form-field">
+            <label class="form-field__label" for="device-cashregister">
+              Vincular a caja (opcional)
+            </label>
+            <p-dropdown
+              inputId="device-cashregister"
+              [options]="cashRegisterOptions()"
+              optionLabel="label"
+              optionValue="value"
+              formControlName="cashRegisterId"
+              styleClass="w-full"
+              placeholder="— No vincular caja por ahora —"
+            />
+            <small class="form-field__hint">
+              Solo se muestran cajas sin vincular de la sucursal seleccionada.
+              Al activar el código, el dispositivo quedará automáticamente
+              asignado a la caja elegida.
+            </small>
+          </div>
+        }
       </form>
 
       @if (lastGeneratedCode(); as last) {
-        <div class="activation-code">
+        <div class="activation-code" [attr.data-pulse]="codePulseKey()">
           <span class="activation-code__value">{{ last.code }}</span>
           <span class="activation-code__summary">
             Código para: <strong>{{ last.branchName }}</strong>
@@ -89,7 +166,7 @@
         <p-button
           label="Generar código"
           icon="pi pi-qrcode"
-          [disabled]="generatingCode() || generateForm.invalid"
+          [disabled]="generatingCode() || generateForm.invalid || isQuotaLocked()"
           [loading]="generatingCode()"
           (onClick)="generateActivationCode()"
         />

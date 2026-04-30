@@ -4,6 +4,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import {
   ActivateDeviceResponse,
   DeviceConfig,
+  DeviceLimitsDto,
   DeviceListItem,
   GenerateCodePayload,
   GenerateCodeResponse,
@@ -395,6 +396,28 @@ export class DeviceService implements OnDestroy {
       ? `/device/pending-codes?branchId=${branchId}`
       : '/device/pending-codes';
     return this.api.get<PendingDeviceCodeDto[]>(path);
+  }
+
+  /**
+   * Fetches per-mode device quotas for a given branch. The backend
+   * resolves `businessId` from the JWT — passing it client-side would
+   * be redundant and a soft attack surface (admin tampering with the
+   * id), so the signature only takes the branch.
+   *
+   * The response is a `{ modes }` envelope where each entry carries
+   * `usage`, `effectiveLimit`, `isLimitReached` and `isUnlimited`. The
+   * UI looks up the row matching the currently-selected mode via
+   * `.find(m => m.mode === selectedMode)` and renders the counter card
+   * + lockout banner accordingly.
+   *
+   * Endpoint path matches the controller registration on the backend
+   * (`/api/Devices/limits`, plural-cap). ASP.NET Core is case-insensitive
+   * but staying literal avoids any future routing mishap.
+   *
+   * @param branchId Branch to query — required (limits are per-branch).
+   */
+  getDeviceLimits(branchId: number): Observable<DeviceLimitsDto> {
+    return this.api.get<DeviceLimitsDto>(`/Devices/limits?branchId=${branchId}`);
   }
 
   //#endregion

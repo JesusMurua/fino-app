@@ -641,6 +641,96 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   /** True while the self-link flow is in progress */
   readonly isLinkingDevice = signal(false);
 
+  //#region Redeem link code (Cashier autonomy)
+
+  /**
+   * Buffer for the alphanumeric link code typed by the cashier in the
+   * `needsLinking` blocker. Uppercased on commit before hitting the API
+   * so the input stays case-insensitive at the keyboard while the
+   * backend always sees the canonical form.
+   */
+  readonly linkCodeInput = signal('');
+
+  /** True while `redeemLinkCode` is in flight — disables the form */
+  readonly isRedeemingCode = signal(false);
+
+  /**
+   * True when the typed code looks committable: exactly 6 chars after
+   * trimming. We do not validate the charset client-side because a
+   * future backend change might expand it; the server is authoritative.
+   */
+  readonly canRedeemCode = computed(() =>
+    this.linkCodeInput().trim().length === 6 && !this.isRedeemingCode(),
+  );
+
+  /**
+   * Handler bound to the input's `(input)` event. Uppercases on the
+   * fly + trims to 6 chars so paste behaviour matches the visible
+   * `text-transform: uppercase` styling.
+   */
+  onLinkCodeInput(value: string): void {
+    const sanitised = value.toUpperCase().slice(0, 6);
+    this.linkCodeInput.set(sanitised);
+  }
+
+  /**
+   * Redeems the typed code, then refreshes the linked register and
+   * active session so the blocker reactively closes. Stays open with
+   * a precise toast on every failure mode so the cashier never has to
+   * guess what went wrong.
+   */
+  async redeemLinkCodeFromBlocker(): Promise<void> {
+    if (!this.canRedeemCode()) return;
+    const code = this.linkCodeInput().trim().toUpperCase();
+
+    this.isRedeemingCode.set(true);
+    try {
+      await this.cashRegisterService.redeemLinkCode(code);
+      // Backend response is intentionally minimal — re-fetch the linked
+      // register and active session so the signals flip and the
+      // session-blocker setup state advances out of `needsLinking`.
+      await this.cashRegisterService.resolveLinkedRegister();
+      await this.cashRegisterService.refreshActiveSession();
+
+      this.linkCodeInput.set('');
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Caja vinculada',
+        detail: 'Este equipo ya quedó asignado. Listo para abrir turno.',
+        life: 4000,
+      });
+    } catch (error) {
+      this.handleRedeemError(error);
+    } finally {
+      this.isRedeemingCode.set(false);
+    }
+  }
+
+  /** Maps redeem errors to precise toasts so the cashier knows the next step */
+  private handleRedeemError(error: unknown): void {
+    const status = (error as { status?: number })?.status;
+    let detail = 'No se pudo vincular. Intenta de nuevo.';
+
+    if (status === 404) {
+      detail = 'Código inválido o expirado. Pide un código nuevo al administrador.';
+    } else if (status === 409) {
+      detail = 'Este código ya fue usado. Pide uno nuevo al administrador.';
+    } else if (status === 403) {
+      detail = 'Este dispositivo no tiene permiso para redimir códigos.';
+    } else if (status === 0) {
+      detail = 'Sin conexión. Verifica tu red e intenta de nuevo.';
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: 'No se pudo vincular',
+      detail,
+      life: 5000,
+    });
+  }
+
+  //#endregion
+
   /** Default name used by the one-click self-link flow */
   private readonly DEFAULT_REGISTER_NAME = 'Caja Principal';
 

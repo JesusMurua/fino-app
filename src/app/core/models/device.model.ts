@@ -34,11 +34,20 @@ export interface ToggleActiveResponse {
   isActive: boolean;
 }
 
-/** Request body for `POST /api/device/generate-code`. */
+/**
+ * Request body for `POST /api/device/generate-code`.
+ *
+ * `cashRegisterId` is optional — when present, the backend auto-links the
+ * activated device to the specified cash register on redemption, so the
+ * admin completes provisioning + register binding in a single trip
+ * instead of two screens. Only meaningful when `mode === 'cashier'`; the
+ * UI hides the field for other modes.
+ */
 export interface GenerateCodePayload {
   branchId: number;
   mode: DeviceConfig['mode'];
   name: string;
+  cashRegisterId?: number;
 }
 
 /**
@@ -110,4 +119,36 @@ export interface ActivateDeviceResponse {
   primaryMacroCategoryId?: MacroCategoryType;
   hasKitchen?: boolean;
   hasTables?: boolean;
+}
+
+/**
+ * Per-mode quota row inside `DeviceLimitsDto.modes`.
+ *
+ * `usage` counts ACTIVE devices (revoked devices do not consume seats)
+ * plus any pending activation codes that have not yet been redeemed —
+ * the backend includes both so the UI cannot accidentally double-issue.
+ *
+ * `effectiveLimit` is the resolved cap for the tenant's plan + branch
+ * combination. When `isUnlimited` is true the value should be ignored
+ * by the UI (`Infinity` is rendered as the `∞` glyph instead).
+ */
+export interface DeviceModeQuotaDto {
+  mode: DeviceConfig['mode'];
+  usage: number;
+  effectiveLimit: number;
+  isLimitReached: boolean;
+  isUnlimited: boolean;
+}
+
+/**
+ * Response from `GET /api/Devices/limits?branchId={id}`.
+ *
+ * Backend returns ALL modes the tenant could possibly use (the modes
+ * array length depends on plan + macro category). The UI looks up the
+ * currently-selected mode via `.find(m => m.mode === selectedMode)`
+ * and gracefully shows nothing when the mode is missing — meaning the
+ * tenant cannot generate codes for that mode at all on their plan.
+ */
+export interface DeviceLimitsDto {
+  modes: DeviceModeQuotaDto[];
 }
