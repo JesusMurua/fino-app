@@ -151,12 +151,13 @@ export class DeviceService implements OnDestroy {
   }
 
   /**
-   * Activates this device with a 6-digit pairing code issued from
-   * `/admin/devices`. The endpoint is atomic: a single call validates
+   * Activates this device with a 6-character alphanumeric pairing code
+   * (secure alphabet `[A-HJKMNP-TV-Z2-9]`, ambiguous chars excluded) issued
+   * from `/admin/devices`. The endpoint is atomic: a single call validates
    * the code, provisions the device server-side, persists the local
    * config, and stores the long-lived device JWT.
    *
-   * @param code 6-digit pairing code
+   * @param code 6-character alphanumeric pairing code
    */
   async activateDevice(code: string): Promise<ActivateDeviceResponse> {
     const response = await firstValueFrom(
@@ -372,7 +373,9 @@ export class DeviceService implements OnDestroy {
   //#region Activation Codes (Back Office)
 
   /**
-   * Generates a 6-digit activation code for the given branch / mode / name.
+   * Generates a 6-character alphanumeric activation code (secure alphabet
+   * `[A-HJKMNP-TV-Z2-9]`, ambiguous chars excluded) for the given branch /
+   * mode / name.
    * The backend may respond with HTTP 403 when the tenant has hit the
    * device limit on its current plan — callers handle that case explicitly
    * to surface the backend's `message` / `detail` to the user.

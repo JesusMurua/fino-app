@@ -70,9 +70,10 @@ export class SetupComponent implements OnInit {
 
   /**
    * Current step of the setup state machine:
-   *   code         → enter 6-digit code (default landing — the upstream
-   *                  Auth Portal is the dual-entry surface; pairing only
-   *                  happens via codes issued from `/admin/devices`).
+   *   code         → enter 6-character alphanumeric code (default landing —
+   *                  the upstream Auth Portal is the dual-entry surface;
+   *                  pairing only happens via codes issued from
+   *                  `/admin/devices`).
    *   code-review  → read-only summary of the pre-configured assignment;
    *                  a single "Confirmar" runs registerDevice and routes
    *                  away.
@@ -107,8 +108,19 @@ export class SetupComponent implements OnInit {
   email = '';
   password = '';
 
-  /** Activation code form — 6 individual digits */
+  /** Activation code form — 6 individual cells, each holding either an
+   *  empty string or one uppercase char from the secure alphabet. */
   readonly codeDigits = signal<string[]>(['', '', '', '', '', '']);
+
+  /**
+   * Pattern matching characters that fall OUTSIDE the secure activation
+   * alphabet `[A-HJKMNP-TV-Z2-9]` — Crockford-like, with the visually
+   * ambiguous chars `I`, `L`, `O`, `U`, `0` and `1` excluded to prevent
+   * dictation errors. Used as a global strip pattern by both the typing
+   * sanitizer (`sanitizeChar`) and the paste sanitizer
+   * (`sanitizePastedCode`) so both routes share identical filtering.
+   */
+  private readonly SECURE_ALPHABET_REGEX = /[^A-HJKMNP-TV-Z2-9]/g;
 
   /** Data from setup/activate API */
   readonly branches = signal<BranchOption[]>([]);
@@ -325,34 +337,163 @@ export class SetupComponent implements OnInit {
 
   //#region Code Input Handling
 
-  /** Handles input on a single code digit box */
+  /**
+   * Sanitizes a single user-typed character: uppercases it, strips any
+   * char outside the secure alphabet, and returns at most one valid char
+   * (or `''` when the input is invalid). Shared with the paste sanitizer
+   * so manual-typing and paste-distribution routes apply identical rules.
+   *
+   * @param raw Raw value just written to the input by the browser
+   */
+  private sanitizeChar(raw: string): string {
+    return raw.toUpperCase().replace(this.SECURE_ALPHABET_REGEX, '').slice(0, 1);
+  }
+
+  /**
+   * Sanitizes a full clipboard payload pasted by the user: uppercases the
+   * string, strips noise (whitespace, quotes, ambiguous chars) and clamps
+   * the result to 6 chars. Returns the chars to distribute across the
+   * cells; an empty string means the paste contained nothing valid.
+   *
+   * @param raw Raw clipboard payload from `ClipboardEvent.clipboardData`
+   */
+  private sanitizePastedCode(raw: string): string {
+    return raw.toUpperCase().replace(this.SECURE_ALPHABET_REGEX, '').slice(0, 6);
+  }
+
+  /**
+   * Handles a single keystroke on a code cell. Valid chars from the
+   * secure alphabet are written to the signal (uppercased) and focus
+   * advances to the next cell; auto-submit fires when all 6 cells are
+   * filled. Invalid chars are silently dropped — to prevent the input
+   * from appearing frozen with the rejected char visible, the DOM value
+   * is forcibly resynced from the signal because a no-op signal update
+   * would not re-run the `[value]` property binding.
+   *
+   * @param index Zero-based index of the cell receiving the input
+   * @param event Native `input` event from the cell's `<input>` element
+   */
   onCodeInput(index: number, event: Event): void {
     const input = event.target as HTMLInputElement;
-    const value = input.value.replace(/\D/g, '').slice(0, 1);
+    const sanitised = this.sanitizeChar(input.value);
+
+    if (!sanitised) {
+      // Silent drop — restore the previous cell value so the rejected
+      // char does not stay visible in the DOM and the input does not
+      // appear frozen. No state change, no focus change.
+      input.value = this.codeDigits()[index];
+      return;
+    }
 
     this.codeDigits.update(d => {
       const updated = [...d];
-      updated[index] = value;
+      updated[index] = sanitised;
       return updated;
     });
 
     // Auto-focus next input
-    if (value && index < 5) {
+    if (index < 5) {
       const next = input.parentElement?.querySelectorAll('input')[index + 1];
       (next as HTMLInputElement)?.focus();
     }
 
-    // Auto-submit when all 6 digits are entered
+    // Auto-submit when all 6 cells are filled
     if (this.codeDigits().every(d => d !== '')) {
       this.submitCode();
     }
   }
 
-  /** Handles backspace on code digit boxes */
+  /**
+   * Implements the two-step Backspace UX on the code cells:
+   *   1. Cell with a value → clear the cell and keep focus.
+   *   2. Cell already empty → move focus to the previous cell and select
+   *      its content so the user can immediately overwrite it.
+   * Other keys fall through to native handling.
+   *
+   * @param index Zero-based index of the cell receiving the keydown
+   * @param event Native `keydown` event from the cell's `<input>` element
+   */
   onCodeKeydown(index: number, event: KeyboardEvent): void {
-    if (event.key === 'Backspace' && !this.codeDigits()[index] && index > 0) {
-      const prev = (event.target as HTMLElement).parentElement?.querySelectorAll('input')[index - 1];
-      (prev as HTMLInputElement)?.focus();
+    if (event.key !== 'Backspace') return;
+    const input = event.target as HTMLInputElement;
+
+    if (this.codeDigits()[index]) {
+      // Step 1: cell has a value → clear and stay focused.
+      event.preventDefault();
+      this.codeDigits.update(d => {
+        const updated = [...d];
+        updated[index] = '';
+        return updated;
+      });
+      input.value = '';
+      return;
+    }
+
+    if (index > 0) {
+      // Step 2: cell already empty → jump back and select previous content.
+      event.preventDefault();
+      const prev = input.parentElement?.querySelectorAll('input')[index - 1] as HTMLInputElement | undefined;
+      if (prev) {
+        prev.focus();
+        prev.select();
+      }
+    }
+  }
+
+  /**
+   * Selects the cell content on focus so the user can overwrite an
+   * existing char with a single keystroke — standard PIN-input UX.
+   *
+   * @param _index Unused, kept for handler-signature symmetry with siblings
+   * @param event Native `focus` event from the cell's `<input>` element
+   */
+  onCodeFocus(_index: number, event: FocusEvent): void {
+    const input = event.target as HTMLInputElement;
+    input.select();
+  }
+
+  /**
+   * Distributes a pasted code across the cells starting at the focused
+   * cell. Sanitizes the clipboard payload against the secure alphabet,
+   * writes the valid chars into consecutive cells (truncating at cell 5
+   * so we never overflow), moves focus to the first remaining empty cell
+   * (or the last cell if the paste filled all six), and triggers
+   * auto-submit only when the resulting code is exactly 6 chars long.
+   * Calls `event.preventDefault()` to suppress the native paste so the
+   * per-cell `maxlength="1"` does not interfere with the distribution.
+   *
+   * @param index Zero-based index of the cell where the paste was issued
+   * @param event Native `paste` event from the cell's `<input>` element
+   */
+  onCodePaste(index: number, event: ClipboardEvent): void {
+    event.preventDefault();
+    const raw = event.clipboardData?.getData('text') ?? '';
+    const sanitised = this.sanitizePastedCode(raw);
+    if (!sanitised) return;
+
+    // Distribute the sanitized chars across cells starting at `index`,
+    // truncating at the cell boundary so we never write past cell 5.
+    this.codeDigits.update(d => {
+      const updated = [...d];
+      for (let i = 0; i < sanitised.length && index + i < 6; i++) {
+        updated[index + i] = sanitised[i];
+      }
+      return updated;
+    });
+
+    // Move focus to the first remaining empty cell, or to the last cell
+    // if the paste filled everything.
+    const input = event.target as HTMLInputElement;
+    const cells = input.parentElement?.querySelectorAll('input');
+    if (cells) {
+      const nextEmptyIdx = this.codeDigits().findIndex(d => d === '');
+      const focusIdx = nextEmptyIdx === -1 ? 5 : nextEmptyIdx;
+      (cells[focusIdx] as HTMLInputElement | undefined)?.focus();
+    }
+
+    // Auto-submit only when the full code is exactly 6 valid chars.
+    if (this.codeDigits().every(d => d !== '')) {
+      this.submitCode();
     }
   }
 
@@ -431,7 +572,7 @@ export class SetupComponent implements OnInit {
   //#region Code Flow
 
   /**
-   * Step 2B: Activate device with the 6-digit code. The atomic
+   * Step 2B: Activate device with the 6-character alphanumeric code. The atomic
    * `/device/activate` endpoint provisions the device, persists the
    * local config, and stores the long-lived device token in a single
    * round-trip — by the time we land on `code-review` the device is

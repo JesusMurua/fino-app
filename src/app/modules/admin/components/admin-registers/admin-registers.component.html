@@ -199,8 +199,9 @@
 </p-dialog>
 
 <!-- ====================================================================== -->
-<!-- Link-code dialog — generated for an unlinked register so the cashier    -->
-<!-- on the iPad can redeem it without an Owner/Manager being on-site.       -->
+<!-- Link-code dialog — issues a short-lived caja-binding code so a remote   -->
+<!-- operator can pair their device with this register without an            -->
+<!-- Owner/Manager being on-site.                                            -->
 <!-- ====================================================================== -->
 <p-dialog
   [header]="linkCodeRegister() ? 'Código para ' + linkCodeRegister()!.name : 'Código de vinculación'"
@@ -221,8 +222,8 @@
       </div>
     } @else if (data) {
       <p class="link-code__intro">
-        Dictale este código al cajero. Lo ingresará en el iPad cuando vea
-        <strong>"Dispositivo no vinculado"</strong>.
+        Comparte este código con quien atenderá el dispositivo. Lo ingresará
+        cuando vea la pantalla de <strong>"Dispositivo no vinculado"</strong>.
       </p>
 
       <div class="link-code__code">
