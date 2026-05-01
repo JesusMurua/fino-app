@@ -18,7 +18,7 @@ import { UserRoleId } from '../enums';
 const SEGMENT_ROLES: Readonly<Record<string, readonly UserRoleId[]>> = {
   admin:  [UserRoleId.Owner, UserRoleId.Manager],
   pos:    [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter],
-  orders: [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter],
+  orders: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter],
   tables: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter, UserRoleId.Host],
 };
 

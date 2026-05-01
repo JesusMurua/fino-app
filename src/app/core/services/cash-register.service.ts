@@ -505,7 +505,8 @@ export class CashRegisterService implements OnDestroy {
    * `_linkedRegister` signal, then `refreshActiveSession()` so the
    * session blocker reactively flips out of `needsLinking`.
    *
-   * @param code Alphanumeric uppercase 6-char code dictated by the admin
+   * @param code 6-char code from the secure alphabet `[A-HJKMNP-TV-Z2-9]`
+   *             (BDD-017 unified contract) dictated by the admin
    */
   async redeemLinkCode(code: string): Promise<void> {
     await firstValueFrom(

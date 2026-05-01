@@ -11,6 +11,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { DeviceService } from '../../core/services/device.service';
+import { sanitizeSecureCode } from '../../core/utils/secure-alphabet.utils';
 import { firstValueFrom } from 'rxjs';
 
 /** Operating mode option for the mode selector */
@@ -111,16 +112,6 @@ export class SetupComponent implements OnInit {
   /** Activation code form — 6 individual cells, each holding either an
    *  empty string or one uppercase char from the secure alphabet. */
   readonly codeDigits = signal<string[]>(['', '', '', '', '', '']);
-
-  /**
-   * Pattern matching characters that fall OUTSIDE the secure activation
-   * alphabet `[A-HJKMNP-TV-Z2-9]` — Crockford-like, with the visually
-   * ambiguous chars `I`, `L`, `O`, `U`, `0` and `1` excluded to prevent
-   * dictation errors. Used as a global strip pattern by both the typing
-   * sanitizer (`sanitizeChar`) and the paste sanitizer
-   * (`sanitizePastedCode`) so both routes share identical filtering.
-   */
-  private readonly SECURE_ALPHABET_REGEX = /[^A-HJKMNP-TV-Z2-9]/g;
 
   /** Data from setup/activate API */
   readonly branches = signal<BranchOption[]>([]);
@@ -338,30 +329,6 @@ export class SetupComponent implements OnInit {
   //#region Code Input Handling
 
   /**
-   * Sanitizes a single user-typed character: uppercases it, strips any
-   * char outside the secure alphabet, and returns at most one valid char
-   * (or `''` when the input is invalid). Shared with the paste sanitizer
-   * so manual-typing and paste-distribution routes apply identical rules.
-   *
-   * @param raw Raw value just written to the input by the browser
-   */
-  private sanitizeChar(raw: string): string {
-    return raw.toUpperCase().replace(this.SECURE_ALPHABET_REGEX, '').slice(0, 1);
-  }
-
-  /**
-   * Sanitizes a full clipboard payload pasted by the user: uppercases the
-   * string, strips noise (whitespace, quotes, ambiguous chars) and clamps
-   * the result to 6 chars. Returns the chars to distribute across the
-   * cells; an empty string means the paste contained nothing valid.
-   *
-   * @param raw Raw clipboard payload from `ClipboardEvent.clipboardData`
-   */
-  private sanitizePastedCode(raw: string): string {
-    return raw.toUpperCase().replace(this.SECURE_ALPHABET_REGEX, '').slice(0, 6);
-  }
-
-  /**
    * Handles a single keystroke on a code cell. Valid chars from the
    * secure alphabet are written to the signal (uppercased) and focus
    * advances to the next cell; auto-submit fires when all 6 cells are
@@ -375,7 +342,7 @@ export class SetupComponent implements OnInit {
    */
   onCodeInput(index: number, event: Event): void {
     const input = event.target as HTMLInputElement;
-    const sanitised = this.sanitizeChar(input.value);
+    const sanitised = sanitizeSecureCode(input.value, 1);
 
     if (!sanitised) {
       // Silent drop — restore the previous cell value so the rejected
@@ -468,7 +435,7 @@ export class SetupComponent implements OnInit {
   onCodePaste(index: number, event: ClipboardEvent): void {
     event.preventDefault();
     const raw = event.clipboardData?.getData('text') ?? '';
-    const sanitised = this.sanitizePastedCode(raw);
+    const sanitised = sanitizeSecureCode(raw, 6);
     if (!sanitised) return;
 
     // Distribute the sanitized chars across cells starting at `index`,
@@ -599,13 +566,20 @@ export class SetupComponent implements OnInit {
 
   /**
    * Maps an activation/registration error to the message shown in the
-   * red banner. A 403 from the backend means the tenant has hit its
-   * device quota — we surface its `message` / `detail` verbatim so the
-   * user sees the actionable upgrade hint instead of a misleading
-   * "código inválido" or "verifica tu conexión". Anything else falls
-   * through to the caller-supplied generic message.
+   * red banner.
+   *   - 400: the backend rejected the code itself (invalid / expired /
+   *     already redeemed) — we surface a precise activation-specific
+   *     message instead of the caller's generic fallback.
+   *   - 403: the tenant has hit its device quota — we surface the
+   *     backend's `message` / `detail` verbatim so the user sees the
+   *     actionable upgrade hint.
+   *   - Anything else: falls through to the caller-supplied generic
+   *     message.
    */
   private resolveActivationError(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse && error.status === 400) {
+      return 'Código de activación inválido.';
+    }
     if (error instanceof HttpErrorResponse && error.status === 403) {
       const body = error.error as { message?: string; detail?: string } | null;
       return body?.message

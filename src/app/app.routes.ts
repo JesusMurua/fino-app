@@ -98,7 +98,7 @@ export const appRoutes: Routes = [
 	{
 		path: 'orders',
 		canActivate: [authGuard, roleGuard, terminalGuard],
-		data: { roles: [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
+		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/orders/orders.routes').then((m) => m.ordersRoutes),
 	},

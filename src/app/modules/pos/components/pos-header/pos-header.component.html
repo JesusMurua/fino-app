@@ -657,8 +657,8 @@
       <div class="session-blocker__icon">
         <i class="pi pi-lock"></i>
       </div>
-      <h2 class="session-blocker__title">Caja Cerrada</h2>
-      <p class="session-blocker__subtitle">Abre un turno de caja para comenzar a cobrar</p>
+      <h2 class="session-blocker__title">{{ blockerTitle() }}</h2>
+      <p class="session-blocker__subtitle">{{ blockerSubtitle() }}</p>
 
       @switch (setupState()) {
 
@@ -705,7 +705,7 @@
               autocorrect="off"
               spellcheck="false"
               inputmode="text"
-              placeholder="ABC123"
+              placeholder="P3K7H9"
               [disabled]="isRedeemingCode()"
             />
             <button

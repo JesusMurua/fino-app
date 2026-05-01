@@ -43,6 +43,7 @@ import { StockReceiptService } from '../../../../core/services/stock-receipt.ser
 import { SupplierService } from '../../../../core/services/supplier.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { ThemeService } from '../../../../core/services/theme.service';
+import { sanitizeSecureCode } from '../../../../core/utils/secure-alphabet.utils';
 import { environment } from '../../../../../environments/environment';
 import { ShiftPanelComponent } from '../shift-panel/shift-panel.component';
 
@@ -620,6 +621,47 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     return 'needsOpening';
   });
 
+  /**
+   * Header title shown above the session blocker. Derived from
+   * `setupState()` so the heading stays in sync with the body content
+   * rendered by the `@switch` below — fixes the dissonance where the
+   * header used to read "Caja Cerrada" even while the body asked for
+   * a link-code.
+   *
+   * `'loading'` shares the linking copy because it is reached only
+   * from the linking flow (`isLinkingDevice()` flips to true inside
+   * `linkDeviceAsRegister` and `redeemLinkCodeFromBlocker`).
+   * `'isOpen'` is unreachable from the template because
+   * `showSessionBlocker()` hides the modal in that state.
+   */
+  readonly blockerTitle = computed<string>(() => {
+    switch (this.setupState()) {
+      case 'needsLinking':
+      case 'loading':
+        return 'Vincular Dispositivo';
+      case 'needsOpening':
+        return 'Caja Cerrada';
+      default:
+        return '';
+    }
+  });
+
+  /**
+   * Header subtitle shown below `blockerTitle`. Same state-driven
+   * derivation as the title — the two always render a coherent pair.
+   */
+  readonly blockerSubtitle = computed<string>(() => {
+    switch (this.setupState()) {
+      case 'needsLinking':
+      case 'loading':
+        return 'Este equipo aún no está asignado a una caja física.';
+      case 'needsOpening':
+        return 'Abre un turno de caja para comenzar a cobrar.';
+      default:
+        return '';
+    }
+  });
+
   /** Controls visibility of the takeover confirmation dialog */
   readonly takeoverDialogVisible = signal(false);
 
@@ -656,21 +698,24 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
 
   /**
    * True when the typed code looks committable: exactly 6 chars after
-   * trimming. We do not validate the charset client-side because a
-   * future backend change might expand it; the server is authoritative.
+   * trimming. Length-only check — the charset is enforced upstream by
+   * `sanitizeSecureCode`, which strips any char outside the secure
+   * alphabet `[A-HJKMNP-TV-Z2-9]` (BDD-017 unified contract). The
+   * server still validates as the authoritative source of truth.
    */
   readonly canRedeemCode = computed(() =>
     this.linkCodeInput().trim().length === 6 && !this.isRedeemingCode(),
   );
 
   /**
-   * Handler bound to the input's `(input)` event. Uppercases on the
-   * fly + trims to 6 chars so paste behaviour matches the visible
-   * `text-transform: uppercase` styling.
+   * Handler bound to the input's `(input)` event. Delegates to the
+   * shared `sanitizeSecureCode` utility so this surface stays in lockstep
+   * with `/setup` — uppercase on the fly, silently drop chars outside
+   * the secure alphabet, and clamp to 6 chars total. Paste flows fall
+   * through this same handler since `(input)` fires after every paste.
    */
   onLinkCodeInput(value: string): void {
-    const sanitised = value.toUpperCase().slice(0, 6);
-    this.linkCodeInput.set(sanitised);
+    this.linkCodeInput.set(sanitizeSecureCode(value, 6));
   }
 
   /**
@@ -711,7 +756,11 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     const status = (error as { status?: number })?.status;
     let detail = 'No se pudo vincular. Intenta de nuevo.';
 
-    if (status === 404) {
+    if (status === 400) {
+      detail = 'Código mal escrito. Pídele al administrador que lo dicte de nuevo.';
+    } else if (status === 401) {
+      detail = 'Autorización de dispositivo denegada. El código no corresponde a esta tablet.';
+    } else if (status === 404) {
       detail = 'Código inválido o expirado. Pide un código nuevo al administrador.';
     } else if (status === 409) {
       detail = 'Este código ya fue usado. Pide uno nuevo al administrador.';
