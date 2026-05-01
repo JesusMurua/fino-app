@@ -57,10 +57,10 @@ export class AdminUsersComponent implements OnInit {
 
   readonly roleOptions: RoleOption[] = [
     { label: 'Dueño',   value: UserRoleId.Owner,   icon: '👑', color: '#7C3AED' },
-    { label: 'Gerente',  value: UserRoleId.Manager, icon: '🏢', color: '#7C3AED' },
-    { label: 'Cajero',   value: UserRoleId.Cashier, icon: '💳', color: '#2563EB' },
-    { label: 'Mesero',   value: UserRoleId.Waiter,  icon: '🍽️', color: '#16A34A' },
-    { label: 'Cocina',   value: UserRoleId.Kitchen, icon: '👨‍🍳', color: '#D97706' },
+    { label: 'Gerente', value: UserRoleId.Manager, icon: '🏢', color: '#7C3AED' },
+    { label: 'Cajero',  value: UserRoleId.Cashier, icon: '💳', color: '#2563EB' },
+    { label: 'Mesero',  value: UserRoleId.Waiter,  icon: '🍽️', color: '#16A34A' },
+    { label: 'Host',    value: UserRoleId.Host,    icon: '🛎️', color: '#0891B2' },
   ];
 
   readonly userForm: FormGroup = this.fb.group({
@@ -76,7 +76,7 @@ export class AdminUsersComponent implements OnInit {
   readonly selectedRole = signal<UserRoleId>(UserRoleId.Cashier);
 
   readonly usesPin = computed(() =>
-    [UserRoleId.Cashier, UserRoleId.Kitchen, UserRoleId.Waiter].includes(this.selectedRole())
+    [UserRoleId.Cashier, UserRoleId.Waiter, UserRoleId.Host].includes(this.selectedRole())
   );
 
   readonly usesEmail = computed(() =>

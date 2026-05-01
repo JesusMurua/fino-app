@@ -1,13 +1,24 @@
-/** User role — maps to RoleCatalog in backend */
+/**
+ * User role — maps to RoleCatalog in backend (post-BDD-018).
+ *
+ * Aligned with the cleaned-up backend catalog (FDD-023):
+ *   - `Admin` was removed (legacy, never used in production; Owner / Manager cover it).
+ *   - `Kitchen` and `Kiosk` were removed from the human role catalog.
+ *     They were misclassified — Kitchen Display screens and self-service
+ *     kiosks are unattended **device modes**, not human-authenticated
+ *     roles. They continue to live in `DeviceConfig['mode']` for the
+ *     hardware routing layer.
+ *
+ * IDs are 1-based and contiguous; do not insert new entries without
+ * a coordinated backend migration (see BDD-018 + FDD-023 for the
+ * shift contract).
+ */
 export enum UserRoleId {
   Owner = 1,
-  Admin = 2,
-  Manager = 3,
-  Cashier = 4,
-  Waiter = 5,
-  Kitchen = 6,
-  Host = 7,
-  Kiosk = 8,
+  Manager = 2,
+  Cashier = 3,
+  Waiter = 4,
+  Host = 5,
 }
 
 /**
@@ -159,13 +170,10 @@ export enum PromotionTypeId {
 
 export const USER_ROLE_LABELS: Record<UserRoleId, string> = {
   [UserRoleId.Owner]:   'Dueño',
-  [UserRoleId.Admin]:   'Admin',
   [UserRoleId.Manager]: 'Gerente',
   [UserRoleId.Cashier]: 'Cajero',
   [UserRoleId.Waiter]:  'Mesero',
-  [UserRoleId.Kitchen]: 'Cocina',
   [UserRoleId.Host]:    'Host',
-  [UserRoleId.Kiosk]:   'Kiosko',
 };
 
 export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {

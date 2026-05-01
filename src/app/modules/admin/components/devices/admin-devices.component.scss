@@ -130,6 +130,43 @@
     color: $color-text-sub;
     text-align: center;
   }
+
+  // Copy-to-clipboard button rendered next to `__value`. Visual parity
+  // with `.link-code__copy` in admin-registers so both Back Office
+  // code-generator surfaces feel identical. The `--ok` modifier is
+  // toggled for 2 s by `lastCodeCopied()` to flash the success state
+  // when the admin clicks copy.
+  &__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 8px;
+    background: var(--surface, white);
+    color: var(--text2, $color-text-sub);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    i { font-size: 16px; }
+
+    &:hover {
+      background: var(--surface2, #F3F4F6);
+      color: var(--text1, $color-text-title);
+    }
+
+    &--ok {
+      background: #DCFCE7;
+      border-color: #BBF7D0;
+      color: $color-primary;
+
+      &:hover {
+        background: #BBF7D0;
+        color: $color-primary;
+      }
+    }
+  }
 }
 
 @keyframes activation-code-pulse {

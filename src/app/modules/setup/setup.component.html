@@ -80,20 +80,23 @@
           <i class="pi pi-arrow-left"></i>
         </button>
         <h1 class="setup-header__title">Código de activación</h1>
-        <p class="setup-header__sub">Ingresa el código de 6 dígitos</p>
+        <p class="setup-header__sub">Ingresa el código de 6 caracteres</p>
       </div>
 
       <div class="setup-code">
         <div class="setup-code__boxes">
           @for (digit of codeDigits(); track $index) {
             <input
-              type="text"
-              inputmode="numeric"
-              maxlength="1"
-              class="setup-code__box"
               [value]="digit"
+              type="text"
+              inputmode="text"
+              maxlength="1"
+              autocapitalize="characters"
+              class="setup-code__box"
               (input)="onCodeInput($index, $event)"
               (keydown)="onCodeKeydown($index, $event)"
+              (paste)="onCodePaste($index, $event)"
+              (focus)="onCodeFocus($index, $event)"
             />
           }
         </div>

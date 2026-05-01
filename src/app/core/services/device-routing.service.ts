@@ -64,12 +64,6 @@ export class DeviceRoutingService {
     }
 
     switch (roleId) {
-      case UserRoleId.Kitchen:
-        // Kitchen role users exist, but the /kitchen shell is device-auth
-        // only. Send them to /orders so they can triage tickets with the
-        // human session; operators map this role to the KDS manually.
-        return { kind: 'route', route: '/orders' };
-
       case UserRoleId.Host:
         return { kind: 'route', route: '/tables' };
 
@@ -83,13 +77,6 @@ export class DeviceRoutingService {
         }
         if (mode === 'tables') return { kind: 'route', route: '/tables' };
         return { kind: 'route', route: this.resolvePosRoute() };
-      }
-
-      case UserRoleId.Kiosk: {
-        if (mode === 'kitchen' || mode === 'kiosk' || mode === 'reception') {
-          return { kind: 'error', error: 'hardware-shell', mode };
-        }
-        return { kind: 'route', route: '/pin' };
       }
 
       default:

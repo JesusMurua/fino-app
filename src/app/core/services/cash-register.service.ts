@@ -476,12 +476,13 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Issues a short-lived pairing code that an unattended device (no
-   * Owner/Manager physically present) can redeem to bind itself to this
-   * cash register. Same UX language as the device activation code, scoped
-   * to caja-binding instead of device provisioning. Backend invalidates
-   * any previously-issued code for the same register on each call so
-   * there is at most one active code per caja.
+   * Issues a short-lived 6-character alphanumeric pairing code (secure
+   * alphabet `[A-HJKMNP-TV-Z2-9]`, ambiguous chars excluded) that an
+   * unattended device (no Owner/Manager physically present) can redeem to
+   * bind itself to this cash register. Same UX language and alphabet as the
+   * device activation code, scoped to caja-binding instead of device
+   * provisioning. Backend invalidates any previously-issued code for the
+   * same register on each call so there is at most one active code per caja.
    *
    * @param registerId Register the new code will be scoped to
    */
@@ -504,7 +505,8 @@ export class CashRegisterService implements OnDestroy {
    * `_linkedRegister` signal, then `refreshActiveSession()` so the
    * session blocker reactively flips out of `needsLinking`.
    *
-   * @param code Alphanumeric uppercase 6-char code dictated by the admin
+   * @param code 6-char code from the secure alphabet `[A-HJKMNP-TV-Z2-9]`
+   *             (BDD-017 unified contract) dictated by the admin
    */
   async redeemLinkCode(code: string): Promise<void> {
     await firstValueFrom(

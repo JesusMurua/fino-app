@@ -1190,7 +1190,8 @@ $bp-desktop: 1024px;
 .session-blocker {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  // Layered at 1500 to cover tooltips/toasts (1100) but stay below boosted dialogs (2000)
+  z-index: 1500;
   display: flex;
   align-items: center;
   justify-content: center;

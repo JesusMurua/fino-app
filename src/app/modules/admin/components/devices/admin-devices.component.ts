@@ -119,6 +119,14 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   readonly generatingCode = signal(false);
 
   /**
+   * True for 2 seconds after the admin clicks the copy button, used to
+   * swap the icon `pi pi-copy` ↔ `pi pi-check`. Mirrors the link-code
+   * UX in `admin-registers.component.ts` for consistency across the
+   * Back Office "code generator" surfaces.
+   */
+  readonly lastCodeCopied = signal(false);
+
+  /**
    * Monotonic counter that ticks each time `lastGeneratedCode` is replaced.
    * Bound to a `[data-pulse]` attribute on the success card so the CSS
    * scale-pulse animation re-fires for every new generation — gives the
@@ -574,6 +582,31 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
       this.handleGenerateError(error);
     } finally {
       this.generatingCode.set(false);
+    }
+  }
+
+  /**
+   * Copies the freshly generated activation code to the clipboard. The
+   * "copied" flag flips for 2 s so the icon swaps `pi pi-copy` →
+   * `pi pi-check` and back. Falls back to a warn toast when the
+   * Clipboard API is unavailable (older browsers / insecure contexts).
+   *
+   * @param code Activation code value rendered in the success card
+   */
+  async copyActivationCode(code: string): Promise<void> {
+    if (!code) return;
+
+    try {
+      await navigator.clipboard.writeText(code);
+      this.lastCodeCopied.set(true);
+      setTimeout(() => this.lastCodeCopied.set(false), 2000);
+    } catch {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'No se pudo copiar',
+        detail: 'Cópialo manualmente desde la pantalla.',
+        life: 3000,
+      });
     }
   }
 

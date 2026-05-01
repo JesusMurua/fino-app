@@ -150,7 +150,23 @@
 
       @if (lastGeneratedCode(); as last) {
         <div class="activation-code" [attr.data-pulse]="codePulseKey()">
-          <span class="activation-code__value">{{ last.code }}</span>
+          <div class="flex align-items-center gap-3">
+            <span class="activation-code__value">{{ last.code }}</span>
+            <button
+              type="button"
+              class="activation-code__copy"
+              [class.activation-code__copy--ok]="lastCodeCopied()"
+              (click)="copyActivationCode(last.code)"
+              pTooltip="Copiar al portapapeles"
+              tooltipPosition="top"
+            >
+              @if (lastCodeCopied()) {
+                <i class="pi pi-check"></i>
+              } @else {
+                <i class="pi pi-copy"></i>
+              }
+            </button>
+          </div>
           <span class="activation-code__summary">
             Código para: <strong>{{ last.branchName }}</strong>
             — Modo: <strong>{{ modeLabel(last.mode) }}</strong>
