@@ -207,10 +207,6 @@
     flex-direction: column;
     gap: $space-3;
     border-top: 1px solid $color-border-soft;
-    // Caps the field column so inputs don't stretch to absurd widths on
-    // wide viewports — the form column has plenty of room to breathe but
-    // a single input never gets > 640 px which keeps it readable.
-    max-width: 640px;
   }
 
   &__badge {

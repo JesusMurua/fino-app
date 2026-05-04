@@ -45,11 +45,10 @@
       <div class="settings-content settings-content--stacked">
 
         <!-- ROW 1: 2 equal columns — Info (with embedded Giro) | Folios -->
-        <div class="grid">
+        <div class="settings-row settings-row--2col">
 
           <!-- Column 1: Información del negocio + Giro (read-only at the bottom) -->
-          <div class="col-12 md:col-6">
-            <section class="settings-card h-full">
+            <section class="settings-card">
               <div class="settings-card-header">
                 <div class="card-icon"><i class="pi pi-building"></i></div>
                 <div>
@@ -95,12 +94,10 @@
                 </a>
               </div>
             </section>
-          </div>
 
           <!-- Column 2: Configuración de folios — gated by CustomFolios/CfdiInvoicing -->
           @if (canSeeCustomFolio()) {
-            <div class="col-12 md:col-6">
-              <section class="settings-card h-full">
+            <section class="settings-card">
                 <div class="settings-card-header">
                   <div class="card-icon"><i class="pi pi-receipt"></i></div>
                   <div>
@@ -146,7 +143,6 @@
                   </div>
                 </div>
               </section>
-            </div>
           }
         </div>
 
@@ -180,13 +176,8 @@
           </section>
         }
 
-        <!-- ROW 2: Sucursales — full-width data table.
-             Wrapped in a PrimeFlex grid so it inherits the same negative
-             horizontal margins as the 2-col row above it (Info + Folios),
-             keeping its left/right edges aligned with those cards. -->
-        <div class="grid">
-          <div class="col-12">
-            <section class="settings-card">
+        <!-- ROW 2: Sucursales — full-width data table -->
+        <section class="settings-card">
               <div class="settings-card-header">
                 <div class="card-icon"><i class="pi pi-sitemap"></i></div>
                 <div>
@@ -196,8 +187,6 @@
               </div>
               <app-admin-branches [inline]="true" />
             </section>
-          </div>
-        </div>
 
       </div>
     }
