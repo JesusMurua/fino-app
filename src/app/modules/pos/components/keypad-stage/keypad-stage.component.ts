@@ -1,4 +1,13 @@
-import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { EMPTY, catchError, distinctUntilChanged, filter, from, switchMap, tap } from 'rxjs';
+import { MessageService } from 'primeng/api';
+import {
+  AutoCompleteCompleteEvent,
+  AutoCompleteModule,
+  AutoCompleteSelectEvent,
+} from 'primeng/autocomplete';
 
 import { Product } from '../../../../core/models';
 import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
@@ -7,159 +16,250 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 
-/** Lightweight descriptor for the recent-items quick re-add list */
+/** Persisted descriptor for the recently-added items quick re-add list. */
 interface RecentItem {
+  productId: number;
   name: string;
   priceCents: number;
 }
 
+/** Maximum number of recent items kept and persisted (per branch). */
+const MAX_RECENT_ITEMS = 5;
+
+/** Maximum number of suggestions returned by the autocomplete `(completeMethod)`. */
+const MAX_AUTOCOMPLETE_RESULTS = 10;
+
+/** localStorage key prefix; final key is `<prefix><branchId>`. */
+const RECENTS_STORAGE_KEY_PREFIX = 'pos_keypad_recents:';
+
 /**
- * Keypad/calculator stage of the unified POS chameleon shell.
+ * Keypad / calculator stage of the unified POS chameleon shell.
  *
- * Pure UX surface: description input + price input + recents + catalog
- * search. All cart writes go through `CartService` (`addQuickItem` for
- * free-form lines, `addItem` for catalog matches) so coupons, membership
- * beneficiaries, stock guards, and offline persistence work identically
- * to the grid mode. No local cart signal lives in this component.
+ * Renders a catalog autocomplete and a list of recently added products.
+ * Free-form manual entry was removed (FDD-025) so every cart line carries
+ * a real `ProductId` for BI integrity. Cart writes flow through
+ * `CartService.addItem`. Recents persist per branch to `localStorage`
+ * so cashiers do not lose the re-add list across reloads or shift changes.
  */
 @Component({
   selector: 'app-keypad-stage',
   standalone: true,
-  imports: [PricePipe],
+  imports: [AutoCompleteModule, FormsModule, PricePipe],
   templateUrl: './keypad-stage.component.html',
   styleUrl: './keypad-stage.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class KeypadStageComponent implements OnInit {
+export class KeypadStageComponent {
 
   //#region Properties
 
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly productService = inject(ProductService);
+  private readonly messageService = inject(MessageService);
 
-  /** Reference to the description input for re-focus after add */
-  readonly descriptionInput = viewChild<ElementRef<HTMLInputElement>>('descriptionInput');
-
-  /** All loaded catalog products */
+  /** All loaded catalog products — re-exposed from the service. */
   readonly products = this.productService.products;
 
-  /** Quick item description */
-  readonly quickDescription = signal('');
+  /** Catalog loading flag — re-exposed from the service. */
+  readonly isLoading = this.productService.isLoading;
 
-  /** Quick item price as user-typed string in pesos (e.g. "150") */
-  readonly quickPricePesos = signal('');
-
-  /** Whether the quick form can be submitted */
-  readonly canAddQuick = computed(() =>
-    this.quickDescription().trim().length > 0
-    && this.parsePriceCents() > 0,
-  );
-
-  /** Catalog search term */
-  readonly catalogSearch = signal('');
-
-  /** Whether catalog products exist for this branch */
+  /** True when at least one product is loaded. Drives empty-state copy. */
   readonly hasCatalog = computed(() => this.products().length > 0);
 
-  /** Filtered catalog results based on search */
-  readonly catalogResults = computed(() => {
-    const term = this.catalogSearch().trim().toLowerCase();
-    if (!term || term.length < 2) return [];
-    return this.products()
-      .filter(p => p.isAvailable && p.name.toLowerCase().includes(term))
-      .slice(0, 10);
-  });
+  /** Currently selected product in the autocomplete (null after add). */
+  readonly catalogSelected = signal<Product | null>(null);
 
-  /** Last items added in this session, newest first, capped at 5 (deduped by name+price) */
+  /** Suggestions populated by the autocomplete `(completeMethod)`. */
+  readonly catalogSuggestions = signal<Product[]>([]);
+
+  /** Recently added items, newest first, deduped by productId, capped. */
   readonly recentItems = signal<RecentItem[]>([]);
 
   //#endregion
 
-  //#region Constructor
+  //#region Constructor — reactive catalog hydration
 
+  /**
+   * Single reactive pipeline driven by `activeBranchId`. Replaces the
+   * legacy `effect` (which required `allowSignalWrites: true`) and the
+   * duplicate `ngOnInit` `loadCatalog()` call. On every distinct branch
+   * change we hydrate recents from localStorage and trigger a catalog
+   * load. `switchMap` cancels any in-flight load when the branch
+   * changes again. `takeUntilDestroyed` cleans up automatically.
+   */
   constructor() {
-    effect(() => {
-      const branchId = this.authService.activeBranchId();
-      if (branchId) this.productService.loadCatalog();
-    }, { allowSignalWrites: true });
+    toObservable(this.authService.activeBranchId)
+      .pipe(
+        distinctUntilChanged(),
+        filter((id): id is number => id !== null && id !== undefined),
+        tap((branchId) => this.recentItems.set(this.loadRecents(branchId))),
+        switchMap(() => from(this.productService.loadCatalog()).pipe(
+          catchError((err) => {
+            console.error('Catalog load failed:', err);
+            return EMPTY;
+          }),
+        )),
+        takeUntilDestroyed(),
+      )
+      .subscribe();
   }
 
   //#endregion
 
-  //#region Lifecycle
+  //#region Catalog autocomplete
 
-  async ngOnInit(): Promise<void> {
-    await this.productService.loadCatalog();
-  }
-
-  //#endregion
-
-  //#region Quick item form
-
-  /** Updates the description signal from input */
-  onDescriptionInput(event: Event): void {
-    this.quickDescription.set((event.target as HTMLInputElement).value);
-  }
-
-  /** Updates the price signal from input */
-  onPriceInput(event: Event): void {
-    this.quickPricePesos.set((event.target as HTMLInputElement).value);
+  /**
+   * Filters the in-memory catalog by the typed query against `name` and
+   * `barcode`, diacritic- and case-insensitive, capped at
+   * `MAX_AUTOCOMPLETE_RESULTS`. Available products only.
+   */
+  onCatalogComplete(event: AutoCompleteCompleteEvent): void {
+    const term = this.normalize(event.query);
+    if (term.length < 2) {
+      this.catalogSuggestions.set([]);
+      return;
+    }
+    const matches = this.products()
+      .filter((p) => {
+        if (!p.isAvailable) return false;
+        const name = this.normalize(p.name);
+        const barcode = p.barcode ? this.normalize(p.barcode) : '';
+        return name.includes(term) || barcode.includes(term);
+      })
+      .slice(0, MAX_AUTOCOMPLETE_RESULTS);
+    this.catalogSuggestions.set(matches);
   }
 
   /**
-   * Adds a quick (free-form) item to the shared cart via
-   * `CartService.addQuickItem`. Pushes the description+price to recents,
-   * clears the form, and re-focuses the description input.
+   * Adds the selected product to the cart. Recents update and persist
+   * only on success. Failures surface via `MessageService`. The selection
+   * is cleared in `finally` so the input is ready for the next entry.
    */
-  async addQuickItem(): Promise<void> {
-    const description = this.quickDescription().trim();
-    const priceCents = this.parsePriceCents();
-    if (!description || priceCents <= 0) return;
-
-    await this.cartService.addQuickItem(description, priceCents);
-    this.pushRecent({ name: description, priceCents });
-
-    this.quickDescription.set('');
-    this.quickPricePesos.set('');
-    this.descriptionInput()?.nativeElement.focus();
+  async onCatalogSelect(event: AutoCompleteSelectEvent): Promise<void> {
+    const product = event.value as Product;
+    try {
+      await this.cartService.addItem(product);
+      this.pushRecent({
+        productId: product.id,
+        name: product.name,
+        priceCents: calcUnitPriceCents(product),
+      });
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Producto agregado',
+        detail: product.name,
+        life: 2000,
+      });
+    } catch (err) {
+      console.error('Failed to add catalog product:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo agregar el producto',
+        detail: product.name,
+        life: 4000,
+      });
+    } finally {
+      this.catalogSelected.set(null);
+    }
   }
 
-  /** Re-adds a recent item to the cart (always a new line — no merge) */
+  //#endregion
+
+  //#region Recents
+
+  /**
+   * Re-adds a recent item to the cart. The recent is resolved against the
+   * current catalog by `productId`; if the product no longer exists or
+   * has become unavailable, surface a `warn` toast and skip the cart
+   * write. Always creates a new line — recents do not merge.
+   */
   async addRecentItem(item: RecentItem): Promise<void> {
-    await this.cartService.addQuickItem(item.name, item.priceCents);
-    this.pushRecent(item);
-  }
-
-  /** Adds a catalog product to the shared cart with stock guards */
-  async addCatalogProduct(product: Product): Promise<void> {
-    await this.cartService.addItem(product);
-    this.pushRecent({ name: product.name, priceCents: calcUnitPriceCents(product) });
-    this.catalogSearch.set('');
-  }
-
-  /** Updates catalog search term */
-  onCatalogSearchInput(event: Event): void {
-    this.catalogSearch.set((event.target as HTMLInputElement).value);
+    const product = this.products().find(
+      (p) => p.id === item.productId && p.isAvailable,
+    );
+    if (!product) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Producto no disponible',
+        detail: item.name,
+        life: 4000,
+      });
+      return;
+    }
+    try {
+      await this.cartService.addItem(product);
+      this.pushRecent(item);
+    } catch (err) {
+      console.error('Failed to re-add recent item:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo agregar el producto',
+        detail: item.name,
+        life: 4000,
+      });
+    }
   }
 
   //#endregion
 
   //#region Helpers
 
-  /** Pushes an item to the recents list (newest first, deduped, capped at 5) */
+  /**
+   * Pushes an item to recents (newest first, deduped by `productId`,
+   * capped at `MAX_RECENT_ITEMS`, and persisted to localStorage scoped
+   * to the active branch).
+   */
   private pushRecent(item: RecentItem): void {
-    const filtered = this.recentItems().filter(
-      r => !(r.name === item.name && r.priceCents === item.priceCents),
-    );
-    this.recentItems.set([item, ...filtered].slice(0, 5));
+    const branchId = this.authService.activeBranchId();
+    if (branchId === null || branchId === undefined) return;
+    const filtered = this.recentItems().filter((r) => r.productId !== item.productId);
+    const next = [item, ...filtered].slice(0, MAX_RECENT_ITEMS);
+    this.recentItems.set(next);
+    this.persistRecents(branchId, next);
   }
 
-  /** Parses the peso string input into centavos */
-  private parsePriceCents(): number {
-    const raw = this.quickPricePesos().replace(/[^0-9.]/g, '');
-    const pesos = parseFloat(raw);
-    if (isNaN(pesos) || pesos <= 0) return 0;
-    return Math.round(pesos * 100);
+  /**
+   * Reads recents for the given branch from localStorage. Returns an
+   * empty array on missing key, parse error, or storage unavailability.
+   * Validates each entry's shape and discards malformed records (so a
+   * legacy schema does not survive the upgrade).
+   */
+  private loadRecents(branchId: number): RecentItem[] {
+    const key = `${RECENTS_STORAGE_KEY_PREFIX}${branchId}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((it): it is RecentItem =>
+          it !== null
+          && typeof it === 'object'
+          && typeof (it as RecentItem).productId === 'number'
+          && typeof (it as RecentItem).name === 'string'
+          && typeof (it as RecentItem).priceCents === 'number',
+        )
+        .slice(0, MAX_RECENT_ITEMS);
+    } catch {
+      try { localStorage.removeItem(key); } catch { /* storage may be sealed */ }
+      return [];
+    }
+  }
+
+  /** Persists recents for the branch; silent on quota or privacy errors. */
+  private persistRecents(branchId: number, items: RecentItem[]): void {
+    const key = `${RECENTS_STORAGE_KEY_PREFIX}${branchId}`;
+    try {
+      localStorage.setItem(key, JSON.stringify(items));
+    } catch {
+      /* quota / privacy mode — keep working in-memory only */
+    }
+  }
+
+  /** Lower-cases, trims, and strips diacritics for case-fold search. */
+  private normalize(s: string): string {
+    return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
   }
 
   //#endregion

@@ -24,14 +24,6 @@ export class CartService {
 
   //#region Properties
 
-  /**
-   * Sentinel product id used for free-form "quick" items added from the
-   * keypad/calculator UX (no underlying catalog product). Lines with this
-   * id are never merged with one another and never count against
-   * `productService` stock.
-   */
-  static readonly QUICK_ITEM_PRODUCT_ID = 0;
-
   /** Single source of truth for cart items */
   readonly items = signal<CartItem[]>([]);
 
@@ -166,49 +158,6 @@ export class CartService {
 
     // Optimistic local deduction
     this.productService.deductLocalStock(product.id, 1);
-  }
-
-  /**
-   * Adds a free-form "quick item" to the cart — used by the keypad UX
-   * (Services/Gym/Quick verticals) to charge for something that isn't in
-   * the catalog. The line carries a virtual product with the sentinel
-   * id `QUICK_ITEM_PRODUCT_ID = 0`, so it never merges with prior quick
-   * items even when description and price collide.
-   *
-   * @param description Free-form description shown on the ticket
-   * @param priceCents Price in cents (must be > 0)
-   */
-  async addQuickItem(description: string, priceCents: number): Promise<void> {
-    const trimmed = description.trim();
-    if (!trimmed || priceCents <= 0) return;
-
-    const virtualProduct: Product = {
-      id: CartService.QUICK_ITEM_PRODUCT_ID,
-      name: trimmed,
-      priceCents,
-      categoryId: 0,
-      isAvailable: true,
-      sizes: [],
-      modifierGroups: [],
-    };
-
-    // `taxRate` is left undefined so the cart preview and the backend
-    // both resolve from `tenantContext.defaultTaxRatePercent()` /
-    // `business.defaultTaxId`. The TaxConfigGuard prevents this code
-    // path from running without a configured tenant default.
-    const newItem: CartItem = {
-      id: crypto.randomUUID(),
-      product: virtualProduct,
-      quantity: 1,
-      extras: [],
-      unitPriceCents: priceCents,
-      totalPriceCents: priceCents,
-      discountCents: 0,
-    };
-
-    // Always create a new line — quick items must not merge.
-    const updated = [...this.items(), newItem];
-    await this.persist(updated);
   }
 
   /**
