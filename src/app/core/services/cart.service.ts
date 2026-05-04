@@ -1,10 +1,11 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
-import { DEFAULT_TAX_RATE, calculateItemTax } from '../utils/tax.utils';
+import { calculateItemTax } from '../utils/tax.utils';
 import { DatabaseService } from './database.service';
 import { ProductService } from './product.service';
 import { PromotionService } from './promotion.service';
+import { TenantContextService } from './tenant-context.service';
 
 /**
  * Manages the active order cart.
@@ -45,12 +46,19 @@ export class CartService {
     return Math.max(0, subtotal - evaluation.totalDiscountCents);
   });
 
-  /** Total tax (IVA) in cents — extracted from effective item prices after discounts */
+  /**
+   * Total tax (IVA) in cents — extracted from effective item prices after
+   * discounts. Reads `tenantContext.defaultTaxRatePercent()` for items
+   * that didn't pin an explicit rate; falls back to `0` while the tenant
+   * config or the tax catalog is still hydrating (preview-only — backend
+   * is authoritative on save). See `project_tax_authority.md`.
+   */
   readonly totalTaxCents = computed(() => {
     const items = this.items();
     if (items.length === 0) return 0;
+    const tenantDefaultPercent = this.tenantContext.defaultTaxRatePercent() ?? 0;
     return items.reduce((sum, item) => {
-      const rate = item.taxRate ?? DEFAULT_TAX_RATE;
+      const rate = item.taxRate ?? tenantDefaultPercent;
       const isTaxIncluded = item.product.isTaxIncluded !== false;
       return sum + calculateItemTax(item.totalPriceCents, item.discountCents, rate, isTaxIncluded);
     }, 0);
@@ -83,6 +91,7 @@ export class CartService {
     private readonly db: DatabaseService,
     private readonly productService: ProductService,
     private readonly promotionService: PromotionService,
+    private readonly tenantContext: TenantContextService,
   ) {
     this.loadFromDb();
   }
@@ -145,7 +154,10 @@ export class CartService {
       unitPriceCents,
       totalPriceCents: unitPriceCents,
       notes,
-      taxRate: product.taxRate ?? DEFAULT_TAX_RATE,
+      // Carry the product's explicit override only. When undefined,
+      // `totalTaxCents` resolves via `tenantContext.defaultTaxRatePercent()`
+      // and the backend reconciles on save. AUDIT-053.
+      taxRate: product.taxRate,
       discountCents: 0,
     };
 
@@ -180,9 +192,10 @@ export class CartService {
       modifierGroups: [],
     };
 
-    // TODO: Frontend cart preview uses DEFAULT_TAX_RATE (16%) fallback;
-    // backend is authoritative on save. Wire tenant default tax to
-    // ProductService when API surfaces it to align preview with final ticket.
+    // `taxRate` is left undefined so the cart preview and the backend
+    // both resolve from `tenantContext.defaultTaxRatePercent()` /
+    // `business.defaultTaxId`. The TaxConfigGuard prevents this code
+    // path from running without a configured tenant default.
     const newItem: CartItem = {
       id: crypto.randomUUID(),
       product: virtualProduct,

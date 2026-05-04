@@ -59,6 +59,18 @@ export class DashboardComponent implements OnInit {
     this.tenantContext.hasFeature(FeatureKey.AdvancedReports),
   );
 
+  /**
+   * True when the business has no `defaultTaxId` configured. Drives the
+   * sticky red banner at the top of the dashboard. Consumes
+   * `business()` reactively, so once the admin saves a tax in the Fiscal
+   * tab the banner disappears automatically.
+   */
+  readonly showTaxConfigBanner = computed(() => {
+    const settings = this.tenantContext.business();
+    if (!settings) return false;
+    return settings.defaultTaxId === null || settings.defaultTaxId === undefined;
+  });
+
   /** True when the tenant is on the Gym vertical (drives membership widget visibility) */
   readonly isGymTenant = computed(() =>
     this.tenantContext.currentSubCategory() === SubCategoryType.Gym,

@@ -26,7 +26,6 @@ import { MessageService } from 'primeng/api';
 
 import {
   Category,
-  IVA_RATE_OPTIONS,
   Product,
   ProductExtra,
   ProductImage,
@@ -38,6 +37,7 @@ import { DatabaseService } from '../../../../../core/services/database.service';
 import { ProductService, SaveProductDto } from '../../../../../core/services/product.service';
 import { ScannerService } from '../../../../../core/services/scanner.service';
 import { PrinterDestinationService } from '../../../../../core/services/printer-destination.service';
+import { TaxService } from '../../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../../core/services/tenant-context.service';
 import { getHttpErrorSummary } from '../../../../../core/utils/http-error.utils';
 
@@ -92,7 +92,8 @@ type ProductFormGroup = FormGroup<{
   printingDestinationId:  FormControl<number | null>;
   satProductCode:         FormControl<string>;
   satUnitCode:            FormControl<string>;
-  taxRate:                FormControl<number>;
+  taxRate:                FormControl<number | null>;
+  isTaxIncluded:          FormControl<boolean>;
   /** Gym vertical: opt-in flag that surfaces the membership duration field */
   isMembership:           FormControl<boolean>;
   /** Gym vertical: days the customer's membership is extended on each sale */
@@ -327,7 +328,45 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
   // ---- SAT catalog options for fiscal dropdowns ----
   readonly satUnitOptions = SAT_UNIT_OPTIONS;
-  readonly ivaRateOptions = IVA_RATE_OPTIONS;
+
+  /** Inject the tax catalog so the dropdown reflects live backend data */
+  readonly taxService = inject(TaxService);
+
+  /**
+   * Dropdown label for the "Usar el del negocio" first option. Degraded
+   * microcopy rule:
+   *   - catalog still loading → "Usar el del negocio"
+   *   - business has no defaultTaxId → "(sin configurar — ve a Configuración → Fiscal)"
+   *   - default resolved → "(X%)"
+   * See AUDIT-053.
+   */
+  readonly defaultBusinessOptionLabel = computed<string>(() => {
+    if (this.taxService.isLoading()) return 'Usar el del negocio';
+    const settings = this.tenantContext.business();
+    const id = settings?.defaultTaxId ?? null;
+    if (id === null) {
+      return 'Usar el del negocio (sin configurar — ve a Configuración → Fiscal)';
+    }
+    const tax = this.taxService.findById(id);
+    if (!tax || tax.ratePercent === undefined) return 'Usar el del negocio';
+    return `Usar el del negocio (${tax.ratePercent}%)`;
+  });
+
+  /**
+   * Dropdown options bound to the `taxRate` form control. The first
+   * entry has `value: null` so picking it persists `taxRate: undefined`
+   * on the product (= "use whatever the business default is at sale
+   * time"). Subsequent entries come from the live tax catalog and
+   * carry the integer `ratePercent` so the existing `cart.service`
+   * math keeps working untouched.
+   */
+  readonly taxRateOptions = computed(() => [
+    { value: null as number | null, label: this.defaultBusinessOptionLabel() },
+    ...this.taxService.catalog().map(t => ({
+      value: t.ratePercent ?? null,
+      label: t.name,
+    })),
+  ]);
 
   // ---- Printing destination options ----
   /** True when at least one active printer destination is configured */
@@ -348,10 +387,13 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    // Hydrate categories + printer destinations in parallel
+    // Hydrate categories + printer destinations + tax catalog in parallel.
+    // `ensureHydrated()` is idempotent (cached promise) so it's free if
+    // login already kicked it off.
     const [categories] = await Promise.all([
       this.db.categories.orderBy('sortOrder').toArray(),
       this.printerDestinationService.loadFromLocal(),
+      this.tenantContext.ensureHydrated(),
     ]);
     this.categories.set(categories);
 
@@ -418,7 +460,12 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       printingDestinationId:  product.printingDestinationId ?? null,
       satProductCode:         product.satProductCode ?? '',
       satUnitCode:            product.satUnitCode ?? 'H87',
-      taxRate:                product.taxRate ?? 16,
+      // null → "Usar el del negocio" (backend resolves with tenant default)
+      taxRate:                product.taxRate ?? null,
+      // Mexican standard: prices include tax. Force `true` if the
+      // legacy product has `undefined` so the toggle has a deterministic
+      // state and the field gets persisted explicitly on save.
+      isTaxIncluded:          product.isTaxIncluded ?? true,
       isMembership:           membershipDays > 0,
       membershipDurationDays: membershipDays > 0 ? membershipDays : 30,
     });
@@ -520,7 +567,9 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       modifierGroups,
       satProductCode: raw.satProductCode.trim() || undefined,
       satUnitCode: raw.satUnitCode || undefined,
-      taxRate: raw.taxRate,
+      // null → "Usar el del negocio" (backend default applies on sale)
+      taxRate: raw.taxRate ?? undefined,
+      isTaxIncluded: raw.isTaxIncluded,
       printingDestinationId: raw.printingDestinationId,
       metadata: this.composeMetadata(raw.isMembership, raw.membershipDurationDays, editing?.metadata),
     };
@@ -792,7 +841,11 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       printingDestinationId:  new FormControl<number | null>(null),
       satProductCode:         new FormControl('', { nonNullable: true }),
       satUnitCode:            new FormControl('H87', { nonNullable: true }),
-      taxRate:                new FormControl(16, { nonNullable: true }),
+      // Default: null → "Usar el del negocio" (tenant default applies)
+      taxRate:                new FormControl<number | null>(null),
+      // Mexican standard: prices include tax. The toggle in the form
+      // lets B2B / non-tax-inclusive sellers flip it off.
+      isTaxIncluded:          new FormControl(true, { nonNullable: true }),
       isMembership:           new FormControl(false, { nonNullable: true }),
       membershipDurationDays: new FormControl(30, { nonNullable: true, validators: [Validators.min(1)] }),
       sizes:                  new FormArray<SizeFormGroup>([]),
@@ -819,7 +872,8 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       printingDestinationId: null,
       satProductCode: '',
       satUnitCode: 'H87',
-      taxRate: 16,
+      taxRate: null,
+      isTaxIncluded: true,
       isMembership: false,
       membershipDurationDays: 30,
     });

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable, Tax } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -50,6 +50,7 @@ export class DatabaseService extends Dexie {
   pendingPrintJobs!: Table<PrintJobDto, number>;
   pendingPrintJobUpdates!: Table<PrintJobUpdateRecord, number>;
   cashRegisters!: Table<CashRegister, number>;
+  taxes!: Table<Tax, number>;
   //#endregion
 
   //#region Constructor
@@ -247,6 +248,16 @@ export class DatabaseService extends Dexie {
     // Records persisted before this version simply load with `deviceId`
     // undefined; subsequent writes will carry the field.
     this.version(24).stores({}).upgrade(() => Promise.resolve());
+
+    // v25 — Tax catalog cache for offline-first dropdowns.
+    //
+    // Stores the response of `GET /api/taxes` so the product-form and
+    // admin-settings dropdowns survive cold-boot offline. Indexed by
+    // `code` (stable backend identifier) and `isDefault` (so the country
+    // default is queryable in O(1)).
+    this.version(25).stores({
+      taxes: 'id, code, isDefault',
+    });
   }
   //#endregion
 

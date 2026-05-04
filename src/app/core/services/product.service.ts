@@ -25,7 +25,18 @@ export interface SaveProductDto {
   modifierGroups: ProductModifierGroup[];
   satProductCode?: string;
   satUnitCode?: string;
-  taxRate: number;
+  /**
+   * Per-product tax rate override (integer percentage, e.g. 16). Leave
+   * `undefined` to inherit the business default — the backend resolves
+   * via `business.defaultTaxId` at sale time. AUDIT-053.
+   */
+  taxRate?: number;
+  /**
+   * Whether the displayed price already includes tax. Mexican standard
+   * is `true`; B2B / wholesale flips it to `false` so the cart adds the
+   * tax on top. Always persisted explicitly (never `undefined`).
+   */
+  isTaxIncluded?: boolean;
   printingDestinationId: number | null;
   /**
    * Free-form vertical metadata (e.g. `{ membershipDurationDays: 30 }` for

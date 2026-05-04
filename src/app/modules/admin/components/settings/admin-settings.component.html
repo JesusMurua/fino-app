@@ -407,6 +407,67 @@
       @if (canSeeFiscal()) {
         <div class="settings-content">
 
+          <!-- ============================================================ -->
+          <!-- Impuestos por defecto — applies to all new products / sales. -->
+          <!-- Mandatory: backend rejects null. The TaxConfigGuard blocks   -->
+          <!-- POS access until this is set. See AUDIT-053.                 -->
+          <!-- ============================================================ -->
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-percentage"></i></div>
+              <div>
+                <div class="card-title">Impuestos por defecto</div>
+                <div class="card-subtitle">Aplica a todos los productos nuevos que registres</div>
+              </div>
+            </div>
+
+            <div class="settings-form">
+              <div class="form-field">
+                <label class="form-field__label" for="default-tax">
+                  Impuesto que se aplica a tus ventas
+                </label>
+                <p-dropdown
+                  inputId="default-tax"
+                  [ngModel]="defaultTaxIdSelection()"
+                  (ngModelChange)="defaultTaxIdSelection.set($event)"
+                  [options]="taxOptions()"
+                  optionValue="value"
+                  optionLabel="label"
+                  placeholder="Selecciona un impuesto"
+                  [loading]="taxService.isLoading()"
+                  [disabled]="taxService.isLoading() || isSavingDefaultTax()"
+                  styleClass="form-field__dropdown"
+                />
+                <small class="form-field__hint">
+                  Si vendes servicios o productos que no llevan IVA, elige "Sin impuesto (Exento)".
+                </small>
+              </div>
+            </div>
+
+            <div class="settings-card__footer">
+              @if (saveDefaultTaxSuccess()) {
+                <span class="settings-card__ok">
+                  <i class="pi pi-check-circle"></i> Guardado
+                </span>
+              }
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="
+                  defaultTaxIdSelection() === null
+                  || isSavingDefaultTax()
+                  || !defaultTaxIsDirty()
+                "
+                (click)="saveDefaultTax()"
+              >
+                @if (isSavingDefaultTax()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Guardar impuesto por defecto
+              </button>
+            </div>
+          </section>
+
           <section class="settings-card">
             <div class="settings-card-header">
               <div class="card-icon"><i class="pi pi-file-edit"></i></div>

@@ -616,6 +616,13 @@ export class AuthService {
     this.trialEndsAt.set(user.trialEndsAt ?? null);
     this.syncTenantContext();
 
+    // Kick off post-auth hydration (business settings + tax catalog) so
+    // the cached promise inside `TenantContextService` is in-flight by
+    // the time `taxConfigGuard` (or any consumer) awaits it. Fire-and-
+    // forget: errors are swallowed inside `ensureHydrated()` and the
+    // guard / banners surface them as actionable UX.
+    void this.tenantContext.ensureHydrated();
+
     return user;
   }
 

@@ -107,6 +107,19 @@ export class OnboardingChecklistService {
       isCompleted: this.tenantContext.currentMacro() !== null,
     },
     {
+      // Inserted before "products" because the cart preview math and
+      // the POS guard both depend on this. A tenant CANNOT operate
+      // without a default tax (`taxConfigGuard` blocks `/pos`, `/tables`,
+      // `/kiosk` until this is set). See `project_tax_authority.md`.
+      id: 'taxes',
+      title: 'Configura tus impuestos',
+      description: 'Define el IVA por defecto o si tu negocio es exento. Requisito para operar.',
+      ctaText: 'Ir a Configuración Fiscal',
+      ctaLink: '/admin/settings',
+      icon: 'pi pi-percentage',
+      isCompleted: this.tenantContext.business()?.defaultTaxId != null,
+    },
+    {
       id: 'products',
       title: 'Agrega tu primer producto',
       description: 'El catálogo es el corazón de tus ventas. Sin productos no puedes cobrar.',

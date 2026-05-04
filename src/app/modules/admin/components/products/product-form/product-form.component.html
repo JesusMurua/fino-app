@@ -211,7 +211,7 @@
         <div class="form-section__body">
           <div class="form-grid form-grid--2col">
             <div class="form-field">
-              <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
+              <label class="form-field__label" for="pf-price">Precio al cliente (MXN)</label>
               <p-inputNumber
                 inputId="pf-price"
                 mode="currency"
@@ -224,16 +224,39 @@
             </div>
 
             <div class="form-field">
-              <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
+              <label class="form-field__label" for="pf-tax-rate">Impuesto aplicable</label>
               <p-dropdown
                 inputId="pf-tax-rate"
                 formControlName="taxRate"
-                [options]="ivaRateOptions"
+                [options]="taxRateOptions()"
                 optionValue="value"
                 optionLabel="label"
                 styleClass="w-full"
               />
+              <small class="form-field__hint">
+                Solo cambia esto si este producto es la excepción.
+              </small>
             </div>
+          </div>
+
+          <!-- Tax inclusion toggle — bicephalous microcopy clarifies the
+               two states for non-technical owners. Default: ON (Mexican
+               standard). Forced to `true` on save when undefined so legacy
+               products never persist with an ambiguous null. -->
+          <div class="form-field form-field--row">
+            <div>
+              <label class="form-field__label" for="pf-tax-included">
+                ¿El precio ya incluye impuestos?
+              </label>
+              <small class="form-field__hint">
+                @if (productForm.controls.isTaxIncluded.value) {
+                  Activado: el cliente paga lo que ves arriba.
+                } @else {
+                  Desactivado: al cobrar le sumamos el impuesto.
+                }
+              </small>
+            </div>
+            <p-inputSwitch inputId="pf-tax-included" formControlName="isTaxIncluded" />
           </div>
         </div>
       </details>

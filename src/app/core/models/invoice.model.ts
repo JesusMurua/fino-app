@@ -138,12 +138,10 @@ export const SAT_UNIT_OPTIONS: SatCatalogOption[] = [
   { clave: 'ACT', descripcion: 'Actividad' },
 ];
 
-/** IVA tax rate options */
-export const IVA_RATE_OPTIONS: { value: number; label: string }[] = [
-  { value: 16, label: '16% (General)' },
-  { value: 8,  label: '8% (Frontera norte)' },
-  { value: 0,  label: '0% (Tasa cero)' },
-];
+// Note: the legacy hardcoded `IVA_RATE_OPTIONS` was deleted in AUDIT-053.
+// Tax rates now flow exclusively from `TaxService.catalog()` (backed by
+// `GET /api/taxes` with Dexie offline cache). Adding a fallback constant
+// here re-introduces the very debt that audit eliminated — do not.
 
 // ---------------------------------------------------------------------------
 // SAT Payment Method Mapping
