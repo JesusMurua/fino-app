@@ -1,0 +1,89 @@
+<section class="keypad-stage">
+
+  <h2 class="keypad-stage__title">Cobro rápido</h2>
+
+  <div class="keypad-stage__row">
+    <input
+      #descriptionInput
+      type="text"
+      placeholder="¿Qué vendiste?"
+      class="keypad-stage__field keypad-stage__field--desc"
+      [value]="quickDescription()"
+      (input)="onDescriptionInput($event)"
+      (keydown.enter)="addQuickItem()"
+    />
+    <div class="keypad-stage__price">
+      <span class="keypad-stage__price-currency">$</span>
+      <input
+        type="text"
+        inputmode="decimal"
+        placeholder="0"
+        class="keypad-stage__field keypad-stage__field--price"
+        [value]="quickPricePesos()"
+        (input)="onPriceInput($event)"
+        (keydown.enter)="addQuickItem()"
+      />
+    </div>
+  </div>
+
+  <button
+    type="button"
+    class="keypad-stage__add"
+    [class.keypad-stage__add--disabled]="!canAddQuick()"
+    [disabled]="!canAddQuick()"
+    (click)="addQuickItem()"
+  >
+    AGREGAR AL CARRITO
+  </button>
+
+  <!-- Recents -->
+  @if (recentItems().length > 0) {
+    <div class="keypad-stage__recent">
+      <span class="keypad-stage__section-label">Recientes</span>
+      <div class="keypad-stage__recent-list">
+        @for (item of recentItems(); track item.name + ':' + item.priceCents) {
+          <button
+            type="button"
+            class="keypad-stage__recent-row"
+            (click)="addRecentItem(item)"
+          >
+            <span class="keypad-stage__recent-name">{{ item.name }}</span>
+            <span class="keypad-stage__recent-price">{{ item.priceCents | price }}</span>
+            <span class="keypad-stage__recent-add"><i class="pi pi-plus"></i></span>
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Catalog search (when catalog is loaded) -->
+  @if (hasCatalog()) {
+    <div class="keypad-stage__catalog">
+      <div class="keypad-stage__catalog-search">
+        <i class="pi pi-search keypad-stage__catalog-icon"></i>
+        <input
+          type="text"
+          placeholder="Buscar producto del catálogo..."
+          class="keypad-stage__catalog-input"
+          [value]="catalogSearch()"
+          (input)="onCatalogSearchInput($event)"
+        />
+      </div>
+      @if (catalogResults().length > 0) {
+        <div class="keypad-stage__catalog-results">
+          @for (product of catalogResults(); track product.id) {
+            <button
+              type="button"
+              class="keypad-stage__catalog-chip"
+              (click)="addCatalogProduct(product)"
+            >
+              <span class="keypad-stage__catalog-name">{{ product.name }}</span>
+              <span class="keypad-stage__catalog-price">{{ product.priceCents | price }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+</section>

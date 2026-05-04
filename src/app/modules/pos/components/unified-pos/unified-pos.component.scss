@@ -1,0 +1,69 @@
+@use '../../../../../styles/variables' as *;
+
+// =============================================================================
+// Unified POS shell — header + chameleon stage + cart
+// =============================================================================
+
+.unified-pos {
+  display: grid;
+  grid-template-columns: 1fr $cart-panel-width;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header header"
+    "stage  cart";
+  height: 100dvh;
+  overflow: hidden;
+  background: $color-bg-page;
+
+  &__header { grid-area: header; }
+
+  &__stage {
+    grid-area: stage;
+    overflow: hidden;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+
+    // Children (`<app-keypad-stage>` / `<app-product-grid-inner>`) own
+    // their own scroll containers; the host fills the available area.
+    > * {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  &__cart {
+    grid-area: cart;
+    // Cart panel owns its own glassmorphism elevation; the unified shell
+    // intentionally leaves this slot transparent so the page-bg gradient
+    // can bleed through the cart's blur.
+    background: transparent;
+    z-index: 10;
+    overflow: hidden;
+    height: 100%;
+  }
+}
+
+// Responsive — portrait tablets stack the cart below the stage
+@media (max-width: #{$breakpoint-md}) {
+  .unified-pos {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "header"
+      "stage"
+      "cart";
+  }
+
+  .unified-pos__cart {
+    // Outer shadows/borders live on the cart-panel itself (glassmorphism
+    // elevation). Slot stays transparent on tablets too.
+    max-height: 50vh;
+    display: flex;
+    flex-direction: column;
+  }
+}

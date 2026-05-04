@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -25,17 +25,29 @@ import { TableAssignmentService } from '../../../../core/services/table-assignme
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
+import { QuickPayComponent } from '../quick-pay/quick-pay.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent],
+  imports: [FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent, QuickPayComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
 export class CartPanelComponent implements OnInit {
 
   //#region Properties
+
+  /**
+   * Opt-in glassmorphism mode. Set to `true` only inside the unified POS
+   * shell (`<app-unified-pos>`) where the cart panel sits over a
+   * page-bg gradient and benefits from the translucent backdrop blur.
+   * Stays `false` in `<app-restaurant-hub>` so the legacy F&B shell keeps
+   * its solid white surface and avoids the transparent-bleed regression
+   * documented in AUDIT-050. See `project_glassmorphism_scope.md`.
+   */
+  readonly isGlassMode = input<boolean>(false);
+
   readonly cartItems = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
   readonly totalTaxCents = this.cartService.totalTaxCents;
@@ -72,6 +84,13 @@ export class CartPanelComponent implements OnInit {
   readonly isFoodAndBeverage = computed(() =>
     this.tenantContext.currentMacro() === MacroCategoryType.FoodBeverage,
   );
+
+  /**
+   * Controls the inline `<app-quick-pay>` dialog used by non-F&B verticals
+   * (Services, Retail, Counter, Quick) to skip `/pos/checkout` and complete
+   * a cash sale in one step. Wired only when `!isFoodAndBeverage()`.
+   */
+  readonly showQuickPay = signal(false);
 
   // ---- Table assignment (FDD-001) ----
   /** Controls TableSelectorDialog visibility */
@@ -178,10 +197,23 @@ export class CartPanelComponent implements OnInit {
     await this.cartService.removeItem(item.id);
   }
 
-  /** Navigates to the checkout page */
+  /**
+   * Primary checkout action.
+   *
+   * - F&B (`isFoodAndBeverage()`): navigates to the full `/pos/checkout`
+   *   page, which supports card / split payments + tipping.
+   * - Non-F&B (Services, Retail, Counter, Quick): opens the inline
+   *   `<app-quick-pay>` dialog so the cashier can ring up a cash sale in
+   *   one tap without leaving the POS view. This preserves the legacy
+   *   `quick-pos`/`retail-pos` UX after the unified-shell refactor.
+   */
   onCheckout(): void {
     if (!this.requireOpenSession()) return;
-    this.router.navigate(['/pos/checkout']);
+    if (this.isFoodAndBeverage()) {
+      this.router.navigate(['/pos/checkout']);
+      return;
+    }
+    this.showQuickPay.set(true);
   }
 
   /**

@@ -1,5 +1,12 @@
 @use '../../../../../styles/variables' as *;
 
+// =============================================================================
+// Cart Panel — base styles (opaque) + opt-in glassmorphism modifier.
+// The `.cart-panel--glass` modifier is added by the unified POS shell only.
+// `restaurant-hub` (legacy F&B shell) consumes the base and keeps the
+// solid white surface to avoid transparent-bleed. See AUDIT-052.
+// =============================================================================
+
 .cart-panel {
   display: flex;
   flex-direction: column;
@@ -84,16 +91,41 @@
   }
 
   &__empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: $space-3;
+    gap: $space-4;
     padding: $space-7 $space-4;
     color: $color-text-sub;
+  }
 
-    i { font-size: 3rem; opacity: 0.3; }
-    p { margin: 0; font-size: $font-size-base; }
+  &__empty-icon {
+    width: 88px;
+    height: 88px;
+    border-radius: $radius-pill;
+    background: $color-primary-light;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $space-3;
+
+    i {
+      font-size: 2.25rem;
+      color: $color-primary;
+      opacity: 0.85;
+    }
+  }
+
+  &__empty-title {
+    margin: 0 0 $space-2;
+    font-size: 17px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__empty-hint {
+    margin: 0;
+    max-width: 280px;
+    font-size: 14px;
+    color: $color-text-sub;
+    line-height: 1.45;
   }
 
   // -----------------------------------------------------------------------
@@ -620,5 +652,30 @@
     margin-left: auto;
     font-size: 11px;
     opacity: 0.7;
+  }
+}
+
+// =============================================================================
+// Glassmorphism modifier — opt-in via `[isGlassMode]="true"` from
+// `<app-unified-pos>`. Translucent surface with backdrop blur lifts the
+// cart over the page-bg gradient inside the chameleon shell. NEVER
+// applied inside `<app-restaurant-hub>` because the legacy F&B shell
+// has its own elevated container; double-blur produces visible drift.
+// Reference: docs/AUDIT-050-pos-enterprise-ux.md, AUDIT-052.
+// =============================================================================
+.cart-panel--glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+
+  border-left: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    -1px 0 0 $color-border-soft,
+    -8px 0 40px rgba(17, 24, 39, 0.04);
+
+  // Browsers without backdrop-filter (older Firefox, some embedded
+  // webviews) fall back to fully opaque white so contrast is preserved.
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: #FFFFFF;
   }
 }

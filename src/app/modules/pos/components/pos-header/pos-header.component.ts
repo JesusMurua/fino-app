@@ -28,6 +28,7 @@ import {
 import { FeatureKey, UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
 import { SyncStatusId } from '../../../../core/enums';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import { PosViewModeService, PosViewMode } from '../../../../core/services/pos-view-mode.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -107,6 +108,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   readonly syncService = inject(SyncService);
   readonly themeService = inject(ThemeService);
   private readonly tenantContext = inject(TenantContextService);
+  readonly posViewMode = inject(PosViewModeService);
 
   private readonly destroy$ = new Subject<void>();
 
@@ -318,6 +320,15 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   async enableNotifications(): Promise<void> {
     await this.notificationService.requestPermission();
     this.pwaService.notificationStatus.set(Notification.permission);
+  }
+
+  //#endregion
+
+  //#region View Mode Toggle (chameleon)
+
+  /** Sets the unified-pos view mode through the cross-component service */
+  setViewMode(mode: PosViewMode): void {
+    this.posViewMode.setViewMode(mode);
   }
 
   //#endregion

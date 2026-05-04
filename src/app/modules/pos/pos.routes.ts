@@ -13,10 +13,15 @@ export const posRoutes: Routes = [
         .then(m => m.RestaurantHubComponent),
   },
   {
-    path: 'quick-service',
+    // Unified "chameleon" POS — single shell for non-F&B macros (Retail,
+    // Counter, Quick, Services). View mode (keypad ↔ grid) is driven by
+    // `PosViewModeService` and seeded from the tenant's `PosExperience`.
+    // F&B remains on `/pos` (RestaurantHubComponent) — see AUDIT-052
+    // for the bounded-context rationale.
+    path: 'sell',
     loadComponent: () =>
-      import('./components/product-grid/product-grid.component')
-        .then(m => m.ProductGridComponent),
+      import('./components/unified-pos/unified-pos.component')
+        .then(m => m.UnifiedPosComponent),
   },
   {
     path: 'add-meal/:id',
@@ -31,24 +36,12 @@ export const posRoutes: Routes = [
         .then(m => m.CheckoutComponent),
   },
   {
-    path: 'retail',
-    loadComponent: () =>
-      import('./components/retail-pos/retail-pos.component')
-        .then(m => m.RetailPosComponent),
-  },
-  {
     path: 'waiter',
     canActivate: [featureGuard],
     data: { requiredFeature: FeatureKey.WaiterApp },
     loadComponent: () =>
       import('./components/waiter-pos/waiter-pos.component')
         .then(m => m.WaiterPosComponent),
-  },
-  {
-    path: 'quick',
-    loadComponent: () =>
-      import('./components/quick-pos/quick-pos.component')
-        .then(m => m.QuickPosComponent),
   },
   {
     path: 'error-config',

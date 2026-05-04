@@ -1,0 +1,246 @@
+@use '../../../../../styles/variables' as *;
+
+// =============================================================================
+// Keypad stage — calculator-style entry surface for the unified POS shell
+// =============================================================================
+
+.keypad-stage {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+  background: $color-bg-page;
+  height: 100%;
+  overflow-y: auto;
+
+  @media (max-width: 767px) {
+    padding: 14px 16px 12px;
+  }
+
+  &__title {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    @media (max-width: 479px) {
+      flex-direction: column;
+
+      .keypad-stage__price { width: 100%; }
+      .keypad-stage__field--price {
+        text-align: left;
+        padding-left: 22px;
+      }
+    }
+  }
+
+  &__field {
+    background: #{$color-bg-page};
+    border: 0.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 13px 14px;
+    font-size: 16px;
+    font-family: inherit;
+    color: $color-text-title;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &::placeholder { color: #94a3b8; }
+    &:focus { border-color: #{$color-primary}; }
+
+    &--desc { flex: 1; min-width: 0; }
+    &--price {
+      width: 100%;
+      padding-left: 22px;
+      text-align: right;
+      font-weight: 700;
+    }
+  }
+
+  &__price {
+    position: relative;
+    width: 110px;
+    flex-shrink: 0;
+
+    &-currency {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      font-weight: 700;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+  }
+
+  &__add {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    background: #{$color-primary};
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s;
+
+    &:active { opacity: 0.85; }
+
+    &--disabled,
+    &:disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+  }
+
+  &__section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  &__recent {
+    margin-top: 18px;
+  }
+
+  &__recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  &__recent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.12s, background 0.12s;
+
+    &:hover { border-color: #{$color-primary}; }
+    &:active { background: #{$color-primary-light}; }
+  }
+
+  &__recent-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #{$color-text-title};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__recent-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #{$color-text-title};
+  }
+
+  &__recent-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #{$color-primary-light};
+    color: #{$color-primary};
+    font-size: 11px;
+  }
+
+  &__catalog {
+    margin-top: 18px;
+  }
+
+  &__catalog-search {
+    position: relative;
+  }
+
+  &__catalog-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: #94a3b8;
+    pointer-events: none;
+  }
+
+  &__catalog-input {
+    width: 100%;
+    background: #{$color-bg-page};
+    border: 0.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 12px 12px 34px;
+    font-size: 13px;
+    font-family: inherit;
+    color: $color-text-title;
+    outline: none;
+    transition: border-color 0.15s;
+
+    &::placeholder { color: #94a3b8; }
+    &:focus { border-color: #{$color-primary}; }
+  }
+
+  &__catalog-results {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  &__catalog-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    background: #ffffff;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.12s, background 0.12s;
+
+    &:hover { border-color: #{$color-primary}; }
+    &:active { background: #{$color-primary-light}; }
+  }
+
+  &__catalog-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #{$color-text-title};
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__catalog-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #{$color-primary};
+  }
+}

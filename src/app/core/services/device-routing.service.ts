@@ -123,20 +123,22 @@ export class DeviceRoutingService {
 
     switch (experience) {
       case 'Restaurant': return '/pos';
-      case 'Retail':     return '/pos/retail';
-      // 'Counter' posExperience now maps to Quick Service (standard ProductGrid)
-      case 'Counter':    return '/pos/quick-service';
-      // 'Services' is the canonical value emitted by the backend for the
-      // Services macro; the offline catalog still emits 'Quick' for the
-      // same tenants, so we accept both as synonyms in this PR.
+      // All non-restaurant verticals now share the unified chameleon shell
+      // at `/pos/sell`. The shell defaults its view mode from the same
+      // `PosExperience` value via `PosViewModeService.initializeDefault`:
+      //   Retail / Counter        → grid
+      //   Services / Quick        → keypad
+      // The cashier can flip the toggle in the header at any time.
+      case 'Retail':
+      case 'Counter':
       case 'Quick':
-      case 'Services':   return '/pos/quick';
+      case 'Services':   return '/pos/sell';
       default:
         console.warn(
-          '[DeviceRouting] No POS experience resolved — falling back to /pos/quick. ' +
+          '[DeviceRouting] No POS experience resolved — falling back to /pos/sell. ' +
           'Check the branch config and JWT `macroCategory` claim for the active tenant.',
         );
-        return '/pos/quick';
+        return '/pos/sell';
     }
   }
 

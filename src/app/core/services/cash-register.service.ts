@@ -143,6 +143,27 @@ export class CashRegisterService implements OnDestroy {
         this.resetLinkedRegisterCache();
       }
     }, { allowSignalWrites: true });
+
+    // Auto-open the shift sidebar on the *transition* from no-session →
+    // open-session, so the cashier sees the freshly opened shift summary
+    // at a glance. Cold-boot guard: the very first time this effect
+    // runs (page load with a session already persisted) we suppress the
+    // pop so refreshing the page does not slap the panel open every
+    // time. Only subsequent transitions trigger the auto-open.
+    let initialSettled = false;
+    let prevHasSession = false;
+    effect(() => {
+      const has = this.hasOpenSession();
+      if (!initialSettled) {
+        initialSettled = true;
+        prevHasSession = has;
+        return;
+      }
+      if (!prevHasSession && has) {
+        this.openPanel();
+      }
+      prevHasSession = has;
+    }, { allowSignalWrites: true });
   }
 
   /**

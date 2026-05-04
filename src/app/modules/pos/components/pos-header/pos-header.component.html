@@ -22,6 +22,38 @@
   <!-- Right side: sync indicator + actions + user -->
   <div class="pos-header__right">
 
+    <!-- View-mode toggle (chameleon: keypad ↔ grid). Only visible when
+         the unified POS shell is mounted; restaurant-hub never sets the
+         visible flag because it owns its own omnichannel switcher. -->
+    @if (posViewMode.toggleVisible()) {
+      <div class="view-toggle" role="group" aria-label="Cambiar vista del POS">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="posViewMode.viewMode() === 'grid'"
+          [attr.aria-pressed]="posViewMode.viewMode() === 'grid'"
+          aria-label="Vista de catálogo"
+          pTooltip="Catálogo"
+          tooltipPosition="bottom"
+          (click)="setViewMode('grid')"
+        >
+          <i class="pi pi-th-large"></i>
+        </button>
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="posViewMode.viewMode() === 'keypad'"
+          [attr.aria-pressed]="posViewMode.viewMode() === 'keypad'"
+          aria-label="Vista de teclado"
+          pTooltip="Teclado"
+          tooltipPosition="bottom"
+          (click)="setViewMode('keypad')"
+        >
+          <i class="pi pi-calculator"></i>
+        </button>
+      </div>
+    }
+
     <!-- Shift status chip — interactive entry point to the shift panel.
          Always visible in both states so the cashier sees the till context
          at a glance and can pop the panel without hunting in a menu. -->

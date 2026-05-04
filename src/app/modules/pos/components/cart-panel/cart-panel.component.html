@@ -1,4 +1,4 @@
-<aside class="cart-panel">
+<aside class="cart-panel" [class.cart-panel--glass]="isGlassMode()">
 
   <!-- Header -->
   <div class="cart-panel__header">
@@ -113,9 +113,12 @@
       }
 
       @empty {
-        <div class="cart-panel__empty">
-          <i class="pi pi-shopping-cart"></i>
-          <p>La orden está vacía</p>
+        <div class="cart-panel__empty flex flex-column align-items-center justify-content-center text-center p-5">
+          <div class="cart-panel__empty-icon" aria-hidden="true">
+            <i class="pi pi-shopping-bag"></i>
+          </div>
+          <h3 class="cart-panel__empty-title">Aún no hay artículos en el carrito</h3>
+          <p class="cart-panel__empty-hint">Agrega un producto del catálogo o usa el teclado para empezar el cobro.</p>
         </div>
       }
     }
@@ -301,6 +304,15 @@
   <app-table-selector-dialog
     [(visible)]="showTableSelector"
     (tableSelected)="onTableSelected($event)"
+  />
+}
+
+<!-- Inline cash quick-pay dialog (non-F&B verticals only). The component
+     itself owns its visibility, but cart-panel toggles it via `showQuickPay`. -->
+@if (!isFoodAndBeverage()) {
+  <app-quick-pay
+    [visible]="showQuickPay()"
+    (visibleChange)="showQuickPay.set($event)"
   />
 }
 

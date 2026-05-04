@@ -47,13 +47,13 @@ All coding decisions must follow these documents in order of precedence:
 ### Backend
 - **.NET 9** — REST API
 - **Entity Framework Core** — ORM
-- **SQL Server / Azure SQL** — Database
+- **PostgreSQL** — Database (relational tax engine + multi-tenant schemas)
 - **JWT** — Authentication
 
 ### Infrastructure
 - **Azure Static Web Apps** — Frontend hosting
 - **Azure App Service B1** — Backend hosting (~$13 USD/month)
-- **Azure SQL Elastic Pool** — Database
+- **PostgreSQL** — Database (managed)
 
 ---
 
@@ -69,11 +69,17 @@ src/
 │   ├── modules/
 │   │   └── pos/             # Main POS feature module (lazy-loaded)
 │   │       ├── components/
-│   │       │   ├── product-grid/     # Touch product catalog
-│   │       │   ├── product-card/     # Single product tile
-│   │       │   ├── product-detail/   # Size + extras customization
-│   │       │   ├── cart-panel/       # Order summary sidebar
-│   │       │   └── checkout/         # Payment + ticket
+│   │       │   ├── unified-pos/         # Chameleon shell (Retail/Counter/Quick/Services)
+│   │       │   ├── keypad-stage/        # Free-form calculator stage of the chameleon
+│   │       │   ├── product-grid-inner/  # Catalog stage of the chameleon (no shell)
+│   │       │   ├── product-grid/        # Legacy full shell — used by RestaurantHub takeout
+│   │       │   ├── product-card/        # Single product tile
+│   │       │   ├── product-detail/      # Size + extras customization
+│   │       │   ├── cart-panel/          # Shared order sidebar (F&B branched, opt-in glass)
+│   │       │   ├── quick-pay/           # Inline cash dialog for non-F&B verticals
+│   │       │   └── checkout/            # Full payment page (F&B flow)
+│   │       ├── pages/
+│   │       │   └── restaurant-hub/      # F&B omni-channel shell (tables/takeout/delivery)
 │   │       └── pos.routes.ts
 │   ├── shared/
 │   │   └── components/      # Reusable UI components
@@ -104,10 +110,18 @@ User action → IndexedDB (Dexie.js) → UI update
 
 ### State Management
 No NgRx. Keep it simple:
-- **Cart state:** `CartService` with `BehaviorSubject<CartItem[]>`
+- **Cart state:** `CartService` with `signal<CartItem[]>` (single source of truth, persisted to IndexedDB)
 - **Product catalog:** `ProductService` with signals
 - **Sync state:** `SyncService` tracks pending offline orders
 - **Auth state:** `AuthService` with JWT in localStorage
+- **POS view mode:** `PosViewModeService` toggles keypad ↔ grid in the Chameleon shell
+
+### POS Shells (Bounded Contexts)
+The POS module contains **two distinct shells by design** — never fuse them:
+- **Fast-Lane POS** at `/pos/sell` (`UnifiedPosComponent`) — Chameleon for **Retail / Counter / Quick / Services**. Single transient cart, view mode toggles between keypad calculator and product grid.
+- **Full-Service F&B** at `/pos` (`RestaurantHubComponent`) — F&B omni-channel hub with mesas / takeout / delivery. N concurrent open orders with kitchen lifecycle.
+
+Rationale and invariants documented in [docs/AUDIT-052-restaurant-hub-chameleon.md](docs/AUDIT-052-restaurant-hub-chameleon.md).
 
 ### Component Pattern
 All new components must be **standalone**:

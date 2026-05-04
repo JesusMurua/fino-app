@@ -10,7 +10,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
-import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../data/pos.fixture';
 import { ConfigService } from '../../../../core/services/config.service';
 import { CartPanelComponent } from '../cart-panel/cart-panel.component';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
@@ -96,12 +95,6 @@ export class ProductGridComponent implements OnInit, OnDestroy {
   //#region Lifecycle
   async ngOnInit(): Promise<void> {
     await this.productService.loadCatalog();
-
-    // Fallback: seed fixtures only if both API and Dexie returned empty
-    if (this.productService.products().length === 0) {
-      await this.productService.seedCatalog(SEED_PRODUCTS, SEED_CATEGORIES);
-    }
-
     this.startScannerListener();
   }
 
