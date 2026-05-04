@@ -6,7 +6,7 @@
     <input
       #descriptionInput
       type="text"
-      placeholder="¿Qué vendiste?"
+      placeholder="Concepto y monto"
       class="keypad-stage__field keypad-stage__field--desc"
       [value]="quickDescription()"
       (input)="onDescriptionInput($event)"
@@ -63,7 +63,7 @@
         <i class="pi pi-search keypad-stage__catalog-icon"></i>
         <input
           type="text"
-          placeholder="Buscar producto del catálogo..."
+          placeholder="Buscar en catálogo..."
           class="keypad-stage__catalog-input"
           [value]="catalogSearch()"
           (input)="onCatalogSearchInput($event)"

@@ -1,8 +1,10 @@
 import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { MessageService } from 'primeng/api';
 
 import { Product } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
 import { ProductCardComponent, ProductCardViewMode } from '../product-card/product-card.component';
@@ -56,6 +58,8 @@ export class ProductGridInnerComponent implements OnInit {
   //#region Constructor
   constructor(
     private readonly productService: ProductService,
+    private readonly cartService: CartService,
+    private readonly messageService: MessageService,
     private readonly router: Router,
   ) {
     effect(() => {
@@ -105,12 +109,33 @@ export class ProductGridInnerComponent implements OnInit {
   //#region Product Methods
 
   /**
-   * Navigates to the product detail page for customization. Products
-   * without sizes or extras still go to the detail screen so the cashier
-   * can review before adding — matches the legacy `product-grid` UX.
+   * Routes the product based on whether it requires customization (FDD-024).
+   * Products with sizes or modifier groups navigate to the detail page so
+   * the cashier can configure them; products with neither are added to the
+   * cart directly to save taps in non-F&B verticals (memberships, simple
+   * retail items, services). Mirrors `UnifiedPosComponent.handleBarcodeScan`.
    */
   onProductSelected(product: Product): void {
-    this.router.navigate(['/pos/add-meal', product.id]);
+    if (this.productRequiresDetailPage(product)) {
+      this.router.navigate(['/pos/add-meal', product.id]);
+      return;
+    }
+    this.cartService.addItem(product);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Producto agregado',
+      detail: product.name,
+      life: 2000,
+    });
+  }
+
+  /**
+   * Returns true when a product needs the detail page to be configured —
+   * either it has size variants or at least one non-empty modifier group.
+   */
+  private productRequiresDetailPage(product: Product): boolean {
+    return product.sizes.length > 0
+      || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
   }
 
   //#endregion

@@ -80,19 +80,21 @@
         }
       }
 
-      <!-- Notes -->
-      <section class="detail-section">
-        <h2 class="detail-section__title">Notas para cocina <span class="detail-section__optional">(opcional)</span></h2>
-        <textarea
-          formControlName="notes"
-          pInputTextarea
-          [autoResize]="true"
-          placeholder="Sin cebolla, extra picante…"
-          class="detail-notes"
-          id="notes"
-          rows="2"
-        ></textarea>
-      </section>
+      <!-- Notes — kitchen-bound tenants only (FDD-024) -->
+      @if (showsKitchenNotes()) {
+        <section class="detail-section">
+          <h2 class="detail-section__title">Notas para cocina <span class="detail-section__optional">(opcional)</span></h2>
+          <textarea
+            formControlName="notes"
+            pInputTextarea
+            [autoResize]="true"
+            placeholder="Sin cebolla, extra picante…"
+            class="detail-notes"
+            id="notes"
+            rows="2"
+          ></textarea>
+        </section>
+      }
 
     </form>
 

@@ -170,7 +170,7 @@ export class ProductGridComponent implements OnInit, OnDestroy {
     this.messageService.add({
       severity: 'warn',
       summary: 'Código no registrado',
-      detail: `"${code}" — ve al catálogo para asignarlo a un producto`,
+      detail: `"${code}" — regístralo en el catálogo.`,
       life: 5000,
     });
   }
@@ -180,18 +180,26 @@ export class ProductGridComponent implements OnInit, OnDestroy {
   //#region Product Methods
 
   /**
-   * Navigates to the product detail page for customization.
-   * Products without sizes or extras are added directly to the cart.
+   * Routes the product based on whether it requires customization (FDD-024).
+   * Products with sizes or modifier groups open the detail page; products
+   * with neither are added to the cart directly to save taps. Previously
+   * both branches navigated to the detail page (dead conditional).
    */
   onProductSelected(product: Product): void {
     const hasOptions = product.sizes.length > 0
-            || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
+      || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
 
     if (hasOptions) {
       this.router.navigate(['/pos/add-meal', product.id]);
-    } else {
-      this.router.navigate(['/pos/add-meal', product.id]);
+      return;
     }
+    this.cartService.addItem(product);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Producto agregado',
+      detail: product.name,
+      life: 2000,
+    });
   }
   //#endregion
 
