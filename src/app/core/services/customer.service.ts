@@ -73,8 +73,22 @@ export class CustomerService {
   }
 
   /**
+   * Lazy-hydrates the cache (signal + Dexie) the first time it is
+   * needed. Idempotent — returns immediately when the in-memory
+   * signal already carries customers. Used as a guard at the entry
+   * points (`searchByPhoneOrName`) so consumers outside the admin
+   * shell (POS, reception) do not depend on someone else having
+   * called `loadCustomers()` first. Necessary after FDD-026 because
+   * the v26 Dexie upgrade clears the customers store.
+   */
+  async ensureLoaded(): Promise<void> {
+    if (this.customers().length > 0) return;
+    await this.loadCustomers();
+  }
+
+  /**
    * Searches customers by phone prefix or name substring.
-   * 100% offline — queries Dexie only.
+   * Dexie-backed — auto-hydrates the cache on first call.
    * @param query Search string (phone if numeric, name if text)
    */
   async searchByPhoneOrName(query: string): Promise<Customer[]> {
@@ -82,6 +96,12 @@ export class CustomerService {
       this.searchResults.set([]);
       return [];
     }
+
+    // Self-heal when Dexie is empty (e.g. fresh install or post v26
+    // schema upgrade) — without this, the POS search dropdown stays
+    // empty until the cashier visits an admin route that triggers
+    // loadCustomers().
+    await this.ensureLoaded();
 
     const branchId = this.authService.branchId;
     const trimmed = query.trim();
