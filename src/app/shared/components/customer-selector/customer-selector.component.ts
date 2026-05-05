@@ -1,17 +1,27 @@
 import { Component, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { CreateCustomerRequest, Customer } from '../../../core/models/customer.model';
 import { CustomerService } from '../../../core/services/customer.service';
+import { CustomerNamePipe } from '../../pipes/customer-name.pipe';
 import { PricePipe } from '../../pipes/price.pipe';
 
+/**
+ * Shared customer search + quick-create surface.
+ *
+ * Toast surface dependency: an ancestor must mount `<p-toast />` for the
+ * `MessageService` errors to be visible. Known consumers (`UnifiedPosComponent`)
+ * already provide it; new consumers must satisfy the same contract.
+ */
 @Component({
   selector: 'app-customer-selector',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, InputTextModule, PricePipe],
+  imports: [FormsModule, ButtonModule, DialogModule, InputTextModule, CustomerNamePipe, PricePipe],
   templateUrl: './customer-selector.component.html',
   styleUrl: './customer-selector.component.scss',
 })
@@ -19,6 +29,7 @@ export class CustomerSelectorComponent {
 
   //#region Properties
   private readonly customerService = inject(CustomerService);
+  private readonly messageService = inject(MessageService);
 
   /** The selected customer (two-way binding) */
   readonly selectedCustomer = model<Customer | null>(null);
@@ -41,7 +52,7 @@ export class CustomerSelectorComponent {
   // ---- Quick-create dialog ----
   readonly showCreateDialog = signal(false);
   readonly isSavingNew = signal(false);
-  createForm: CreateCustomerRequest = { name: '', phone: '' };
+  createForm: CreateCustomerRequest = { firstName: '', lastName: '', phone: '' };
 
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   //#endregion
@@ -96,26 +107,56 @@ export class CustomerSelectorComponent {
 
   //#region Quick-Create
 
-  /** Opens the quick-create dialog */
+  /**
+   * Opens the quick-create dialog. Seeds `firstName` with the trimmed
+   * search query verbatim — no string-splitting heuristic — so the
+   * cashier can move surnames to `lastName` manually if needed.
+   */
   openCreate(): void {
-    this.createForm = { name: this.query().trim(), phone: '' };
+    this.createForm = { firstName: this.query().trim(), lastName: '', phone: '' };
     this.showCreateDialog.set(true);
   }
 
-  /** Creates a new customer and auto-selects them */
+  /**
+   * Creates a new customer and auto-selects them. Failures surface as
+   * a `MessageService` toast (severity `error`) and the dialog stays
+   * open with values preserved so the cashier can correct and retry.
+   */
   async saveNewCustomer(): Promise<void> {
-    if (!this.createForm.name.trim() || !this.createForm.phone.trim()) return;
+    if (!this.createForm.firstName.trim() || !this.createForm.phone.trim()) return;
 
     this.isSavingNew.set(true);
     try {
       const customer = await this.customerService.createCustomer(this.createForm);
       this.selectResult(customer);
       this.showCreateDialog.set(false);
-    } catch {
-      // Error handled by CustomerService toast
+    } catch (err) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo crear el cliente',
+        detail: this.extractErrorMessage(err),
+        life: 5000,
+      });
     } finally {
       this.isSavingNew.set(false);
     }
+  }
+
+  /**
+   * Defensive extraction of a user-facing error message from an HTTP
+   * rejection. Falls back to a generic prompt when the backend does
+   * not provide a structured message.
+   */
+  private extractErrorMessage(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      const body = err.error as { message?: string; title?: string } | string | null;
+      if (typeof body === 'string' && body.trim().length > 0) return body;
+      if (body && typeof body === 'object') {
+        if (body.message) return body.message;
+        if (body.title) return body.title;
+      }
+    }
+    return 'Revisa los datos e inténtalo de nuevo.';
   }
 
   //#endregion

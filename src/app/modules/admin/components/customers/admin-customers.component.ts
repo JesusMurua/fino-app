@@ -12,6 +12,7 @@ import { MessageService } from 'primeng/api';
 
 import { CreateCustomerRequest, Customer } from '../../../../core/models';
 import { CustomerService } from '../../../../core/services/customer.service';
+import { CustomerNamePipe, formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 /** Lightweight order row returned by the customer orders endpoint */
@@ -35,6 +36,7 @@ interface CustomerOrderRow {
     RadioButtonModule,
     SidebarModule,
     TableModule,
+    CustomerNamePipe,
     PricePipe,
   ],
   templateUrl: './admin-customers.component.html',
@@ -59,7 +61,7 @@ export class AdminCustomersComponent implements OnInit {
     const all = this.customers();
     if (!q) return all;
     return all.filter(c =>
-      c.name.toLowerCase().includes(q)
+      formatCustomerName(c).toLowerCase().includes(q)
       || c.phone.includes(q)
       || (c.email?.toLowerCase().includes(q)),
     );
@@ -108,7 +110,7 @@ export class AdminCustomersComponent implements OnInit {
   }
 
   async saveCustomer(): Promise<void> {
-    if (!this.createForm.name.trim() || !this.createForm.phone.trim()) return;
+    if (!this.createForm.firstName.trim() || !this.createForm.phone.trim()) return;
 
     this.isSaving.set(true);
     try {
@@ -255,7 +257,7 @@ export class AdminCustomersComponent implements OnInit {
   }
 
   private emptyCreateForm(): CreateCustomerRequest {
-    return { name: '', phone: '', email: undefined, notes: undefined, creditLimitCents: 0 };
+    return { firstName: '', lastName: '', phone: '', email: undefined, notes: undefined, creditLimitCents: 0 };
   }
 
   //#endregion

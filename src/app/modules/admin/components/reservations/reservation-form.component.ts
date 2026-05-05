@@ -11,6 +11,7 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { Customer, Reservation, RestaurantTable } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import { TableService } from '../../../../core/services/table.service';
 import { ZoneService } from '../../../../core/services/zone.service';
@@ -245,7 +246,7 @@ export class ReservationFormComponent implements OnChanges {
     this.selectedCustomer.set(customer);
     if (customer) {
       this.form.patchValue({
-        guestName: customer.name,
+        guestName: formatCustomerName(customer),
         guestPhone: customer.phone,
       });
     }

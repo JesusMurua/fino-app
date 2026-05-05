@@ -40,8 +40,8 @@
     >
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="name" style="min-width: 180px">
-            Nombre <p-sortIcon field="name" />
+          <th pSortableColumn="firstName" style="min-width: 180px">
+            Nombre <p-sortIcon field="firstName" />
           </th>
           <th style="min-width: 140px">Teléfono</th>
           <th style="min-width: 100px">Puntos</th>
@@ -55,9 +55,9 @@
         <tr class="cursor-pointer" (click)="onRowClick(customer)">
           <td>
             <div class="customer-name-cell">
-              <span class="customer-name-cell__avatar">{{ customer.name.charAt(0) }}</span>
+              <span class="customer-name-cell__avatar">{{ customer.firstName.charAt(0) }}</span>
               <div class="customer-name-cell__info">
-                <span class="customer-name-cell__name">{{ customer.name }}</span>
+                <span class="customer-name-cell__name">{{ customer | customerName }}</span>
                 @if (customer.email) {
                   <span class="customer-name-cell__email">{{ customer.email }}</span>
                 }
@@ -112,13 +112,24 @@
 >
   <div class="customer-form">
     <div class="customer-form__field">
-      <label for="cust-name">Nombre completo *</label>
+      <label for="cust-first-name">Nombre(s) *</label>
       <input
-        id="cust-name"
+        id="cust-first-name"
         type="text"
         pInputText
-        [(ngModel)]="createForm.name"
-        placeholder="Ej. Juan Pérez"
+        aria-required="true"
+        [(ngModel)]="createForm.firstName"
+        class="customer-form__input"
+      />
+    </div>
+
+    <div class="customer-form__field">
+      <label for="cust-last-name">Apellido(s)</label>
+      <input
+        id="cust-last-name"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.lastName"
         class="customer-form__input"
       />
     </div>
@@ -129,8 +140,8 @@
         id="cust-phone"
         type="tel"
         pInputText
+        aria-required="true"
         [(ngModel)]="createForm.phone"
-        placeholder="Ej. 6671234567"
         maxlength="10"
         class="customer-form__input"
       />
@@ -173,7 +184,7 @@
       <button
         type="button"
         class="customer-form__btn customer-form__btn--primary"
-        [disabled]="isSaving() || !createForm.name.trim() || !createForm.phone.trim()"
+        [disabled]="isSaving() || !createForm.firstName.trim() || !createForm.phone.trim()"
         (click)="saveCustomer()"
       >
         @if (isSaving()) {
@@ -196,9 +207,9 @@
 
     <!-- Drawer header -->
     <div class="drawer-header">
-      <span class="drawer-header__avatar">{{ c.name.charAt(0) }}</span>
+      <span class="drawer-header__avatar">{{ c.firstName.charAt(0) }}</span>
       <div class="drawer-header__info">
-        <h2 class="drawer-header__name">{{ c.name }}</h2>
+        <h2 class="drawer-header__name">{{ c | customerName }}</h2>
         <span class="drawer-header__phone">
           <i class="pi pi-phone"></i> {{ formatPhone(c.phone) }}
         </span>

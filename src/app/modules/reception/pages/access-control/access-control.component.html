@@ -40,7 +40,7 @@
               class="access-control__result"
               (click)="selectCustomer(customer)"
             >
-              <span class="access-control__result-name">{{ customer.name }}</span>
+              <span class="access-control__result-name">{{ customer | customerName }}</span>
               <span class="access-control__result-phone">{{ customer.phone }}</span>
             </button>
           </li>
@@ -60,7 +60,7 @@
         <i class="pi pi-check-circle access-control__icon"></i>
         <h1 class="access-control__title">ACCESO PERMITIDO</h1>
         @if (selectedCustomer(); as c) {
-          <p class="access-control__customer">{{ c.name }}</p>
+          <p class="access-control__customer">{{ c | customerName }}</p>
           @if (c.membershipValidUntil) {
             <p class="access-control__expiry">
               Vigente hasta el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}
@@ -75,7 +75,7 @@
         <i class="pi pi-times-circle access-control__icon"></i>
         <h1 class="access-control__title">MEMBRESÍA VENCIDA</h1>
         @if (selectedCustomer(); as c) {
-          <p class="access-control__customer">{{ c.name }}</p>
+          <p class="access-control__customer">{{ c | customerName }}</p>
           @if (c.membershipValidUntil) {
             <p class="access-control__expiry">
               Venció el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}

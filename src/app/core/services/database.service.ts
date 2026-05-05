@@ -258,6 +258,16 @@ export class DatabaseService extends Dexie {
     this.version(25).stores({
       taxes: 'id, code, isDefault',
     });
+
+    // ─── v26 ── Customer model split (FDD-026)
+    // The legacy `name` index is incompatible with the new `firstName` /
+    // `lastName` shape. We drop the cached customers and let
+    // `CustomerService.loadCustomers()` rehydrate from the API on next
+    // mount. No in-place migration — the structural mismatch with the
+    // backend means cached rows would be invalid in either schema.
+    this.version(26).stores({
+      customers: '++id, branchId, phone, firstName, isActive',
+    }).upgrade(tx => tx.table('customers').clear());
   }
   //#endregion
 

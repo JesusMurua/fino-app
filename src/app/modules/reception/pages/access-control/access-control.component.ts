@@ -8,6 +8,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { Customer } from '../../../../core/models/customer.model';
 import { CustomerService } from '../../../../core/services/customer.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
+import { CustomerNamePipe } from '../../../../shared/pipes/customer-name.pipe';
 
 /** Discrete states surfaced by the giant status banner */
 type AccessStatus = 'IDLE' | 'VALID' | 'EXPIRED' | 'NOT_FOUND';
@@ -28,7 +29,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 @Component({
   selector: 'app-access-control',
   standalone: true,
-  imports: [DatePipe, FormsModule, ButtonModule, InputTextModule],
+  imports: [DatePipe, FormsModule, ButtonModule, InputTextModule, CustomerNamePipe],
   templateUrl: './access-control.component.html',
   styleUrl: './access-control.component.scss',
 })

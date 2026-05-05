@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { CreateCustomerRequest, Customer } from '../models/customer.model';
+import { formatCustomerName } from '../../shared/pipes/customer-name.pipe';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -46,13 +47,15 @@ export class CustomerService {
     this.isLoading.set(true);
     const branchId = this.authService.branchId;
 
-    // Step 1 — Serve from Dexie immediately
+    // Step 1 — Serve from Dexie immediately. Sort is JS-side because
+    // the indexed firstName field alone does not produce the same order
+    // as the rendered display name (`firstName lastName`).
     const local = await this.db.customers
       .where('branchId').equals(branchId)
       .filter(c => c.isActive)
-      .sortBy('name');
+      .toArray();
     if (local.length > 0) {
-      this.customers.set(local);
+      this.customers.set(local.sort(this.byDisplayName));
     }
 
     // Step 2 — Fetch from API in background
@@ -61,7 +64,7 @@ export class CustomerService {
         this.api.get<Customer[]>('/customers'),
       );
       await this.db.customers.bulkPut(remote);
-      this.customers.set(remote.filter(c => c.isActive));
+      this.customers.set(remote.filter(c => c.isActive).sort(this.byDisplayName));
     } catch {
       console.warn('[CustomerService] API unreachable — using Dexie cache');
     } finally {
@@ -95,7 +98,7 @@ export class CustomerService {
       const lower = trimmed.toLowerCase();
       results = await this.db.customers
         .where('branchId').equals(branchId)
-        .filter(c => c.isActive && c.name.toLowerCase().includes(lower))
+        .filter(c => c.isActive && formatCustomerName(c).toLowerCase().includes(lower))
         .limit(10)
         .toArray();
     }
@@ -113,7 +116,7 @@ export class CustomerService {
       this.api.post<Customer>('/customers', data),
     );
     await this.db.customers.put(customer);
-    this.customers.update(arr => [...arr, customer].sort((a, b) => a.name.localeCompare(b.name)));
+    this.customers.update(arr => [...arr, customer].sort(this.byDisplayName));
     return customer;
   }
 
@@ -201,7 +204,7 @@ export class CustomerService {
 
     this.customers.update(arr => {
       const idx = arr.findIndex(c => c.id === customerId);
-      if (idx === -1) return [...arr, fresh].sort((a, b) => a.name.localeCompare(b.name));
+      if (idx === -1) return [...arr, fresh].sort(this.byDisplayName);
       const next = arr.slice();
       next[idx] = fresh;
       return next;
@@ -215,6 +218,14 @@ export class CustomerService {
   //#endregion
 
   //#region Private Helpers
+
+  /**
+   * Comparator that orders customers by their full display name (first +
+   * last) using locale-aware comparison. Centralised so every consumer
+   * keeps the same ordering after the model split.
+   */
+  private readonly byDisplayName = (a: Customer, b: Customer): number =>
+    formatCustomerName(a).localeCompare(formatCustomerName(b));
 
   /** Refreshes a single customer from API and updates local state */
   private async refreshCustomer(id: number): Promise<void> {

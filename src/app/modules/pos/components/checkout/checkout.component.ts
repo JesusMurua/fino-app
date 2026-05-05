@@ -10,6 +10,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
 
 import { environment } from '../../../../../environments/environment';
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
@@ -724,7 +725,7 @@ export class CheckoutComponent implements OnInit {
           branchId: this.authService.branchId,
           cashRegisterSessionId: activeSessionId,
           customerId: this.customerService.selectedCustomer()?.id,
-          customerName: this.customerService.selectedCustomer()?.name,
+          customerName: formatCustomerName(this.customerService.selectedCustomer()) || undefined,
           tableId: this.tableId() ?? undefined,
           tableName: this.tableName() ?? undefined,
         };

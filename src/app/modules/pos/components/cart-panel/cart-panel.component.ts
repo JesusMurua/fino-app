@@ -8,6 +8,7 @@ import { MessageService } from 'primeng/api';
 
 import { InputTextModule } from 'primeng/inputtext';
 
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { CartItem, Customer, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
 import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
@@ -273,7 +274,7 @@ export class CartPanelComponent implements OnInit {
       tableId: table.tableId,
       tableName: table.tableName,
       customerId: this.customerService.selectedCustomer()?.id,
-      customerName: this.customerService.selectedCustomer()?.name,
+      customerName: formatCustomerName(this.customerService.selectedCustomer()) || undefined,
       createdAt: new Date(),
       branchId: this.authService.branchId,
       cashRegisterSessionId: sessionId,
@@ -463,7 +464,7 @@ export class CartPanelComponent implements OnInit {
     const id = this.getBeneficiaryId(item);
     if (id === null) return null;
     const found = this.customerService.customers().find(c => c.id === id);
-    return found?.name ?? null;
+    return found ? formatCustomerName(found) : null;
   }
 
   /** Opens the beneficiary picker dialog for the given cart line. */
