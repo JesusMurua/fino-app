@@ -45,13 +45,13 @@ export class CustomerService {
    */
   async loadCustomers(): Promise<void> {
     this.isLoading.set(true);
-    const branchId = this.authService.branchId;
+    const businessId = this.authService.businessId;
 
     // Step 1 — Serve from Dexie immediately. Sort is JS-side because
     // the indexed firstName field alone does not produce the same order
     // as the rendered display name (`firstName lastName`).
     const local = await this.db.customers
-      .where('branchId').equals(branchId)
+      .where('businessId').equals(businessId)
       .filter(c => c.isActive)
       .toArray();
     if (local.length > 0) {
@@ -103,7 +103,7 @@ export class CustomerService {
     // loadCustomers().
     await this.ensureLoaded();
 
-    const branchId = this.authService.branchId;
+    const businessId = this.authService.businessId;
     const trimmed = query.trim();
     const isNumeric = /^\d+$/.test(trimmed);
 
@@ -111,13 +111,13 @@ export class CustomerService {
     if (isNumeric) {
       results = await this.db.customers
         .where('phone').startsWith(trimmed)
-        .filter(c => c.branchId === branchId && c.isActive)
+        .filter(c => c.businessId === businessId && c.isActive)
         .limit(10)
         .toArray();
     } else {
       const lower = trimmed.toLowerCase();
       results = await this.db.customers
-        .where('branchId').equals(branchId)
+        .where('businessId').equals(businessId)
         .filter(c => c.isActive && formatCustomerName(c).toLowerCase().includes(lower))
         .limit(10)
         .toArray();

@@ -195,6 +195,16 @@ export class AuthService {
   }
 
   /**
+   * Returns the current business (tenant) ID.
+   * Reads from the cached `currentUser` signal — 0 before login. Used by
+   * services that scope offline caches to the business level (e.g.
+   * customers, which the API returns as business-wide, not branch-scoped).
+   */
+  get businessId(): number {
+    return this.currentUser()?.businessId ?? 0;
+  }
+
+  /**
    * Sets the active branch locally and persists it.
    * Components with effect() on activeBranchId will reload automatically.
    * @param branchId Branch ID to activate

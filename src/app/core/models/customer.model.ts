@@ -4,7 +4,12 @@
  */
 export interface Customer {
   id: number;
-  branchId: number;
+  /**
+   * Business (tenant) the customer belongs to. Customers are
+   * business-wide, not branch-scoped — `GET /customers` returns every
+   * customer of the authenticated business across all branches.
+   */
+  businessId: number;
   /** First name — required. Matches the backend `firstName` field. */
   firstName: string;
   /** Last name — optional. Empty when the customer registered with a single name. */

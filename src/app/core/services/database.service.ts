@@ -268,6 +268,18 @@ export class DatabaseService extends Dexie {
     this.version(26).stores({
       customers: '++id, branchId, phone, firstName, isActive',
     }).upgrade(tx => tx.table('customers').clear());
+
+    // ─── v27 ── Customer scope correction (branchId → businessId)
+    // The backend returns customers business-wide (the `businessId`
+    // field), not branch-scoped. The previous `branchId` index never
+    // matched any record because the API never sent that field. We
+    // swap the index to `businessId` so Dexie queries finally hit.
+    // No `clear()` is required — every record currently in the store
+    // came from the API after v26 cleared, so they all already carry
+    // `businessId` and only need re-indexing under the new schema.
+    this.version(27).stores({
+      customers: '++id, businessId, phone, firstName, isActive',
+    });
   }
   //#endregion
 
