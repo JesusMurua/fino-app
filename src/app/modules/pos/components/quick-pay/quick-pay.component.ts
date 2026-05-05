@@ -196,7 +196,10 @@ export class QuickPayComponent {
         life: 3000,
       });
 
-      await this.cartService.clearCart();
+      // Centralised cleanup mirrors the F&B checkout reset so the
+      // customer, applied coupon, and order context cannot leak into
+      // the next transaction (see CartService.resetTransactionState).
+      await this.cartService.resetTransactionState();
       this.resetReceived();
       this.visibleChange.emit(false);
     } finally {

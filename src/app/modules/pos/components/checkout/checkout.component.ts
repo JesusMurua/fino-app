@@ -777,12 +777,12 @@ export class CheckoutComponent implements OnInit {
    * leaks into the next customer's order.
    */
   private async resetCheckoutState(): Promise<void> {
-    await this.cartService.clearCart();
-    this.promotionService.clearCoupon();
-    this.customerService.clearSelection();
-    this.orderContextService.clearAddingToOrder();
-    // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
-    // NOT removed here so the table release prompt still works on the confirmed step.
+    // Delegates to the centralised cleanup on CartService so every
+    // payment surface stays in sync. Note: activeTable is cleaned by
+    // releaseTable()/keepTable() — intentionally not part of the
+    // centralised reset so the F&B table-release prompt still works
+    // on the confirmed step.
+    await this.cartService.resetTransactionState();
   }
 
   /** Delegates to the centralized session guard in CashRegisterService */

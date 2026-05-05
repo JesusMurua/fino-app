@@ -2,7 +2,9 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { calculateItemTax } from '../utils/tax.utils';
+import { CustomerService } from './customer.service';
 import { DatabaseService } from './database.service';
+import { OrderContextService } from './order-context.service';
 import { ProductService } from './product.service';
 import { PromotionService } from './promotion.service';
 import { TenantContextService } from './tenant-context.service';
@@ -83,6 +85,8 @@ export class CartService {
     private readonly db: DatabaseService,
     private readonly productService: ProductService,
     private readonly promotionService: PromotionService,
+    private readonly customerService: CustomerService,
+    private readonly orderContextService: OrderContextService,
     private readonly tenantContext: TenantContextService,
   ) {
     this.loadFromDb();
@@ -225,6 +229,35 @@ export class CartService {
   async clearCart(): Promise<void> {
     await this.db.cart.clear();
     this.reevaluatePromotions([]);
+  }
+
+  /**
+   * Centralised post-success cleanup for any payment surface (F&B
+   * checkout page, inline quick-pay dialog, future surfaces). Resets
+   * every transient slice that belongs to the just-completed sale so
+   * the next order starts from a blank state.
+   *
+   * Cleans:
+   *   - cart items (cart items + promotion evaluation)
+   *   - applied coupon
+   *   - selected customer
+   *   - "adding to existing order" context (F&B-specific, no-op for
+   *     non-F&B verticals where the flag is already null)
+   *
+   * Does NOT clean:
+   *   - the active table (its lifecycle is owned by the F&B release /
+   *     keep prompts shown after confirmation)
+   *
+   * Called from `CheckoutComponent.resetCheckoutState` and
+   * `QuickPayComponent` post-success block. Centralisation prevents
+   * the asymmetric leakage where quick-pay used to keep the customer
+   * and coupon attached to the next sale.
+   */
+  async resetTransactionState(): Promise<void> {
+    await this.clearCart();
+    this.promotionService.clearCoupon();
+    this.customerService.clearSelection();
+    this.orderContextService.clearAddingToOrder();
   }
 
   /**
