@@ -5,23 +5,23 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { PaginatorModule, PaginatorState } from 'primeng/paginator';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { SidebarModule } from 'primeng/sidebar';
 import { TableModule } from 'primeng/table';
 import { MessageService } from 'primeng/api';
 
-import { CreateCustomerRequest, Customer } from '../../../../core/models';
+import {
+  CreateCustomerRequest,
+  Customer,
+  CustomerMembership,
+  CustomerOrderRowDto,
+  CustomerStatsDto,
+  MembershipStatus,
+} from '../../../../core/models';
 import { CustomerService } from '../../../../core/services/customer.service';
 import { CustomerNamePipe, formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-
-/** Lightweight order row returned by the customer orders endpoint */
-interface CustomerOrderRow {
-  orderNumber: number;
-  createdAt: string;
-  totalCents: number;
-  paymentMethod: string;
-}
 
 @Component({
   selector: 'app-admin-customers',
@@ -33,6 +33,7 @@ interface CustomerOrderRow {
     DialogModule,
     InputTextModule,
     InputNumberModule,
+    PaginatorModule,
     RadioButtonModule,
     SidebarModule,
     TableModule,
@@ -78,8 +79,54 @@ export class AdminCustomersComponent implements OnInit {
 
   readonly drawerCustomer = signal<Customer | null>(null);
   readonly showDrawer = signal(false);
-  readonly customerOrders = signal<CustomerOrderRow[]>([]);
+
+  // Async sections — each section has independent data + loading signals
+  readonly customerStats = signal<CustomerStatsDto | null>(null);
+  readonly customerMemberships = signal<CustomerMembership[]>([]);
+  readonly customerOrders = signal<CustomerOrderRowDto[]>([]);
+
+  readonly isLoadingStats = signal(false);
+  readonly isLoadingMemberships = signal(false);
   readonly isLoadingOrders = signal(false);
+
+  // Pagination — order history page state, mirrors backend `PageData<T>`
+  readonly ordersCurrentPage = signal<number>(1);
+  readonly ordersTotalRecords = signal<number>(0);
+  private static readonly ORDERS_PAGE_SIZE = 10;
+
+  /**
+   * Membership cards rendered in the drawer, sorted per FDD-027 §4.2:
+   *   1. Active pinned to the top
+   *   2. Frozen next
+   *   3. Everything else (Expired / Cancelled), each tier sorted by
+   *      `validUntil` desc as a tiebreaker.
+   * Backend only sorts by `validUntil` desc, so the status pinning is
+   * applied client-side.
+   */
+  readonly sortedMemberships = computed<CustomerMembership[]>(() => {
+    const order = (s: MembershipStatus): number =>
+      s === MembershipStatus.Active ? 0
+      : s === MembershipStatus.Frozen ? 1
+      : 2;
+
+    return [...this.customerMemberships()].sort((a, b) => {
+      const cmp = order(a.status) - order(b.status);
+      if (cmp !== 0) return cmp;
+      return new Date(b.validUntil).getTime() - new Date(a.validUntil).getTime();
+    });
+  });
+
+  /**
+   * Spanish UI labels for the membership status badges.
+   * Centralised so the template stays declarative and the mapping is
+   * reusable in future surfaces (reception gate, dashboard widget).
+   */
+  readonly MEMBERSHIP_STATUS_LABEL: Record<MembershipStatus, string> = {
+    [MembershipStatus.Active]:    'Vigente',
+    [MembershipStatus.Expired]:   'Vencida',
+    [MembershipStatus.Frozen]:    'Congelada',
+    [MembershipStatus.Cancelled]: 'Cancelada',
+  };
 
   //#endregion
 
@@ -138,19 +185,134 @@ export class AdminCustomersComponent implements OnInit {
 
   //#region Profile Drawer Methods
 
-  /** Opens the profile drawer for the clicked customer row */
-  async onRowClick(customer: Customer): Promise<void> {
+  /**
+   * Opens the profile drawer for the clicked customer and dispatches
+   * the three async fetches concurrently (stats / memberships /
+   * orders). All section state is reset up-front so the drawer never
+   * flashes data from the previously-selected customer.
+   */
+  onRowClick(customer: Customer): void {
     this.drawerCustomer.set(customer);
     this.showDrawer.set(true);
+
+    // Reset all section state before kicking off the async loads —
+    // prevents stale data from the prior customer leaking through.
+    this.customerStats.set(null);
+    this.customerMemberships.set([]);
     this.customerOrders.set([]);
+    this.ordersCurrentPage.set(1);
+    this.ordersTotalRecords.set(0);
+    this.isLoadingStats.set(true);
+    this.isLoadingMemberships.set(true);
     this.isLoadingOrders.set(true);
 
+    // Fire concurrently — each method handles its own try/catch/finally
+    // and applies a staleness guard so rapid customer-row switches
+    // never cause a stale write.
+    void this.loadStats();
+    void this.loadMemberships();
+    void this.loadOrders(1);
+  }
+
+  /**
+   * Refreshes the stats KPIs from the dedicated `/stats` endpoint.
+   * Captures the customer id at entry and re-checks before every
+   * signal write so a fast row-switch never overwrites the new
+   * customer's data with the previous customer's response.
+   */
+  private async loadStats(): Promise<void> {
+    const id = this.drawerCustomer()?.id;
+    if (id === undefined) return;
+    this.isLoadingStats.set(true);
     try {
-      const orders = await this.customerService.getCustomerOrders(customer.id);
-      this.customerOrders.set(orders);
+      const stats = await this.customerService.getStats(id);
+      if (this.drawerCustomer()?.id !== id) return;
+      this.customerStats.set(stats);
+    } catch (err) {
+      if (this.drawerCustomer()?.id !== id) return;
+      console.warn('[AdminCustomers] Stats load failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudieron cargar las estadísticas',
+        life: 4000,
+      });
     } finally {
-      this.isLoadingOrders.set(false);
+      if (this.drawerCustomer()?.id === id) {
+        this.isLoadingStats.set(false);
+      }
     }
+  }
+
+  /**
+   * Refreshes the membership list from the BE memberships endpoint.
+   * Same staleness guard pattern as `loadStats`.
+   */
+  private async loadMemberships(): Promise<void> {
+    const id = this.drawerCustomer()?.id;
+    if (id === undefined) return;
+    this.isLoadingMemberships.set(true);
+    try {
+      const memberships = await this.customerService.getMemberships(id);
+      if (this.drawerCustomer()?.id !== id) return;
+      this.customerMemberships.set(memberships);
+    } catch (err) {
+      if (this.drawerCustomer()?.id !== id) return;
+      console.warn('[AdminCustomers] Memberships load failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudieron cargar las membresías',
+        life: 4000,
+      });
+    } finally {
+      if (this.drawerCustomer()?.id === id) {
+        this.isLoadingMemberships.set(false);
+      }
+    }
+  }
+
+  /**
+   * Loads a single page of the customer's order history. Invoked from
+   * `onRowClick` (initial page) and from the paginator
+   * (`onOrdersPageChange`). Sets the loading flag at the start so
+   * paginator clicks render the spinner correctly.
+   */
+  async loadOrders(page: number): Promise<void> {
+    const id = this.drawerCustomer()?.id;
+    if (id === undefined) return;
+    this.isLoadingOrders.set(true);
+    try {
+      const response = await this.customerService.getOrders(id, {
+        page,
+        pageSize: AdminCustomersComponent.ORDERS_PAGE_SIZE,
+      });
+      if (this.drawerCustomer()?.id !== id) return;
+      this.customerOrders.set(response.data);
+      this.ordersCurrentPage.set(response.currentPage);
+      this.ordersTotalRecords.set(response.rowsCount);
+    } catch (err) {
+      if (this.drawerCustomer()?.id !== id) return;
+      console.warn('[AdminCustomers] Orders load failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo cargar el historial',
+        life: 4000,
+      });
+    } finally {
+      if (this.drawerCustomer()?.id === id) {
+        this.isLoadingOrders.set(false);
+      }
+    }
+  }
+
+  /**
+   * Bridges the PrimeNG paginator's 0-indexed `page` to the backend's
+   * 1-indexed pagination contract.
+   */
+  onOrdersPageChange(event: PaginatorState): void {
+    void this.loadOrders((event.page ?? 0) + 1);
   }
 
   //#endregion

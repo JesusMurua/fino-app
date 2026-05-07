@@ -1,6 +1,14 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+import {
+  CustomerMembership,
+  CustomerOrderRowDto,
+  CustomerStatsDto,
+  MembershipStatus,
+  PageData,
+} from '../models';
 import { CreateCustomerRequest, Customer } from '../models/customer.model';
 import { formatCustomerName } from '../../shared/pipes/customer-name.pipe';
 import { ApiService } from './api.service';
@@ -157,17 +165,63 @@ export class CustomerService {
   }
 
   /**
-   * Fetches the order history for a specific customer.
+   * Fetches a single page of the customer's order history.
+   *
+   * Errors are NOT swallowed — callers can `try/catch` to surface a
+   * toast or fall back to an empty list. Aligns with FDD-027 §3.1
+   * and the project's bubble-up pattern (see `createCustomer`).
+   *
+   * @param customerId Customer ID
+   * @param opts Pagination + date filters; all keys are optional and
+   * only forwarded to the backend when defined.
+   */
+  async getOrders(
+    customerId: number,
+    opts?: { page?: number; pageSize?: number; from?: Date; to?: Date },
+  ): Promise<PageData<CustomerOrderRowDto>> {
+    let params = new HttpParams();
+    if (opts?.page !== undefined)     params = params.set('page', opts.page);
+    if (opts?.pageSize !== undefined) params = params.set('pageSize', opts.pageSize);
+    if (opts?.from)                   params = params.set('from', opts.from.toISOString());
+    if (opts?.to)                     params = params.set('to', opts.to.toISOString());
+
+    const qs = params.toString();
+    const path = `/customers/${customerId}/orders${qs ? '?' + qs : ''}`;
+    return firstValueFrom(this.api.get<PageData<CustomerOrderRowDto>>(path));
+  }
+
+  /**
+   * Fetches the customer's memberships (active + historical) sorted
+   * by `validUntil` desc per BDD-019 §5.1.2. Optional `status` filter
+   * is applied server-side.
+   *
+   * Direct API call — admin context is online-only. The offline
+   * reception cache lives in `CustomerMembershipsService` (FDD-027 §3.4).
+   *
+   * @param customerId Customer ID
+   * @param status Optional lifecycle filter
+   */
+  async getMemberships(
+    customerId: number,
+    status?: MembershipStatus,
+  ): Promise<CustomerMembership[]> {
+    const path = status
+      ? `/customers/${customerId}/memberships?status=${status}`
+      : `/customers/${customerId}/memberships`;
+    return firstValueFrom(this.api.get<CustomerMembership[]>(path));
+  }
+
+  /**
+   * Fetches aggregated lifetime stats for a customer (totalSpentCents,
+   * orderCount, lastOrderAt). Single GROUP BY on the BE per BDD-019
+   * §5.1.3 — used by the admin drawer header.
+   *
    * @param customerId Customer ID
    */
-  async getCustomerOrders(customerId: number): Promise<any[]> {
-    try {
-      return await firstValueFrom(
-        this.api.get<any[]>(`/customers/${customerId}/orders`),
-      );
-    } catch {
-      return [];
-    }
+  async getStats(customerId: number): Promise<CustomerStatsDto> {
+    return firstValueFrom(
+      this.api.get<CustomerStatsDto>(`/customers/${customerId}/stats`),
+    );
   }
 
   /**

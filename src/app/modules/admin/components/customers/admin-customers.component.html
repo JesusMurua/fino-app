@@ -253,26 +253,84 @@
       </div>
     </div>
 
-    <!-- Stats row -->
+    <!-- Stats row — sourced from GET /customers/{id}/stats (FDD-027 §4.2) -->
     <div class="drawer-stats">
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">{{ c.totalOrderCount }}</span>
-        <span class="drawer-stat__label">Órdenes</span>
-      </div>
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">{{ c.totalSpentCents | price }}</span>
-        <span class="drawer-stat__label">Total gastado</span>
-      </div>
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">
-          @if (c.lastVisitAt) {
-            {{ c.lastVisitAt | date:'dd/MM/yy' }}
-          } @else {
-            —
+      @if (isLoadingStats()) {
+        <div class="drawer-stats__loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando estadísticas...</span>
+        </div>
+      } @else {
+        @if (customerStats(); as s) {
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">{{ s.orderCount }}</span>
+            <span class="drawer-stat__label">Órdenes</span>
+          </div>
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">{{ s.totalSpentCents | price }}</span>
+            <span class="drawer-stat__label">Total gastado</span>
+          </div>
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">
+              @if (s.lastOrderAt) {
+                {{ s.lastOrderAt | date:'dd/MM/yy' }}
+              } @else {
+                —
+              }
+            </span>
+            <span class="drawer-stat__label">Último pedido</span>
+          </div>
+        } @else {
+          <p class="drawer-section__empty">Sin actividad registrada</p>
+        }
+      }
+    </div>
+
+    <!-- Memberships — sourced from GET /customers/{id}/memberships -->
+    <div class="drawer-section">
+      <h3 class="drawer-section__title">Estado de membresía</h3>
+
+      @if (isLoadingMemberships()) {
+        <div class="drawer-orders-loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando...</span>
+        </div>
+      } @else if (sortedMemberships().length === 0) {
+        <p class="drawer-section__empty">Sin membresías registradas</p>
+      } @else {
+        <div class="drawer-memberships">
+          @for (m of sortedMemberships(); track m.id) {
+            <div class="drawer-membership">
+              <div class="drawer-membership__row">
+                <span class="drawer-membership__name">
+                  {{ m.productName ?? 'Membresía legacy' }}
+                </span>
+                <span
+                  class="badge"
+                  [class.badge--active]="m.status === 'Active'"
+                  [class.badge--expired]="m.status === 'Expired'"
+                  [class.badge--frozen]="m.status === 'Frozen'"
+                  [class.badge--cancelled]="m.status === 'Cancelled'"
+                >
+                  {{ MEMBERSHIP_STATUS_LABEL[m.status] }}
+                </span>
+              </div>
+              <span class="drawer-membership__range">
+                {{ m.validFrom | date:'dd MMM yy' }} – {{ m.validUntil | date:'dd MMM yy' }}
+              </span>
+              @if (m.originatingOrderId) {
+                <div class="drawer-membership__order-ref">
+                  Orden:
+                  <span
+                    class="drawer-membership__order-id"
+                    [title]="m.originatingOrderId"
+                  >{{ m.originatingOrderId }}</span>
+                </div>
+              }
+            </div>
           }
-        </span>
-        <span class="drawer-stat__label">Última visita</span>
-      </div>
+        </div>
+      }
     </div>
 
     <!-- Fiscal data -->
@@ -309,10 +367,19 @@
               <span class="drawer-order-row__num">#{{ order.orderNumber }}</span>
               <span class="drawer-order-row__date">{{ order.createdAt | date:'dd/MM/yy' }}</span>
               <span class="drawer-order-row__total">{{ order.totalCents | price }}</span>
-              <span class="drawer-order-row__method">{{ order.paymentMethod }}</span>
             </div>
           }
         </div>
+
+        @if (ordersTotalRecords() > 10) {
+          <p-paginator
+            [first]="(ordersCurrentPage() - 1) * 10"
+            [rows]="10"
+            [totalRecords]="ordersTotalRecords()"
+            (onPageChange)="onOrdersPageChange($event)"
+            styleClass="drawer-orders__paginator"
+          />
+        }
       }
     </div>
 
