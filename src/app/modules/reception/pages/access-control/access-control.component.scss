@@ -214,4 +214,31 @@
       font-size: clamp(2rem, 5vw, 3.5rem);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Offline pill — fixed top-right indicator (FDD-027 P6).
+  // Visible only when `navigator.onLine` is false. Sits over the
+  // banner without competing with the giant status text underneath.
+  // ──────────────────────────────────────────────────────────────────────
+  &__offline-pill {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #6B7280;
+    color: #ffffff;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+    .pi {
+      font-size: 12px;
+    }
+  }
 }

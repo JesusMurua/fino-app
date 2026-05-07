@@ -345,7 +345,8 @@
       </section>
     }
 
-    <!-- Gym: Memberships expiring or recently expired (±7 days) -->
+    <!-- Gym: Memberships expiring or recently expired
+         (sourced from GET /memberships/expiring?days=7). -->
     @if (isGymTenant()) {
       <section class="section-card">
         <h2 class="section-card__title">Membresías por vencer</h2>
@@ -354,14 +355,14 @@
           <p class="section-card__empty">Ninguna membresía vence próximamente</p>
         } @else {
           <ol class="top-list">
-            @for (member of expiringMemberships(); track member.id) {
+            @for (m of expiringMemberships(); track m.id) {
               <li class="top-item">
-                <span class="top-item__name">{{ member.name }}</span>
-                <span class="top-item__date">{{ member.membershipValidUntil | date:'dd/MM/yyyy' }}</span>
-                @if (isExpired(member)) {
-                  <span class="badge badge--danger">Vencida</span>
-                } @else {
+                <span class="top-item__name">{{ m.customerName }}</span>
+                <span class="top-item__date">{{ m.validUntil | date:'dd/MM/yyyy' }}</span>
+                @if (isCurrentlyValid(m)) {
                   <span class="badge badge--warning">Por vencer</span>
+                } @else {
+                  <span class="badge badge--danger">Vencida</span>
                 }
               </li>
             }

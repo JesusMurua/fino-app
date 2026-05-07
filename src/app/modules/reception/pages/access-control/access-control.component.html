@@ -1,5 +1,13 @@
 <div class="access-control">
 
+  <!-- Connectivity indicator — visible only when navigator reports offline. -->
+  @if (!isOnline()) {
+    <span class="access-control__offline-pill" role="status" aria-live="polite">
+      <i class="pi pi-wifi" aria-hidden="true"></i>
+      Sin conexión
+    </span>
+  }
+
   <!-- ================================================================== -->
   <!-- Search bar                                                          -->
   <!-- ================================================================== -->
@@ -61,12 +69,10 @@
         <h1 class="access-control__title">ACCESO PERMITIDO</h1>
         @if (selectedCustomer(); as c) {
           <p class="access-control__customer">{{ c | customerName }}</p>
-          @if (c.membershipValidUntil) {
-            <p class="access-control__expiry">
-              Vigente hasta el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}
-            </p>
-          }
         }
+        <p class="access-control__expiry">
+          Vigente hasta el {{ activeMembership()!.validUntil | date:'longDate':'':'es-MX' }}
+        </p>
       </section>
     }
 
@@ -76,14 +82,21 @@
         <h1 class="access-control__title">MEMBRESÍA VENCIDA</h1>
         @if (selectedCustomer(); as c) {
           <p class="access-control__customer">{{ c | customerName }}</p>
-          @if (c.membershipValidUntil) {
-            <p class="access-control__expiry">
-              Venció el {{ c.membershipValidUntil | date:'longDate':'':'es-MX' }}
-            </p>
-          } @else {
-            <p class="access-control__expiry">Sin membresía activa</p>
-          }
         }
+        <p class="access-control__expiry">
+          Venció el {{ activeMembership()!.validUntil | date:'longDate':'':'es-MX' }}
+        </p>
+      </section>
+    }
+
+    @case ('NO_MEMBERSHIP') {
+      <section class="access-control__banner access-control__banner--idle" role="status" aria-live="polite">
+        <i class="pi pi-exclamation-circle access-control__icon"></i>
+        <h1 class="access-control__title">SIN MEMBRESÍA</h1>
+        @if (selectedCustomer(); as c) {
+          <p class="access-control__customer">{{ c | customerName }}</p>
+        }
+        <p class="access-control__expiry">Sin membresía activa</p>
       </section>
     }
 

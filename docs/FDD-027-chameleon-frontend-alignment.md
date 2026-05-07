@@ -1,7 +1,7 @@
 # FDD-027 — Chameleon Frontend Alignment
 
 **Date:** 2026-05-06
-**Status:** Draft — pending approval
+**Status:** Implemented
 **Type:** Frontend Design Document
 **Driver:** Align Angular 18 frontend with the Chameleon multi-tenant backend implemented in [BDD-019](BDD-019-chameleon-domain-readiness.md) and refined in [BDD-020](BDD-020-chameleon-metadata-architecture.md).
 **Source audits:** [AUDIT-055](AUDIT-055-customer-history-ui.md), [AUDIT-056](AUDIT-056-chameleon-models.md).
@@ -229,7 +229,7 @@ Reception's gym gate runs offline. To preserve that, we introduce a Dexie store 
 | Lines | Method | Disposition |
 |-------|--------|-------------|
 | 246-282 | `applyOfflineMembershipExtensions(order)` | **Delete entirely.** The BE's `IMembershipService.ProcessOrderEntitlementsAsync` (called inside `OrderService.SyncOrdersAsync`) now creates / extends `CustomerMembership` rows transactionally. The FE must stop pre-mutating `customer.membershipValidUntil` because the field no longer exists on the BE entity. |
-| 320-323 (and `reconcileSyncedMembershipCustomers`) | post-sync customer reconcile | **Replace.** Instead of pulling fresh `Customer` rows expecting an updated `membershipValidUntil`, pull memberships per beneficiary from `GET /customers/{id}/memberships` and write them to the new Dexie `customerMemberships` store (§3.4). Used to refresh reception offline cache. |
+| 320-323 (and `refreshCustomersAndMembershipsAfterSync`) | post-sync customer reconcile | **Modified.** ✅ Implemented in P3. Keep pulling fresh `Customer` rows to prevent CRM stat freeze (credit balance, points, totals, lastVisitAt) on the POS UI between syncs, AND additionally call `CustomerMembershipsService.loadFor(id)` per beneficiary to pull the new memberships into the Dexie `customerMemberships` store (§3.4). Method renamed from `reconcileSyncedMembershipCustomers` to reflect the dual responsibility. |
 | 351 | beneficiary id read inside reconcile loop | **Keep.** Still needs `item.metadata?.beneficiaryCustomerId` to know which customers to refresh — but now the lookup is typed (`OrderItemMetadata.beneficiaryCustomerId: number?`) instead of bracket-notation. |
 | 682 | outbound DTO `metadata: item.metadata ?? null` | **Keep.** Passthrough of typed `OrderItemMetadata` survives because the BE's typed deserializer accepts the same JSON shape. |
 
@@ -261,7 +261,7 @@ A new store is required so [access-control.component.ts](../src/app/modules/rece
 |--------|----------|
 | Dexie version bump | `28` (current is `27` per `database.service.ts` after FDD-026) |
 | New store | `customerMemberships: '++localId, customerId, [customerId+status], validUntil'` |
-| Hydration trigger | Lazy: on first call to a `CustomerMembershipsService.ensureLoadedFor(customerId)` (mirrors `CustomerService.ensureLoaded` from FDD-026). |
+| Hydration trigger | Refresh-always: callers invoke `CustomerMembershipsService.loadFor(customerId)` whenever they need the latest snapshot. Each call deletes the customer's existing rows and re-inserts the authoritative server view in a single Dexie transaction. |
 | Bulk sync | `SyncService` periodic pull adds a step "for each gym customer, refresh memberships." Phase-2 only — see §5. |
 | Eviction | None for v1 — gyms have at most thousands of memberships per business. |
 | **Removed** | The legacy `customer.membershipValidUntil` index becomes orphaned. Schema bump drops it. |
@@ -327,13 +327,13 @@ The membership section renders one card per membership. Active is pinned to top,
 
 | Phase | Scope | Files | Depends on | Complexity |
 |-------|-------|-------|------------|:----------:|
-| **P1 — Types foundation** | Create `metadata.model.ts`. Wire the five new interfaces into `Product`, `CartItem`, `Order`, `OrderPayment`, `Customer`. Drop `customer.membershipValidUntil`/`lastPaymentAt`. Migrate every existing bracket-notation access to typed access. | `core/models/*`, `product-form.component.ts`, `cart-panel.component.ts`, `checkout.component.ts` | BE BDD-020 deployed | Medium |
-| **P2 — Memberships domain** | Create `customer-history.model.ts` (`CustomerMembership`, `MembershipStatus`, `CustomerOrderRowDto`, `CustomerStatsDto`). Create `CustomerMembershipsService` (fetch + Dexie cache). Bump Dexie to `v28` (drop legacy index, add `customerMemberships` store). | `core/models/customer-history.model.ts`, `core/services/customer-memberships.service.ts`, `database.service.ts` | P1 | Medium |
-| **P3 — Sync hook surgery** | Delete `applyOfflineMembershipExtensions`. Refactor `reconcileSyncedMembershipCustomers` to pull memberships instead of customer profiles. Remove all writes of `membershipValidUntil` / `lastPaymentAt` on the FE. | `sync.service.ts` | P2 | High |
-| **P4 — `CustomerService` API extension** | Add `getOrders` (typed, paginated), `getMemberships`, `getStats`. Delete legacy `getCustomerOrders(id): Promise<any[]>`. | `customer.service.ts` | P2 | Low |
-| **P5 — Admin drawer revamp** | Wire P4 into [admin-customers.component.ts](../src/app/modules/admin/components/customers/admin-customers.component.ts). Add membership status section + paginated order history. Adopt design-token-aligned badges per CLAUDE.md design system. | `admin-customers.component.{ts,html,scss}` | P4 | Medium |
-| **P6 — Reception + dashboard rewire** | Refactor [access-control.component.ts](../src/app/modules/reception/pages/access-control/access-control.component.ts) to consume `CustomerMembershipsService`. Refactor dashboard "expiring soon" widget. Remove the last `membershipValidUntil` references. | `access-control.component.{ts,html}`, `dashboard.component.{ts,html}` | P4 | Medium |
-| **P7 — Cleanup & docs** | Update `docs/AUDIT-055` cross-link. Update `docs/AUDIT-052` (chameleon bounded contexts) cross-link. Drop dead JSDoc references to `Record<string, unknown>` metadata in `product.service.ts`. Verify `tsc --noEmit` clean. | misc | P1–P6 | Low |
+| **P1 — Types foundation** ✅ Implemented | Create `metadata.model.ts`. Wire the five new interfaces into `Product`, `CartItem`, `Order`, `OrderPayment`, `Customer`. Drop `customer.membershipValidUntil`/`lastPaymentAt`. Migrate every existing bracket-notation access to typed access. | `core/models/*`, `product-form.component.ts`, `cart-panel.component.ts`, `checkout.component.ts` | BE BDD-020 deployed | Medium |
+| **P2 — Memberships domain** ✅ Implemented | Create `customer-history.model.ts` (`CustomerMembership`, `MembershipStatus`, `CustomerOrderRowDto`, `CustomerStatsDto`). Create `CustomerMembershipsService` (fetch + Dexie cache). Bump Dexie to `v28` (drop legacy index, add `customerMemberships` store). | `core/models/customer-history.model.ts`, `core/services/customer-memberships.service.ts`, `database.service.ts` | P1 | Medium |
+| **P3 — Sync hook surgery** ✅ Implemented | Delete `applyOfflineMembershipExtensions`. Rename `reconcileSyncedMembershipCustomers` → `refreshCustomersAndMembershipsAfterSync` and extend it to pull both fresh customer profiles (CRM aggregates) and memberships per beneficiary. Remove all writes of `membershipValidUntil` / `lastPaymentAt` on the FE. | `sync.service.ts` | P2 | High |
+| **P4 — `CustomerService` API extension** ✅ Implemented | Add `getOrders` (typed, paginated), `getMemberships`, `getStats`. Delete legacy `getCustomerOrders(id): Promise<any[]>`. | `customer.service.ts` | P2 | Low |
+| **P5 — Admin drawer revamp** ✅ Implemented | Wire P4 into [admin-customers.component.ts](../src/app/modules/admin/components/customers/admin-customers.component.ts). Add membership status section + paginated order history. Adopt design-token-aligned badges per CLAUDE.md design system. | `admin-customers.component.{ts,html,scss}` | P4 | Medium |
+| **P6 — Reception + dashboard rewire** ✅ Implemented | Refactor [access-control.component.ts](../src/app/modules/reception/pages/access-control/access-control.component.ts) to consume `CustomerMembershipsService`. Refactor dashboard "expiring soon" widget. Remove the last `membershipValidUntil` references. | `access-control.component.{ts,html}`, `dashboard.component.{ts,html}` | P4 | Medium |
+| **P7 — Cleanup & docs** ✅ Implemented | Update `docs/AUDIT-055` cross-link. Update `docs/AUDIT-052` (chameleon bounded contexts) cross-link. Drop dead JSDoc references to `Record<string, unknown>` metadata in `product.service.ts`. Render the deferred `originatingOrderId` reference on membership cards (truncated UUID + tooltip). Verify `tsc --noEmit` clean. **Note:** The originating order navigation was deferred to the future Orders UI Epic. The backend endpoint exists, but the frontend OrderDetail view requires its own bounded context. | misc, `admin-customers.component.{html,scss}`, `product.service.ts` | P1–P6 | Low |
 
 Phases are sequential; P4 may parallelize with P3 once P2 has merged. P5 and P6 may parallelize once P4 has merged.
 
@@ -342,7 +342,7 @@ Phases are sequential; P4 may parallelize with P3 once P2 has merged. P5 and P6 
 | Phase | Exits when |
 |-------|-----------|
 | P1 | `tsc --noEmit` green; existing tests still green; no `Record<string, unknown>` survives in any of the five entity files; `grep "membershipValidUntil\|lastPaymentAt" src/app/core/models/customer.model.ts` returns 0 matches. |
-| P2 | Dexie opens cleanly on a fresh install and on a v27 → v28 upgrade. `CustomerMembershipsService.ensureLoadedFor(id)` populates the new store from the API. |
+| P2 | Dexie opens cleanly on a fresh install and on a v27 → v28 upgrade. `CustomerMembershipsService.loadFor(id)` populates the new store from the API. |
 | P3 | `grep "membershipValidUntil\|applyOfflineMembershipExtensions\|lastPaymentAt" src/` returns 0 matches in `core/services/sync.service.ts`. POS membership sale offline → online still ends with the BE owning the durable record. |
 | P4 | `getOrders` returns typed `PageData<CustomerOrderRowDto>`. `customerService.getCustomerOrders` symbol no longer exists. |
 | P5 | Admin drawer renders all four sections (Stats, Memberships, Orders, History) without runtime errors on a fresh seed customer. |
@@ -374,6 +374,7 @@ Phases are sequential; P4 may parallelize with P3 once P2 has merged. P5 and P6 
 | R-04 | `CustomerMembershipsService.getActiveExpiringSoon` for the dashboard widget — should it be a server-side endpoint? | FE/BE | v1 = client-side filter over `getMemberships(id)` per active member, but the widget today iterates over **all** customers. Without a list endpoint, this regresses performance. Defer the widget to a future BE endpoint or accept a single combined call (e.g. `GET /customers/memberships/expiring?windowDays=7`). Flag for BE roadmap. |
 | R-05 | Offline cache freshness — `customerMemberships` may diverge if a different terminal extends a membership while we are offline. | FE | Reconcile path in P3 reads memberships post-sync; while offline, FE shows the latest cached snapshot with a "Sin conexión" pill. Acceptable trade-off. |
 | R-06 | Migration order coordination — the FE must NOT ship P1 (which drops `customer.membershipValidUntil`) before BE has rolled the BDD-019 migration to prod, or the FE breaks against a BE that still emits the field on `GET /customers`. | Release | Gate the merge of P1 on a successful BE prod deploy. Verify with `curl /api/customers/{id}` payload before merging. |
+| R-07 | Privacy leak on shared terminals — the `customers` Dexie store deliberately survives logout to preserve the offline CRM UX during flaky shift-starts. A malicious user with DevTools access on a shared device could inspect the cached customer rows from a previous session. | Team | Mitigated at query-time by `businessId` filtering in `CustomerService.searchByPhoneOrName` (cross-tenant searches return empty). Re-evaluate in P6 with a compensating UX (re-hydration toast, scoped clear by `businessId` only on logout, or eviction on idle timeout) before promoting to GA. P2 only purges `customerMemberships` because that store is brand-new and has no legacy offline UX to protect. **Re-evaluated in P7:** Accepted debt for now to preserve flaky-connection UX at shift start. Slated for the next POS CRM Epic. |
 
 ---
 
@@ -381,9 +382,9 @@ Phases are sequential; P4 may parallelize with P3 once P2 has merged. P5 and P6 
 
 - [BDD-019 — Chameleon Domain Readiness](BDD-019-chameleon-domain-readiness.md) — backend authoritative spec, implemented P1–P5.
 - [BDD-020 — Chameleon Metadata Architecture](BDD-020-chameleon-metadata-architecture.md) — refines BDD-019 §3.1/§10 P1, defines Day-1 typed properties per Metadata class.
-- [AUDIT-055 — Customer History UI](AUDIT-055-customer-history-ui.md) — drawer revamp + quick-pay attribution gap.
+- [AUDIT-055 — Customer History UI](AUDIT-055-customer-history-ui.md) — drawer revamp + quick-pay attribution gap. (Implemented in P4-P5; finalized in P7)
 - [AUDIT-056 — Chameleon Models (FE)](AUDIT-056-chameleon-models.md) — current FE model state used as baseline.
-- [AUDIT-052 — Restaurant Hub vs Chameleon Shells](AUDIT-052-restaurant-hub-chameleon.md) — bounded-context invariants the new types must respect.
+- [AUDIT-052 — Restaurant Hub vs Chameleon Shells](AUDIT-052-restaurant-hub-chameleon.md) — bounded-context invariants the new types must respect. (Honored throughout FDD-027)
 - [coding-standards.md](../.claude/coding-standards.md) — Angular 18 / PrimeNG 17 patterns governing service shape, error handling, and type safety.
 - [response-guidelines.md](../.claude/response-guidelines.md) — analyze first, wait for confirmation, implement only what is requested.
 

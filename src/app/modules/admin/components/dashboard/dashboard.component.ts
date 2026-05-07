@@ -10,13 +10,19 @@ import { ChartModule } from 'primeng/chart';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 
-import { Customer, DashboardChartsDto, DashboardOrderRow, DashboardSummary } from '../../../../core/models';
+import {
+  CustomerMembership,
+  DashboardChartsDto,
+  DashboardOrderRow,
+  DashboardSummary,
+  isCurrentlyValid,
+} from '../../../../core/models';
 import { FeatureKey, KitchenStatusId, SubCategoryType } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
-import { CustomerService } from '../../../../core/services/customer.service';
+import { CustomerMembershipsService } from '../../../../core/services/customer-memberships.service';
 import { OnboardingChecklistService } from '../../../../core/services/onboarding-checklist.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ReportService } from '../../../../core/services/report.service';
@@ -51,8 +57,15 @@ export class DashboardComponent implements OnInit {
   private readonly configService  = inject(ConfigService);
   private readonly tenantContext   = inject(TenantContextService);
   private readonly productService  = inject(ProductService);
-  private readonly customerService = inject(CustomerService);
+  private readonly customerMembershipsService = inject(CustomerMembershipsService);
   readonly checklistService        = inject(OnboardingChecklistService);
+
+  /**
+   * Pure-helper re-export for template binding. The function lives in
+   * `customer-history.model.ts`; Angular templates can only call class
+   * properties, so we expose a class-level reference here.
+   */
+  readonly isCurrentlyValid = isCurrentlyValid;
 
   /** True when the tenant's plan includes advanced charts */
   readonly hasAdvancedReports = computed(() =>
@@ -77,39 +90,12 @@ export class DashboardComponent implements OnInit {
   );
 
   /**
-   * Members whose `membershipValidUntil` falls within ±7 days of now,
-   * sorted ascending (most-recently expired → most-imminent), capped at
-   * 10 rows so the dashboard widget stays scannable.
-   *
-   * Reactively derived from `customerService.customers()` — the offline
-   * membership-extension hook in `SyncService` updates that signal in
-   * place, so this list reflects the current Dexie state without a
-   * dedicated re-fetch.
+   * Expiring memberships rendered in the gym-tenant widget. Sourced
+   * from the dedicated `GET /memberships/expiring?days=7` endpoint
+   * (BDD-019 follow-up). Empty by default until `ngOnInit` resolves
+   * the fetch.
    */
-  readonly expiringMemberships = computed<Customer[]>(() => {
-    if (!this.isGymTenant()) return [];
-
-    const now = Date.now();
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-    return this.customerService.customers()
-      .filter(c => {
-        if (!c.membershipValidUntil) return false;
-        const t = new Date(c.membershipValidUntil).getTime();
-        return Math.abs(t - now) <= SEVEN_DAYS_MS;
-      })
-      .sort((a, b) =>
-        new Date(a.membershipValidUntil!).getTime() -
-        new Date(b.membershipValidUntil!).getTime(),
-      )
-      .slice(0, 10);
-  });
-
-  /** True when the customer's membership has already expired */
-  isExpired(customer: Customer): boolean {
-    if (!customer.membershipValidUntil) return false;
-    return new Date(customer.membershipValidUntil).getTime() < Date.now();
-  }
+  readonly expiringMemberships = signal<CustomerMembership[]>([]);
 
   //#region FTUE / theme
 
@@ -413,13 +399,22 @@ export class DashboardComponent implements OnInit {
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
-    await this.loadData();
+    // Parallelize tenant hydration and the daily summary fetch — they
+    // are independent and `isGymTenant()` needs the tenant macro/sub
+    // category resolved before deciding whether to hit the gym widget.
+    await Promise.all([
+      this.tenantContext.ensureHydrated(),
+      this.loadData(),
+    ]);
 
-    // Gym vertical: hydrate the customer cache so the membership widget
-    // has data on first paint. `loadCustomers` is stale-while-revalidate
-    // and idempotent — safe to call even if Dexie is already populated.
     if (this.isGymTenant()) {
-      await this.customerService.loadCustomers();
+      try {
+        this.expiringMemberships.set(
+          await this.customerMembershipsService.getExpiringSoon(7),
+        );
+      } catch (err) {
+        console.warn('[Dashboard] Expiring memberships load failed:', err);
+      }
     }
   }
 
