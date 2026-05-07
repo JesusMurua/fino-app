@@ -55,14 +55,6 @@ export interface InventoryLedgerDto {
   orderId: string | null;
 }
 
-// ---------------------------------------------------------------------------
-// Pagination
-// ---------------------------------------------------------------------------
-
-/** Generic paginated response matching the backend PageData<T> contract */
-export interface PageData<T> {
-  data: T[];
-  rowsCount: number;
-  totalPages: number;
-  currentPage: number;
-}
+// `PageData<T>` was extracted to `api.model.ts` (FDD-027 §3.3) so any
+// feature can consume the generic pagination wrapper without crossing
+// the inventory domain boundary.

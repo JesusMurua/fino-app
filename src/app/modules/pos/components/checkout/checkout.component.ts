@@ -270,10 +270,10 @@ export class CheckoutComponent implements OnInit {
    */
   readonly hasUnassignedMemberships = computed(() =>
     this.cartItems().some(item => {
-      const days = item.product.metadata?.['membershipDurationDays'];
+      const days = item.product.metadata?.membershipDurationDays;
       const isMembership = typeof days === 'number' && days > 0;
       if (!isMembership) return false;
-      const beneficiaryId = item.metadata?.['beneficiaryCustomerId'];
+      const beneficiaryId = item.metadata?.beneficiaryCustomerId;
       return typeof beneficiaryId !== 'number';
     }),
   );

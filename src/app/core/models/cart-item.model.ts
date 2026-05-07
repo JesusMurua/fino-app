@@ -1,3 +1,4 @@
+import { OrderItemMetadata } from './metadata.model';
 import { Product, ProductExtra, ProductSize } from './product.model';
 
 /**
@@ -32,14 +33,19 @@ export interface CartItem {
   /** Display name of the applied promotion */
   promotionName?: string;
   /**
-   * Free-form metadata attached to the line. Used to carry vertical-
-   * specific intents that drive offline side-effects (e.g. Gym
-   * membership extension uses
-   * `{ beneficiaryCustomerId: number, membershipDurationDays: number }`)
-   * and travels through sync to the backend so the server can apply
-   * the authoritative state.
+   * Strongly-typed line-level metadata persisted by the backend as a
+   * `jsonb` column (`OwnsOne(...).ToJson()` per BDD-020). Carries the
+   * Gym beneficiary id, retail weight capture and service appointment
+   * timestamps; the server is the authoritative source for any state
+   * derived from these fields (e.g. membership extension).
    */
-  metadata?: Record<string, unknown>;
+  metadata?: OrderItemMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `OrderItemMetadata` schema. Maps to the parent entity's
+   * `ExtensionData` jsonb column (BDD-020 §2.6).
+   */
+  extensionData?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------

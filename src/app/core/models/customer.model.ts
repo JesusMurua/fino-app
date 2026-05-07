@@ -1,3 +1,5 @@
+import { CustomerMetadata } from './metadata.model';
+
 /**
  * A customer in the CRM database.
  * Synced from API and cached in Dexie for offline search.
@@ -34,22 +36,23 @@ export interface Customer {
   totalSpentCents: number;
   /** Last purchase date */
   lastVisitAt?: Date;
-  /**
-   * Vertical-specific: end of the current membership window for Gym
-   * (and similar service verticals). Accepts Date or ISO string —
-   * server emits ISO, offline side-effects may write Date instances.
-   */
-  membershipValidUntil?: string | Date;
-  /**
-   * Vertical-specific: timestamp of the last paid transaction tied to
-   * this customer. Updated by the offline membership-extension hook
-   * the moment a membership item lands in `saveOrder()`.
-   */
-  lastPaymentAt?: string | Date;
   /** Record creation date */
   createdAt: Date;
   /** Soft delete flag */
   isActive: boolean;
+  /**
+   * Strongly-typed customer-level vertical metadata persisted as
+   * `jsonb` on the backend (`OwnsOne(...).ToJson()` per BDD-020).
+   * Day-1 keys cover universal CRM fields (date of birth, marketing
+   * opt-in) and the gym/wellness emergency contact.
+   */
+  metadata?: CustomerMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `CustomerMetadata` schema. Maps to the parent entity's
+   * `ExtensionData` jsonb column (BDD-020 §2.6).
+   */
+  extensionData?: Record<string, unknown>;
 }
 
 /** Payload for creating a new customer */

@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { CartItem, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
+import { CartItem, OrderItemMetadata, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
 import { calculateItemTax } from '../utils/tax.utils';
 import { CustomerService } from './customer.service';
 import { DatabaseService } from './database.service';
@@ -261,19 +261,20 @@ export class CartService {
   }
 
   /**
-   * Replaces the `metadata` blob on a single cart item. Used by
-   * vertical-specific UI hooks (e.g. the Gym beneficiary selector
-   * that attaches `{ beneficiaryCustomerId, membershipDurationDays }`
-   * to a membership line). Pass `undefined` to clear the metadata.
+   * Replaces the strongly-typed `OrderItemMetadata` payload on a
+   * single cart item. Used by vertical-specific UI hooks (e.g. the
+   * Gym beneficiary selector attaches `{ beneficiaryCustomerId }` to
+   * a membership line; the duration is resolved server-side from the
+   * product's metadata). Pass `undefined` to clear.
    *
    * No-ops when the item id is no longer in the cart so a stale
    * dialog click never resurrects a removed line.
    * @param itemId Cart item UUID
-   * @param metadata New metadata blob, or undefined to clear
+   * @param metadata New typed metadata, or undefined to clear
    */
   async setItemMetadata(
     itemId: string,
-    metadata: Record<string, unknown> | undefined,
+    metadata: OrderItemMetadata | undefined,
   ): Promise<void> {
     const current = this.items();
     if (!current.some(i => i.id === itemId)) return;

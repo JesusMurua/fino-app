@@ -439,7 +439,7 @@ export class CartPanelComponent implements OnInit {
    * the line is not a membership.
    */
   getMembershipDays(item: CartItem): number | null {
-    const days = item.product.metadata?.['membershipDurationDays'];
+    const days = item.product.metadata?.membershipDurationDays;
     return typeof days === 'number' && days > 0 ? days : null;
   }
 
@@ -450,7 +450,7 @@ export class CartPanelComponent implements OnInit {
 
   /** Beneficiary id stored on the cart item, or null when not yet assigned. */
   getBeneficiaryId(item: CartItem): number | null {
-    const id = item.metadata?.['beneficiaryCustomerId'];
+    const id = item.metadata?.beneficiaryCustomerId;
     return typeof id === 'number' ? id : null;
   }
 
@@ -479,15 +479,16 @@ export class CartPanelComponent implements OnInit {
 
   /**
    * Commits the picked customer as the beneficiary for the active
-   * membership line. Writes the canonical metadata shape consumed by
-   * `SyncService.applyOfflineMembershipExtensions`:
-   *   `{ beneficiaryCustomerId, membershipDurationDays }`.
+   * membership line. Writes the typed `OrderItemMetadata` payload that
+   * the backend's membership service consumes — only the beneficiary
+   * id is needed; the duration is resolved server-side from the
+   * product's `Metadata.MembershipDurationDays` (BDD-019 §6.1.1).
    *
    * A `null` payload means the user clicked the chip's clear button to
    * search for a different beneficiary — keep the dialog open so they
    * can pick again, and don't touch the cart. Closes only on a real
    * pick. No-ops when the active item disappeared from the cart while
-   * the dialog was open.
+   * the dialog was open or when the line is not a membership product.
    */
   async onBeneficiarySelected(customer: Customer | null): Promise<void> {
     if (!customer) return;
@@ -499,12 +500,10 @@ export class CartPanelComponent implements OnInit {
     const item = this.cartItems().find(i => i.id === itemId);
     if (!item) return;
 
-    const days = this.getMembershipDays(item);
-    if (days === null) return;
+    if (!this.isMembershipItem(item)) return;
 
     await this.cartService.setItemMetadata(item.id, {
       beneficiaryCustomerId: customer.id,
-      membershipDurationDays: days,
     });
   }
 

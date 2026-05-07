@@ -29,6 +29,7 @@ import {
   Product,
   ProductExtra,
   ProductImage,
+  ProductMetadata,
   ProductModifierGroup,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
@@ -441,11 +442,9 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     this.editingProduct.set(product);
     this.resetProductForm();
 
-    // Derive membership flags from `metadata.membershipDurationDays`. The
-    // metadata bag may be a string (legacy emit) or undefined — read
-    // defensively. `Number(undefined) === NaN`, so the `|| 0` collapses
-    // any non-positive/invalid value into "not a membership".
-    const membershipDays = Number(product.metadata?.['membershipDurationDays']) || 0;
+    // Derive membership flags from typed `ProductMetadata`. A falsy or
+    // missing value collapses to 0 → "not a membership".
+    const membershipDays = product.metadata?.membershipDurationDays ?? 0;
 
     this.productForm.patchValue({
       name:                   product.name,
@@ -655,9 +654,9 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Composes the `metadata` payload preserving any keys the form does
-   * not own (forwards-compatible: a future backend release may add new
-   * vertical keys we don't yet render).
+   * Composes the typed `ProductMetadata` payload preserving any keys
+   * the form does not own (forwards-compatible: a future release may
+   * add new vertical keys this form does not yet render).
    *
    * - When `isMembership` is true and `days > 0`, sets/overrides
    *   `membershipDurationDays`.
@@ -669,14 +668,14 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   private composeMetadata(
     isMembership: boolean,
     days: number,
-    existing: Record<string, unknown> | undefined,
-  ): Record<string, unknown> | undefined {
-    const next: Record<string, unknown> = { ...(existing ?? {}) };
+    existing: ProductMetadata | undefined,
+  ): ProductMetadata | undefined {
+    const next: ProductMetadata = { ...(existing ?? {}) };
 
     if (isMembership && days > 0) {
-      next['membershipDurationDays'] = days;
+      next.membershipDurationDays = days;
     } else {
-      delete next['membershipDurationDays'];
+      delete next.membershipDurationDays;
     }
 
     return Object.keys(next).length > 0 ? next : undefined;

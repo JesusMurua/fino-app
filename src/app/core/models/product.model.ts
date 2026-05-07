@@ -1,3 +1,5 @@
+import { ProductMetadata } from './metadata.model';
+
 /**
  * A size variant for a product (e.g. Small, Medium, Large).
  * priceDeltaCents is the surcharge relative to the base price (can be 0).
@@ -89,11 +91,17 @@ export interface Product {
   /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
   printingDestinationId?: number | null;
   /**
-   * Free-form catalog metadata that drives vertical-specific behavior.
-   * For Gym memberships, the catalog tags the product with
-   * `{ membershipDurationDays: number }`; the cart UI reads this to
-   * surface the beneficiary selector and to seed the `CartItem.metadata`
-   * payload that triggers offline membership extension at sale time.
+   * Strongly-typed vertical metadata persisted as `jsonb` on the backend
+   * (`OwnsOne(...).ToJson()` per BDD-020). Day-1 keys cover Gym
+   * membership duration, KDS prep estimates, weight-based retail and
+   * service appointments — see `ProductMetadata` for the canonical shape.
    */
-  metadata?: Record<string, unknown>;
+  metadata?: ProductMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `ProductMetadata` schema. Maps to the parent entity's `ExtensionData`
+   * jsonb column (BDD-020 §2.6); the frontend treats it as an opaque
+   * passthrough.
+   */
+  extensionData?: Record<string, unknown>;
 }

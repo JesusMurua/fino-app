@@ -1,6 +1,7 @@
 import { CartItem } from './cart-item.model';
 import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatusId } from '../enums';
 import { InvoiceRequest } from './invoice.model';
+import { OrderMetadata, PaymentMetadata } from './metadata.model';
 
 /** Supported payment methods */
 export enum PaymentMethod {
@@ -31,8 +32,18 @@ export interface OrderPayment {
   paymentProvider?: string;
   /** Transaction ID from the external payment provider */
   externalTransactionId?: string;
-  /** Provider-specific metadata (receipt ID, terminal info, etc.) */
-  paymentMetadata?: Record<string, unknown>;
+  /**
+   * Strongly-typed provider-specific metadata persisted as `jsonb` on
+   * the backend (`OwnsOne(...).ToJson()` per BDD-020). Stores the
+   * authorization code, last4, card brand and raw provider payload.
+   */
+  paymentMetadata?: PaymentMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `PaymentMetadata` schema. Maps to the parent entity's
+   * `ExtensionData` jsonb column (BDD-020 §2.6).
+   */
+  extensionData?: Record<string, unknown>;
   /** Transaction status from the provider */
   transactionStatus?: PaymentTransactionStatus;
   /** Timestamp when the provider authorized the payment */
@@ -165,6 +176,18 @@ export interface Order {
   deliveryCustomerName?: string;
   /** Estimated pickup time (ISO string) */
   estimatedPickupAt?: string;
+  /**
+   * Strongly-typed order-level vertical metadata persisted as `jsonb`
+   * on the backend (`OwnsOne(...).ToJson()` per BDD-020). Day-1 keys
+   * cover F&B dining party size and aggregator delivery address.
+   */
+  metadata?: OrderMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `OrderMetadata` schema. Maps to the parent entity's `ExtensionData`
+   * jsonb column (BDD-020 §2.6).
+   */
+  extensionData?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------

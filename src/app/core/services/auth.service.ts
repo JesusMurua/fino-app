@@ -433,6 +433,11 @@ export class AuthService {
     // Clear cached catalog from IndexedDB (orders are preserved)
     this.db.products.clear().catch(() => {});
     this.db.categories.clear().catch(() => {});
+    // Clear customer memberships cache to prevent cross-session
+    // privacy leaks on shared terminals (FDD-027 P2). The `customers`
+    // store is intentionally NOT cleared here to preserve the offline
+    // CRM UX during flaky shift-starts — see FDD-027 §7 R-07.
+    this.db.customerMemberships.clear().catch(() => {});
 
     this.router.navigate([lastEntry === 'email' ? '/login' : '/pin']);
   }
