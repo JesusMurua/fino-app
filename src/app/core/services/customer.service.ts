@@ -11,6 +11,7 @@ import {
 } from '../models';
 import { CreateCustomerRequest, Customer } from '../models/customer.model';
 import { formatCustomerName } from '../../shared/pipes/customer-name.pipe';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -182,12 +183,12 @@ export class CustomerService {
     let params = new HttpParams();
     if (opts?.page !== undefined)     params = params.set('page', opts.page);
     if (opts?.pageSize !== undefined) params = params.set('pageSize', opts.pageSize);
-    if (opts?.from)                   params = params.set('from', opts.from.toISOString());
-    if (opts?.to)                     params = params.set('to', opts.to.toISOString());
+    if (opts?.from)                   params = params.set('from', toLocalIsoDate(opts.from));
+    if (opts?.to)                     params = params.set('to', toLocalIsoDate(opts.to));
 
-    const qs = params.toString();
-    const path = `/customers/${customerId}/orders${qs ? '?' + qs : ''}`;
-    return firstValueFrom(this.api.get<PageData<CustomerOrderRowDto>>(path));
+    return firstValueFrom(
+      this.api.get<PageData<CustomerOrderRowDto>>(`/customers/${customerId}/orders`, params),
+    );
   }
 
   /**

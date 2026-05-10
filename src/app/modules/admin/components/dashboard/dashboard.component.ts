@@ -27,6 +27,7 @@ import { OnboardingChecklistService } from '../../../../core/services/onboarding
 import { ProductService } from '../../../../core/services/product.service';
 import { ReportService } from '../../../../core/services/report.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import { toLocalIsoDate } from '../../../../core/utils/date.utils';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
 @Component({
@@ -432,9 +433,9 @@ export class DashboardComponent implements OnInit {
       today.setHours(0, 0, 0, 0);
 
       const result = await firstValueFrom(
-        this.api.get<DashboardSummary>(
-          `/dashboard/summary?date=${today.toISOString()}`,
-        ),
+        this.api.get<DashboardSummary>('/dashboard/summary', {
+          date: toLocalIsoDate(today),
+        }),
       );
       this.data.set(result);
     } catch {

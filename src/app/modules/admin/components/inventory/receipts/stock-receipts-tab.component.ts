@@ -14,6 +14,7 @@ import {
 import { InventoryService } from '../../../../../core/services/inventory.service';
 import { SupplierService } from '../../../../../core/services/supplier.service';
 import { StockReceiptService } from '../../../../../core/services/stock-receipt.service';
+import { toLocalIsoDate } from '../../../../../core/utils/date.utils';
 import { StockReceiptDetailDialogComponent } from './stock-receipt-detail-dialog.component';
 import { StockReceiptFormDialogComponent } from './stock-receipt-form-dialog.component';
 import { StockReceiptsTableComponent } from './stock-receipts-table.component';
@@ -160,8 +161,8 @@ export class StockReceiptsTabComponent implements OnInit {
 
     const supplierId = this.supplierFilter() ?? undefined;
     const range = this.dateRange();
-    const from = range?.[0] ? range[0].toISOString() : undefined;
-    const to = range?.[1] ? range[1].toISOString() : undefined;
+    const from = range?.[0] ? toLocalIsoDate(range[0]) : undefined;
+    const to = range?.[1] ? toLocalIsoDate(range[1]) : undefined;
 
     this.stockReceiptService.getAll(supplierId, from, to).subscribe({
       next: (data) => {

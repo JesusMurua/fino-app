@@ -54,32 +54,6 @@ export interface InvoiceResult {
 }
 
 // ---------------------------------------------------------------------------
-// Global Invoice — backoffice panel
-// ---------------------------------------------------------------------------
-
-/** Summary of uninvoiced orders for a date range */
-export interface GlobalInvoiceSummary {
-  /** Number of orders without an individual invoice */
-  uninvoicedCount: number;
-  /** Total cents of uninvoiced orders */
-  uninvoicedTotalCents: number;
-  /** Total cents of orders billed to "Público en General" */
-  publicoGeneralTotalCents: number;
-}
-
-/** A historical global invoice record */
-export interface GlobalInvoiceRecord {
-  id: string;
-  cfdiUuid: string;
-  periodStart: string;
-  periodEnd: string;
-  orderCount: number;
-  totalCents: number;
-  status: 'completed' | 'failed' | 'cancelled';
-  createdAt: string;
-}
-
-// ---------------------------------------------------------------------------
 // Business Fiscal Config — stored in BusinessConfig
 // ---------------------------------------------------------------------------
 
@@ -174,14 +148,3 @@ export const RFC_PUBLICO_GENERAL = 'XAXX010101000';
 /** RFC genérico para extranjeros */
 export const RFC_EXTRANJEROS = 'XEXX010101000';
 
-// ---------------------------------------------------------------------------
-// SAT Cancel Motives (c_MotivosCancelacion)
-// ---------------------------------------------------------------------------
-
-/** SAT cancellation motive options for CFDI cancellation */
-export const SAT_CANCEL_MOTIVOS: { code: string; label: string }[] = [
-  { code: '01', label: '01 — Comprobante emitido con errores con relación' },
-  { code: '02', label: '02 — Comprobante emitido con errores sin relación' },
-  { code: '03', label: '03 — No se llevó a cabo la operación' },
-  { code: '04', label: '04 — Operación nominativa relacionada con factura global' },
-];

@@ -28,6 +28,7 @@ import {
   UpdateSupplierRequest,
 } from '../../../../core/models';
 import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES } from '../../../../core/enums';
+import { toLocalIsoDate } from '../../../../core/utils/date.utils';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InventoryService } from '../../../../core/services/inventory.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -573,8 +574,8 @@ export class AdminInventoryComponent implements OnInit, OnDestroy {
     this.receiptsLoading.set(true);
     const supplierId = this.receiptSupplierFilter() ?? undefined;
     const range = this.receiptDateRange();
-    const from = range?.[0] ? range[0].toISOString() : undefined;
-    const to = range?.[1] ? range[1].toISOString() : undefined;
+    const from = range?.[0] ? toLocalIsoDate(range[0]) : undefined;
+    const to = range?.[1] ? toLocalIsoDate(range[1]) : undefined;
 
     this.stockReceiptService.getAll(supplierId, from, to).subscribe({
       next: (data) => {

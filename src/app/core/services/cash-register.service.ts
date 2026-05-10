@@ -14,6 +14,7 @@ import {
   OpenSessionRequest,
 } from '../models';
 import { CashMovementType, CashRegisterStatus } from '../enums';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -386,9 +387,10 @@ export class CashRegisterService implements OnDestroy {
    */
   async getHistory(from: Date, to: Date): Promise<CashRegisterSession[]> {
     return firstValueFrom(
-      this.api.get<CashRegisterSession[]>(
-        `/cashregister/history?from=${from.toISOString()}&to=${to.toISOString()}`,
-      ),
+      this.api.get<CashRegisterSession[]>('/cashregister/history', {
+        from: toLocalIsoDate(from),
+        to: toLocalIsoDate(to),
+      }),
     );
   }
 
