@@ -14,19 +14,31 @@
   <header class="access-control__searchbar">
 
     <div class="access-control__search-wrapper">
-      <i class="pi pi-search access-control__search-icon" aria-hidden="true"></i>
-      <input
-        type="text"
-        pInputText
-        class="access-control__search-input"
+      <p-autoComplete
+        #ac
+        [ngModel]="acModel()"
+        (ngModelChange)="acModel.set($event)"
+        [suggestions]="results()"
+        (completeMethod)="onComplete($event)"
+        (onSelect)="onCustomerSelect($event)"
+        [forceSelection]="true"
+        [minLength]="2"
+        [delay]="300"
+        field="firstName"
+        appendTo="body"
+        panelStyleClass="ac-autocomplete-panel"
+        styleClass="ac-search__autocomplete"
         placeholder="Buscar por nombre, teléfono o escanear QR..."
-        autocomplete="off"
-        spellcheck="false"
-        [ngModel]="query()"
-        (ngModelChange)="onQueryChange($event)"
-        aria-label="Buscar miembro"
-      />
-      @if (query().length > 0 || selectedCustomer()) {
+        ariaLabel="Buscar miembro"
+      >
+        <ng-template let-customer pTemplate="item">
+          <div class="ac-ac-item">
+            <span class="ac-ac-item__name">{{ customer | customerName }}</span>
+            <span class="ac-ac-item__phone">{{ customer.phone }}</span>
+          </div>
+        </ng-template>
+      </p-autoComplete>
+      @if (selectedCustomer()) {
         <button
           type="button"
           class="access-control__clear-btn"
@@ -37,24 +49,6 @@
         </button>
       }
     </div>
-
-    <!-- Results dropdown -->
-    @if (results().length > 0) {
-      <ul class="access-control__results" role="listbox">
-        @for (customer of results(); track customer.id) {
-          <li>
-            <button
-              type="button"
-              class="access-control__result"
-              (click)="selectCustomer(customer)"
-            >
-              <span class="access-control__result-name">{{ customer | customerName }}</span>
-              <span class="access-control__result-phone">{{ customer.phone }}</span>
-            </button>
-          </li>
-        }
-      </ul>
-    }
 
   </header>
 

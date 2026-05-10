@@ -1,7 +1,13 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
+import {
+  AutoComplete,
+  AutoCompleteCompleteEvent,
+  AutoCompleteModule,
+  AutoCompleteSelectEvent,
+} from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 
@@ -15,9 +21,6 @@ import { CustomerNamePipe } from '../../../../shared/pipes/customer-name.pipe';
 /** Discrete states surfaced by the giant status banner. */
 type AccessStatus = 'IDLE' | 'VALID' | 'EXPIRED' | 'NO_MEMBERSHIP' | 'NOT_FOUND';
 
-/** Debounce window for the manual-search input (ms) */
-const SEARCH_DEBOUNCE_MS = 250;
-
 /**
  * Reception (gym vertical) — full-screen access-control display with
  * offline-first membership validation. Reads from the local Dexie
@@ -27,7 +30,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 @Component({
   selector: 'app-access-control',
   standalone: true,
-  imports: [DatePipe, FormsModule, ButtonModule, InputTextModule, CustomerNamePipe],
+  imports: [DatePipe, FormsModule, AutoCompleteModule, ButtonModule, InputTextModule, CustomerNamePipe],
   templateUrl: './access-control.component.html',
   styleUrl: './access-control.component.scss',
 })
@@ -40,7 +43,13 @@ export class AccessControlComponent implements OnInit, OnDestroy {
   private readonly scannerService = inject(ScannerService);
 
   private readonly destroy$ = new Subject<void>();
-  private readonly query$ = new Subject<string>();
+
+  /**
+   * Handle on the autocomplete so `handleScan` can trigger PrimeNG's
+   * canonical `search()` lifecycle programmatically when a scanned
+   * code resolves to multiple matches.
+   */
+  readonly ac = viewChild('ac', { read: AutoComplete });
 
   /**
    * Pure-helper re-export for template binding. The function lives in
@@ -49,8 +58,12 @@ export class AccessControlComponent implements OnInit, OnDestroy {
    */
   readonly isCurrentlyValid = isCurrentlyValid;
 
-  /** Current value of the search input (bound via ngModel) */
-  readonly query = signal('');
+  /**
+   * Backing model for the autocomplete input. Cleared synchronously in
+   * `(onSelect)` so the giant status banner takes over without leaving
+   * a residual customer name in the search input.
+   */
+  readonly acModel = signal<Customer | null>(null);
 
   /** Customer currently displayed by the banner (null = idle) */
   readonly selectedCustomer = signal<Customer | null>(null);
@@ -58,7 +71,7 @@ export class AccessControlComponent implements OnInit, OnDestroy {
   /** Membership row resolved from the Dexie cache for `selectedCustomer`. */
   readonly activeMembership = signal<CustomerMembership | null>(null);
 
-  /** Live search results for the dropdown under the input */
+  /** Suggestions feed for the autocomplete. */
   readonly results = signal<Customer[]>([]);
 
   /** True while a Dexie query is in flight (rare — Dexie is fast) */
@@ -97,12 +110,6 @@ export class AccessControlComponent implements OnInit, OnDestroy {
   //#region Lifecycle
 
   ngOnInit(): void {
-    // Manual-search debounce — Dexie is fast but typing-burst protection
-    // still avoids re-rendering the dropdown on every keystroke.
-    this.query$
-      .pipe(debounceTime(SEARCH_DEBOUNCE_MS), takeUntil(this.destroy$))
-      .subscribe(value => this.runSearch(value));
-
     // HID scanner — auto-pick the single match on a successful scan.
     this.scannerService.startListening();
     this.scannerService.onScan()
@@ -127,28 +134,30 @@ export class AccessControlComponent implements OnInit, OnDestroy {
 
   //#region Search
 
-  /** Bound to the input — pushes through the debounced pipeline */
-  onQueryChange(value: string): void {
-    this.query.set(value);
+  /**
+   * Bound to `(completeMethod)`. PrimeNG's `[delay]="300"` and
+   * `[minLength]="2"` handle debounce and threshold natively, so this
+   * handler runs only when there is real work to do.
+   */
+  async onComplete(event: AutoCompleteCompleteEvent): Promise<void> {
     this.noMatchForCode.set(false);
-
-    if (value.trim().length < 2) {
-      this.results.set([]);
-      return;
-    }
-
-    this.query$.next(value);
-  }
-
-  /** Runs the offline Dexie search and refreshes the dropdown */
-  private async runSearch(value: string): Promise<void> {
     this.isSearching.set(true);
     try {
-      const found = await this.customerService.searchByPhoneOrName(value);
+      const found = await this.customerService.searchByPhoneOrName(event.query);
       this.results.set(found);
     } finally {
       this.isSearching.set(false);
     }
+  }
+
+  /**
+   * Bound to `(onSelect)`. Clears `acModel` synchronously to prevent
+   * the autocomplete input from holding the selected customer's name
+   * after the banner takes over, then runs the offline-first lookup.
+   */
+  onCustomerSelect(event: AutoCompleteSelectEvent): void {
+    this.acModel.set(null);
+    void this.selectCustomer(event.value as Customer);
   }
 
   /**
@@ -171,7 +180,6 @@ export class AccessControlComponent implements OnInit, OnDestroy {
     this.selectedCustomer.set(customer);
     this.activeMembership.set(null);
     this.results.set([]);
-    this.query.set('');
     this.noMatchForCode.set(false);
 
     const id = customer.id;
@@ -213,7 +221,7 @@ export class AccessControlComponent implements OnInit, OnDestroy {
     this.selectedCustomer.set(null);
     this.activeMembership.set(null);
     this.results.set([]);
-    this.query.set('');
+    this.acModel.set(null);
     this.noMatchForCode.set(false);
   }
 
@@ -224,17 +232,18 @@ export class AccessControlComponent implements OnInit, OnDestroy {
   /**
    * Resolves a scanned code to a single customer. The scanner emits
    * raw membership IDs/QR payloads — we look the customer up by phone
-   * first (most common encoding), then fall back to name. If the
-   * search returns exactly one match we auto-select it; otherwise we
-   * surface a NOT_FOUND state so the receptionist sees the failure
-   * immediately without needing to read the dropdown.
+   * first (most common encoding), then fall back to name. Behaviour:
+   *   - Single match → auto-select.
+   *   - Zero matches → NOT_FOUND banner.
+   *   - Multiple matches → trigger PrimeNG's canonical `search()` so
+   *     the autocomplete panel opens with the disambiguation options.
    */
   private async handleScan(code: string): Promise<void> {
     this.noMatchForCode.set(false);
     const found = await this.customerService.searchByPhoneOrName(code);
 
     if (found.length === 1) {
-      this.selectCustomer(found[0]);
+      void this.selectCustomer(found[0]);
       return;
     }
 
@@ -244,10 +253,11 @@ export class AccessControlComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Multiple matches — show the dropdown so the receptionist disambiguates
+    // Multiple matches — surface the panel via PrimeNG's public `search()`
+    // API. This re-runs `(completeMethod)` (cheap on Dexie) which fills
+    // the suggestions and opens the overlay through the canonical path.
     this.selectedCustomer.set(null);
-    this.results.set(found);
-    this.query.set(code);
+    this.ac()?.search(new Event('input'), code, 'click');
   }
 
   //#endregion

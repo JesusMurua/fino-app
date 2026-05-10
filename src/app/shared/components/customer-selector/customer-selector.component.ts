@@ -2,6 +2,11 @@ import { Component, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
+import {
+  AutoCompleteCompleteEvent,
+  AutoCompleteModule,
+  AutoCompleteSelectEvent,
+} from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -21,7 +26,15 @@ import { PricePipe } from '../../pipes/price.pipe';
 @Component({
   selector: 'app-customer-selector',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, InputTextModule, CustomerNamePipe, PricePipe],
+  imports: [
+    FormsModule,
+    AutoCompleteModule,
+    ButtonModule,
+    DialogModule,
+    InputTextModule,
+    CustomerNamePipe,
+    PricePipe,
+  ],
   templateUrl: './customer-selector.component.html',
   styleUrl: './customer-selector.component.scss',
 })
@@ -43,64 +56,69 @@ export class CustomerSelectorComponent {
   /** Emitted when a customer is selected or cleared */
   readonly customerChanged = output<Customer | null>();
 
-  // ---- Search state ----
+  /**
+   * Backing model for the autocomplete input. Cleared in `applyCustomerSelection`
+   * so the chip view takes over without residual text in the input.
+   */
+  readonly acModel = signal<Customer | null>(null);
+
+  /**
+   * Last query string typed into the autocomplete. Captured in `(completeMethod)`
+   * so `openCreate()` can seed the new-customer form with the cashier's text
+   * (PrimeNG `forceSelection` clears the input on blur, so the typed value
+   * cannot be read back from the model).
+   */
   readonly query = signal('');
+
+  /** Suggestions feed for the PrimeNG autocomplete. */
   readonly results = signal<Customer[]>([]);
-  readonly showDropdown = signal(false);
+
   readonly isSearching = signal(false);
 
   // ---- Quick-create dialog ----
   readonly showCreateDialog = signal(false);
   readonly isSavingNew = signal(false);
   createForm: CreateCustomerRequest = { firstName: '', lastName: '', phone: '' };
-
-  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   //#endregion
 
   //#region Search Methods
 
-  /** Called on each keystroke in the search input */
-  onQueryChange(value: string): void {
-    this.query.set(value);
-
-    if (this.debounceTimer) clearTimeout(this.debounceTimer);
-
-    if (value.trim().length < 2) {
-      this.results.set([]);
-      this.showDropdown.set(false);
-      return;
-    }
-
-    this.debounceTimer = setTimeout(() => this.search(value), 300);
-  }
-
-  /** Executes the Dexie search */
-  private async search(q: string): Promise<void> {
+  /**
+   * Bound to `(completeMethod)` — fires after `[delay]` and `[minLength]`
+   * thresholds. Captures the raw query so `openCreate()` keeps a usable seed.
+   */
+  async onComplete(event: AutoCompleteCompleteEvent): Promise<void> {
+    this.query.set(event.query);
     this.isSearching.set(true);
-    const found = await this.customerService.searchByPhoneOrName(q);
-    this.results.set(found);
-    this.showDropdown.set(found.length > 0);
-    this.isSearching.set(false);
+    try {
+      const found = await this.customerService.searchByPhoneOrName(event.query);
+      this.results.set(found);
+    } finally {
+      this.isSearching.set(false);
+    }
   }
 
-  /** Selects a customer from the results dropdown */
-  selectResult(customer: Customer): void {
+  /** Bound to `(onSelect)` — user picked a row from the autocomplete panel. */
+  onCustomerSelect(event: AutoCompleteSelectEvent): void {
+    this.applyCustomerSelection(event.value as Customer);
+  }
+
+  /**
+   * Single source of truth for committing a customer selection — called from
+   * both the autocomplete `(onSelect)` and the quick-create save flow.
+   */
+  private applyCustomerSelection(customer: Customer): void {
     this.selectedCustomer.set(customer);
     this.customerChanged.emit(customer);
-    this.showDropdown.set(false);
+    this.acModel.set(null);
     this.query.set('');
     this.results.set([]);
   }
 
-  /** Clears the selected customer */
+  /** Clears the selected customer (chip X button). */
   clear(): void {
     this.selectedCustomer.set(null);
     this.customerChanged.emit(null);
-  }
-
-  /** Hides the dropdown (called on blur with delay for click capture) */
-  onBlur(): void {
-    setTimeout(() => this.showDropdown.set(false), 200);
   }
 
   //#endregion
@@ -128,7 +146,7 @@ export class CustomerSelectorComponent {
     this.isSavingNew.set(true);
     try {
       const customer = await this.customerService.createCustomer(this.createForm);
-      this.selectResult(customer);
+      this.applyCustomerSelection(customer);
       this.showCreateDialog.set(false);
     } catch (err) {
       this.messageService.add({

@@ -86,20 +86,25 @@
 
   <ng-template pTemplate="footer">
     <div class="qpay__actions">
-      <p-button
-        label="Cancelar"
-        severity="secondary"
-        styleClass="p-button-outlined"
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
         [disabled]="isProcessing()"
-        (onClick)="close()"
-      />
-      <p-button
-        label="Confirmar cobro"
-        severity="success"
-        [loading]="isProcessing()"
-        [disabled]="cartItemCount() === 0 || isProcessing()"
-        (onClick)="confirmPayment()"
-      />
+        (click)="close()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--primary"
+        [disabled]="cartItemCount() === 0 || isProcessing() || !canConfirmQuickPay()"
+        (click)="confirmPayment()"
+      >
+        @if (isProcessing()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Confirmar cobro
+      </button>
     </div>
   </ng-template>
 </p-dialog>

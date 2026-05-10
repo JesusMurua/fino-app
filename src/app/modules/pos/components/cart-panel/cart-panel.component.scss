@@ -246,12 +246,32 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
-  cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 
   i { font-size: 11px; }
 
-  &:hover { background: rgba($color-primary, 0.18); }
+  &__label {
+    display: inline-block;
+  }
+
+  /* Inline "Cambiar" action so the chip stays purely informative and
+     the picker dialog is opened only on explicit intent. */
+  &__change {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0 0 0 4px;
+    margin-left: 4px;
+    border-left: 1px solid rgba($color-primary, 0.3);
+    color: inherit;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover { color: #15803D; }
+  }
 
   &--unset {
     background: transparent;
@@ -259,10 +279,8 @@
     color: $color-text-sub;
     border-style: dashed;
 
-    &:hover {
-      border-color: $color-primary;
-      color: $color-primary;
-      background: rgba($color-primary, 0.05);
+    .beneficiary-chip__change {
+      border-left-color: $color-border-soft;
     }
   }
 }

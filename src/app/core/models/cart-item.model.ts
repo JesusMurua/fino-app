@@ -65,3 +65,34 @@ export function calcUnitPriceCents(
   const extraTotal = extras.reduce((sum, e) => sum + e.priceCents, 0);
   return product.priceCents + sizeDelta + extraTotal;
 }
+
+/**
+ * Returns the membership duration in days when the catalog tagged
+ * the product with `metadata.membershipDurationDays`, or null when
+ * the line is not a membership.
+ *
+ * Pure helper shared by `CartService` (auto-assignment effect),
+ * `CartPanelComponent`, and `CheckoutComponent`. Centralised so a
+ * single source of truth governs membership-item recognition.
+ */
+export function getMembershipDays(item: CartItem): number | null {
+  const days = item.product.metadata?.membershipDurationDays;
+  return typeof days === 'number' && days > 0 ? days : null;
+}
+
+/**
+ * True when the line carries a membership intent and therefore
+ * needs a beneficiary customer assigned.
+ */
+export function isMembershipItem(item: CartItem): boolean {
+  return getMembershipDays(item) !== null;
+}
+
+/**
+ * Beneficiary customer id stored on the cart item, or null when not
+ * yet assigned (manually or via the auto-assignment effect).
+ */
+export function getBeneficiaryId(item: CartItem): number | null {
+  const id = item.metadata?.beneficiaryCustomerId;
+  return typeof id === 'number' ? id : null;
+}

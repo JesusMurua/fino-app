@@ -1,6 +1,16 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, signal } from '@angular/core';
 
-import { CartItem, OrderItemMetadata, Product, ProductExtra, ProductSize, PromotionEvaluation, calcUnitPriceCents } from '../models';
+import {
+  CartItem,
+  OrderItemMetadata,
+  Product,
+  ProductExtra,
+  ProductSize,
+  PromotionEvaluation,
+  calcUnitPriceCents,
+  getBeneficiaryId,
+  isMembershipItem,
+} from '../models';
 import { calculateItemTax } from '../utils/tax.utils';
 import { CustomerService } from './customer.service';
 import { DatabaseService } from './database.service';
@@ -78,6 +88,14 @@ export class CartService {
   getSnapshot(): CartItem[] {
     return [...this.items()];
   }
+
+  /**
+   * Cancellation token for the auto-assign effect — incremented on
+   * every customer change. The async helper checks this token before
+   * each persist write and aborts if a newer invocation has started,
+   * so a rapid customer switch cannot leave stale assignments behind.
+   */
+  private assignToken = 0;
   //#endregion
 
   //#region Constructor & Initialization
@@ -90,6 +108,19 @@ export class CartService {
     private readonly tenantContext: TenantContextService,
   ) {
     this.loadFromDb();
+
+    // Reactive auto-assignment of the order's customer as beneficiary
+    // for any membership cart line that does NOT already have one.
+    // The cancellation token + sequential await inside
+    // `autoAssignBeneficiaries` together prevent both intra-helper
+    // races (parallel persist overwrites) and inter-helper races
+    // (rapid customer switches mid-flight). See FDD-027 follow-up.
+    effect(() => {
+      const customer = this.customerService.selectedCustomer();
+      if (!customer) return;
+      const token = ++this.assignToken;
+      void this.autoAssignBeneficiaries(this.items(), customer.id, token);
+    }, { allowSignalWrites: true });
   }
 
   /**
@@ -284,6 +315,32 @@ export class CartService {
     await this.persist(updated);
   }
   //#endregion
+
+  /**
+   * Sequentially assigns `customerId` as the beneficiary for every
+   * membership item in `items` that does not already have one. The
+   * `await` is MANDATORY: each `setItemMetadata` call snapshots
+   * `this.items()` and re-persists the whole array, so two parallel
+   * invocations would race and the last `persist` would overwrite the
+   * first. Awaiting forces each iteration to read the freshest state.
+   *
+   * The `token` cancellation check before every write also covers the
+   * inter-helper race where a fresh customer change spawns a newer
+   * invocation while an older one is still in-flight — only the newest
+   * helper's writes commit.
+   */
+  private async autoAssignBeneficiaries(
+    items: CartItem[],
+    customerId: number,
+    token: number,
+  ): Promise<void> {
+    for (const item of items) {
+      if (this.assignToken !== token) return;
+      if (!isMembershipItem(item)) continue;
+      if (getBeneficiaryId(item) !== null) continue;
+      await this.setItemMetadata(item.id, { beneficiaryCustomerId: customerId });
+    }
+  }
 
   //#region Private Helpers
 

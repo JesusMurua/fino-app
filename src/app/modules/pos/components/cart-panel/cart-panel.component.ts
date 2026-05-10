@@ -10,7 +10,15 @@ import { InputTextModule } from 'primeng/inputtext';
 
 import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, Customer, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
+import {
+  CartItem,
+  Customer,
+  Order,
+  RejectedPromotion,
+  RejectionReason,
+  getBeneficiaryId,
+  isMembershipItem,
+} from '../../../../core/models';
 import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -434,25 +442,12 @@ export class CartPanelComponent implements OnInit {
   //#region Membership Beneficiary (Gym vertical)
 
   /**
-   * Returns the membership duration in days when the catalog tagged
-   * the product with `metadata.membershipDurationDays`, or null when
-   * the line is not a membership.
+   * Pure-helper re-exports for template binding. The functions live in
+   * `cart-item.model.ts`; Angular templates can only call class
+   * properties, so we expose class-level references here.
    */
-  getMembershipDays(item: CartItem): number | null {
-    const days = item.product.metadata?.membershipDurationDays;
-    return typeof days === 'number' && days > 0 ? days : null;
-  }
-
-  /** True when the line carries a membership intent and needs a beneficiary. */
-  isMembershipItem(item: CartItem): boolean {
-    return this.getMembershipDays(item) !== null;
-  }
-
-  /** Beneficiary id stored on the cart item, or null when not yet assigned. */
-  getBeneficiaryId(item: CartItem): number | null {
-    const id = item.metadata?.beneficiaryCustomerId;
-    return typeof id === 'number' ? id : null;
-  }
+  readonly isMembershipItem = isMembershipItem;
+  readonly getBeneficiaryId = getBeneficiaryId;
 
   /**
    * Looks up the beneficiary's name from the customer cache so the cart

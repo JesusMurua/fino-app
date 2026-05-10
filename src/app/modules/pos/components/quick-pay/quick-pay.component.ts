@@ -80,6 +80,18 @@ export class QuickPayComponent {
     return Math.max(0, received - this.cartTotal());
   });
 
+  /**
+   * True when the cashier can confirm the cobro. Mirrors the F&B
+   * checkout's `canConfirm` short-circuit: a $0 total (e.g. a 100%-off
+   * promo) confirms instantly; otherwise the received amount must
+   * cover the total. Empty carts are still blocked separately on the
+   * confirm button so this signal stays focused on the payment math.
+   */
+  readonly canConfirmQuickPay = computed<boolean>(() => {
+    if (this.cartTotal() === 0) return true;
+    return this.receivedAmount() >= this.cartTotal();
+  });
+
   /** Guards against double-tap on confirm */
   readonly isProcessing = signal(false);
 

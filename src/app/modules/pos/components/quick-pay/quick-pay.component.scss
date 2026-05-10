@@ -273,3 +273,51 @@ $bills: (
     .qpay-bill__stripe-thin { background: $accent; }
   }
 }
+
+// ==========================================================================
+// Footer action buttons — BEM classes mirror the dialog convention used in
+// admin-customers.component.scss so cancel/confirm look identical across
+// every modal in the app. Angular's view encapsulation requires the
+// duplicate definition here; future cleanup may extract these to a shared
+// `_dialog-buttons.scss` partial.
+// ==========================================================================
+
+.customer-form__btn {
+  min-height: 40px;
+  padding: $space-2 $space-4;
+  border-radius: $radius-button;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $color-text-sub;
+    border: 1px solid #E5E7EB;
+
+    &:hover:not(:disabled) {
+      border-color: $color-text-sub;
+      color: $color-text-title;
+    }
+  }
+
+  &--primary {
+    background: $color-primary;
+    color: white;
+    border: none;
+
+    &:hover:not(:disabled) { background: #15803D; }
+  }
+}
+

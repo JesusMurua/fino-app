@@ -14,6 +14,25 @@ import { DatabaseService } from './database.service';
 // Shared with CheckoutComponent.loadOrderFromApi so the HTTP layer is typed.
 // ---------------------------------------------------------------------------
 
+/**
+ * Safe generic parser for metadata fields whose wire shape is
+ * heterogeneous (BE may emit JSON-encoded string OR object). Returns
+ * the typed payload, or `undefined` for null/empty/malformed input.
+ *
+ * Centralised here so every pull mapping can drop in a single call
+ * and never crash the sync cycle on a malformed BE response.
+ */
+function safeParseMetadata<T>(raw: unknown): T | undefined {
+  if (raw === null || raw === undefined || raw === '') return undefined;
+  if (typeof raw !== 'string') return raw as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    console.warn('[SyncService] Malformed metadata in pull payload — dropping field');
+    return undefined;
+  }
+}
+
 /** Shape of a single order payment as returned by the backend pull endpoint */
 export interface OrderPaymentPullDto {
   id?: number;
@@ -469,7 +488,7 @@ export class SyncService implements OnDestroy {
         externalTransactionId: p.externalTransactionId ?? undefined,
         transactionStatus: p.transactionStatus ?? undefined,
         authorizedAt: p.authorizedAt ? new Date(p.authorizedAt) : undefined,
-        paymentMetadata: p.paymentMetadata ?? undefined,
+        paymentMetadata: safeParseMetadata<PaymentMetadata>(p.paymentMetadata as unknown),
       })),
       items: (dto.items ?? []).map(item => ({
         id: String(item.id),
@@ -491,7 +510,7 @@ export class SyncService implements OnDestroy {
         size: item.sizeName ? { id: 0, label: item.sizeName, priceDeltaCents: 0 } : undefined,
         extras: (item.extras ?? []).map(name => ({ id: 0, label: name, priceCents: 0 })),
         notes: item.notes ?? undefined,
-        metadata: item.metadata,
+        metadata: safeParseMetadata<OrderItemMetadata>(item.metadata as unknown),
       })),
     };
   }
@@ -607,7 +626,7 @@ export class SyncService implements OnDestroy {
         externalTransactionId: p.externalTransactionId ?? null,
         transactionStatus: p.transactionStatus ?? null,
         authorizedAt: p.authorizedAt ?? null,
-        paymentMetadata: p.paymentMetadata ?? null,
+        paymentMetadata: p.paymentMetadata ? JSON.stringify(p.paymentMetadata) : null,
       })),
       createdAt: order.createdAt,
       tableId: order.tableId ?? null,
@@ -632,7 +651,7 @@ export class SyncService implements OnDestroy {
         sizeName: item.size?.label ?? null,
         extrasJson: item.extras.length > 0 ? JSON.stringify(item.extras) : null,
         notes: item.notes ?? null,
-        metadata: item.metadata ?? null,
+        metadata: item.metadata ? JSON.stringify(item.metadata) : null,
       })),
     };
   }

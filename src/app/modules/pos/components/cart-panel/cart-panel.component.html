@@ -44,23 +44,30 @@
               <span class="cart-item__meta cart-item__notes">{{ item.notes }}</span>
             }
             @if (isMembershipItem(item)) {
-              <button
-                type="button"
+              <div
                 class="beneficiary-chip"
                 [class.beneficiary-chip--unset]="getBeneficiaryId(item) === null"
-                (click)="openBeneficiarySelector(item)"
               >
                 <i class="pi pi-user"></i>
-                @if (getBeneficiaryName(item); as name) {
-                  Para: {{ name }}
-                } @else {
-                  @if (getBeneficiaryId(item); as id) {
-                    Para: cliente #{{ id }}
+                <span class="beneficiary-chip__label">
+                  @if (getBeneficiaryName(item); as name) {
+                    Para: {{ name }}
                   } @else {
-                    Para: seleccionar beneficiario
+                    @if (getBeneficiaryId(item); as id) {
+                      Para: cliente #{{ id }}
+                    } @else {
+                      Sin beneficiario
+                    }
                   }
-                }
-              </button>
+                </span>
+                <button
+                  type="button"
+                  class="beneficiary-chip__change"
+                  (click)="openBeneficiarySelector(item)"
+                >
+                  Cambiar
+                </button>
+              </div>
             }
           </div>
 
