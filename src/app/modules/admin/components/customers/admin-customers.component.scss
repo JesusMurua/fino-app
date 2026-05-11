@@ -581,6 +581,15 @@
         color: $color-text-title;
       }
     }
+
+    &--danger {
+      background: #DC2626;
+      color: white;
+      border: none;
+
+      &:hover:not(:disabled) { background: #B91C1C; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
   }
 }
 
@@ -685,6 +694,78 @@
   }
   &--cancelled {
     background: #DC2626;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Drawer — QR Gym Access section (Phase 3 / FDD-027)
+// Layout mirrors .drawer-memberships; buttons mirror .customer-form__btn.
+// -----------------------------------------------------------------------
+.drawer-qr {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__enrolled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    background: $color-primary-light;
+    border-radius: 12px;
+  }
+
+  &__enroll {
+    display: flex;
+    gap: $space-2;
+  }
+
+  &__input {
+    flex: 1;
+    min-height: 40px;
+    border-radius: $radius-button !important;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 40px;
+    padding: $space-2 $space-4;
+    border-radius: $radius-button;
+    font-size: $font-size-label;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+
+    &--primary {
+      background: $color-primary;
+      color: white;
+      border: none;
+
+      &:hover:not(:disabled) { background: #15803D; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    &--danger {
+      background: transparent;
+      color: #DC2626;
+      border: 1px solid #DC2626;
+
+      &:hover:not(:disabled) { background: #FEF2F2; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+
+  &__confirm-text {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-title;
+    line-height: 1.5;
   }
 }
 

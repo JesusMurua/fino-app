@@ -19,7 +19,11 @@ import {
   CustomerStatsDto,
   MembershipStatus,
 } from '../../../../core/models';
+import { QrStatusResponseDto } from '../../../../core/models/qr-access.model';
+import { SubCategoryType } from '../../../../core/enums';
 import { CustomerService } from '../../../../core/services/customer.service';
+import { QrAccessService } from '../../../../core/services/qr-access.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { CustomerNamePipe, formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 
@@ -47,7 +51,18 @@ export class AdminCustomersComponent implements OnInit {
 
   //#region Properties
   private readonly customerService = inject(CustomerService);
+  private readonly qrAccessService = inject(QrAccessService);
+  private readonly tenantContext = inject(TenantContextService);
   private readonly messageService = inject(MessageService);
+
+  /**
+   * True when the tenant is on the Gym vertical. Drives visibility of
+   * the QR enrollment section in the drawer (FDD-027 / Access Control).
+   * Mirror of `DashboardComponent.isGymTenant`.
+   */
+  readonly isGymTenant = computed(() =>
+    this.tenantContext.currentSubCategory() === SubCategoryType.Gym,
+  );
 
   /** All customers for the data table */
   readonly customers = this.customerService.customers;
@@ -141,6 +156,28 @@ export class AdminCustomersComponent implements OnInit {
 
   //#endregion
 
+  //#region QR Access (Gym vertical)
+
+  /** Latest QR enrollment status for the drawer customer; null while loading or off-vertical. */
+  readonly qrStatus = signal<QrStatusResponseDto | null>(null);
+
+  /** Initial-load flag for the QR section (driven by `loadQrStatus`). */
+  readonly isLoadingQr = signal(false);
+
+  /** Bound to the inline enroll input — typed/scanned QR code value. */
+  readonly qrTokenInput = signal<string>('');
+
+  /** Toggles the revoke-confirmation `<p-dialog>`. */
+  readonly showRevokeQrDialog = signal(false);
+
+  /** In-flight flag for the enroll POST. */
+  readonly isEnrolling = signal(false);
+
+  /** In-flight flag for the revoke DELETE. */
+  readonly isRevoking = signal(false);
+
+  //#endregion
+
   //#region Lifecycle
 
   async ngOnInit(): Promise<void> {
@@ -202,6 +239,8 @@ export class AdminCustomersComponent implements OnInit {
     this.customerOrders.set([]);
     this.ordersCurrentPage.set(1);
     this.ordersTotalRecords.set(0);
+    this.qrStatus.set(null);
+    this.qrTokenInput.set('');
     this.isLoadingStats.set(true);
     this.isLoadingMemberships.set(true);
     this.isLoadingOrders.set(true);
@@ -211,6 +250,7 @@ export class AdminCustomersComponent implements OnInit {
     // never cause a stale write.
     void this.loadStats();
     void this.loadMemberships();
+    void this.loadQrStatus(customer.id);
     void this.loadOrders(1);
   }
 
@@ -404,6 +444,102 @@ export class AdminCustomersComponent implements OnInit {
     } finally {
       this.isAdjusting.set(false);
     }
+  }
+
+  //#endregion
+
+  //#region QR Access Methods
+
+  /**
+   * Loads the QR enrollment status for the drawer customer. Mirrors the
+   * `loadStats`/`loadMemberships` pattern: staleness-guarded against
+   * rapid row switches so a late response never overwrites the new
+   * customer's data.
+   */
+  private async loadQrStatus(customerId: number): Promise<void> {
+    if (!this.isGymTenant()) return;
+    this.isLoadingQr.set(true);
+    try {
+      const status = await this.qrAccessService.getQrStatus(customerId);
+      if (this.drawerCustomer()?.id !== customerId) return;
+      this.qrStatus.set(status);
+    } catch (err) {
+      if (this.drawerCustomer()?.id !== customerId) return;
+      console.warn('[AdminCustomers] QR status load failed:', err);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo cargar el estado de la tarjeta QR',
+        life: 4000,
+      });
+    } finally {
+      if (this.drawerCustomer()?.id === customerId) {
+        this.isLoadingQr.set(false);
+      }
+    }
+  }
+
+  /** Enrolls the typed/scanned QR token for the drawer customer. */
+  async onEnrollQr(): Promise<void> {
+    const id = this.drawerCustomer()?.id;
+    const token = this.qrTokenInput().trim();
+    if (!id || !token) return;
+
+    this.isEnrolling.set(true);
+    try {
+      await this.qrAccessService.enrollQr({ customerId: id, qrToken: token });
+      this.qrTokenInput.set('');
+      await this.loadQrStatus(id);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Tarjeta vinculada',
+        life: 3000,
+      });
+    } catch (err: unknown) {
+      const detail = this.extractErrorDetail(err, 'No se pudo vincular la tarjeta');
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail,
+        life: 4000,
+      });
+    } finally {
+      this.isEnrolling.set(false);
+    }
+  }
+
+  /** Confirms the revoke flow from the modal, calls the API, refreshes status. */
+  async confirmRevokeQr(): Promise<void> {
+    const id = this.drawerCustomer()?.id;
+    if (!id) return;
+
+    this.isRevoking.set(true);
+    try {
+      await this.qrAccessService.revokeQr(id);
+      this.showRevokeQrDialog.set(false);
+      await this.loadQrStatus(id);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Tarjeta revocada',
+        life: 3000,
+      });
+    } catch (err: unknown) {
+      const detail = this.extractErrorDetail(err, 'No se pudo revocar la tarjeta');
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail,
+        life: 4000,
+      });
+    } finally {
+      this.isRevoking.set(false);
+    }
+  }
+
+  /** Defensive extraction of a user-facing message from an HTTP rejection. */
+  private extractErrorDetail(err: unknown, fallback: string): string {
+    const e = err as { error?: { message?: string } } | null;
+    return e?.error?.message ?? fallback;
   }
 
   //#endregion

@@ -1,0 +1,224 @@
+@use '../../../../../styles/variables' as *;
+
+// ============================================================================
+// Access Dashboard — gym reception live feed
+// ----------------------------------------------------------------------------
+// Optimized for a wall-mounted or front-desk screen: large readable rows,
+// distinct color-coded left borders for granted vs denied attempts, and a
+// connection-status pill so the receptionist can spot a backend outage at
+// a glance.
+// ============================================================================
+
+:host {
+  display: block;
+  height: 100vh;
+  width: 100%;
+  background: #f9fafb;
+}
+
+.access-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+  gap: 16px;
+
+  // --------------------------------------------------------------------------
+  // Header
+  // --------------------------------------------------------------------------
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  &__title {
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+
+    &--connected {
+      background: #ECFDF5;
+      color: #047857;
+
+      .access-dashboard__dot {
+        background: #10B981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+      }
+    }
+
+    &--reconnecting {
+      background: #FFFBEB;
+      color: #B45309;
+
+      .access-dashboard__dot {
+        background: #F59E0B;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
+      }
+    }
+
+    &--disconnected {
+      background: #FEF2F2;
+      color: #B91C1C;
+
+      .access-dashboard__dot {
+        background: #DC2626;
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
+      }
+    }
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+}
+
+// ============================================================================
+// Live feed list
+// ============================================================================
+
+.access-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    background: white;
+    border-radius: 10px;
+    border-left: 4px solid #E5E7EB;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: background 0.15s ease;
+
+    &--granted {
+      border-left-color: #10B981;
+      background: #F0FDF4;
+    }
+
+    &--denied {
+      border-left-color: #DC2626;
+      background: #FEF2F2;
+    }
+  }
+
+  &__item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__customer {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__time {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    padding: 48px 24px;
+    color: #9ca3af;
+
+    i {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Feature-gate banner — rendered when the tenant's plan does not include
+  // RealtimeAccessControl. Fills the viewport in place of the feed.
+  // --------------------------------------------------------------------------
+  &__banner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 28px;
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 12px;
+    color: #92400E;
+
+    i {
+      font-size: 2.5rem;
+      flex-shrink: 0;
+    }
+
+    &--unauthorized {
+      // Variant placeholder — currently only one banner type, but BEM
+      // leaves room for future "feature-disabled" / "branch-mismatch" etc.
+    }
+  }
+
+  &__banner-text {
+    flex: 1 1 auto;
+  }
+
+  &__banner-title {
+    margin: 0 0 4px;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  &__banner-subtitle {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    color: #78350F;
+  }
+}

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { FeatureKey, PlanTypeId } from '../enums';
+import { AccessReasonCatalog } from '../models/access-event.model';
 import {
   BusinessTypeCatalog,
   DeviceModeCatalog,
@@ -162,6 +163,18 @@ export class CatalogService {
   /** Returns business type config by code */
   getBusinessType(code: string): BusinessTypeCatalog | undefined {
     return this.businessTypes().find(s => s.code === code);
+  }
+
+  /**
+   * Fetches the access-reason catalog used by the live reception
+   * dashboard to translate `AccessResultDto.accessReasonId` into a
+   * human-readable label. Seeded by the backend `DbInitializer` and
+   * exposed at `/catalog/access-reasons` (anonymous).
+   */
+  getAccessReasons(): Promise<AccessReasonCatalog[]> {
+    return firstValueFrom(
+      this.api.get<AccessReasonCatalog[]>('/catalog/access-reasons'),
+    );
   }
 
   //#endregion

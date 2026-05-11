@@ -1,0 +1,81 @@
+<div class="access-dashboard">
+
+  @if (signalrService.connectionState() === 'unauthorized') {
+
+    <!-- Feature gate banner — tenant's plan does not include RealtimeAccessControl -->
+    <section class="access-feed__banner access-feed__banner--unauthorized">
+      <i class="pi pi-lock"></i>
+      <div class="access-feed__banner-text">
+        <h2 class="access-feed__banner-title">Función no disponible en tu plan</h2>
+        <p class="access-feed__banner-subtitle">
+          El Control de Acceso en Tiempo Real no está incluido en tu plan actual.
+          Contacta a soporte para actualizar.
+        </p>
+      </div>
+    </section>
+
+  } @else {
+
+    <!-- Connection status header -->
+    <header class="access-dashboard__header">
+      <div class="access-dashboard__title">
+        <h1>Control de acceso en vivo</h1>
+        <p>Últimos {{ signalrService.recentAttempts().length }} intentos</p>
+      </div>
+
+      @switch (signalrService.connectionState()) {
+        @case ('connected') {
+          <span class="access-dashboard__status access-dashboard__status--connected">
+            <span class="access-dashboard__dot"></span>
+            Conectado al torniquete
+          </span>
+        }
+        @case ('reconnecting') {
+          <span class="access-dashboard__status access-dashboard__status--reconnecting">
+            <span class="access-dashboard__dot"></span>
+            Reconectando...
+          </span>
+        }
+        @default {
+          <span class="access-dashboard__status access-dashboard__status--disconnected">
+            <span class="access-dashboard__dot"></span>
+            Desconectado
+          </span>
+        }
+      }
+    </header>
+
+    <!-- Live feed -->
+    @if (signalrService.recentAttempts().length === 0) {
+      <div class="access-feed__empty">
+        <i class="pi pi-inbox"></i>
+        <p>Esperando intentos de acceso…</p>
+      </div>
+    } @else {
+      <ul class="access-feed">
+        @for (attempt of signalrService.recentAttempts(); track attempt.accessLogId ?? $index) {
+          <li
+            class="access-feed__item"
+            [class.access-feed__item--granted]="attempt.isGranted"
+            [class.access-feed__item--denied]="!attempt.isGranted"
+          >
+            <div class="access-feed__item-main">
+              <span class="access-feed__customer">
+                {{ attempt.customerName ?? 'QR Desconocido' }}
+              </span>
+              <span class="access-feed__time">
+                {{ attempt.receivedAt | date:'mediumTime' }}
+              </span>
+            </div>
+            <p-tag
+              [value]="getReasonText(attempt.accessReasonId)"
+              [severity]="attempt.isGranted ? 'success' : 'danger'"
+            />
+          </li>
+        }
+      </ul>
+    }
+
+  }
+
+</div>

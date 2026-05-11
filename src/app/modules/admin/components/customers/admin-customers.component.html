@@ -333,6 +333,60 @@
       }
     </div>
 
+    <!-- QR Gym Access — Phase 3 (Gym vertical only) -->
+    @if (isGymTenant()) {
+      <div class="drawer-section drawer-qr">
+        <h3 class="drawer-section__title">Acceso al gimnasio (QR)</h3>
+
+        @if (isLoadingQr()) {
+          <div class="drawer-orders-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Cargando...</span>
+          </div>
+        } @else if (qrStatus()?.hasEnrolledQr) {
+          <div class="drawer-qr__enrolled">
+            <span class="badge badge--active">
+              <i class="pi pi-check"></i> Tarjeta vinculada
+            </span>
+            <button
+              type="button"
+              class="drawer-qr__btn drawer-qr__btn--danger"
+              [disabled]="isRevoking()"
+              (click)="showRevokeQrDialog.set(true)"
+            >
+              <i class="pi pi-times"></i>
+              Revocar tarjeta
+            </button>
+          </div>
+        } @else {
+          <div class="drawer-qr__enroll">
+            <input
+              type="text"
+              pInputText
+              [ngModel]="qrTokenInput()"
+              (ngModelChange)="qrTokenInput.set($event)"
+              placeholder="Escanea o ingresa el código QR..."
+              class="drawer-qr__input"
+              [disabled]="isEnrolling()"
+            />
+            <button
+              type="button"
+              class="drawer-qr__btn drawer-qr__btn--primary"
+              [disabled]="isEnrolling() || !qrTokenInput().trim()"
+              (click)="onEnrollQr()"
+            >
+              @if (isEnrolling()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-link"></i>
+              }
+              Asignar tarjeta
+            </button>
+          </div>
+        }
+      </div>
+    }
+
     <!-- Fiscal data -->
     @if (c.rfc) {
       <div class="drawer-section">
@@ -385,6 +439,44 @@
 
   }
 </p-sidebar>
+
+<!-- Revoke QR Confirmation Dialog -->
+<p-dialog
+  header="Revocar tarjeta QR"
+  [(visible)]="showRevokeQrDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '420px' }"
+  styleClass="adjust-dialog"
+>
+  <p class="drawer-qr__confirm-text">
+    ¿Confirmar revocación de la tarjeta QR? Esta acción no puede deshacerse.
+  </p>
+
+  <ng-template pTemplate="footer">
+    <div class="customer-form__footer">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        [disabled]="isRevoking()"
+        (click)="showRevokeQrDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--danger"
+        [disabled]="isRevoking()"
+        (click)="confirmRevokeQr()"
+      >
+        @if (isRevoking()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Revocar tarjeta
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
 
 <!-- Adjust Points Dialog -->
 <p-dialog

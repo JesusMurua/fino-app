@@ -12,4 +12,10 @@ export const receptionRoutes: Routes = [
       import('./pages/access-control/access-control.component')
         .then(m => m.AccessControlComponent),
   },
+  {
+    path: 'access-dashboard',
+    loadComponent: () =>
+      import('./pages/access-dashboard/access-dashboard.component')
+        .then(m => m.AccessDashboardComponent),
+  },
 ];
