@@ -3,8 +3,8 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } fro
 import { firstValueFrom } from 'rxjs';
 import { MessageService } from 'primeng/api';
 
-import { environment } from '../../../environments/environment';
 import { PrintJobDto } from '../models';
+import { SIGNALR_BASE_URL } from '../utils/signalr.utils';
 import { ApiService } from './api.service';
 import { DatabaseService } from './database.service';
 import { DeviceService } from './device.service';
@@ -202,7 +202,7 @@ export class KitchenService {
             this.hubConnection = null;
         }
 
-        const hubUrl = `${environment.apiUrl}/hubs/kds?destination=${destinationId}`;
+        const hubUrl = `${SIGNALR_BASE_URL}/hubs/kds?destination=${destinationId}`;
 
         this.hubConnection = new HubConnectionBuilder()
             .withUrl(hubUrl, {

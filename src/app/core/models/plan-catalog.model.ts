@@ -83,6 +83,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   [FeatureKey.CustomFolios]:            'Folios personalizados',
   [FeatureKey.CustomerHistory]:         'Historial por cliente',
   [FeatureKey.Reminders]:               'Recordatorios de citas',
+  [FeatureKey.RealtimeAccessControl]:   'Control de acceso (tiempo real)',
   [FeatureKey.MaxCashRegisters]:        'Cajas registradoras incluidas',
   [FeatureKey.MaxKdsScreens]:           'Pantallas de cocina (KDS)',
   [FeatureKey.MaxKiosks]:               'Kioskos de autoservicio',

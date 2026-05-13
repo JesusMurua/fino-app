@@ -1,9 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
-import { environment } from '../../../environments/environment';
 import { FeatureKey } from '../enums';
 import { AccessResultDto, LiveAccessEvent } from '../models/access-event.model';
+import { SIGNALR_BASE_URL } from '../utils/signalr.utils';
 import { DeviceService } from './device.service';
 import { TenantContextService } from './tenant-context.service';
 
@@ -101,7 +101,7 @@ export class AccessDashboardSignalrService {
       this.hubConnection = null;
     }
 
-    const hubUrl = `${environment.apiUrl}/hubs/bridge`;
+    const hubUrl = `${SIGNALR_BASE_URL}/hubs/bridge`;
     this.hubConnection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
         accessTokenFactory: () => this.deviceService.getDeviceToken() ?? '',
@@ -114,7 +114,11 @@ export class AccessDashboardSignalrService {
     // discards broadcasts that arrive between connection and handler
     // registration.
     this.hubConnection.on('AccessAttempted', (result: AccessResultDto) => {
-      const liveEvent: LiveAccessEvent = { ...result, receivedAt: new Date() };
+      const liveEvent: LiveAccessEvent = {
+        ...result,
+        receivedAt: new Date(),
+        localId: crypto.randomUUID(),
+      };
       this.recentAttempts.update(prev => [liveEvent, ...prev].slice(0, MAX_FEED_BUFFER));
     });
 

@@ -32,9 +32,14 @@ export interface AccessResultDto {
 }
 
 /**
- * Locally-enriched event used by the dashboard live feed. Adds a
- * `receivedAt` timestamp captured at the moment the SignalR handler fires
- * — the broadcast DTO itself does not carry one, and a client-side
- * timestamp is close enough to the server clock for live display.
+ * Locally-enriched event used by the dashboard live feed.
+ *
+ * - `receivedAt`: client-side timestamp captured when the SignalR handler
+ *   fires. The broadcast DTO itself does not carry one; close enough to
+ *   the server clock for live display.
+ * - `localId`: frontend-generated UUID used as the stable `@for` track key.
+ *   Required because `accessLogId` is `null` for unknown-QR scans (no log
+ *   row persisted), and Angular 18's template compiler crashes (`tmp_X_Y
+ *   is not defined`) when `??` appears inside a `track` expression.
  */
-export type LiveAccessEvent = AccessResultDto & { receivedAt: Date };
+export type LiveAccessEvent = AccessResultDto & { receivedAt: Date; localId: string };

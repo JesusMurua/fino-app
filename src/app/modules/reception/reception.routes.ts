@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 export const receptionRoutes: Routes = [
   {
     path: '',
+    // DEFERRED DEBT: Use canMatch guard for dynamic default route via FeatureKey.
     redirectTo: 'access-control',
     pathMatch: 'full',
   },

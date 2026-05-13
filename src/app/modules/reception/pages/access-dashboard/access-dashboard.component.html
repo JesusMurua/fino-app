@@ -53,7 +53,7 @@
       </div>
     } @else {
       <ul class="access-feed">
-        @for (attempt of signalrService.recentAttempts(); track attempt.accessLogId ?? $index) {
+        @for (attempt of signalrService.recentAttempts(); track attempt.localId) {
           <li
             class="access-feed__item"
             [class.access-feed__item--granted]="attempt.isGranted"
