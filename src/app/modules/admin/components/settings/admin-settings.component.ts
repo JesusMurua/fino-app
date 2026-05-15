@@ -33,6 +33,7 @@ import { BusinessService } from '../../../../core/services/business.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
+import { ScaleService } from '../../../../core/services/scale.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
 import { TaxService } from '../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
@@ -88,6 +89,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private readonly configService = inject(ConfigService);
   private readonly messageService = inject(MessageService);
   readonly printerService = inject(PrinterService);
+  readonly scaleService = inject(ScaleService);
   readonly scannerService = inject(ScannerService);
   private readonly tenantContext = inject(TenantContextService);
   private readonly router = inject(Router);
@@ -119,10 +121,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.tenantContext.hasFeature(FeatureKey.CfdiInvoicing),
   );
 
-  /** Scale card visible to Retail tenants with Core hardware */
+  /** Scale card visible to any tenant whose plan unlocks Core hardware */
   readonly canSeeScale = computed(() =>
-    this.tenantContext.hasFeature(FeatureKey.CoreHardware)
-    && this.authService.primaryMacroCategoryId() === MacroCategoryType.Retail,
+    this.tenantContext.hasFeature(FeatureKey.CoreHardware),
   );
 
   /** Print destinations visible when any kitchen-printing feature is on */
@@ -457,6 +458,30 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     if (tab === 'hardware') {
       this.scannerService.startListening();
     }
+  }
+
+  /**
+   * Persists the chosen scale configuration through `ScaleService` and
+   * surfaces a success toast. Idempotent: clicking the currently-active
+   * type / protocol button is a silent no-op, so the user does not see
+   * a redundant toast for a non-change.
+   */
+  onScaleConfigUpdated(
+    type: 'none' | 'serial' | 'cloud',
+    protocol?: 'toledo' | 'epson' | 'generic',
+  ): void {
+    if (
+      type === this.scaleService.scaleType()
+      && (protocol === undefined || protocol === this.scaleService.scaleProtocol())
+    ) {
+      return;
+    }
+    this.scaleService.updateScaleConfig(type, protocol);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Báscula actualizada',
+      life: 3000,
+    });
   }
 
   /**

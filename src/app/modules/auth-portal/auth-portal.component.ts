@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { FeatureKey, MacroCategoryType } from '../../core/enums';
+import { MacroCategoryType } from '../../core/enums';
 import {
   DeviceConfig,
   LAST_AUTH_ENTRY_KEY,
@@ -11,7 +11,6 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { DeviceService } from '../../core/services/device.service';
-import { TenantContextService } from '../../core/services/tenant-context.service';
 
 /**
  * Visual descriptor for the Operational entry card. Picked dynamically
@@ -90,7 +89,6 @@ export class AuthPortalComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
   private readonly deviceService = inject(DeviceService);
-  private readonly tenantContext = inject(TenantContextService);
   private readonly router = inject(Router);
 
   /**
@@ -130,14 +128,7 @@ export class AuthPortalComponent implements OnInit {
       case 'kiosk':     return '/kiosk';
       case 'kitchen':   return '/kitchen';
       case 'reception':
-        // Defensive fallback: if `hydrateFromDeviceToken` has not run yet
-        // (cold-boot race), `hasFeature` returns false and the device
-        // lands on the manual scanner — which always works. Gym tenants
-        // with the feature get the live dashboard once the JWT claim is
-        // parsed.
-        return this.tenantContext.hasFeature(FeatureKey.RealtimeAccessControl)
-          ? '/reception/access-dashboard'
-          : '/reception/access-control';
+        return '/reception/access-control';
       default:          return null;
     }
   }

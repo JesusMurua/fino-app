@@ -6,12 +6,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { ActivateDeviceResponse, DeviceConfig } from '../../core/models';
-import { FeatureKey, MacroCategoryType } from '../../core/enums';
+import { MacroCategoryType } from '../../core/enums';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { DeviceService } from '../../core/services/device.service';
-import { TenantContextService } from '../../core/services/tenant-context.service';
 import { sanitizeSecureCode } from '../../core/utils/secure-alphabet.utils';
 import { firstValueFrom } from 'rxjs';
 
@@ -63,7 +62,6 @@ export class SetupComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly configService = inject(ConfigService);
   private readonly deviceService = inject(DeviceService);
-  private readonly tenantContext = inject(TenantContextService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -287,13 +285,9 @@ export class SetupComponent implements OnInit {
       case 'kitchen':
         this.router.navigate(['/kitchen']);
         break;
-      case 'reception': {
-        const receptionPath = this.tenantContext.hasFeature(FeatureKey.RealtimeAccessControl)
-          ? '/reception/access-dashboard'
-          : '/reception/access-control';
-        this.router.navigate([receptionPath]);
+      case 'reception':
+        this.router.navigate(['/reception/access-control']);
         break;
-      }
       default:
         this.router.navigate(['/pin']);
         break;

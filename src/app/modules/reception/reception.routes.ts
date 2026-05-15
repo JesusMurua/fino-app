@@ -3,7 +3,6 @@ import { Routes } from '@angular/router';
 export const receptionRoutes: Routes = [
   {
     path: '',
-    // DEFERRED DEBT: Use canMatch guard for dynamic default route via FeatureKey.
     redirectTo: 'access-control',
     pathMatch: 'full',
   },
@@ -12,11 +11,5 @@ export const receptionRoutes: Routes = [
     loadComponent: () =>
       import('./pages/access-control/access-control.component')
         .then(m => m.AccessControlComponent),
-  },
-  {
-    path: 'access-dashboard',
-    loadComponent: () =>
-      import('./pages/access-dashboard/access-dashboard.component')
-        .then(m => m.AccessDashboardComponent),
   },
 ];

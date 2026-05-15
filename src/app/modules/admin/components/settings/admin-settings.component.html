@@ -365,19 +365,90 @@
           </div>
         </section>
 
-        <!-- Scale card — only for Retail tenants with Core hardware -->
+        <!-- Scale card — any tenant whose plan unlocks Core hardware -->
         @if (canSeeScale()) {
-          <section class="settings-card periph-bar">
-            <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
-            <div class="periph-bar__info">
-              <div class="card-title">Báscula</div>
-              <div class="card-subtitle">Web Serial — para ventas por peso</div>
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
+              <div>
+                <div class="card-title">Báscula</div>
+                <div class="card-subtitle">Configuración para venta por peso</div>
+              </div>
             </div>
-            <div class="status-badge status-badge--disconnected">
-              <span class="status-dot status-dot--off"></span>
-              No conectada
+
+            <div class="periph-hero">
+              <div class="periph-device-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 8h16l-2 12H6L4 8z"/>
+                  <path d="M9 8V6a3 3 0 016 0v2"/>
+                  <line x1="12" y1="12" x2="12" y2="16"/>
+                </svg>
+              </div>
+              @if (scaleService.scaleType() === 'none') {
+                <div class="status-badge status-badge--disconnected">
+                  <span class="status-dot status-dot--off"></span>
+                  Sin configurar
+                </div>
+              } @else {
+                <div class="status-badge status-badge--connected">
+                  <span class="status-dot status-dot--on"></span>
+                  Configurada
+                </div>
+              }
             </div>
-            <button type="button" class="btn-secondary btn-secondary--sm" disabled>Próximamente</button>
+
+            <div class="periph-divider"></div>
+
+            <div class="printer-type-toggle">
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'none'"
+                (click)="onScaleConfigUpdated('none')"
+              >
+                Ninguna
+              </button>
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'serial'"
+                (click)="onScaleConfigUpdated('serial')"
+              >
+                Cable USB (Recomendado)
+              </button>
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'cloud'"
+                (click)="onScaleConfigUpdated('cloud')"
+              >
+                Módulo Fino (Red)
+              </button>
+            </div>
+
+            @if (scaleService.scaleType() === 'serial') {
+              <div class="periph-divider"></div>
+              <div class="printer-type-toggle">
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'toledo'"
+                  (click)="onScaleConfigUpdated('serial', 'toledo')"
+                >
+                  Toledo
+                </button>
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'epson'"
+                  (click)="onScaleConfigUpdated('serial', 'epson')"
+                >
+                  Epson/Star
+                </button>
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'generic'"
+                  (click)="onScaleConfigUpdated('serial', 'generic')"
+                >
+                  Genérica
+                </button>
+              </div>
+            }
           </section>
         }
 

@@ -46,6 +46,10 @@ export interface DeviceConfig {
   linkedRegisterId?: number;
   /** Display name of the linked cash register (cached) */
   linkedRegisterName?: string;
+  /** Hybrid scale operating mode: none / serial (USB) / cloud (Fino module) */
+  scaleType?: 'none' | 'serial' | 'cloud';
+  /** Wire-level protocol for serial-mode scales */
+  scaleProtocol?: 'toledo' | 'epson' | 'generic';
 }
 
 /** localStorage key used to persist DeviceConfig */

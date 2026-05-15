@@ -4,7 +4,7 @@ import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signal
 import { FeatureKey } from '../enums';
 import { AccessResultDto, LiveAccessEvent } from '../models/access-event.model';
 import { SIGNALR_BASE_URL } from '../utils/signalr.utils';
-import { DeviceService } from './device.service';
+import { AuthService } from './auth.service';
 import { TenantContextService } from './tenant-context.service';
 
 /** Connection health surfaced to the UI. `unauthorized` is distinct from
@@ -35,9 +35,9 @@ const MAX_FEED_BUFFER = 50;
  *   1. Feature gate (`RealtimeAccessControl`) — if the tenant's plan
  *      lacks the feature the backend would `Context.Abort()` every
  *      reconnect attempt; we short-circuit to state `'unauthorized'`.
- *   2. Token presence — if the `DeviceService` has no token the handshake
- *      would 401 every reconnect attempt; we short-circuit to state
- *      `'disconnected'` and stop.
+ *   2. Token presence — if `AuthService` has no user auth token (or only
+ *      an offline-session marker) the handshake would 401 every reconnect
+ *      attempt; we short-circuit to state `'disconnected'` and stop.
  *
  * Mirror of `KitchenService` (KDS) for connection lifecycle patterns:
  * `withAutomaticReconnect`, retry timer on hard failure, handler
@@ -48,7 +48,7 @@ export class AccessDashboardSignalrService {
 
   //#region Properties
 
-  private readonly deviceService = inject(DeviceService);
+  private readonly authService = inject(AuthService);
   private readonly tenantContext = inject(TenantContextService);
 
   /** Live connection state for the dashboard header indicator. */
@@ -85,13 +85,14 @@ export class AccessDashboardSignalrService {
       return;
     }
 
-    // GUARD 2 — token presence. Without a device token the handshake
-    // 401s every retry. Stops the loop cleanly until a token is restored
-    // (e.g., the device gets activated, then the user reopens the dashboard).
-    const token = this.deviceService.getDeviceToken();
-    if (!token) {
+    // GUARD 2 — token presence. Without a user auth token (or with only
+    // an offline-session marker) the handshake 401s every retry. Stops
+    // the loop cleanly until a real JWT is restored (e.g., the manager
+    // re-authenticates online and reopens the dashboard).
+    const token = this.authService.getToken();
+    if (!token || token.startsWith('offline-session-')) {
       this.connectionState.set('disconnected');
-      console.warn('[AccessDashboard] No device token available — connection skipped');
+      console.warn('[AccessDashboard] No user auth token available — connection skipped');
       return;
     }
 
@@ -104,7 +105,7 @@ export class AccessDashboardSignalrService {
     const hubUrl = `${SIGNALR_BASE_URL}/hubs/bridge`;
     this.hubConnection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => this.deviceService.getDeviceToken() ?? '',
+        accessTokenFactory: () => this.authService.getToken() ?? '',
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
