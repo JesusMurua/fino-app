@@ -89,4 +89,5 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   [FeatureKey.MaxKiosks]:               'Kioskos de autoservicio',
   [FeatureKey.MaxReceptionsPerBranch]:  'Pantallas de recepción por sucursal',
   [FeatureKey.AdvancedReports]:         'Reportes avanzados',
+  [FeatureKey.ProviderPayments]:        'Pagos integrados (Clip, MercadoPago)',
 };

@@ -83,6 +83,10 @@ export enum FeatureKey {
   // --- Reporting ----------------------------------------------------------
   /** Generic advanced reports module (sales, trends, exports) */
   AdvancedReports = 'AdvancedReports',
+
+  // --- Payments -----------------------------------------------------------
+  /** Provider-backed payment integrations (Clip, MercadoPago, etc.) */
+  ProviderPayments = 'ProviderPayments',
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +117,7 @@ const UNIVERSAL_FEATURES: readonly FeatureKey[] = [
   FeatureKey.MultiBranch,
   FeatureKey.PublicApi,
   FeatureKey.MaxCashRegisters,
+  FeatureKey.ProviderPayments,
 ];
 
 const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
