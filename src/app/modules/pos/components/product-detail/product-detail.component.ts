@@ -281,9 +281,7 @@ export class ProductDetailComponent implements OnInit {
     const quantity = this.form.controls.quantity.value ?? 1;
     const notes = this.form.controls.notes.value?.trim() || undefined;
 
-    for (let i = 0; i < quantity; i++) {
-      await this.cartService.addItem(product, size, selectedExtras, notes);
-    }
+    await this.cartService.addItem(product, size, selectedExtras, notes, quantity);
 
     this.location.back();
   }

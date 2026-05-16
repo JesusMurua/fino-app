@@ -1,0 +1,48 @@
+<p-dialog
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [closable]="true"
+  [header]="'Pesar: ' + (product()?.name || '')"
+  styleClass="weight-capture-dialog"
+>
+  <div class="weight-capture">
+
+    @if (scaleService.scaleType() === 'none') {
+      <div class="status-badge status-badge--disconnected">
+        <span class="status-dot status-dot--off"></span>
+        Báscula sin configurar — ingrese el peso manualmente
+      </div>
+    } @else {
+      <div class="status-badge status-badge--connected">
+        <span class="status-dot status-dot--on"></span>
+        Báscula configurada
+      </div>
+    }
+
+    <label class="weight-capture__label" for="weight-input">Peso</label>
+    <p-inputNumber
+      inputId="weight-input"
+      [(ngModel)]="manualWeightKg"
+      mode="decimal"
+      [minFractionDigits]="3"
+      [maxFractionDigits]="3"
+      [min]="0.001"
+      suffix=" kg"
+      styleClass="weight-capture__input"
+    />
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      type="button"
+      class="p-button-primary"
+      (click)="confirm()"
+      [disabled]="manualWeightKg <= 0"
+    >
+      Confirmar
+    </button>
+  </ng-template>
+</p-dialog>

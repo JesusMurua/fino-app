@@ -143,56 +143,69 @@ export class CartService {
    * Adds a product to the cart with the selected size and extras.
    * If an identical configuration already exists, increments its quantity.
    * Enforces stock limits for trackStock products and applies optimistic deduction.
+   *
+   * For weight items, pass quantity as Kg (e.g., 0.357) and weightGrams as 357.
+   * Weight items skip the merge step so every capture creates a distinct line.
+   *
    * @param product The product to add
    * @param size Selected size variant (optional)
    * @param extras Selected extras (may be empty)
    * @param notes Optional kitchen notes
+   * @param quantity Units to add (default 1). For weight items, the kg value
+   * @param weightGrams Captured weight in grams (only for `isSoldByWeight` products)
    */
   async addItem(
     product: Product,
     size?: ProductSize,
     extras: ProductExtra[] = [],
     notes?: string,
+    quantity: number = 1,
+    weightGrams?: number,
   ): Promise<void> {
     // Stock guard — check available stock for trackStock products
     if (product.trackStock) {
       const available = this.productService.getAvailableStock(product.id);
       const inCart = this.getQuantityInCart(product.id);
-      if (inCart + 1 > available) {
+      if (inCart + quantity > available) {
         this.emitStockExceeded(product.name, Math.max(0, available - inCart));
         return;
       }
     }
 
     const unitPriceCents = calcUnitPriceCents(product, size, extras);
-    const existing = this.findMatchingItem(product.id, size?.id, extras.map(e => e.id));
 
-    if (existing) {
-      await this.updateQuantity(existing.id, existing.quantity + 1);
-      return;
+    // Non-weight items merge identical configurations into a single line.
+    // Weight items skip this so each capture is a distinct cart entry.
+    if (!product.metadata?.isSoldByWeight) {
+      const existing = this.findMatchingItem(product.id, size?.id, extras.map(e => e.id));
+      if (existing) {
+        await this.updateQuantity(existing.id, existing.quantity + quantity);
+        return;
+      }
     }
 
     const newItem: CartItem = {
       id: crypto.randomUUID(),
       product,
-      quantity: 1,
+      quantity,
       size,
       extras,
       unitPriceCents,
-      totalPriceCents: unitPriceCents,
+      totalPriceCents: Math.round(unitPriceCents * quantity),
       notes,
       // Carry the product's explicit override only. When undefined,
       // `totalTaxCents` resolves via `tenantContext.defaultTaxRatePercent()`
       // and the backend reconciles on save. AUDIT-053.
       taxRate: product.taxRate,
       discountCents: 0,
+      metadata: weightGrams !== undefined ? { weightGrams } : undefined,
     };
 
     const updated = [...this.items(), newItem];
     await this.persist(updated);
 
     // Optimistic local deduction
-    this.productService.deductLocalStock(product.id, 1);
+    this.productService.deductLocalStock(product.id, quantity);
   }
 
   /**
@@ -224,7 +237,7 @@ export class CartService {
 
     const updated = this.items().map(item =>
       item.id === itemId
-        ? { ...item, quantity, totalPriceCents: item.unitPriceCents * quantity }
+        ? { ...item, quantity, totalPriceCents: Math.round(item.unitPriceCents * quantity) }
         : item,
     );
     await this.persist(updated);
