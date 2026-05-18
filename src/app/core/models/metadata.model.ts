@@ -22,8 +22,6 @@ export interface ProductMetadata {
   kitchenPrepMinutes?: number;
   /** Bar / Sports Bar — drives age-gate and responsible-service hooks */
   isAlcoholic?: boolean;
-  /** Retail Enterprise — flips the POS into scale-capture mode */
-  isSoldByWeight?: boolean;
 }
 
 /**
@@ -33,8 +31,6 @@ export interface ProductMetadata {
 export interface OrderItemMetadata {
   /** Gym — customer who receives the membership extension */
   beneficiaryCustomerId?: number;
-  /** Retail Enterprise — captured weight when the product is sold by weight */
-  weightGrams?: number;
   /**
    * Services — appointment timestamp for future-scheduled services.
    * ISO string on the wire; `Date` instance only after offline rehydration.

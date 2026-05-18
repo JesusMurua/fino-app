@@ -144,15 +144,15 @@ export class CartService {
    * If an identical configuration already exists, increments its quantity.
    * Enforces stock limits for trackStock products and applies optimistic deduction.
    *
-   * For weight items, pass quantity as Kg (e.g., 0.357) and weightGrams as 357.
-   * Weight items skip the merge step so every capture creates a distinct line.
+   * `quantity` is a raw decimal — pieces for discrete items, native unit
+   * value for `TrackedByMeasure` products (kg / L / m / m² per `satUnitCode`).
+   * Measure items skip the merge step so every capture creates a distinct line.
    *
    * @param product The product to add
    * @param size Selected size variant (optional)
    * @param extras Selected extras (may be empty)
    * @param notes Optional kitchen notes
-   * @param quantity Units to add (default 1). For weight items, the kg value
-   * @param weightGrams Captured weight in grams (only for `isSoldByWeight` products)
+   * @param quantity Units to add (default 1). Decimal for `TrackedByMeasure` items.
    */
   async addItem(
     product: Product,
@@ -160,7 +160,6 @@ export class CartService {
     extras: ProductExtra[] = [],
     notes?: string,
     quantity: number = 1,
-    weightGrams?: number,
   ): Promise<void> {
     // Stock guard — check available stock for trackStock products
     if (product.trackStock) {
@@ -176,7 +175,7 @@ export class CartService {
 
     // Non-weight items merge identical configurations into a single line.
     // Weight items skip this so each capture is a distinct cart entry.
-    if (!product.metadata?.isSoldByWeight) {
+    if (product.type !== 'TrackedByMeasure') {
       const existing = this.findMatchingItem(product.id, size?.id, extras.map(e => e.id));
       if (existing) {
         await this.updateQuantity(existing.id, existing.quantity + quantity);
@@ -198,7 +197,6 @@ export class CartService {
       // and the backend reconciles on save. AUDIT-053.
       taxRate: product.taxRate,
       discountCents: 0,
-      metadata: weightGrams !== undefined ? { weightGrams } : undefined,
     };
 
     const updated = [...this.items(), newItem];

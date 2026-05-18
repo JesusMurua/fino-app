@@ -4,6 +4,7 @@ import { Subject, Subscription, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PosViewModeService } from '../../../../core/services/pos-view-mode.service';
@@ -54,6 +55,7 @@ export class UnifiedPosComponent implements OnInit, OnDestroy {
   //#region Properties
 
   private readonly cartService = inject(CartService);
+  private readonly cartFlowService = inject(CartFlowService);
   readonly configService = inject(ConfigService);
   private readonly messageService = inject(MessageService);
   private readonly productService = inject(ProductService);
@@ -132,30 +134,26 @@ export class UnifiedPosComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handles a scanned barcode in grid mode. Products with sizes/extras
-   * navigate to the detail screen so the cashier can configure; simple
-   * products are added to the cart directly with a confirmation toast.
+   * Handles a scanned barcode in grid mode. Delegates the three-branch
+   * routing (weight capture / detail navigation / immediate add) to
+   * `CartFlowService` and toasts only on direct add.
    */
   private handleBarcodeScan(code: string): void {
     this.productService.findByBarcode(code).subscribe({
-      next: (product) => {
+      next: async (product) => {
         if (!product) {
           this.showBarcodeNotFound(code);
           return;
         }
-        const hasOptions = product.sizes.length > 0
-          || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
-        if (hasOptions) {
-          this.router.navigate(['/pos/add-meal', product.id]);
-          return;
+        const result = await this.cartFlowService.handleProductClick(product);
+        if (result === 'added') {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Producto agregado',
+            detail: product.name,
+            life: 2000,
+          });
         }
-        this.cartService.addItem(product);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Producto agregado',
-          detail: product.name,
-          life: 2000,
-        });
       },
       error: () => this.showBarcodeNotFound(code),
     });

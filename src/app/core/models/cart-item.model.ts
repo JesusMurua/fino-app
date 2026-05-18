@@ -35,9 +35,9 @@ export interface CartItem {
   /**
    * Strongly-typed line-level metadata persisted by the backend as a
    * `jsonb` column (`OwnsOne(...).ToJson()` per BDD-020). Carries the
-   * Gym beneficiary id, retail weight capture and service appointment
-   * timestamps; the server is the authoritative source for any state
-   * derived from these fields (e.g. membership extension).
+   * Gym beneficiary id and service appointment timestamps; the server
+   * is the authoritative source for any state derived from these
+   * fields (e.g. membership extension).
    */
   metadata?: OrderItemMetadata;
   /**

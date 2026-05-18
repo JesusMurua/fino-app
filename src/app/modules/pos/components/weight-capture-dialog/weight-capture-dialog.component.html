@@ -3,7 +3,7 @@
   [modal]="true"
   [draggable]="false"
   [closable]="true"
-  [header]="'Pesar: ' + (product()?.name || '')"
+  [header]="'Medir: ' + (product()?.name || '')"
   styleClass="weight-capture-dialog"
 >
   <div class="weight-capture">
@@ -11,24 +11,24 @@
     @if (scaleService.scaleType() === 'none') {
       <div class="status-badge status-badge--disconnected">
         <span class="status-dot status-dot--off"></span>
-        Báscula sin configurar — ingrese el peso manualmente
+        Sensor sin configurar — ingrese la cantidad manualmente
       </div>
     } @else {
       <div class="status-badge status-badge--connected">
         <span class="status-dot status-dot--on"></span>
-        Báscula configurada
+        Sensor configurado
       </div>
     }
 
-    <label class="weight-capture__label" for="weight-input">Peso</label>
+    <label class="weight-capture__label" for="weight-input">Cantidad</label>
     <p-inputNumber
       inputId="weight-input"
-      [(ngModel)]="manualWeightKg"
+      [(ngModel)]="manualMeasureValue"
       mode="decimal"
       [minFractionDigits]="3"
       [maxFractionDigits]="3"
       [min]="0.001"
-      suffix=" kg"
+      [suffix]="' ' + formatMeasureUnit(product()?.satUnitCode, true)"
       styleClass="weight-capture__input"
     />
 
@@ -40,7 +40,7 @@
       type="button"
       class="p-button-primary"
       (click)="confirm()"
-      [disabled]="manualWeightKg <= 0"
+      [disabled]="manualMeasureValue <= 0"
     >
       Confirmar
     </button>

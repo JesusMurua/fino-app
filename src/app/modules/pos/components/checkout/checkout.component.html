@@ -50,7 +50,11 @@
         <ul class="summary-list">
           @for (item of cartItems(); track item.id) {
             <li class="summary-item">
-              <span class="summary-item__qty">{{ item.quantity }}×</span>
+              @if (isMeasureItem(item)) {
+                <span class="summary-item__qty qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.product?.satUnitCode, true) }}</span>
+              } @else {
+                <span class="summary-item__qty qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.product?.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.product?.satUnitCode, false) }}</span>
+              }
               <span class="summary-item__name">
                 {{ item.product.name }}
                 @if (item.size) { <span class="summary-item__meta">({{ item.size.label }})</span> }

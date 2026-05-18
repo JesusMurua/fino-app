@@ -69,6 +69,20 @@
 
           <div class="form-grid form-grid--2col">
             <div class="form-field">
+              <label class="form-field__label" for="pf-type">Tipo de producto</label>
+              <p-dropdown
+                inputId="pf-type"
+                [options]="productTypes"
+                optionLabel="label"
+                optionValue="value"
+                formControlName="type"
+                placeholder="Tipo de producto"
+                styleClass="w-full"
+                [appendTo]="'body'"
+              />
+            </div>
+
+            <div class="form-field">
               <label class="form-field__label" for="pf-category">Categoría</label>
               <p-dropdown
                 inputId="pf-category"

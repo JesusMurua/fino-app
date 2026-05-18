@@ -13,6 +13,7 @@ import { Product } from '../../../../core/models';
 import { calcUnitPriceCents } from '../../../../core/models/cart-item.model';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 
@@ -55,6 +56,7 @@ export class KeypadStageComponent {
 
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
+  private readonly cartFlowService = inject(CartFlowService);
   private readonly productService = inject(ProductService);
   private readonly messageService = inject(MessageService);
 
@@ -132,25 +134,28 @@ export class KeypadStageComponent {
   }
 
   /**
-   * Adds the selected product to the cart. Recents update and persist
-   * only on success. Failures surface via `MessageService`. The selection
-   * is cleared in `finally` so the input is ready for the next entry.
+   * Routes the selected product through `CartFlowService` so weight
+   * items open the capture dialog, configurable items go to the detail
+   * page, and plain items are added in place. Recents and the success
+   * toast fire only when the product actually landed in the cart.
    */
   async onCatalogSelect(event: AutoCompleteSelectEvent): Promise<void> {
     const product = event.value as Product;
     try {
-      await this.cartService.addItem(product);
-      this.pushRecent({
-        productId: product.id,
-        name: product.name,
-        priceCents: calcUnitPriceCents(product),
-      });
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Producto agregado',
-        detail: product.name,
-        life: 2000,
-      });
+      const result = await this.cartFlowService.handleProductClick(product);
+      if (result === 'added') {
+        this.pushRecent({
+          productId: product.id,
+          name: product.name,
+          priceCents: calcUnitPriceCents(product),
+        });
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Producto agregado',
+          detail: product.name,
+          life: 2000,
+        });
+      }
     } catch (err) {
       console.error('Failed to add catalog product:', err);
       this.messageService.add({
@@ -188,8 +193,13 @@ export class KeypadStageComponent {
       return;
     }
     try {
-      await this.cartService.addItem(product);
-      this.pushRecent(item);
+      // Route through CartFlowService — recents stay frozen unless the
+      // item actually landed in the cart (weight items open the dialog
+      // and the recent entry is preserved without an erroneous re-push).
+      const result = await this.cartFlowService.handleProductClick(product);
+      if (result === 'added') {
+        this.pushRecent(item);
+      }
     } catch (err) {
       console.error('Failed to re-add recent item:', err);
       this.messageService.add({

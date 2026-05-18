@@ -171,15 +171,21 @@
               <button
                 type="button"
                 class="waiter-sheet-item__qty-btn"
+                [disabled]="isMeasureItem(item)"
                 (click)="updateQuantity(item.id, -1)"
                 aria-label="Quitar uno"
               >
                 <i class="pi pi-minus"></i>
               </button>
-              <span class="waiter-sheet-item__qty-value">{{ item.quantity }}</span>
+              @if (isMeasureItem(item)) {
+                <span class="waiter-sheet-item__qty-value qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.product?.satUnitCode, true) }}</span>
+              } @else {
+                <span class="waiter-sheet-item__qty-value qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.product?.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.product?.satUnitCode, false) }}</span>
+              }
               <button
                 type="button"
                 class="waiter-sheet-item__qty-btn"
+                [disabled]="isMeasureItem(item)"
                 (click)="updateQuantity(item.id, 1)"
                 aria-label="Agregar uno"
               >

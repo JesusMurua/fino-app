@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { RestaurantTable, TableStatusDto } from '../models';
+import { ProductType, RestaurantTable, TableStatusDto } from '../models';
 import { TableStatus } from '../enums';
 import { DatabaseService } from './database.service';
 
@@ -14,7 +14,7 @@ export interface OrderSummary {
   totalCents: number;
   kitchenStatusId: number | null;
   createdAt: string;
-  items: { id: number; productName: string; quantity: number }[];
+  items: { id: number; productName: string; quantity: number; productType?: ProductType; satUnitCode?: string }[];
 }
 
 /** Result of moving items between orders */

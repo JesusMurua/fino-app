@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, input, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -22,6 +23,7 @@ import {
 import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -32,14 +34,16 @@ import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableAssignmentService } from '../../../../core/services/table-assignment.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
 import { QuickPayComponent } from '../quick-pay/quick-pay.component';
+import { WeightCaptureDialogComponent } from '../weight-capture-dialog/weight-capture-dialog.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent, QuickPayComponent],
+  imports: [DecimalPipe, FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent, QuickPayComponent, WeightCaptureDialogComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
@@ -56,6 +60,15 @@ export class CartPanelComponent implements OnInit {
    * documented in AUDIT-050. See `project_glassmorphism_scope.md`.
    */
   readonly isGlassMode = input<boolean>(false);
+
+  /** Template predicate for measure-based items — drives kg/L/m display + button gate. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
+
+  /** Orchestrator for POS catalog clicks — the dialog reads its request signal. */
+  readonly cartFlowService = inject(CartFlowService);
 
   readonly cartItems = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
@@ -187,6 +200,20 @@ export class CartPanelComponent implements OnInit {
   //#endregion
 
   //#region Cart Methods
+
+  /**
+   * Handles the measure-capture dialog confirmation: pulls the pending
+   * product from the orchestrator, calls `addItem` with the decimal
+   * quantity verbatim (the backend stores `Quantity decimal(18,4)`),
+   * and clears the request so the dialog closes.
+   */
+  async onMeasureCaptured(event: { quantity: number }): Promise<void> {
+    const prod = this.cartFlowService.weightCaptureRequest();
+    if (prod) {
+      await this.cartService.addItem(prod, undefined, [], undefined, event.quantity);
+    }
+    this.cartFlowService.clearWeightCaptureRequest();
+  }
 
   /** Increases item quantity by 1 */
   async increment(item: CartItem): Promise<void> {

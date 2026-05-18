@@ -4,7 +4,7 @@ import { Observable, firstValueFrom, forkJoin, from, of, switchMap, throwError }
 import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
-import { Category, InventoryMovement, Product, ProductExtra, ProductImage, ProductMetadata, ProductModifierGroup, ProductSize } from '../models';
+import { Category, InventoryMovement, Product, ProductExtra, ProductImage, ProductMetadata, ProductModifierGroup, ProductSize, ProductType } from '../models';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -13,6 +13,8 @@ import { InventoryService } from './inventory.service';
 /** Payload for creating or updating a product (shared shape) */
 export interface SaveProductDto {
   name: string;
+  /** Strong classification (NON-NULLABLE). Backend default is `'Standard'`. */
+  type: ProductType;
   barcode?: string;
   description?: string;
   priceCents: number;

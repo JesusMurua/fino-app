@@ -287,7 +287,11 @@
 
           <div class="td-order-card__items">
             @for (item of order.items; track item.productName) {
-              <span class="td-order-card__item">{{ item.quantity }}x {{ item.productName }}</span>
+              @if (isMeasureItem(item)) {
+                <span class="td-order-card__item qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.satUnitCode, true) }} {{ item.productName }}</span>
+              } @else {
+                <span class="td-order-card__item qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.satUnitCode, false) }} {{ item.productName }}</span>
+              }
             }
           </div>
 
@@ -423,7 +427,11 @@
             (change)="toggleMoveItem(item.id)"
           />
           <span class="move-item-row__name">{{ item.productName }}</span>
-          <span class="move-item-row__qty">×{{ item.quantity }}</span>
+          @if (isMeasureItem(item)) {
+            <span class="move-item-row__qty qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.satUnitCode, true) }}</span>
+          } @else {
+            <span class="move-item-row__qty qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.satUnitCode, false) }}</span>
+          }
         </label>
       }
     </div>
@@ -632,7 +640,11 @@
         <p class="split-col-title">Sin asignar ({{ splitItemsUnassigned().length }})</p>
         @for (item of splitItemsUnassigned(); track item.id) {
           <div class="split-item-chip">
-            <span class="split-item-chip__name">{{ item.productName }} ×{{ item.quantity }}</span>
+            @if (isMeasureItem(item)) {
+              <span class="split-item-chip__name qty-measure">{{ item.productName }} {{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.satUnitCode, true) }}</span>
+            } @else {
+              <span class="split-item-chip__name qty-unit">{{ item.productName }} {{ item.quantity }}{{ formatMeasureUnit(item.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.satUnitCode, false) }}</span>
+            }
             <div class="split-item-chip__actions">
               @for (group of splitGroups(); track group.id) {
                 <button

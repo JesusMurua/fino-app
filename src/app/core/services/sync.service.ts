@@ -1,7 +1,7 @@
 import { Injectable, Injector, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Customer, Order, OrderItemMetadata, OrderPayment, PaymentMetadata, PaymentMethod, PaymentTransactionStatus } from '../models';
+import { Customer, Order, OrderItemMetadata, OrderPayment, PaymentMetadata, PaymentMethod, PaymentTransactionStatus, ProductType } from '../models';
 import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
@@ -51,6 +51,14 @@ export interface OrderItemPullDto {
   id: string | number;
   productId?: number;
   productName: string;
+  /**
+   * Frozen-at-sale product classification. Backend Phase 4.5 freezes
+   * `Product.Type` into `OrderItem.ProductType` at sale time so
+   * historical orders never drift if the catalog later mutates.
+   */
+  productType?: ProductType;
+  /** SAT unit code (BE Phase 4.7+4.8) — drives unit suffix via `formatMeasureUnit`. */
+  satUnitCode?: string;
   quantity: number;
   unitPriceCents: number;
   discountCents?: number;
@@ -495,6 +503,9 @@ export class SyncService implements OnDestroy {
         product: {
           id: item.productId ?? 0,
           name: item.productName,
+          // Harvest the frozen ProductType from the wire when present;
+          // fall back to 'Standard' for pre-4.5 historical rows.
+          type: item.productType ?? 'Standard',
           priceCents: item.unitPriceCents,
           categoryId: 0,
           isAvailable: true,

@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -17,6 +18,7 @@ import { CashRegisterService } from '../../../../core/services/cash-register.ser
 import { ProductService } from '../../../../core/services/product.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableService } from '../../../../core/services/table.service';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 
 /** Draft storage key — namespaced per branch so multiple venues don't collide */
 const DRAFT_STORAGE_PREFIX = 'waiter-draft-';
@@ -44,6 +46,7 @@ interface WaiterDraft {
   selector: 'app-waiter-pos',
   standalone: true,
   imports: [
+    DecimalPipe,
     FormsModule,
     ButtonModule,
     DialogModule,
@@ -71,6 +74,13 @@ export class WaiterPosComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Properties
+
+  /** Template predicate for measure-based items — disables +/- and drives unit display. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
+
 
   /** All tables for the current branch */
   readonly tables = signal<RestaurantTable[]>([]);
@@ -222,6 +232,18 @@ export class WaiterPosComponent implements OnInit, OnDestroy {
 
   /** Adds a product to the cart or increments its quantity */
   addToCart(product: Product): void {
+    // Weight items require a scale capture flow that waiter-pos does not
+    // host (its cart is integer-only, parallel to CartService). Block the
+    // add and surface a toast so the waiter routes the customer to caja.
+    if (isMeasureItem(product)) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No disponible',
+        detail: 'Debe medirse en caja',
+      });
+      return;
+    }
+
     const items = this.cartItems();
     const existing = items.find(
       i => i.product.id === product.id && !i.size && i.extras.length === 0 && !i.notes,

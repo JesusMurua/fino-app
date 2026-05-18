@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -8,6 +8,7 @@ import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 
 import {
+  ProductType,
   RestaurantTable,
   TableStatusDto,
   Zone,
@@ -20,6 +21,7 @@ import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { TableService, OrderSummary, MoveItemsResult, SplitGroup } from '../../core/services/table.service';
+import { formatMeasureUnit, isMeasureItem } from '../../core/utils/product.utils';
 import { PaymentMethod, PAYMENT_METHOD_OPTIONS } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -46,7 +48,7 @@ interface ZoneGroup {
 @Component({
   selector: 'app-tables',
   standalone: true,
-  imports: [DialogModule, PricePipe, NgClass],
+  imports: [DecimalPipe, DialogModule, PricePipe, NgClass],
   templateUrl: './tables.component.html',
   styleUrl: './tables.component.scss',
 })
@@ -107,7 +109,13 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly moveSourceOrderId = signal<string | null>(null);
   readonly moveSourceTableName = signal('');
   readonly moveTargetTable = signal<TableStatusDto | null>(null);
-  readonly moveOrderItems = signal<{ id: number; productName: string; quantity: number }[]>([]);
+  readonly moveOrderItems = signal<{ id: number; productName: string; quantity: number; productType?: ProductType; satUnitCode?: string }[]>([]);
+
+  /** Template predicate for measure-based items — drives kg/L/m vs piece display. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
   readonly moveSelectedIds = signal<Set<number>>(new Set());
   readonly moveBusy = signal(false);
 
@@ -123,7 +131,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   readonly splitMode = signal<'choice' | 'equal' | 'items'>('choice');
   readonly splitSourceOrderId = signal<string | null>(null);
   readonly splitSourceTableName = signal('');
-  readonly splitSourceItems = signal<{ id: number; productName: string; quantity: number }[]>([]);
+  readonly splitSourceItems = signal<{ id: number; productName: string; quantity: number; productType?: ProductType; satUnitCode?: string }[]>([]);
   readonly splitOrderTotal = signal(0);
   readonly splitBusy = signal(false);
 
@@ -600,6 +608,8 @@ export class TablesComponent implements OnInit, OnDestroy {
       id: i.id,
       productName: i.productName,
       quantity: i.quantity,
+      productType: i.productType,
+      satUnitCode: i.satUnitCode,
     }));
     this.moveOrderItems.set(items);
     this.moveSelectedIds.set(new Set(items.map(i => i.id)));
@@ -812,7 +822,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.splitSourceTableName.set(tableName);
     this.splitOrderTotal.set(order.totalCents);
     this.splitSourceItems.set(order.items.map(i => ({
-      id: i.id, productName: i.productName, quantity: i.quantity,
+      id: i.id, productName: i.productName, quantity: i.quantity, productType: i.productType, satUnitCode: i.satUnitCode,
     })));
     this.splitEqualMethod.set(null);
     this.splitGroupCounter = 0;

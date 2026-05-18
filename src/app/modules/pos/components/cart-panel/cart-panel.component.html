@@ -77,15 +77,21 @@
               type="button"
               class="qty-btn"
               aria-label="Disminuir cantidad"
+              [disabled]="isMeasureItem(item)"
               (click)="decrement(item)"
             >
               <i class="pi pi-minus"></i>
             </button>
-            <span class="cart-item__qty">{{ item.quantity }}</span>
+            @if (isMeasureItem(item)) {
+              <span class="cart-item__qty qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.product?.satUnitCode, true) }}</span>
+            } @else {
+              <span class="cart-item__qty qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.product?.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.product?.satUnitCode, false) }}</span>
+            }
             <button
               type="button"
               class="qty-btn"
               aria-label="Aumentar cantidad"
+              [disabled]="isMeasureItem(item)"
               (click)="increment(item)"
             >
               <i class="pi pi-plus"></i>
@@ -322,6 +328,16 @@
     (visibleChange)="showQuickPay.set($event)"
   />
 }
+
+<!-- Measure-capture dialog (TrackedByMeasure products). CartFlowService
+     publishes the pending product via `weightCaptureRequest`; cart-panel
+     mirrors it into the dialog and emits the captured sub-unit count back. -->
+<app-weight-capture-dialog
+  [visible]="cartFlowService.weightCaptureRequest() !== null"
+  (visibleChange)="!$event && cartFlowService.clearWeightCaptureRequest()"
+  [product]="cartFlowService.weightCaptureRequest()"
+  (measureCaptured)="onMeasureCaptured($event)"
+/>
 
 <!-- Beneficiary selector dialog (Gym vertical) -->
 <p-dialog

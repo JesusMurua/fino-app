@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -36,6 +37,7 @@ import { OrderPullDto, SyncService } from '../../../../core/services/sync.servic
 import { TableService } from '../../../../core/services/table.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PromotionService } from '../../../../core/services/promotion.service';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 
 /** Internal step of the checkout flow */
 type CheckoutStep = 'payment' | 'confirmed';
@@ -44,6 +46,7 @@ type CheckoutStep = 'payment' | 'confirmed';
   selector: 'app-checkout',
   standalone: true,
   imports: [
+    DecimalPipe,
     FormsModule,
     ButtonModule,
     DialogModule,
@@ -61,6 +64,12 @@ type CheckoutStep = 'payment' | 'confirmed';
 export class CheckoutComponent implements OnInit {
 
   //#region Properties
+
+  /** Template predicate for measure-based items — drives kg/L/m display in summary. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
 
   /** Guards against double-tap on the confirm payment button */
   readonly isProcessing = signal(false);

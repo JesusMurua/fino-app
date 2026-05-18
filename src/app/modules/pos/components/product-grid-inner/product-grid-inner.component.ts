@@ -4,6 +4,7 @@ import { MessageService } from 'primeng/api';
 
 import { Product } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
@@ -56,6 +57,8 @@ export class ProductGridInnerComponent implements OnInit {
   //#endregion
 
   //#region Constructor
+  private readonly cartFlowService = inject(CartFlowService);
+
   constructor(
     private readonly productService: ProductService,
     private readonly cartService: CartService,
@@ -109,33 +112,21 @@ export class ProductGridInnerComponent implements OnInit {
   //#region Product Methods
 
   /**
-   * Routes the product based on whether it requires customization (FDD-024).
-   * Products with sizes or modifier groups navigate to the detail page so
-   * the cashier can configure them; products with neither are added to the
-   * cart directly to save taps in non-F&B verticals (memberships, simple
-   * retail items, services). Mirrors `UnifiedPosComponent.handleBarcodeScan`.
+   * Delegates the product click to `CartFlowService` — it owns the three
+   * branches (weight capture, detail-page navigation, immediate add) and
+   * returns the outcome so we toast only on `'added'`. Weight items emit
+   * `'weight_capture'` and the dialog (mounted in cart-panel) takes over.
    */
-  onProductSelected(product: Product): void {
-    if (this.productRequiresDetailPage(product)) {
-      this.router.navigate(['/pos/add-meal', product.id]);
-      return;
+  async onProductSelected(product: Product): Promise<void> {
+    const result = await this.cartFlowService.handleProductClick(product);
+    if (result === 'added') {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Producto agregado',
+        detail: product.name,
+        life: 2000,
+      });
     }
-    this.cartService.addItem(product);
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Producto agregado',
-      detail: product.name,
-      life: 2000,
-    });
-  }
-
-  /**
-   * Returns true when a product needs the detail page to be configured —
-   * either it has size variants or at least one non-empty modifier group.
-   */
-  private productRequiresDetailPage(product: Product): boolean {
-    return product.sizes.length > 0
-      || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
   }
 
   //#endregion

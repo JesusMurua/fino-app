@@ -31,6 +31,7 @@ import {
   ProductImage,
   ProductMetadata,
   ProductModifierGroup,
+  ProductType,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
 import { FeatureKey, MacroCategoryType } from '../../../../../core/enums';
@@ -82,6 +83,8 @@ type ModifierGroupForm = FormGroup<{
  */
 type ProductFormGroup = FormGroup<{
   name:                   FormControl<string>;
+  /** Strong classification — drives POS branching (weight, recipe, etc.) */
+  type:                   FormControl<ProductType>;
   barcode:                FormControl<string>;
   description:            FormControl<string>;
   pricePesos:             FormControl<number>;
@@ -278,6 +281,16 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   /** Full reactive form for the page */
   readonly productForm: ProductFormGroup = this.buildProductForm();
 
+  /** Dropdown options for the product type picker. */
+  readonly productTypes: ReadonlyArray<{ label: string; value: ProductType }> = [
+    { label: 'Estándar',                       value: 'Standard' },
+    { label: 'Inventario por Pieza',           value: 'TrackedByUnit' },
+    { label: 'Inventario Medible (Peso/Vol./Long.)',  value: 'TrackedByMeasure' },
+    { label: 'Receta',                         value: 'Recipe' },
+    { label: 'Servicio',                       value: 'Service' },
+    { label: 'Membresía',                      value: 'Membership' },
+  ];
+
   /**
    * Reactive snapshot of the form's value. Wraps `productForm.valueChanges`
    * so `previewProduct` re-runs on every keystroke. Declared AFTER
@@ -448,6 +461,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
     this.productForm.patchValue({
       name:                   product.name,
+      type:                   product.type,
       barcode:                product.barcode ?? '',
       description:            product.description ?? '',
       pricePesos:             product.priceCents / 100,
@@ -554,6 +568,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
     const dto: SaveProductDto = {
       name: raw.name.trim(),
+      type: raw.type,
       barcode: raw.barcode.trim() || undefined,
       description: raw.description.trim() || undefined,
       priceCents: Math.round((raw.pricePesos || 0) * 100),
@@ -829,6 +844,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   private buildProductForm(): ProductFormGroup {
     return new FormGroup({
       name:                   new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+      type:                   new FormControl<ProductType>('Standard', { nonNullable: true, validators: [Validators.required] }),
       barcode:                new FormControl('', { nonNullable: true }),
       description:            new FormControl('', { nonNullable: true }),
       pricePesos:             new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
@@ -860,6 +876,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   private resetProductForm(): void {
     this.productForm.reset({
       name: '',
+      type: 'Standard',
       barcode: '',
       description: '',
       pricePesos: 0,
