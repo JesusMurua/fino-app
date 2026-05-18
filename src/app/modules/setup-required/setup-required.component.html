@@ -1,0 +1,39 @@
+<div class="setup-required">
+  <div class="setup-required__card">
+
+    <div class="setup-required__icon" aria-hidden="true">
+      <i class="pi pi-lock"></i>
+    </div>
+
+    <h1 class="setup-required__title">Caja bloqueada</h1>
+
+    <p class="setup-required__lead">
+      Esta caja no puede operar todavía.
+    </p>
+
+    <p class="setup-required__detail">
+      Pídele al administrador que configure los impuestos del negocio en
+      <strong>Configuración → Fiscal</strong>. Cuando termine, vuelve aquí
+      y presiona <strong>Reintentar</strong>.
+    </p>
+
+    <div class="setup-required__actions">
+      <button
+        type="button"
+        class="setup-required__btn setup-required__btn--primary"
+        (click)="retry()"
+      >
+        <i class="pi pi-refresh"></i>
+        Reintentar
+      </button>
+      <button
+        type="button"
+        class="setup-required__btn setup-required__btn--secondary"
+        (click)="logout()"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+
+  </div>
+</div>

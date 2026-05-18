@@ -1,8 +1,9 @@
 import { Component, ElementRef, OnDestroy, OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 
 import { DeliveryOrderDto } from '../../../../core/models';
 import { DeliveryStatus, OrderSource } from '../../../../core/enums';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 import { PlatformChipComponent } from '../../../../shared/components/platform-chip/platform-chip.component';
 
 /** Default acceptance window when no estimatedPickupAt is provided (5 min) */
@@ -11,7 +12,7 @@ const DEFAULT_ACCEPTANCE_WINDOW_S = 300;
 @Component({
   selector: 'app-delivery-order-card',
   standalone: true,
-  imports: [DatePipe, PlatformChipComponent],
+  imports: [DatePipe, DecimalPipe, PlatformChipComponent],
   templateUrl: './delivery-order-card.component.html',
   styleUrl: './delivery-order-card.component.scss',
 })
@@ -33,6 +34,12 @@ export class DeliveryOrderCardComponent implements OnInit, OnDestroy {
   /** Expose enums for template */
   readonly DeliveryStatus = DeliveryStatus;
   readonly OrderSource = OrderSource;
+
+  /** Template predicate for measure-based items — drives kg/L/m vs piece display. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
 
   readonly now = signal(new Date());
   private timerId: ReturnType<typeof setInterval> | null = null;

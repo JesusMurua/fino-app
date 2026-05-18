@@ -1,0 +1,110 @@
+<p-dialog
+  header="Cobro rápido"
+  [visible]="visible()"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [closable]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '92vw', maxWidth: '460px' }"
+  [contentStyle]="{ padding: '1.25rem' }"
+>
+  <div class="qpay">
+
+    <!-- Total -->
+    <div class="qpay__total">
+      <span class="qpay__total-label">Total a cobrar</span>
+      <span class="qpay__total-amount">{{ cartTotal() | price }}</span>
+    </div>
+
+    <!-- Bill denomination strip -->
+    <div class="qpay__bills">
+      @for (bill of bills; track bill.cents) {
+        <button
+          type="button"
+          class="qpay-bill qpay-bill--{{ bill.modifier }}"
+          [disabled]="cartItemCount() === 0"
+          (click)="addBillAmount(bill.cents)"
+        >
+          <div class="qpay-bill__circle"></div>
+          <div class="qpay-bill__stripe"></div>
+          <div class="qpay-bill__stripe-thin"></div>
+          <div class="qpay-bill__content">
+            <span class="qpay-bill__mxn">MXN</span>
+            <span class="qpay-bill__amount">{{ bill.label }}</span>
+          </div>
+        </button>
+      }
+    </div>
+
+    <!-- Custom amount input -->
+    <div class="qpay__custom">
+      <span class="qpay__custom-prefix">$</span>
+      <input
+        type="number"
+        inputmode="decimal"
+        placeholder="Otro monto"
+        class="qpay__custom-input"
+        min="0"
+        [value]="customAmountInput()"
+        (input)="onCustomAmountInput($event)"
+      />
+    </div>
+
+    <!-- Recibido + cambio rows -->
+    @if (receivedAmount() > 0) {
+      <div class="qpay__received">
+        <div class="qpay__received-info">
+          <span class="qpay__received-label">Recibido</span>
+          <input
+            type="number"
+            inputmode="decimal"
+            class="qpay__received-input"
+            min="0"
+            [value]="(receivedAmount() / 100).toFixed(2)"
+            (input)="onDialogReceivedInput($event)"
+          />
+        </div>
+        <button
+          type="button"
+          class="qpay__received-reset"
+          (click)="resetReceived()"
+          aria-label="Limpiar monto recibido"
+        >×</button>
+      </div>
+
+      <div class="qpay__change">
+        <span>Cambio</span>
+        <strong>{{ changeAmount() | price }}</strong>
+      </div>
+    } @else {
+      <p class="qpay__hint">
+        Toca un billete o escribe el monto recibido. También puedes cobrar el monto exacto.
+      </p>
+    }
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="qpay__actions">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        [disabled]="isProcessing()"
+        (click)="close()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--primary"
+        [disabled]="cartItemCount() === 0 || isProcessing() || !canConfirmQuickPay()"
+        (click)="confirmPayment()"
+      >
+        @if (isProcessing()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Confirmar cobro
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -8,11 +9,21 @@ import { MessageService } from 'primeng/api';
 
 import { InputTextModule } from 'primeng/inputtext';
 
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
-import { CartItem, Customer, Order, RejectedPromotion, RejectionReason } from '../../../../core/models';
+import {
+  CartItem,
+  Customer,
+  Order,
+  RejectedPromotion,
+  RejectionReason,
+  getBeneficiaryId,
+  isMembershipItem,
+} from '../../../../core/models';
 import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { ConfigService } from '../../../../core/services/config.service';
@@ -23,19 +34,42 @@ import { PromotionService } from '../../../../core/services/promotion.service';
 import { SyncService } from '../../../../core/services/sync.service';
 import { TableAssignmentService } from '../../../../core/services/table-assignment.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 import { CustomerSelectorComponent } from '../../../../shared/components/customer-selector/customer-selector.component';
 import { TableSelectorDialogComponent, TableSelectedEvent } from '../table-selector-dialog/table-selector-dialog.component';
+import { QuickPayComponent } from '../quick-pay/quick-pay.component';
+import { WeightCaptureDialogComponent } from '../weight-capture-dialog/weight-capture-dialog.component';
 
 @Component({
   selector: 'app-cart-panel',
   standalone: true,
-  imports: [FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent],
+  imports: [DecimalPipe, FormsModule, ButtonModule, DialogModule, DividerModule, InputTextModule, PricePipe, CustomerSelectorComponent, TableSelectorDialogComponent, QuickPayComponent, WeightCaptureDialogComponent],
   templateUrl: './cart-panel.component.html',
   styleUrl: './cart-panel.component.scss',
 })
 export class CartPanelComponent implements OnInit {
 
   //#region Properties
+
+  /**
+   * Opt-in glassmorphism mode. Set to `true` only inside the unified POS
+   * shell (`<app-unified-pos>`) where the cart panel sits over a
+   * page-bg gradient and benefits from the translucent backdrop blur.
+   * Stays `false` in `<app-restaurant-hub>` so the legacy F&B shell keeps
+   * its solid white surface and avoids the transparent-bleed regression
+   * documented in AUDIT-050. See `project_glassmorphism_scope.md`.
+   */
+  readonly isGlassMode = input<boolean>(false);
+
+  /** Template predicate for measure-based items — drives kg/L/m display + button gate. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
+
+  /** Orchestrator for POS catalog clicks — the dialog reads its request signal. */
+  readonly cartFlowService = inject(CartFlowService);
+
   readonly cartItems = this.cartService.items;
   readonly totalCents = this.cartService.totalCents;
   readonly totalTaxCents = this.cartService.totalTaxCents;
@@ -72,6 +106,13 @@ export class CartPanelComponent implements OnInit {
   readonly isFoodAndBeverage = computed(() =>
     this.tenantContext.currentMacro() === MacroCategoryType.FoodBeverage,
   );
+
+  /**
+   * Controls the inline `<app-quick-pay>` dialog used by non-F&B verticals
+   * (Services, Retail, Counter, Quick) to skip `/pos/checkout` and complete
+   * a cash sale in one step. Wired only when `!isFoodAndBeverage()`.
+   */
+  readonly showQuickPay = signal(false);
 
   // ---- Table assignment (FDD-001) ----
   /** Controls TableSelectorDialog visibility */
@@ -160,6 +201,20 @@ export class CartPanelComponent implements OnInit {
 
   //#region Cart Methods
 
+  /**
+   * Handles the measure-capture dialog confirmation: pulls the pending
+   * product from the orchestrator, calls `addItem` with the decimal
+   * quantity verbatim (the backend stores `Quantity decimal(18,4)`),
+   * and clears the request so the dialog closes.
+   */
+  async onMeasureCaptured(event: { quantity: number }): Promise<void> {
+    const prod = this.cartFlowService.weightCaptureRequest();
+    if (prod) {
+      await this.cartService.addItem(prod, undefined, [], undefined, event.quantity);
+    }
+    this.cartFlowService.clearWeightCaptureRequest();
+  }
+
   /** Increases item quantity by 1 */
   async increment(item: CartItem): Promise<void> {
     await this.cartService.updateQuantity(item.id, item.quantity + 1);
@@ -178,10 +233,23 @@ export class CartPanelComponent implements OnInit {
     await this.cartService.removeItem(item.id);
   }
 
-  /** Navigates to the checkout page */
+  /**
+   * Primary checkout action.
+   *
+   * - F&B (`isFoodAndBeverage()`): navigates to the full `/pos/checkout`
+   *   page, which supports card / split payments + tipping.
+   * - Non-F&B (Services, Retail, Counter, Quick): opens the inline
+   *   `<app-quick-pay>` dialog so the cashier can ring up a cash sale in
+   *   one tap without leaving the POS view. This preserves the legacy
+   *   `quick-pos`/`retail-pos` UX after the unified-shell refactor.
+   */
   onCheckout(): void {
     if (!this.requireOpenSession()) return;
-    this.router.navigate(['/pos/checkout']);
+    if (this.isFoodAndBeverage()) {
+      this.router.navigate(['/pos/checkout']);
+      return;
+    }
+    this.showQuickPay.set(true);
   }
 
   /**
@@ -241,7 +309,7 @@ export class CartPanelComponent implements OnInit {
       tableId: table.tableId,
       tableName: table.tableName,
       customerId: this.customerService.selectedCustomer()?.id,
-      customerName: this.customerService.selectedCustomer()?.name,
+      customerName: formatCustomerName(this.customerService.selectedCustomer()) || undefined,
       createdAt: new Date(),
       branchId: this.authService.branchId,
       cashRegisterSessionId: sessionId,
@@ -401,25 +469,12 @@ export class CartPanelComponent implements OnInit {
   //#region Membership Beneficiary (Gym vertical)
 
   /**
-   * Returns the membership duration in days when the catalog tagged
-   * the product with `metadata.membershipDurationDays`, or null when
-   * the line is not a membership.
+   * Pure-helper re-exports for template binding. The functions live in
+   * `cart-item.model.ts`; Angular templates can only call class
+   * properties, so we expose class-level references here.
    */
-  getMembershipDays(item: CartItem): number | null {
-    const days = item.product.metadata?.['membershipDurationDays'];
-    return typeof days === 'number' && days > 0 ? days : null;
-  }
-
-  /** True when the line carries a membership intent and needs a beneficiary. */
-  isMembershipItem(item: CartItem): boolean {
-    return this.getMembershipDays(item) !== null;
-  }
-
-  /** Beneficiary id stored on the cart item, or null when not yet assigned. */
-  getBeneficiaryId(item: CartItem): number | null {
-    const id = item.metadata?.['beneficiaryCustomerId'];
-    return typeof id === 'number' ? id : null;
-  }
+  readonly isMembershipItem = isMembershipItem;
+  readonly getBeneficiaryId = getBeneficiaryId;
 
   /**
    * Looks up the beneficiary's name from the customer cache so the cart
@@ -431,7 +486,7 @@ export class CartPanelComponent implements OnInit {
     const id = this.getBeneficiaryId(item);
     if (id === null) return null;
     const found = this.customerService.customers().find(c => c.id === id);
-    return found?.name ?? null;
+    return found ? formatCustomerName(found) : null;
   }
 
   /** Opens the beneficiary picker dialog for the given cart line. */
@@ -446,15 +501,16 @@ export class CartPanelComponent implements OnInit {
 
   /**
    * Commits the picked customer as the beneficiary for the active
-   * membership line. Writes the canonical metadata shape consumed by
-   * `SyncService.applyOfflineMembershipExtensions`:
-   *   `{ beneficiaryCustomerId, membershipDurationDays }`.
+   * membership line. Writes the typed `OrderItemMetadata` payload that
+   * the backend's membership service consumes — only the beneficiary
+   * id is needed; the duration is resolved server-side from the
+   * product's `Metadata.MembershipDurationDays` (BDD-019 §6.1.1).
    *
    * A `null` payload means the user clicked the chip's clear button to
    * search for a different beneficiary — keep the dialog open so they
    * can pick again, and don't touch the cart. Closes only on a real
    * pick. No-ops when the active item disappeared from the cart while
-   * the dialog was open.
+   * the dialog was open or when the line is not a membership product.
    */
   async onBeneficiarySelected(customer: Customer | null): Promise<void> {
     if (!customer) return;
@@ -466,12 +522,10 @@ export class CartPanelComponent implements OnInit {
     const item = this.cartItems().find(i => i.id === itemId);
     if (!item) return;
 
-    const days = this.getMembershipDays(item);
-    if (days === null) return;
+    if (!this.isMembershipItem(item)) return;
 
     await this.cartService.setItemMetadata(item.id, {
       beneficiaryCustomerId: customer.id,
-      membershipDurationDays: days,
     });
   }
 

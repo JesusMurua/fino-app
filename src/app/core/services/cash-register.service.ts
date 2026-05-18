@@ -14,6 +14,7 @@ import {
   OpenSessionRequest,
 } from '../models';
 import { CashMovementType, CashRegisterStatus } from '../enums';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -142,6 +143,27 @@ export class CashRegisterService implements OnDestroy {
       } else if (!authed) {
         this.resetLinkedRegisterCache();
       }
+    }, { allowSignalWrites: true });
+
+    // Auto-open the shift sidebar on the *transition* from no-session →
+    // open-session, so the cashier sees the freshly opened shift summary
+    // at a glance. Cold-boot guard: the very first time this effect
+    // runs (page load with a session already persisted) we suppress the
+    // pop so refreshing the page does not slap the panel open every
+    // time. Only subsequent transitions trigger the auto-open.
+    let initialSettled = false;
+    let prevHasSession = false;
+    effect(() => {
+      const has = this.hasOpenSession();
+      if (!initialSettled) {
+        initialSettled = true;
+        prevHasSession = has;
+        return;
+      }
+      if (!prevHasSession && has) {
+        this.openPanel();
+      }
+      prevHasSession = has;
     }, { allowSignalWrites: true });
   }
 
@@ -365,9 +387,10 @@ export class CashRegisterService implements OnDestroy {
    */
   async getHistory(from: Date, to: Date): Promise<CashRegisterSession[]> {
     return firstValueFrom(
-      this.api.get<CashRegisterSession[]>(
-        `/cashregister/history?from=${from.toISOString()}&to=${to.toISOString()}`,
-      ),
+      this.api.get<CashRegisterSession[]>('/cashregister/history', {
+        from: toLocalIsoDate(from),
+        to: toLocalIsoDate(to),
+      }),
     );
   }
 

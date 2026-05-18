@@ -40,8 +40,8 @@
     >
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="name" style="min-width: 180px">
-            Nombre <p-sortIcon field="name" />
+          <th pSortableColumn="firstName" style="min-width: 180px">
+            Nombre <p-sortIcon field="firstName" />
           </th>
           <th style="min-width: 140px">Teléfono</th>
           <th style="min-width: 100px">Puntos</th>
@@ -55,9 +55,9 @@
         <tr class="cursor-pointer" (click)="onRowClick(customer)">
           <td>
             <div class="customer-name-cell">
-              <span class="customer-name-cell__avatar">{{ customer.name.charAt(0) }}</span>
+              <span class="customer-name-cell__avatar">{{ customer.firstName.charAt(0) }}</span>
               <div class="customer-name-cell__info">
-                <span class="customer-name-cell__name">{{ customer.name }}</span>
+                <span class="customer-name-cell__name">{{ customer | customerName }}</span>
                 @if (customer.email) {
                   <span class="customer-name-cell__email">{{ customer.email }}</span>
                 }
@@ -112,13 +112,24 @@
 >
   <div class="customer-form">
     <div class="customer-form__field">
-      <label for="cust-name">Nombre completo *</label>
+      <label for="cust-first-name">Nombre(s) *</label>
       <input
-        id="cust-name"
+        id="cust-first-name"
         type="text"
         pInputText
-        [(ngModel)]="createForm.name"
-        placeholder="Ej. Juan Pérez"
+        aria-required="true"
+        [(ngModel)]="createForm.firstName"
+        class="customer-form__input"
+      />
+    </div>
+
+    <div class="customer-form__field">
+      <label for="cust-last-name">Apellido(s)</label>
+      <input
+        id="cust-last-name"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.lastName"
         class="customer-form__input"
       />
     </div>
@@ -129,8 +140,8 @@
         id="cust-phone"
         type="tel"
         pInputText
+        aria-required="true"
         [(ngModel)]="createForm.phone"
-        placeholder="Ej. 6671234567"
         maxlength="10"
         class="customer-form__input"
       />
@@ -173,7 +184,7 @@
       <button
         type="button"
         class="customer-form__btn customer-form__btn--primary"
-        [disabled]="isSaving() || !createForm.name.trim() || !createForm.phone.trim()"
+        [disabled]="isSaving() || !createForm.firstName.trim() || !createForm.phone.trim()"
         (click)="saveCustomer()"
       >
         @if (isSaving()) {
@@ -196,9 +207,9 @@
 
     <!-- Drawer header -->
     <div class="drawer-header">
-      <span class="drawer-header__avatar">{{ c.name.charAt(0) }}</span>
+      <span class="drawer-header__avatar">{{ c.firstName.charAt(0) }}</span>
       <div class="drawer-header__info">
-        <h2 class="drawer-header__name">{{ c.name }}</h2>
+        <h2 class="drawer-header__name">{{ c | customerName }}</h2>
         <span class="drawer-header__phone">
           <i class="pi pi-phone"></i> {{ formatPhone(c.phone) }}
         </span>
@@ -242,27 +253,139 @@
       </div>
     </div>
 
-    <!-- Stats row -->
+    <!-- Stats row — sourced from GET /customers/{id}/stats (FDD-027 §4.2) -->
     <div class="drawer-stats">
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">{{ c.totalOrderCount }}</span>
-        <span class="drawer-stat__label">Órdenes</span>
-      </div>
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">{{ c.totalSpentCents | price }}</span>
-        <span class="drawer-stat__label">Total gastado</span>
-      </div>
-      <div class="drawer-stat">
-        <span class="drawer-stat__value">
-          @if (c.lastVisitAt) {
-            {{ c.lastVisitAt | date:'dd/MM/yy' }}
-          } @else {
-            —
-          }
-        </span>
-        <span class="drawer-stat__label">Última visita</span>
-      </div>
+      @if (isLoadingStats()) {
+        <div class="drawer-stats__loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando estadísticas...</span>
+        </div>
+      } @else {
+        @if (customerStats(); as s) {
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">{{ s.orderCount }}</span>
+            <span class="drawer-stat__label">Órdenes</span>
+          </div>
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">{{ s.totalSpentCents | price }}</span>
+            <span class="drawer-stat__label">Total gastado</span>
+          </div>
+          <div class="drawer-stat">
+            <span class="drawer-stat__value">
+              @if (s.lastOrderAt) {
+                {{ s.lastOrderAt | date:'dd/MM/yy' }}
+              } @else {
+                —
+              }
+            </span>
+            <span class="drawer-stat__label">Último pedido</span>
+          </div>
+        } @else {
+          <p class="drawer-section__empty">Sin actividad registrada</p>
+        }
+      }
     </div>
+
+    <!-- Memberships — sourced from GET /customers/{id}/memberships -->
+    <div class="drawer-section">
+      <h3 class="drawer-section__title">Estado de membresía</h3>
+
+      @if (isLoadingMemberships()) {
+        <div class="drawer-orders-loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Cargando...</span>
+        </div>
+      } @else if (sortedMemberships().length === 0) {
+        <p class="drawer-section__empty">Sin membresías registradas</p>
+      } @else {
+        <div class="drawer-memberships">
+          @for (m of sortedMemberships(); track m.id) {
+            <div class="drawer-membership">
+              <div class="drawer-membership__row">
+                <span class="drawer-membership__name">
+                  {{ m.productName ?? 'Membresía legacy' }}
+                </span>
+                <span
+                  class="badge"
+                  [class.badge--active]="m.status === 'Active'"
+                  [class.badge--expired]="m.status === 'Expired'"
+                  [class.badge--frozen]="m.status === 'Frozen'"
+                  [class.badge--cancelled]="m.status === 'Cancelled'"
+                >
+                  {{ MEMBERSHIP_STATUS_LABEL[m.status] }}
+                </span>
+              </div>
+              <span class="drawer-membership__range">
+                {{ m.validFrom | date:'dd MMM yy' }} – {{ m.validUntil | date:'dd MMM yy' }}
+              </span>
+              @if (m.originatingOrderId) {
+                <div class="drawer-membership__order-ref">
+                  Orden:
+                  <span
+                    class="drawer-membership__order-id"
+                    [title]="m.originatingOrderId"
+                  >{{ m.originatingOrderId }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- QR Gym Access — Phase 3 (Gym vertical only) -->
+    @if (isGymTenant()) {
+      <div class="drawer-section drawer-qr">
+        <h3 class="drawer-section__title">Acceso al gimnasio (QR)</h3>
+
+        @if (isLoadingQr()) {
+          <div class="drawer-orders-loading">
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Cargando...</span>
+          </div>
+        } @else if (qrStatus()?.hasEnrolledQr) {
+          <div class="drawer-qr__enrolled">
+            <span class="badge badge--active">
+              <i class="pi pi-check"></i> Tarjeta vinculada
+            </span>
+            <button
+              type="button"
+              class="drawer-qr__btn drawer-qr__btn--danger"
+              [disabled]="isRevoking()"
+              (click)="showRevokeQrDialog.set(true)"
+            >
+              <i class="pi pi-times"></i>
+              Revocar tarjeta
+            </button>
+          </div>
+        } @else {
+          <div class="drawer-qr__enroll">
+            <input
+              type="text"
+              pInputText
+              [ngModel]="qrTokenInput()"
+              (ngModelChange)="qrTokenInput.set($event)"
+              placeholder="Escanea o ingresa el código QR..."
+              class="drawer-qr__input"
+              [disabled]="isEnrolling()"
+            />
+            <button
+              type="button"
+              class="drawer-qr__btn drawer-qr__btn--primary"
+              [disabled]="isEnrolling() || !qrTokenInput().trim()"
+              (click)="onEnrollQr()"
+            >
+              @if (isEnrolling()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                <i class="pi pi-link"></i>
+              }
+              Asignar tarjeta
+            </button>
+          </div>
+        }
+      </div>
+    }
 
     <!-- Fiscal data -->
     @if (c.rfc) {
@@ -298,15 +421,62 @@
               <span class="drawer-order-row__num">#{{ order.orderNumber }}</span>
               <span class="drawer-order-row__date">{{ order.createdAt | date:'dd/MM/yy' }}</span>
               <span class="drawer-order-row__total">{{ order.totalCents | price }}</span>
-              <span class="drawer-order-row__method">{{ order.paymentMethod }}</span>
             </div>
           }
         </div>
+
+        @if (ordersTotalRecords() > 10) {
+          <p-paginator
+            [first]="(ordersCurrentPage() - 1) * 10"
+            [rows]="10"
+            [totalRecords]="ordersTotalRecords()"
+            (onPageChange)="onOrdersPageChange($event)"
+            styleClass="drawer-orders__paginator"
+          />
+        }
       }
     </div>
 
   }
 </p-sidebar>
+
+<!-- Revoke QR Confirmation Dialog -->
+<p-dialog
+  header="Revocar tarjeta QR"
+  [(visible)]="showRevokeQrDialog"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '420px' }"
+  styleClass="adjust-dialog"
+>
+  <p class="drawer-qr__confirm-text">
+    ¿Confirmar revocación de la tarjeta QR? Esta acción no puede deshacerse.
+  </p>
+
+  <ng-template pTemplate="footer">
+    <div class="customer-form__footer">
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--ghost"
+        [disabled]="isRevoking()"
+        (click)="showRevokeQrDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="customer-form__btn customer-form__btn--danger"
+        [disabled]="isRevoking()"
+        (click)="confirmRevokeQr()"
+      >
+        @if (isRevoking()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Revocar tarjeta
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
 
 <!-- Adjust Points Dialog -->
 <p-dialog

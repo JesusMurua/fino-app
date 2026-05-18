@@ -1,6 +1,32 @@
 <div class="dashboard layout-standard">
 
   <!-- ================================================================== -->
+  <!-- Sticky tax-config banner — non-dismissible. Renders ONLY when       -->
+  <!-- `business().defaultTaxId` is null. Same blocker that fires the      -->
+  <!-- `taxConfigGuard` on POS routes — proactively surfaces it here so     -->
+  <!-- the admin can resolve before hitting the operational paths.         -->
+  <!-- ================================================================== -->
+  @if (showTaxConfigBanner()) {
+    <div class="tax-config-banner" role="alert">
+      <div class="tax-config-banner__icon" aria-hidden="true">
+        <i class="pi pi-exclamation-triangle"></i>
+      </div>
+      <div class="tax-config-banner__copy">
+        <strong class="tax-config-banner__title">BLOQUEO FISCAL:</strong>
+        No puedes abrir el Punto de Venta hasta configurar tus impuestos.
+      </div>
+      <a
+        routerLink="/admin/settings"
+        [queryParams]="{ tab: 'fiscal' }"
+        class="tax-config-banner__cta"
+      >
+        Ir a Configuración
+        <i class="pi pi-arrow-right"></i>
+      </a>
+    </div>
+  }
+
+  <!-- ================================================================== -->
   <!-- Shared header — rendered in every state so the theme toggle is      -->
   <!-- always reachable. Contextual controls (calendar, CSV export, "Ver   -->
   <!-- guía") only render when the Main Dashboard view is active.          -->
@@ -319,7 +345,8 @@
       </section>
     }
 
-    <!-- Gym: Memberships expiring or recently expired (±7 days) -->
+    <!-- Gym: Memberships expiring or recently expired
+         (sourced from GET /memberships/expiring?days=7). -->
     @if (isGymTenant()) {
       <section class="section-card">
         <h2 class="section-card__title">Membresías por vencer</h2>
@@ -328,14 +355,14 @@
           <p class="section-card__empty">Ninguna membresía vence próximamente</p>
         } @else {
           <ol class="top-list">
-            @for (member of expiringMemberships(); track member.id) {
+            @for (m of expiringMemberships(); track m.id) {
               <li class="top-item">
-                <span class="top-item__name">{{ member.name }}</span>
-                <span class="top-item__date">{{ member.membershipValidUntil | date:'dd/MM/yyyy' }}</span>
-                @if (isExpired(member)) {
-                  <span class="badge badge--danger">Vencida</span>
-                } @else {
+                <span class="top-item__name">{{ m.customerName }}</span>
+                <span class="top-item__date">{{ m.validUntil | date:'dd/MM/yyyy' }}</span>
+                @if (isCurrentlyValid(m)) {
                   <span class="badge badge--warning">Por vencer</span>
+                } @else {
+                  <span class="badge badge--danger">Vencida</span>
                 }
               </li>
             }

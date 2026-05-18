@@ -83,9 +83,11 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   [FeatureKey.CustomFolios]:            'Folios personalizados',
   [FeatureKey.CustomerHistory]:         'Historial por cliente',
   [FeatureKey.Reminders]:               'Recordatorios de citas',
+  [FeatureKey.RealtimeAccessControl]:   'Control de acceso (tiempo real)',
   [FeatureKey.MaxCashRegisters]:        'Cajas registradoras incluidas',
   [FeatureKey.MaxKdsScreens]:           'Pantallas de cocina (KDS)',
   [FeatureKey.MaxKiosks]:               'Kioskos de autoservicio',
   [FeatureKey.MaxReceptionsPerBranch]:  'Pantallas de recepción por sucursal',
   [FeatureKey.AdvancedReports]:         'Reportes avanzados',
+  [FeatureKey.ProviderPayments]:        'Pagos integrados (Clip, MercadoPago)',
 };

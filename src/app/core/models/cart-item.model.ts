@@ -1,3 +1,4 @@
+import { OrderItemMetadata } from './metadata.model';
 import { Product, ProductExtra, ProductSize } from './product.model';
 
 /**
@@ -32,14 +33,19 @@ export interface CartItem {
   /** Display name of the applied promotion */
   promotionName?: string;
   /**
-   * Free-form metadata attached to the line. Used to carry vertical-
-   * specific intents that drive offline side-effects (e.g. Gym
-   * membership extension uses
-   * `{ beneficiaryCustomerId: number, membershipDurationDays: number }`)
-   * and travels through sync to the backend so the server can apply
-   * the authoritative state.
+   * Strongly-typed line-level metadata persisted by the backend as a
+   * `jsonb` column (`OwnsOne(...).ToJson()` per BDD-020). Carries the
+   * Gym beneficiary id and service appointment timestamps; the server
+   * is the authoritative source for any state derived from these
+   * fields (e.g. membership extension).
    */
-  metadata?: Record<string, unknown>;
+  metadata?: OrderItemMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `OrderItemMetadata` schema. Maps to the parent entity's
+   * `ExtensionData` jsonb column (BDD-020 §2.6).
+   */
+  extensionData?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,4 +64,35 @@ export function calcUnitPriceCents(
   const sizeDelta = size?.priceDeltaCents ?? 0;
   const extraTotal = extras.reduce((sum, e) => sum + e.priceCents, 0);
   return product.priceCents + sizeDelta + extraTotal;
+}
+
+/**
+ * Returns the membership duration in days when the catalog tagged
+ * the product with `metadata.membershipDurationDays`, or null when
+ * the line is not a membership.
+ *
+ * Pure helper shared by `CartService` (auto-assignment effect),
+ * `CartPanelComponent`, and `CheckoutComponent`. Centralised so a
+ * single source of truth governs membership-item recognition.
+ */
+export function getMembershipDays(item: CartItem): number | null {
+  const days = item.product.metadata?.membershipDurationDays;
+  return typeof days === 'number' && days > 0 ? days : null;
+}
+
+/**
+ * True when the line carries a membership intent and therefore
+ * needs a beneficiary customer assigned.
+ */
+export function isMembershipItem(item: CartItem): boolean {
+  return getMembershipDays(item) !== null;
+}
+
+/**
+ * Beneficiary customer id stored on the cart item, or null when not
+ * yet assigned (manually or via the auto-assignment effect).
+ */
+export function getBeneficiaryId(item: CartItem): number | null {
+  const id = item.metadata?.beneficiaryCustomerId;
+  return typeof id === 'number' ? id : null;
 }

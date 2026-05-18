@@ -111,18 +111,33 @@
   }
 
   // Stacked layout — flex column where each child row controls its own
-  // grid (PrimeFlex `grid` for 3-col rows, full-width sections for tables).
-  // Used by the Negocio tab so the branches table can span 100% width
-  // independently from the cards above it.
-  //
-  // `padding: 0` overrides the base $space-5 — the inner PrimeFlex grids
-  // use their own negative-margin gutter and we don't want a double
-  // indent inside the layout-standard column.
+  // grid. Used by the Negocio tab so the branches table can span 100%
+  // width independently from the cards above it.
   &--stacked {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: $space-4;
     padding: 0;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Settings row — native CSS Grid (replaces PrimeFlex `.grid > .col-*`
+// which was unpredictable inside the flex-column stacked layout).
+// Mirrors the pattern used by /admin/invoicing and /admin/dashboard.
+// -----------------------------------------------------------------------
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $space-4;
+
+  &--2col {
+    grid-template-columns: repeat(2, 1fr);
+
+    @media (max-width: $breakpoint-md) {
+      grid-template-columns: 1fr;
+    }
   }
 }
 

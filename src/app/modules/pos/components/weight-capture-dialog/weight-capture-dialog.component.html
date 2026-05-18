@@ -1,0 +1,48 @@
+<p-dialog
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [closable]="true"
+  [header]="'Medir: ' + (product()?.name || '')"
+  styleClass="weight-capture-dialog"
+>
+  <div class="weight-capture">
+
+    @if (scaleService.scaleType() === 'none') {
+      <div class="status-badge status-badge--disconnected">
+        <span class="status-dot status-dot--off"></span>
+        Sensor sin configurar — ingrese la cantidad manualmente
+      </div>
+    } @else {
+      <div class="status-badge status-badge--connected">
+        <span class="status-dot status-dot--on"></span>
+        Sensor configurado
+      </div>
+    }
+
+    <label class="weight-capture__label" for="weight-input">Cantidad</label>
+    <p-inputNumber
+      inputId="weight-input"
+      [(ngModel)]="manualMeasureValue"
+      mode="decimal"
+      [minFractionDigits]="3"
+      [maxFractionDigits]="3"
+      [min]="0.001"
+      [suffix]="' ' + formatMeasureUnit(product()?.satUnitCode, true)"
+      styleClass="weight-capture__input"
+    />
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button
+      pButton
+      type="button"
+      class="p-button-primary"
+      (click)="confirm()"
+      [disabled]="manualMeasureValue <= 0"
+    >
+      Confirmar
+    </button>
+  </ng-template>
+</p-dialog>

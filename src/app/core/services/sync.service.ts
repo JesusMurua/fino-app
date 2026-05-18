@@ -1,10 +1,11 @@
 import { Injectable, Injector, OnDestroy, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { Customer, Order, OrderPayment, PaymentMethod, PaymentTransactionStatus } from '../models';
+import { Customer, Order, OrderItemMetadata, OrderPayment, PaymentMetadata, PaymentMethod, PaymentTransactionStatus, ProductType } from '../models';
 import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatusId } from '../enums';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
+import { CustomerMembershipsService } from './customer-memberships.service';
 import { CustomerService } from './customer.service';
 import { DatabaseService } from './database.service';
 
@@ -12,6 +13,25 @@ import { DatabaseService } from './database.service';
 // Pull DTOs — wire format of GET /api/orders/pull and GET /api/orders/:id
 // Shared with CheckoutComponent.loadOrderFromApi so the HTTP layer is typed.
 // ---------------------------------------------------------------------------
+
+/**
+ * Safe generic parser for metadata fields whose wire shape is
+ * heterogeneous (BE may emit JSON-encoded string OR object). Returns
+ * the typed payload, or `undefined` for null/empty/malformed input.
+ *
+ * Centralised here so every pull mapping can drop in a single call
+ * and never crash the sync cycle on a malformed BE response.
+ */
+function safeParseMetadata<T>(raw: unknown): T | undefined {
+  if (raw === null || raw === undefined || raw === '') return undefined;
+  if (typeof raw !== 'string') return raw as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    console.warn('[SyncService] Malformed metadata in pull payload — dropping field');
+    return undefined;
+  }
+}
 
 /** Shape of a single order payment as returned by the backend pull endpoint */
 export interface OrderPaymentPullDto {
@@ -23,7 +43,7 @@ export interface OrderPaymentPullDto {
   externalTransactionId?: string | null;
   transactionStatus?: PaymentTransactionStatus;
   authorizedAt?: string | null;
-  paymentMetadata?: Record<string, unknown>;
+  paymentMetadata?: PaymentMetadata;
 }
 
 /** Shape of a single order line as returned by the backend pull endpoint */
@@ -31,6 +51,14 @@ export interface OrderItemPullDto {
   id: string | number;
   productId?: number;
   productName: string;
+  /**
+   * Frozen-at-sale product classification. Backend Phase 4.5 freezes
+   * `Product.Type` into `OrderItem.ProductType` at sale time so
+   * historical orders never drift if the catalog later mutates.
+   */
+  productType?: ProductType;
+  /** SAT unit code (BE Phase 4.7+4.8) — drives unit suffix via `formatMeasureUnit`. */
+  satUnitCode?: string;
   quantity: number;
   unitPriceCents: number;
   discountCents?: number;
@@ -40,11 +68,11 @@ export interface OrderItemPullDto {
   extras?: string[];
   notes?: string | null;
   /**
-   * Free-form metadata mirrored from `CartItem.metadata`. Carries
-   * vertical-specific intents (Gym membership extension, etc.). The
-   * backend may echo it back verbatim for cross-device merges.
+   * Strongly-typed line metadata mirrored from `CartItem.metadata`.
+   * Persisted by the backend as `jsonb`; the FE round-trips it
+   * verbatim for cross-device merges.
    */
-  metadata?: Record<string, unknown>;
+  metadata?: OrderItemMetadata;
 }
 
 /**
@@ -154,6 +182,7 @@ export class SyncService implements OnDestroy {
     private readonly api: ApiService,
     private readonly authService: AuthService,
     private readonly injector: Injector,
+    private readonly customerMembershipsService: CustomerMembershipsService,
   ) {}
 
   /**
@@ -216,68 +245,10 @@ export class SyncService implements OnDestroy {
     }
     await this.db.orders.put({ ...order, syncStatusId: SyncStatusId.Pending, retryCount: 0 });
 
-    // Apply offline side-effects (e.g. Gym membership extension) BEFORE
-    // the optional sync attempt so the UI sees the new customer state
-    // immediately, even if we end up offline. Errors here must never
-    // bubble — the order itself is already persisted.
-    await this.applyOfflineMembershipExtensions(order);
-
     this.pendingCount.update(n => n + 1);
 
     if (navigator.onLine) {
       await this.syncPendingOrders();
-    }
-  }
-
-  /**
-   * Scans the order's items for membership-extension intents and
-   * mutates the beneficiary customer's row in Dexie so the UI can
-   * reflect the new validity window before sync.
-   *
-   * Items opt in via:
-   *   `metadata.beneficiaryCustomerId: number`
-   *   `metadata.membershipDurationDays: number`  // > 0
-   *
-   * The new expiration is `max(now, currentValidUntil) + days` so
-   * stacking renewals never wastes vigent days. Each item runs in its
-   * own try/catch — a single bad item never poisons the rest of the
-   * order, and the side-effect failing never prevents the order save.
-   */
-  private async applyOfflineMembershipExtensions(order: Order): Promise<void> {
-    const customerService = this.injector.get(CustomerService);
-
-    for (const item of order.items) {
-      const meta = item.metadata;
-      if (!meta) continue;
-
-      const beneficiaryId = meta['beneficiaryCustomerId'];
-      const days = meta['membershipDurationDays'];
-      if (typeof beneficiaryId !== 'number' || typeof days !== 'number' || days <= 0) {
-        continue;
-      }
-
-      try {
-        const customer = await this.db.customers.get(beneficiaryId);
-        if (!customer) {
-          console.warn(`[SyncService] Membership extension skipped — customer ${beneficiaryId} not in local cache`);
-          continue;
-        }
-
-        const now = new Date();
-        const currentRaw = customer.membershipValidUntil;
-        const current = currentRaw ? new Date(currentRaw) : null;
-        const base = current && current.getTime() > now.getTime() ? current : now;
-        const newValidUntil = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
-
-        await this.db.customers.update(beneficiaryId, {
-          membershipValidUntil: newValidUntil,
-          lastPaymentAt: now,
-        });
-
-        await customerService.refreshFromDb(beneficiaryId);
-      } catch (err) {
-        console.error(`[SyncService] Failed to apply membership extension for customer ${beneficiaryId}:`, err);
-      }
     }
   }
 
@@ -317,28 +288,36 @@ export class SyncService implements OnDestroy {
     await this.refreshPendingCount();
     await this.refreshPermanentlyFailedCount();
 
-    // Re-fetch authoritative customer state for any membership orders
-    // that succeeded in this cycle. The local Dexie row was already
-    // optimistically extended during saveOrder(); this corrects drift.
-    await this.reconcileSyncedMembershipCustomers(retryable);
+    // Re-fetch authoritative customer state for any beneficiary that
+    // appeared in a sale that synced in this cycle. Picks up server-side
+    // CRM stat updates (totals, points, credit) AND pulls the new
+    // membership rows the BE created for the synced orders.
+    await this.refreshCustomersAndMembershipsAfterSync(retryable);
 
     // After pushing, pull latest from server to get updates from other devices
     await this.pullOrders();
   }
 
   /**
-   * Pulls fresh customer profiles from the API for every beneficiary
-   * referenced by an order that just transitioned to `Synced` in this
-   * cycle, then re-hydrates Dexie + the CustomerService signals.
+   * Pulls fresh customer profiles to update CRM aggregates (points,
+   * credit) AND delegates to `CustomerMembershipsService` to pull
+   * newly created membership records after an offline sale syncs.
    *
-   * The `candidates` list is the same set we tried to sync; we re-read
-   * each candidate's current Dexie row to learn whether it actually
-   * succeeded (orders that errored out stay Pending/Failed and are
-   * skipped — they get another shot on the next cycle).
+   * Two parallel-purpose fetches per beneficiary:
+   *   1. `GET /customers/{id}` — refreshes points, credit balance,
+   *      total spent, last visit, etc. Failure is logged but never
+   *      aborts the loop (best-effort, FDD-027 §3.2).
+   *   2. `customerMembershipsService.loadFor(id)` — refreshes the
+   *      Dexie `customerMemberships` cache so reception's offline
+   *      gate can validate the new membership window. The service
+   *      handles its own errors internally; no outer try/catch
+   *      needed here.
    *
-   * Best-effort per customer: a single 4xx/5xx never aborts the loop.
+   * Beneficiaries are extracted from `OrderItemMetadata.beneficiaryCustomerId`
+   * across every item in every order that successfully transitioned
+   * to `Synced` during the current sync cycle.
    */
-  private async reconcileSyncedMembershipCustomers(candidates: Order[]): Promise<void> {
+  private async refreshCustomersAndMembershipsAfterSync(candidates: Order[]): Promise<void> {
     if (candidates.length === 0) return;
 
     const candidateIds = candidates.map(o => o.id);
@@ -348,7 +327,7 @@ export class SyncService implements OnDestroy {
     for (const order of refreshed) {
       if (order.syncStatusId !== SyncStatusId.Synced) continue;
       for (const item of order.items) {
-        const beneficiaryId = item.metadata?.['beneficiaryCustomerId'];
+        const beneficiaryId = item.metadata?.beneficiaryCustomerId;
         if (typeof beneficiaryId === 'number') {
           beneficiaryIds.add(beneficiaryId);
         }
@@ -366,6 +345,7 @@ export class SyncService implements OnDestroy {
       } catch (err) {
         console.warn(`[SyncService] Customer reconciliation failed for ${id}:`, err);
       }
+      await this.customerMembershipsService.loadFor(id);
     }
   }
   //#endregion
@@ -516,13 +496,16 @@ export class SyncService implements OnDestroy {
         externalTransactionId: p.externalTransactionId ?? undefined,
         transactionStatus: p.transactionStatus ?? undefined,
         authorizedAt: p.authorizedAt ? new Date(p.authorizedAt) : undefined,
-        paymentMetadata: p.paymentMetadata ?? undefined,
+        paymentMetadata: safeParseMetadata<PaymentMetadata>(p.paymentMetadata as unknown),
       })),
       items: (dto.items ?? []).map(item => ({
         id: String(item.id),
         product: {
           id: item.productId ?? 0,
           name: item.productName,
+          // Harvest the frozen ProductType from the wire when present;
+          // fall back to 'Standard' for pre-4.5 historical rows.
+          type: item.productType ?? 'Standard',
           priceCents: item.unitPriceCents,
           categoryId: 0,
           isAvailable: true,
@@ -538,7 +521,7 @@ export class SyncService implements OnDestroy {
         size: item.sizeName ? { id: 0, label: item.sizeName, priceDeltaCents: 0 } : undefined,
         extras: (item.extras ?? []).map(name => ({ id: 0, label: name, priceCents: 0 })),
         notes: item.notes ?? undefined,
-        metadata: item.metadata,
+        metadata: safeParseMetadata<OrderItemMetadata>(item.metadata as unknown),
       })),
     };
   }
@@ -654,7 +637,7 @@ export class SyncService implements OnDestroy {
         externalTransactionId: p.externalTransactionId ?? null,
         transactionStatus: p.transactionStatus ?? null,
         authorizedAt: p.authorizedAt ?? null,
-        paymentMetadata: p.paymentMetadata ?? null,
+        paymentMetadata: p.paymentMetadata ? JSON.stringify(p.paymentMetadata) : null,
       })),
       createdAt: order.createdAt,
       tableId: order.tableId ?? null,
@@ -679,7 +662,7 @@ export class SyncService implements OnDestroy {
         sizeName: item.size?.label ?? null,
         extrasJson: item.extras.length > 0 ? JSON.stringify(item.extras) : null,
         notes: item.notes ?? null,
-        metadata: item.metadata ?? null,
+        metadata: item.metadata ? JSON.stringify(item.metadata) : null,
       })),
     };
   }

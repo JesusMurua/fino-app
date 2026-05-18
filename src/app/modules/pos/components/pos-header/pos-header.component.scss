@@ -4,6 +4,45 @@
 // pos-header — Responsive 3-tier (mobile / tablet / desktop)
 // =============================================================================
 
+// View-mode toggle (chameleon) — segmented control rendered in the header
+// when `<app-unified-pos>` is mounted. Same visual language as the
+// product-grid toolbar tile/list toggle so the system feels consistent.
+.view-toggle {
+  display: inline-flex;
+  background: #FFFFFF;
+  border: 1px solid $color-border-soft;
+  border-radius: $radius-button;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 32px;
+    padding: 0 $space-3;
+    border: none;
+    background: transparent;
+    color: $color-text-sub;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+
+    &:hover { color: $color-text-title; }
+
+    &--active {
+      background: $color-primary;
+      color: #FFFFFF;
+      &:hover { color: #FFFFFF; }
+    }
+
+    i { font-size: 13px; }
+  }
+}
+
 $bp-tablet:  768px;
 $bp-desktop: 1024px;
 

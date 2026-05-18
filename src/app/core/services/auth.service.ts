@@ -195,6 +195,16 @@ export class AuthService {
   }
 
   /**
+   * Returns the current business (tenant) ID.
+   * Reads from the cached `currentUser` signal — 0 before login. Used by
+   * services that scope offline caches to the business level (e.g.
+   * customers, which the API returns as business-wide, not branch-scoped).
+   */
+  get businessId(): number {
+    return this.currentUser()?.businessId ?? 0;
+  }
+
+  /**
    * Sets the active branch locally and persists it.
    * Components with effect() on activeBranchId will reload automatically.
    * @param branchId Branch ID to activate
@@ -423,6 +433,11 @@ export class AuthService {
     // Clear cached catalog from IndexedDB (orders are preserved)
     this.db.products.clear().catch(() => {});
     this.db.categories.clear().catch(() => {});
+    // Clear customer memberships cache to prevent cross-session
+    // privacy leaks on shared terminals (FDD-027 P2). The `customers`
+    // store is intentionally NOT cleared here to preserve the offline
+    // CRM UX during flaky shift-starts — see FDD-027 §7 R-07.
+    this.db.customerMemberships.clear().catch(() => {});
 
     this.router.navigate([lastEntry === 'email' ? '/login' : '/pin']);
   }
@@ -615,6 +630,13 @@ export class AuthService {
     this.primaryMacroCategoryId.set(user.primaryMacroCategoryId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
     this.syncTenantContext();
+
+    // Kick off post-auth hydration (business settings + tax catalog) so
+    // the cached promise inside `TenantContextService` is in-flight by
+    // the time `taxConfigGuard` (or any consumer) awaits it. Fire-and-
+    // forget: errors are swallowed inside `ensureHydrated()` and the
+    // guard / banners surface them as actionable UX.
+    void this.tenantContext.ensureHydrated();
 
     return user;
   }

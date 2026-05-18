@@ -10,6 +10,11 @@
   flex-direction: column;
   min-width: $product-card-min;
   width: 100%;
+  // Stretch to fill the grid cell so cards in the same row share a
+  // bottom edge regardless of description length. Combined with the
+  // `flex: 1` on `__body` and `margin-top: auto` on `__footer`, this
+  // keeps the price + add-icon row pinned to the bottom uniformly.
+  height: 100%;
   overflow: hidden;
 
   background: #FFFFFF;

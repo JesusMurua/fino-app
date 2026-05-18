@@ -1,0 +1,149 @@
+@use '../../../../../styles/variables' as *;
+
+// =============================================================================
+// Product grid inner — sidebar + scrollable catalog (no header, no cart)
+// =============================================================================
+
+.grid-inner {
+  display: grid;
+  grid-template-columns: $category-sidebar-width 1fr;
+  height: 100%;
+  overflow: hidden;
+  background: $color-bg-page;
+
+  &__center {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  &__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: $space-2 $space-5 0;
+    flex-shrink: 0;
+  }
+
+  &__products {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-auto-rows: max-content;
+    gap: 20px;
+    padding: $space-2 $space-5 $space-5;
+    overflow-y: auto;
+    align-content: start;
+
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 3px; }
+
+    &--list {
+      grid-template-columns: 1fr;
+      gap: $space-2;
+    }
+  }
+
+  &__empty {
+    grid-column: 1 / -1;
+    gap: $space-4;
+    color: $color-text-sub;
+  }
+
+  &__empty-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: $radius-pill;
+    background: $color-primary-light;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $space-4;
+
+    i {
+      font-size: 2.5rem;
+      color: $color-primary;
+      opacity: 0.85;
+    }
+  }
+
+  &__empty-title {
+    margin: 0 0 $space-2;
+    font-size: 18px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__empty-hint {
+    margin: 0;
+    max-width: 360px;
+    font-size: $font-size-base;
+    color: $color-text-sub;
+    line-height: 1.45;
+  }
+}
+
+// View toggle (tiles ↔ list) — shared visual with the existing pos-toolbar
+.view-toggle {
+  display: inline-flex;
+  background: #FFFFFF;
+  border: 1px solid $color-border-soft;
+  border-radius: $radius-button;
+  padding: 2px;
+  gap: 2px;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0 $space-3;
+    border: none;
+    background: transparent;
+    color: $color-text-sub;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { color: $color-text-title; }
+
+    &--active {
+      background: $color-primary;
+      color: #FFFFFF;
+      &:hover { color: #FFFFFF; }
+    }
+
+    i { font-size: 14px; }
+  }
+}
+
+// @defer placeholder
+.product-card-placeholder {
+  min-width: $product-card-min;
+  aspect-ratio: 3 / 4;
+  border-radius: $radius-card;
+  background: #F1F5F9;
+
+  &--list {
+    aspect-ratio: auto;
+    min-width: 0;
+    height: 72px;
+    border-radius: $radius-button;
+  }
+}
+
+// Responsive — portrait tablets
+@media (max-width: #{$breakpoint-md}) {
+  .grid-inner {
+    grid-template-columns: 1fr;
+  }
+
+  app-category-sidebar { display: none; }
+
+  .grid-inner__products {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: $space-3;
+    padding: $space-2 $space-4 $space-4;
+  }
+}

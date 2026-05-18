@@ -63,6 +63,8 @@ export enum FeatureKey {
   CustomerHistory = 'CustomerHistory',
   /** Appointment reminders */
   Reminders = 'Reminders',
+  /** Real-time access-control telemetry via SignalR — drives the reception live feed (gym vertical) */
+  RealtimeAccessControl = 'RealtimeAccessControl',
 
   // --- Hardware quotas (quantitative — backend emits the key on every plan;
   //     the numeric limit lives in the plan catalog and is enforced via 403
@@ -81,6 +83,10 @@ export enum FeatureKey {
   // --- Reporting ----------------------------------------------------------
   /** Generic advanced reports module (sales, trends, exports) */
   AdvancedReports = 'AdvancedReports',
+
+  // --- Payments -----------------------------------------------------------
+  /** Provider-backed payment integrations (Clip, MercadoPago, etc.) */
+  ProviderPayments = 'ProviderPayments',
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +117,7 @@ const UNIVERSAL_FEATURES: readonly FeatureKey[] = [
   FeatureKey.MultiBranch,
   FeatureKey.PublicApi,
   FeatureKey.MaxCashRegisters,
+  FeatureKey.ProviderPayments,
 ];
 
 const FOOD_AND_BEVERAGE_FEATURES: readonly FeatureKey[] = [
@@ -139,7 +146,7 @@ const RETAIL_FEATURES: readonly FeatureKey[] = [
 const SERVICES_FEATURES: readonly FeatureKey[] = [
   ...UNIVERSAL_FEATURES,
   FeatureKey.CustomFolios, FeatureKey.CustomerHistory, FeatureKey.Reminders,
-  FeatureKey.MaxReceptionsPerBranch,
+  FeatureKey.MaxReceptionsPerBranch, FeatureKey.RealtimeAccessControl,
 ];
 
 /**

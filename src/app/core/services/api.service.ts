@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, timeout, catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -15,11 +15,21 @@ import { environment } from '../../../environments/environment';
 const REQUEST_TIMEOUT_MS = 60_000;
 
 /**
+ * Shape accepted by `HttpClient` for `params`. Mirrors Angular's native
+ * `HttpParamsOptions['fromObject']` so callers can pass either a fully
+ * built `HttpParams` instance or a plain object literal.
+ */
+type ApiParams =
+  | HttpParams
+  | { [param: string]: string | number | boolean | readonly (string | number | boolean)[] };
+
+/**
  * Centralized HTTP wrapper around Angular HttpClient.
  *
  * - Base URL from environment.apiUrl
- * - 10-second timeout on every request (RxJS timeout operator)
+ * - 60-second timeout on every request (RxJS timeout operator)
  * - Auth headers are handled by authInterceptor — not here
+ * - Optional `params` argument forwarded to HttpClient's `options.params`
  */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -37,10 +47,11 @@ export class ApiService {
   /**
    * Performs a GET request with timeout.
    * @param path Relative path appended to baseUrl (e.g. '/products')
+   * @param params Optional query parameters — `HttpParams` instance or plain object literal.
    */
-  get<T>(path: string): Observable<T> {
+  get<T>(path: string, params?: ApiParams): Observable<T> {
     return this.http
-      .get<T>(`${this.baseUrl}${path}`)
+      .get<T>(`${this.baseUrl}${path}`, params ? { params } : {})
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),
@@ -51,10 +62,11 @@ export class ApiService {
    * Performs a POST request with timeout.
    * @param path Relative path appended to baseUrl
    * @param body Request body
+   * @param params Optional query parameters — `HttpParams` instance or plain object literal.
    */
-  post<T>(path: string, body: unknown): Observable<T> {
+  post<T>(path: string, body: unknown, params?: ApiParams): Observable<T> {
     return this.http
-      .post<T>(`${this.baseUrl}${path}`, body)
+      .post<T>(`${this.baseUrl}${path}`, body, params ? { params } : {})
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),
@@ -65,10 +77,11 @@ export class ApiService {
    * Performs a PUT request with timeout.
    * @param path Relative path appended to baseUrl
    * @param body Request body
+   * @param params Optional query parameters — `HttpParams` instance or plain object literal.
    */
-  put<T>(path: string, body: unknown): Observable<T> {
+  put<T>(path: string, body: unknown, params?: ApiParams): Observable<T> {
     return this.http
-      .put<T>(`${this.baseUrl}${path}`, body)
+      .put<T>(`${this.baseUrl}${path}`, body, params ? { params } : {})
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),
@@ -79,10 +92,11 @@ export class ApiService {
    * Performs a PATCH request with timeout.
    * @param path Relative path appended to baseUrl
    * @param body Request body
+   * @param params Optional query parameters — `HttpParams` instance or plain object literal.
    */
-  patch<T>(path: string, body: unknown): Observable<T> {
+  patch<T>(path: string, body: unknown, params?: ApiParams): Observable<T> {
     return this.http
-      .patch<T>(`${this.baseUrl}${path}`, body)
+      .patch<T>(`${this.baseUrl}${path}`, body, params ? { params } : {})
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),
@@ -92,10 +106,11 @@ export class ApiService {
   /**
    * Performs a DELETE request with timeout.
    * @param path Relative path appended to baseUrl
+   * @param params Optional query parameters — `HttpParams` instance or plain object literal.
    */
-  delete<T>(path: string): Observable<T> {
+  delete<T>(path: string, params?: ApiParams): Observable<T> {
     return this.http
-      .delete<T>(`${this.baseUrl}${path}`)
+      .delete<T>(`${this.baseUrl}${path}`, params ? { params } : {})
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),

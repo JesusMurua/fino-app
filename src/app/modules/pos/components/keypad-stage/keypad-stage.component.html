@@ -1,0 +1,54 @@
+<section class="keypad-stage">
+
+  <h2 class="keypad-stage__title">Cobro rápido</h2>
+
+  <!-- Catalog search — primary entry surface. -->
+  @if (hasCatalog()) {
+    <p-autoComplete
+      [ngModel]="catalogSelected()"
+      (ngModelChange)="catalogSelected.set($event)"
+      [suggestions]="catalogSuggestions()"
+      (completeMethod)="onCatalogComplete($event)"
+      (onSelect)="onCatalogSelect($event)"
+      optionLabel="name"
+      [delay]="300"
+      [minLength]="2"
+      [forceSelection]="true"
+      emptyMessage="Sin resultados"
+      placeholder="Buscar en catálogo..."
+      ariaLabel="Buscar en catálogo"
+      styleClass="w-full">
+      <ng-template let-product pTemplate="item">
+        <div class="keypad-stage__suggestion">
+          <span class="keypad-stage__suggestion-name">{{ product.name }}</span>
+          <span class="keypad-stage__suggestion-price">{{ product.priceCents | price }}</span>
+        </div>
+      </ng-template>
+    </p-autoComplete>
+  } @else if (isLoading()) {
+    <p class="keypad-stage__hint">Cargando catálogo…</p>
+  } @else {
+    <p class="keypad-stage__hint">Aún no hay productos en este catálogo.</p>
+  }
+
+  <!-- Recents — quick re-add of products from this session, persisted per branch. -->
+  @if (recentItems().length > 0) {
+    <div class="keypad-stage__recent">
+      <span class="keypad-stage__section-label">Recientes</span>
+      <div class="keypad-stage__recent-list">
+        @for (item of recentItems(); track item.productId) {
+          <button
+            type="button"
+            class="keypad-stage__recent-row"
+            [attr.aria-label]="'Re-agregar ' + item.name"
+            (click)="addRecentItem(item)">
+            <span class="keypad-stage__recent-name">{{ item.name }}</span>
+            <span class="keypad-stage__recent-price">{{ item.priceCents | price }}</span>
+            <span class="keypad-stage__recent-add"><i class="pi pi-plus"></i></span>
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+</section>

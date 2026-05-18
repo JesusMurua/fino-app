@@ -45,11 +45,10 @@
       <div class="settings-content settings-content--stacked">
 
         <!-- ROW 1: 2 equal columns — Info (with embedded Giro) | Folios -->
-        <div class="grid">
+        <div class="settings-row settings-row--2col">
 
           <!-- Column 1: Información del negocio + Giro (read-only at the bottom) -->
-          <div class="col-12 md:col-6">
-            <section class="settings-card h-full">
+            <section class="settings-card">
               <div class="settings-card-header">
                 <div class="card-icon"><i class="pi pi-building"></i></div>
                 <div>
@@ -95,12 +94,10 @@
                 </a>
               </div>
             </section>
-          </div>
 
           <!-- Column 2: Configuración de folios — gated by CustomFolios/CfdiInvoicing -->
           @if (canSeeCustomFolio()) {
-            <div class="col-12 md:col-6">
-              <section class="settings-card h-full">
+            <section class="settings-card">
                 <div class="settings-card-header">
                   <div class="card-icon"><i class="pi pi-receipt"></i></div>
                   <div>
@@ -146,7 +143,6 @@
                   </div>
                 </div>
               </section>
-            </div>
           }
         </div>
 
@@ -180,13 +176,8 @@
           </section>
         }
 
-        <!-- ROW 2: Sucursales — full-width data table.
-             Wrapped in a PrimeFlex grid so it inherits the same negative
-             horizontal margins as the 2-col row above it (Info + Folios),
-             keeping its left/right edges aligned with those cards. -->
-        <div class="grid">
-          <div class="col-12">
-            <section class="settings-card">
+        <!-- ROW 2: Sucursales — full-width data table -->
+        <section class="settings-card">
               <div class="settings-card-header">
                 <div class="card-icon"><i class="pi pi-sitemap"></i></div>
                 <div>
@@ -196,8 +187,6 @@
               </div>
               <app-admin-branches [inline]="true" />
             </section>
-          </div>
-        </div>
 
       </div>
     }
@@ -376,19 +365,90 @@
           </div>
         </section>
 
-        <!-- Scale card — only for Retail tenants with Core hardware -->
+        <!-- Scale card — any tenant whose plan unlocks Core hardware -->
         @if (canSeeScale()) {
-          <section class="settings-card periph-bar">
-            <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
-            <div class="periph-bar__info">
-              <div class="card-title">Báscula</div>
-              <div class="card-subtitle">Web Serial — para ventas por peso</div>
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-sliders-h"></i></div>
+              <div>
+                <div class="card-title">Báscula</div>
+                <div class="card-subtitle">Configuración para venta por peso</div>
+              </div>
             </div>
-            <div class="status-badge status-badge--disconnected">
-              <span class="status-dot status-dot--off"></span>
-              No conectada
+
+            <div class="periph-hero">
+              <div class="periph-device-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 8h16l-2 12H6L4 8z"/>
+                  <path d="M9 8V6a3 3 0 016 0v2"/>
+                  <line x1="12" y1="12" x2="12" y2="16"/>
+                </svg>
+              </div>
+              @if (scaleService.scaleType() === 'none') {
+                <div class="status-badge status-badge--disconnected">
+                  <span class="status-dot status-dot--off"></span>
+                  Sin configurar
+                </div>
+              } @else {
+                <div class="status-badge status-badge--connected">
+                  <span class="status-dot status-dot--on"></span>
+                  Configurada
+                </div>
+              }
             </div>
-            <button type="button" class="btn-secondary btn-secondary--sm" disabled>Próximamente</button>
+
+            <div class="periph-divider"></div>
+
+            <div class="printer-type-toggle">
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'none'"
+                (click)="onScaleConfigUpdated('none')"
+              >
+                Ninguna
+              </button>
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'serial'"
+                (click)="onScaleConfigUpdated('serial')"
+              >
+                Cable USB (Recomendado)
+              </button>
+              <button
+                type="button"
+                [class.active]="scaleService.scaleType() === 'cloud'"
+                (click)="onScaleConfigUpdated('cloud')"
+              >
+                Módulo Fino (Red)
+              </button>
+            </div>
+
+            @if (scaleService.scaleType() === 'serial') {
+              <div class="periph-divider"></div>
+              <div class="printer-type-toggle">
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'toledo'"
+                  (click)="onScaleConfigUpdated('serial', 'toledo')"
+                >
+                  Toledo
+                </button>
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'epson'"
+                  (click)="onScaleConfigUpdated('serial', 'epson')"
+                >
+                  Epson/Star
+                </button>
+                <button
+                  type="button"
+                  [class.active]="scaleService.scaleProtocol() === 'generic'"
+                  (click)="onScaleConfigUpdated('serial', 'generic')"
+                >
+                  Genérica
+                </button>
+              </div>
+            }
           </section>
         }
 
@@ -406,6 +466,67 @@
     @case ('fiscal') {
       @if (canSeeFiscal()) {
         <div class="settings-content">
+
+          <!-- ============================================================ -->
+          <!-- Impuestos por defecto — applies to all new products / sales. -->
+          <!-- Mandatory: backend rejects null. The TaxConfigGuard blocks   -->
+          <!-- POS access until this is set. See AUDIT-053.                 -->
+          <!-- ============================================================ -->
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="card-icon"><i class="pi pi-percentage"></i></div>
+              <div>
+                <div class="card-title">Impuestos por defecto</div>
+                <div class="card-subtitle">Aplica a todos los productos nuevos que registres</div>
+              </div>
+            </div>
+
+            <div class="settings-form">
+              <div class="form-field">
+                <label class="form-field__label" for="default-tax">
+                  Impuesto que se aplica a tus ventas
+                </label>
+                <p-dropdown
+                  inputId="default-tax"
+                  [ngModel]="defaultTaxIdSelection()"
+                  (ngModelChange)="defaultTaxIdSelection.set($event)"
+                  [options]="taxOptions()"
+                  optionValue="value"
+                  optionLabel="label"
+                  placeholder="Selecciona un impuesto"
+                  [loading]="taxService.isLoading()"
+                  [disabled]="taxService.isLoading() || isSavingDefaultTax()"
+                  styleClass="form-field__dropdown"
+                />
+                <small class="form-field__hint">
+                  Si vendes servicios o productos que no llevan IVA, elige "Sin impuesto (Exento)".
+                </small>
+              </div>
+            </div>
+
+            <div class="settings-card__footer">
+              @if (saveDefaultTaxSuccess()) {
+                <span class="settings-card__ok">
+                  <i class="pi pi-check-circle"></i> Guardado
+                </span>
+              }
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="
+                  defaultTaxIdSelection() === null
+                  || isSavingDefaultTax()
+                  || !defaultTaxIsDirty()
+                "
+                (click)="saveDefaultTax()"
+              >
+                @if (isSavingDefaultTax()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Guardar impuesto por defecto
+              </button>
+            </div>
+          </section>
 
           <section class="settings-card">
             <div class="settings-card-header">

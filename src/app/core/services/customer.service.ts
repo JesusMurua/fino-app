@@ -1,7 +1,17 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+import {
+  CustomerMembership,
+  CustomerOrderRowDto,
+  CustomerStatsDto,
+  MembershipStatus,
+  PageData,
+} from '../models';
 import { CreateCustomerRequest, Customer } from '../models/customer.model';
+import { formatCustomerName } from '../../shared/pipes/customer-name.pipe';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -44,15 +54,17 @@ export class CustomerService {
    */
   async loadCustomers(): Promise<void> {
     this.isLoading.set(true);
-    const branchId = this.authService.branchId;
+    const businessId = this.authService.businessId;
 
-    // Step 1 — Serve from Dexie immediately
+    // Step 1 — Serve from Dexie immediately. Sort is JS-side because
+    // the indexed firstName field alone does not produce the same order
+    // as the rendered display name (`firstName lastName`).
     const local = await this.db.customers
-      .where('branchId').equals(branchId)
+      .where('businessId').equals(businessId)
       .filter(c => c.isActive)
-      .sortBy('name');
+      .toArray();
     if (local.length > 0) {
-      this.customers.set(local);
+      this.customers.set(local.sort(this.byDisplayName));
     }
 
     // Step 2 — Fetch from API in background
@@ -61,7 +73,7 @@ export class CustomerService {
         this.api.get<Customer[]>('/customers'),
       );
       await this.db.customers.bulkPut(remote);
-      this.customers.set(remote.filter(c => c.isActive));
+      this.customers.set(remote.filter(c => c.isActive).sort(this.byDisplayName));
     } catch {
       console.warn('[CustomerService] API unreachable — using Dexie cache');
     } finally {
@@ -70,8 +82,22 @@ export class CustomerService {
   }
 
   /**
+   * Lazy-hydrates the cache (signal + Dexie) the first time it is
+   * needed. Idempotent — returns immediately when the in-memory
+   * signal already carries customers. Used as a guard at the entry
+   * points (`searchByPhoneOrName`) so consumers outside the admin
+   * shell (POS, reception) do not depend on someone else having
+   * called `loadCustomers()` first. Necessary after FDD-026 because
+   * the v26 Dexie upgrade clears the customers store.
+   */
+  async ensureLoaded(): Promise<void> {
+    if (this.customers().length > 0) return;
+    await this.loadCustomers();
+  }
+
+  /**
    * Searches customers by phone prefix or name substring.
-   * 100% offline — queries Dexie only.
+   * Dexie-backed — auto-hydrates the cache on first call.
    * @param query Search string (phone if numeric, name if text)
    */
   async searchByPhoneOrName(query: string): Promise<Customer[]> {
@@ -80,7 +106,13 @@ export class CustomerService {
       return [];
     }
 
-    const branchId = this.authService.branchId;
+    // Self-heal when Dexie is empty (e.g. fresh install or post v26
+    // schema upgrade) — without this, the POS search dropdown stays
+    // empty until the cashier visits an admin route that triggers
+    // loadCustomers().
+    await this.ensureLoaded();
+
+    const businessId = this.authService.businessId;
     const trimmed = query.trim();
     const isNumeric = /^\d+$/.test(trimmed);
 
@@ -88,14 +120,14 @@ export class CustomerService {
     if (isNumeric) {
       results = await this.db.customers
         .where('phone').startsWith(trimmed)
-        .filter(c => c.branchId === branchId && c.isActive)
+        .filter(c => c.businessId === businessId && c.isActive)
         .limit(10)
         .toArray();
     } else {
       const lower = trimmed.toLowerCase();
       results = await this.db.customers
-        .where('branchId').equals(branchId)
-        .filter(c => c.isActive && c.name.toLowerCase().includes(lower))
+        .where('businessId').equals(businessId)
+        .filter(c => c.isActive && formatCustomerName(c).toLowerCase().includes(lower))
         .limit(10)
         .toArray();
     }
@@ -113,7 +145,7 @@ export class CustomerService {
       this.api.post<Customer>('/customers', data),
     );
     await this.db.customers.put(customer);
-    this.customers.update(arr => [...arr, customer].sort((a, b) => a.name.localeCompare(b.name)));
+    this.customers.update(arr => [...arr, customer].sort(this.byDisplayName));
     return customer;
   }
 
@@ -134,17 +166,63 @@ export class CustomerService {
   }
 
   /**
-   * Fetches the order history for a specific customer.
+   * Fetches a single page of the customer's order history.
+   *
+   * Errors are NOT swallowed — callers can `try/catch` to surface a
+   * toast or fall back to an empty list. Aligns with FDD-027 §3.1
+   * and the project's bubble-up pattern (see `createCustomer`).
+   *
+   * @param customerId Customer ID
+   * @param opts Pagination + date filters; all keys are optional and
+   * only forwarded to the backend when defined.
+   */
+  async getOrders(
+    customerId: number,
+    opts?: { page?: number; pageSize?: number; from?: Date; to?: Date },
+  ): Promise<PageData<CustomerOrderRowDto>> {
+    let params = new HttpParams();
+    if (opts?.page !== undefined)     params = params.set('page', opts.page);
+    if (opts?.pageSize !== undefined) params = params.set('pageSize', opts.pageSize);
+    if (opts?.from)                   params = params.set('from', toLocalIsoDate(opts.from));
+    if (opts?.to)                     params = params.set('to', toLocalIsoDate(opts.to));
+
+    return firstValueFrom(
+      this.api.get<PageData<CustomerOrderRowDto>>(`/customers/${customerId}/orders`, params),
+    );
+  }
+
+  /**
+   * Fetches the customer's memberships (active + historical) sorted
+   * by `validUntil` desc per BDD-019 §5.1.2. Optional `status` filter
+   * is applied server-side.
+   *
+   * Direct API call — admin context is online-only. The offline
+   * reception cache lives in `CustomerMembershipsService` (FDD-027 §3.4).
+   *
+   * @param customerId Customer ID
+   * @param status Optional lifecycle filter
+   */
+  async getMemberships(
+    customerId: number,
+    status?: MembershipStatus,
+  ): Promise<CustomerMembership[]> {
+    const path = status
+      ? `/customers/${customerId}/memberships?status=${status}`
+      : `/customers/${customerId}/memberships`;
+    return firstValueFrom(this.api.get<CustomerMembership[]>(path));
+  }
+
+  /**
+   * Fetches aggregated lifetime stats for a customer (totalSpentCents,
+   * orderCount, lastOrderAt). Single GROUP BY on the BE per BDD-019
+   * §5.1.3 — used by the admin drawer header.
+   *
    * @param customerId Customer ID
    */
-  async getCustomerOrders(customerId: number): Promise<any[]> {
-    try {
-      return await firstValueFrom(
-        this.api.get<any[]>(`/customers/${customerId}/orders`),
-      );
-    } catch {
-      return [];
-    }
+  async getStats(customerId: number): Promise<CustomerStatsDto> {
+    return firstValueFrom(
+      this.api.get<CustomerStatsDto>(`/customers/${customerId}/stats`),
+    );
   }
 
   /**
@@ -201,7 +279,7 @@ export class CustomerService {
 
     this.customers.update(arr => {
       const idx = arr.findIndex(c => c.id === customerId);
-      if (idx === -1) return [...arr, fresh].sort((a, b) => a.name.localeCompare(b.name));
+      if (idx === -1) return [...arr, fresh].sort(this.byDisplayName);
       const next = arr.slice();
       next[idx] = fresh;
       return next;
@@ -215,6 +293,14 @@ export class CustomerService {
   //#endregion
 
   //#region Private Helpers
+
+  /**
+   * Comparator that orders customers by their full display name (first +
+   * last) using locale-aware comparison. Centralised so every consumer
+   * keeps the same ordering after the model split.
+   */
+  private readonly byDisplayName = (a: Customer, b: Customer): number =>
+    formatCustomerName(a).localeCompare(formatCustomerName(b));
 
   /** Refreshes a single customer from API and updates local state */
   private async refreshCustomer(id: number): Promise<void> {

@@ -1,0 +1,139 @@
+@use '../../../../../styles/variables' as *;
+
+// =============================================================================
+// Keypad stage — calculator-style entry surface for the unified POS shell
+// =============================================================================
+
+.keypad-stage {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+  background: $color-bg-page;
+  height: 100%;
+  overflow-y: auto;
+
+  @media (max-width: 767px) {
+    padding: 14px 16px 12px;
+  }
+
+  &__title {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 700;
+    color: $color-text-title;
+  }
+
+  &__hint {
+    margin: 18px 0 0;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Autocomplete suggestion item template
+  // ---------------------------------------------------------------------------
+
+  &__suggestion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+  }
+
+  &__suggestion-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-title;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__suggestion-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: $color-primary;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Recents
+  // ---------------------------------------------------------------------------
+
+  &__section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  &__recent {
+    margin-top: 18px;
+  }
+
+  &__recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  &__recent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.12s, background 0.12s;
+
+    &:hover { border-color: #{$color-primary}; }
+    &:active { background: #{$color-primary-light}; }
+  }
+
+  &__recent-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #{$color-text-title};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__recent-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: #{$color-text-title};
+  }
+
+  &__recent-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #{$color-primary-light};
+    color: #{$color-primary};
+    font-size: 11px;
+  }
+}
+
+// =============================================================================
+// p-autocomplete sizing — full-width within the keypad column.
+// PrimeNG's default styling (12px radius, hairline border, focus ring) already
+// matches the design system, so we only constrain width here.
+// =============================================================================
+
+.keypad-stage :host ::ng-deep .p-autocomplete {
+  width: 100%;
+}

@@ -887,3 +887,75 @@
     &:hover { background: #15803d; }
   }
 }
+
+// ============================================================================
+// Sticky tax-config banner — non-dismissible alert at the top of the
+// dashboard when `business().defaultTaxId` is null. See AUDIT-053.
+// ============================================================================
+.tax-config-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.04));
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: #B91C1C;
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    i {
+      font-size: 16px;
+      color: #DC2626;
+    }
+  }
+
+  &__copy {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #7F1D1D;
+  }
+
+  &__title {
+    font-weight: 800;
+    margin-right: 6px;
+    color: #B91C1C;
+  }
+
+  &__cta {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #DC2626;
+    color: #FFFFFF;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    transition: background 0.15s;
+
+    &:hover { background: #B91C1C; }
+
+    i { font-size: 12px; }
+  }
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+
+    &__cta { width: 100%; justify-content: center; }
+  }
+}

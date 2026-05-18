@@ -1,0 +1,72 @@
+<div class="grid-inner">
+
+  <!-- LEFT SIDEBAR: Vertical category navigation -->
+  <app-category-sidebar
+    [categories]="categories()"
+    [selectedCategoryId]="selectedCategoryId()"
+    (categorySelected)="selectCategory($event)"
+  />
+
+  <!-- CENTER STAGE: Tile/list toolbar + scrollable products -->
+  <div class="grid-inner__center">
+
+    <!-- View-mode toolbar (Grid / List toggle) -->
+    <div class="grid-inner__toolbar" role="toolbar" aria-label="Vista del catálogo">
+      <div class="view-toggle" role="group" aria-label="Cambiar vista">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="viewMode() === 'grid'"
+          [attr.aria-pressed]="viewMode() === 'grid'"
+          aria-label="Vista de cuadrícula"
+          (click)="setViewMode('grid')"
+        >
+          <i class="pi pi-th-large"></i>
+        </button>
+        <button
+          type="button"
+          class="view-toggle__btn"
+          [class.view-toggle__btn--active]="viewMode() === 'list'"
+          [attr.aria-pressed]="viewMode() === 'list'"
+          aria-label="Vista de lista"
+          (click)="setViewMode('list')"
+        >
+          <i class="pi pi-list"></i>
+        </button>
+      </div>
+    </div>
+
+    <main
+      class="grid-inner__products"
+      [class.grid-inner__products--list]="viewMode() === 'list'"
+      aria-label="Productos"
+    >
+      @for (product of filteredProducts(); track product.id) {
+        @defer (on viewport) {
+          <app-product-card
+            [product]="product"
+            [viewMode]="viewMode()"
+            (selected)="onProductSelected($event)"
+          />
+        } @placeholder {
+          <div
+            class="product-card-placeholder"
+            [class.product-card-placeholder--list]="viewMode() === 'list'"
+          ></div>
+        }
+      } @empty {
+        @if (!isLoading()) {
+          <div class="grid-inner__empty flex flex-column align-items-center justify-content-center text-center p-5">
+            <div class="grid-inner__empty-icon" aria-hidden="true">
+              <i class="pi pi-box"></i>
+            </div>
+            <h3 class="grid-inner__empty-title">Aún no hay productos en esta categoría</h3>
+            <p class="grid-inner__empty-hint">Cuando se registren, aparecerán aquí.</p>
+          </div>
+        }
+      }
+    </main>
+
+  </div>
+
+</div>

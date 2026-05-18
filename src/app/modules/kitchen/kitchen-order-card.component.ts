@@ -1,17 +1,24 @@
 import { Component, computed, EventEmitter, input, Input, Output } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { DecimalPipe, NgClass } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 
 import { PrintJobDto, PrintJobItem } from '../../core/models';
+import { formatMeasureUnit, isMeasureItem } from '../../core/utils/product.utils';
 
 @Component({
   selector: 'app-kitchen-order-card',
   standalone: true,
-  imports: [NgClass, ButtonModule],
+  imports: [DecimalPipe, NgClass, ButtonModule],
   templateUrl: './kitchen-order-card.component.html',
   styleUrl: './kitchen-order-card.component.scss',
 })
 export class KitchenOrderCardComponent {
+
+  /** Template predicate for measure-based items — drives kg/L/m render in the ticket. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
 
   //#region Inputs
 

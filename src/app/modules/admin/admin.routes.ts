@@ -145,6 +145,14 @@ export const adminRoutes: Routes = [
           import('./components/invoicing/admin-invoicing.component')
             .then(m => m.AdminInvoicingComponent),
       },
+      {
+        path: 'access-dashboard',
+        canActivate: [featureGuard],
+        data: { requiredFeature: FeatureKey.RealtimeAccessControl },
+        loadComponent: () =>
+          import('../reception/pages/access-dashboard/access-dashboard.component')
+            .then(m => m.AccessDashboardComponent),
+      },
     ],
   },
 ];

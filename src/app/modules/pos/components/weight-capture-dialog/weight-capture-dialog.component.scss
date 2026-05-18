@@ -1,0 +1,16 @@
+.weight-capture {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+
+  &__label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  &__input {
+    width: 100%;
+  }
+}

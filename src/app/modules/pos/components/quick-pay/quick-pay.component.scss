@@ -1,0 +1,323 @@
+@use '../../../../../styles/variables' as *;
+
+// =============================================================================
+// QuickPay — inline cash dialog (replaces /pos/checkout for non-F&B verticals)
+// =============================================================================
+
+// ---- Bill color palette (background, accent) ------------------------------
+$bills: (
+  b20:   (#3b82f6, #93c5fd),
+  b50:   (#db2777, #f9a8d4),
+  b100:  (#dc2626, #fca5a5),
+  b200:  (#{$color-primary}, #86efac),
+  b500:  (#475569, #94a3b8),
+  b1000: (#065f46, #6ee7b7),
+);
+
+.qpay {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  &__total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  &__total-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  &__total-amount {
+    font-size: 26px;
+    font-weight: 800;
+    color: #{$color-text-title};
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  &__bills {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+
+    @media (max-width: 380px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__custom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #{$color-bg-page};
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.15s;
+
+    &:focus-within { border-color: #{$color-primary}; }
+  }
+
+  &__custom-prefix {
+    font-size: 15px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  &__custom-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 600;
+    color: #{$color-text-title};
+    outline: none;
+    font-family: inherit;
+
+    &::placeholder { color: #94a3b8; font-weight: 400; }
+
+    -moz-appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
+  &__received {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0 4px;
+    border-top: 0.5px solid #{$color-border-soft};
+  }
+
+  &__received-info {
+    display: flex;
+    justify-content: space-between;
+    flex: 1;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__received-label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  &__received-input {
+    width: 110px;
+    border: 0.5px solid #e5e7eb;
+    border-radius: 10px;
+    background: #{$color-bg-page};
+    padding: 6px 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #{$color-text-title};
+    text-align: right;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+
+    &:focus { border-color: #{$color-primary}; }
+
+    -moz-appearance: textfield;
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
+  &__received-reset {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #{$color-border-soft};
+    border: none;
+    font-size: 18px;
+    color: #94a3b8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 12px;
+    line-height: 1;
+    font-family: inherit;
+
+    &:active { background: #e2e8f0; }
+  }
+
+  &__change {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0 0;
+
+    span:first-child {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    strong {
+      color: $color-primary;
+      font-size: 22px;
+      font-weight: 800;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    padding: 4px 2px 0;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+}
+
+// ---- Bill button ----
+.qpay-bill {
+  position: relative;
+  overflow: hidden;
+  height: 60px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: transform 0.12s, box-shadow 0.12s;
+
+  &:active { transform: scale(0.93); }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    &:active { transform: none; }
+  }
+
+  &__circle {
+    position: absolute;
+    right: -20px;
+    top: -20px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #ffffff;
+    opacity: 0.09;
+  }
+
+  &__stripe {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 5px;
+    opacity: 0.5;
+  }
+
+  &__stripe-thin {
+    position: absolute;
+    right: 6px; top: 0; bottom: 0;
+    width: 2px;
+    opacity: 0.22;
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  &__mxn {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #ffffff;
+    opacity: 0.55;
+  }
+
+  &__amount {
+    font-size: 18px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  &--b1000 .qpay-bill__amount { font-size: 16px; }
+}
+
+@each $name, $colors in $bills {
+  $bg:     nth($colors, 1);
+  $accent: nth($colors, 2);
+  .qpay-bill--#{$name} {
+    background: $bg;
+    .qpay-bill__stripe,
+    .qpay-bill__stripe-thin { background: $accent; }
+  }
+}
+
+// ==========================================================================
+// Footer action buttons — BEM classes mirror the dialog convention used in
+// admin-customers.component.scss so cancel/confirm look identical across
+// every modal in the app. Angular's view encapsulation requires the
+// duplicate definition here; future cleanup may extract these to a shared
+// `_dialog-buttons.scss` partial.
+// ==========================================================================
+
+.customer-form__btn {
+  min-height: 40px;
+  padding: $space-2 $space-4;
+  border-radius: $radius-button;
+  font-size: $font-size-label;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $color-text-sub;
+    border: 1px solid #E5E7EB;
+
+    &:hover:not(:disabled) {
+      border-color: $color-text-sub;
+      color: $color-text-title;
+    }
+  }
+
+  &--primary {
+    background: $color-primary;
+    color: white;
+    border: none;
+
+    &:hover:not(:disabled) { background: #15803D; }
+  }
+}
+

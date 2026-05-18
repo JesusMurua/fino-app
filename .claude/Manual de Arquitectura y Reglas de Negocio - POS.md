@@ -13,53 +13,107 @@ El sistema POS es una plataforma de **Arquitectura Dual Inyectada**. No es un so
 
 ---
 
-## **2\. VECTOR UX: LOS 4 MOTORES POS (GIROS)**
+## **2\. VECTOR UX: DOS SHELLS POS (BOUNDED CONTEXTS)**
 
-El Onboarding del pos-landing obliga al cliente a elegir una de 4 categorías. Esta selección inyecta el BusinessTypeId en la base de datos, lo cual determina qué componente de Angular carga la Caja Principal.
+> **Actualización 2026-05-04 (post-AUDIT-050 + AUDIT-052):** El sistema fue consolidado de 4 motores fragmentados a **2 shells permanentes** separados como contextos delimitados. La razón no es estética — es que las dos topologías transaccionales son estructuralmente incompatibles. **No se fusionan.**
+
+El Onboarding del pos-landing obliga al cliente a elegir una categoría de giro. Esta selección inyecta el `BusinessTypeId` en la base de datos, que se mapea al `PosExperience` y determina cuál de los **dos shells** carga la Caja Principal.
 
 ### **Flujo de Asignación Automática (Onboarding)**
 
-Fragmento de código
+```
+Cliente entra al Landing
+        │
+        ▼
+   Selección de Categoría
+        │
+        ├── Restaurantes / Bares / Cafés con mesas ──► PosExperience: Restaurant
+        │                                              ▼
+        │                                     Shell: Full-Service F&B
+        │                                     (RestaurantHubComponent en /pos)
+        │
+        └── Comida Rápida / Tiendas / Servicios ─────► PosExperience: Counter / Retail / Quick / Services
+                                                       ▼
+                                             Shell: Fast-Lane POS
+                                             (UnifiedPosComponent en /pos/sell)
+                                                  │
+                                                  ├─ vista 'grid'   (Counter, Retail)
+                                                  └─ vista 'keypad' (Quick, Services)
+```
 
-graph TD
-    A\[Cliente entra al Landing\] \--\> B{Selección de Categoría}
-    B \--\>|Restaurantes y Bares| C\[Inyecta Giro: Restaurante\]
-    B \--\>|Comida Rápida y Cafés \(Quick Service\)| D\[Inyecta Giro: Quick Service\]
-    B \--\>|Tiendas y Comercios| E\[Inyecta Giro: Retail\]
-    B \--\>|Servicios Especializados \(Quick\)| F\[Inyecta Giro: General\]
+---
 
-    C \--\> G(Motor Asignado: RESTAURANT HUB)
-    D \--\> H(Motor Asignado: STANDARD POS)
-    E \--\> I(Motor Asignado: RETAIL MODE)
-    F \--\> J(Motor Asignado: QUICK POS)
+### **Detalle de los Shells**
 
-### **Detalle de los Motores**
+#### 🍽️ **Shell 1 — Full-Service F&B (Restaurant Hub Omnicanal)**
 
-* 🍽️ **Categoría 1 — Restaurantes y Bares (Restaurant Hub Omnicanal):**
-  La Caja Principal en modo Restaurante NO es un simple mapa de mesas. Es un **Hub Omnicanal** (`RestaurantHubComponent` en `/pos`) que centraliza tres canales de venta simultáneos mediante un switcher:
-  1. **Dine-in (Mesas):** Renderiza `<app-tables />`. Mapa de zonas y mesas. Flujo: Abrir mesa ➔ Asignar comensales ➔ Enviar comanda a cocina ➔ Imprimir pre-cuenta ➔ Cobrar.
-  2. **Takeout (Para Llevar):** Renderiza `<app-product-grid />` (el Standard POS). Flujo: Agregar productos al carrito ➔ Cobrar ➔ Imprimir ticket con número de orden.
-  3. **Delivery:** Lista de órdenes de plataformas externas (Uber Eats, Rappi, DiDi Food). Flujo: Recibir orden ➔ Aceptar ➔ Coordinar con cocina ➔ Marcar lista.
+Cuál: `RestaurantHubComponent` en `/pos`. Aplica al macro **Food & Beverage** (Restaurantes, Bares, Cafés con servicio en mesa).
 
-  Adicionalmente, la Caja recibe en tiempo real las cuentas creadas por los Meseros (dispositivos móviles) y coordina el flujo con las Pantallas de Cocina (KDS). Es el punto de convergencia de todos los dispositivos de la sucursal.
+La Caja Principal en modo Restaurante NO es un simple mapa de mesas. Es un **Hub Omnicanal** que centraliza tres canales de venta simultáneos mediante un switcher:
 
-* 🍔 **Categoría 2 — Comida Rápida y Cafés (Quick Service):**
-  Motor: **Standard POS** (`ProductGridComponent` en `/pos/quick-service`). Renderiza la cuadrícula táctil visual con categorías, búsqueda y carrito lateral. Flujo: Tocar productos ➔ Cobrar inmediatamente ➔ Entregar ticket con número de orden. Opcionalmente envía comandas a cocina si `hasKitchen=true`. Es el mismo motor que se usa como canal "Takeout" dentro del Restaurant Hub — la diferencia es que aquí es la pantalla principal y única.
+1. **Dine-in (Mesas):** Renderiza `<app-tables />`. Mapa de zonas y mesas con polling en tiempo real, reservaciones, y operaciones inter-orden (move-items / merge / split-equal / split-by-items). Flujo: Abrir mesa ➔ Asignar comensales ➔ Enviar comanda a cocina ➔ Imprimir pre-cuenta ➔ Cobrar.
+2. **Takeout (Para Llevar):** Renderiza `<app-product-grid />` (el shell legacy completo con cart-panel embebido). Flujo: Agregar productos al carrito ➔ Cobrar (vía `/pos/checkout`) ➔ Imprimir ticket. Ojo: este shell legacy es **distinto** del Chameleon — el hub F&B lo conserva por simetría con su flujo de cocina.
+3. **Delivery:** Lista de órdenes de plataformas externas (Uber Eats, Rappi, DiDi Food). Flujo: Recibir orden ➔ Aceptar ➔ Coordinar con cocina ➔ Marcar lista.
 
-* 🏪 **Categoría 3 — Tiendas y Comercios (Retail Mode):**
-  Motor: `RetailPosComponent` en `/pos/retail`. Renderiza lista de alta densidad con búsqueda por nombre o código de barras. Flujo: Escaneo intensivo con lector de código de barras ➔ Cobro por teclado numérico con denominaciones de billetes.
+Adicionalmente, la Caja recibe en tiempo real las cuentas creadas por los Meseros (dispositivos móviles) y coordina el flujo con las Pantallas de Cocina (KDS). Es el punto de convergencia de todos los dispositivos de la sucursal.
 
-* ✂️ **Categoría 4 — Servicios Especializados (Quick):**
-  Motor: `QuickPosComponent` en `/pos/quick`. Renderiza input de concepto libre. Flujo: Escribir servicio manual (ej. "Manicure") ➔ Ingresar precio variable ➔ Cobrar. También permite búsqueda en catálogo como función secundaria.
+**Topología transaccional:** 1 cajero ↔ N órdenes abiertas concurrentes (una por mesa) ↔ ciclo de vida en cocina (Pending → InProgress → Ready → Delivered). Una orden vive minutos u horas.
+
+#### 🦎 **Shell 2 — Fast-Lane POS (Chameleon Invisible)**
+
+Cuál: `UnifiedPosComponent` en `/pos/sell`. Aplica a los macros **Counter, Retail, Quick y Services** — todo lo que NO es F&B con mesas.
+
+Un solo shell que se reconfigura visualmente según el `PosExperience` del tenant, vía `PosViewModeService`:
+
+| Vista | Stage component | Default para | UX |
+|---|---|---|---|
+| `grid` | `<app-product-grid-inner />` | Counter (cafés sin mesa, food-truck), Retail (abarrotes, ferretería, papelería, farmacia) | Cuadrícula visual con categorías, búsqueda, scanner de código de barras |
+| `keypad` | `<app-keypad-stage />` | Quick (taquerías informales, general), Services (manicure, salones, talleres) | Calculadora libre con descripción + precio + recientes + búsqueda en catálogo opcional |
+
+El cajero puede flipar el toggle del header en cualquier momento (ej. un gym vendiendo agua después de cobrar una clase). La elección persiste en `localStorage` (`pos_view_mode_override`).
+
+**Cobro inline:** los giros Fast-Lane no toleran un detour a `/pos/checkout`. El botón "Cobrar" del cart-panel abre el diálogo `<app-quick-pay>` (efectivo + denominaciones + cambio) directamente. Persiste la orden vía `SyncService` y vuelve al POS sin cambiar de pantalla.
+
+**Topología transaccional:** 1 cajero ↔ 1 carrito transient ↔ 1 venta linealizada. Al cobrar, el carrito se vacía. **No hay estado entre transacciones.**
+
+---
+
+### **Frontera de Contexto: Por qué los 2 shells NO se consolidan**
+
+> **Esta sección es invariante arquitectural. No negociable sin un nuevo audit.** Cualquier sesión futura (humana o IA) que proponga fusionar los dos shells debe leer [docs/AUDIT-052-restaurant-hub-chameleon.md](../docs/AUDIT-052-restaurant-hub-chameleon.md) primero.
+
+1. **Lifecycles incompatibles**: el carrito Fast-Lane es transient (vive ~30 segundos); la orden F&B es persistent (vive horas) y atraviesa estados de cocina que no existen non-F&B.
+2. **Cardinalidad distinta**: Fast-Lane mantiene `N=1` carritos a la vez; F&B mantiene `N=mesas-ocupadas`.
+3. **Operaciones inter-orden**: merge / split / move solo tienen sentido cuando hay órdenes abiertas concurrentes — un patrón ausente de Fast-Lane por construcción.
+4. **Inversión del mental model**: en Fast-Lane el cart es protagonista; en F&B el floor map es protagonista y el cart es un detalle de la mesa activa.
+5. **Inclusión asimétrica**: F&B ya contiene un sub-modo Fast-Lane (canal "Para Llevar" dentro del hub). Fast-Lane no puede contener F&B sin volverse F&B.
+
+**Consecuencia operacional:**
+- Cualquier feature que aplique a **ambos contextos** (delivery, sync offline, cash-register sessions, shift management, glassmorphism opt-in) vive en **servicios o componentes shared** que ambos shells consumen — no se duplica.
+- El `<app-cart-panel>` es el único componente compartido que conoce ambos mundos, ramificado vía `isFoodAndBeverage()` y `hasKitchen()`. Esa ramificación es sana porque vive en un solo punto.
+- **Nunca se debe** absorber `<app-tables>`, `OrderContextService`, `TableService`, ni el ciclo de cocina en `UnifiedPosComponent`. Si surge la tentación, esta sección debe leerse antes de hacerlo.
+- **Nunca se debe** crear un tercer shell por giro nuevo. Verticales nuevos: si encajan en topología 1-cart-1-sale → Fast-Lane (extender `PosExperience`); si necesitan órdenes abiertas persistentes → F&B Hub (extender canal). No hay tercer camino.
+
+---
 
 ### **Modo Mesero (Waiter Mode) — Feature Pro**
 
-El **Modo Mesero** (`WaiterPosComponent` en `/pos/waiter`) es un motor adicional **NO ligado a un giro de negocio**, sino a un **rol de dispositivo Pro**. Está reservado exclusivamente para el rol Waiter en dispositivos móviles (celulares y tablets pequeñas) que toman órdenes directamente en mesa.
+El **Modo Mesero** (`WaiterPosComponent` en `/pos/waiter`) es un motor adicional **NO ligado a un giro de negocio**, sino a un **rol de dispositivo Pro**. Está reservado exclusivamente para el rol Waiter en dispositivos móviles (celulares y tablets pequeñas) que toman órdenes directamente en mesa, alimentando órdenes al hub F&B.
 
 * **Cuándo se carga:** Cuando un usuario con rol `Waiter` inicia sesión en un dispositivo configurado en `mode: 'tables'`, o cuando se accede explícitamente a `/pos/waiter`.
 * **UX:** Layout mobile-first con touch targets grandes, vista compacta de productos, flujo de comanda a cocina integrado.
-* **NO se usa para:** Ventas generales de Quick Service. Esos negocios usan el Standard POS (`ProductGridComponent`), no este componente.
+* **NO se usa para:** Ventas Fast-Lane. Esos negocios usan el Chameleon (`UnifiedPosComponent`).
 * **Plan requerido:** Solo Pro. En plan Free, los meseros usan el flujo regular de la Caja Principal.
+
+---
+
+### **Reglas Fiscales (Backend Authoritative)**
+
+A partir de la migración a PostgreSQL con motor relacional de impuestos, **el backend es la única autoridad fiscal**. `OrderItemTax` calcula el IVA al guardar la orden según el régimen del tenant. El frontend muestra un **preview** del IVA en el cart-panel usando `DEFAULT_TAX_RATE = 16` como fallback cuando el `CartItem.taxRate` es undefined — esto es preview, no verdad.
+
+**Reglas para frontend:**
+- **Nunca hardcodear** `taxRate: 16` ni `taxRate: DEFAULT_TAX_RATE` al construir `CartItem` (ej. en `addQuickItem`). Dejarlo `undefined` para que el backend aplique el régimen real.
+- Si el preview se ve desfasado para un tenant exento o con tasa fronteriza, **NO arreglarlo en frontend**. Cuando API exponga `tenantContext.defaultTaxRate()`, wirearlo al fallback canónico en `tax.utils.ts` — un solo punto resuelve el drift.
 
 ---
 

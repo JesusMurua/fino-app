@@ -7,10 +7,10 @@ import { ToastModule } from 'primeng/toast';
 
 import { Product } from '../../../../core/models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { CartFlowService } from '../../../../core/services/cart-flow.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
-import { SEED_CATEGORIES, SEED_PRODUCTS } from '../../data/pos.fixture';
 import { ConfigService } from '../../../../core/services/config.service';
 import { CartPanelComponent } from '../cart-panel/cart-panel.component';
 import { CategorySidebarComponent } from '../category-sidebar/category-sidebar.component';
@@ -77,6 +77,7 @@ export class ProductGridComponent implements OnInit, OnDestroy {
 
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
+  private readonly cartFlowService = inject(CartFlowService);
   readonly configService = inject(ConfigService);
   private readonly scannerService = inject(ScannerService);
   private readonly messageService = inject(MessageService);
@@ -96,12 +97,6 @@ export class ProductGridComponent implements OnInit, OnDestroy {
   //#region Lifecycle
   async ngOnInit(): Promise<void> {
     await this.productService.loadCatalog();
-
-    // Fallback: seed fixtures only if both API and Dexie returned empty
-    if (this.productService.products().length === 0) {
-      await this.productService.seedCatalog(SEED_PRODUCTS, SEED_CATEGORIES);
-    }
-
     this.startScannerListener();
   }
 
@@ -146,23 +141,19 @@ export class ProductGridComponent implements OnInit, OnDestroy {
    */
   private handleBarcodeScan(code: string): void {
     this.productService.findByBarcode(code).subscribe({
-      next: (product) => {
-        if (product) {
-          const hasOptions = product.sizes.length > 0
-            || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
-          if (hasOptions) {
-            this.router.navigate(['/pos/add-meal', product.id]);
-          } else {
-            this.cartService.addItem(product);
-            this.messageService.add({
-              severity: 'success',
-              summary: 'Producto agregado',
-              detail: product.name,
-              life: 2000,
-            });
-          }
-        } else {
+      next: async (product) => {
+        if (!product) {
           this.showBarcodeNotFound(code);
+          return;
+        }
+        const result = await this.cartFlowService.handleProductClick(product);
+        if (result === 'added') {
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Producto agregado',
+            detail: product.name,
+            life: 2000,
+          });
         }
       },
       error: () => this.showBarcodeNotFound(code),
@@ -177,7 +168,7 @@ export class ProductGridComponent implements OnInit, OnDestroy {
     this.messageService.add({
       severity: 'warn',
       summary: 'Código no registrado',
-      detail: `"${code}" — ve al catálogo para asignarlo a un producto`,
+      detail: `"${code}" — regístralo en el catálogo.`,
       life: 5000,
     });
   }
@@ -187,17 +178,19 @@ export class ProductGridComponent implements OnInit, OnDestroy {
   //#region Product Methods
 
   /**
-   * Navigates to the product detail page for customization.
-   * Products without sizes or extras are added directly to the cart.
+   * Delegates to `CartFlowService` for the three-branch routing
+   * (weight capture, detail-page navigation, immediate add) and toasts
+   * only on the immediate-add outcome.
    */
-  onProductSelected(product: Product): void {
-    const hasOptions = product.sizes.length > 0
-            || (product.modifierGroups?.some(g => g.extras.length > 0) ?? false);
-
-    if (hasOptions) {
-      this.router.navigate(['/pos/add-meal', product.id]);
-    } else {
-      this.router.navigate(['/pos/add-meal', product.id]);
+  async onProductSelected(product: Product): Promise<void> {
+    const result = await this.cartFlowService.handleProductClick(product);
+    if (result === 'added') {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Producto agregado',
+        detail: product.name,
+        life: 2000,
+      });
     }
   }
   //#endregion

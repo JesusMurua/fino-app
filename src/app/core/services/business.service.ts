@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BusinessGiroResponse, LoginResponse, UpdateBusinessGiroRequest } from '../models';
+import { BusinessGiroResponse, BusinessSettings, LoginResponse, UpdateBusinessGiroRequest, UpdateBusinessSettingsRequest } from '../models';
 import { ApiService } from './api.service';
 
 /**
@@ -65,4 +65,25 @@ export class BusinessService {
 
   //#endregion
 
+  //#region Business Settings (Fiscal)
+
+  /**
+   * Reads the tenant's business settings — used by `TenantContextService`
+   * during post-auth hydration to populate `defaultTaxId` and any future
+   * tenant-scoped configuration. Returns the server snapshot.
+   */
+  getSettings(): Observable<BusinessSettings> {
+    return this.api.get<BusinessSettings>('/business/settings');
+  }
+
+  /**
+   * Persists the business settings — currently scoped to `defaultTaxId`
+   * but extensible. Mandatory on the write side: the UI must validate
+   * the dropdown selection before invoking. The backend rejects null.
+   */
+  updateSettings(payload: UpdateBusinessSettingsRequest): Observable<void> {
+    return this.api.put<void>('/business/settings', payload);
+  }
+
+  //#endregion
 }

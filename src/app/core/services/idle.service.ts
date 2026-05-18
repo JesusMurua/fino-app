@@ -6,8 +6,8 @@ import { CartService } from './cart.service';
 import { ConfigService } from './config.service';
 import { OrderContextService } from './order-context.service';
 
-/** Inactivity threshold before auto-lock (5 minutes) */
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+/** Inactivity threshold before auto-lock (15 minutes) */
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 
 /** How often to check idle state (every 30 seconds) */
 const CHECK_INTERVAL_MS = 30_000;

@@ -29,10 +29,13 @@ import {
 } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { BusinessService } from '../../../../core/services/business.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
 import { ConfigService } from '../../../../core/services/config.service';
 import { PrinterService } from '../../../../core/services/printer.service';
+import { ScaleService } from '../../../../core/services/scale.service';
 import { ScannerService } from '../../../../core/services/scanner.service';
+import { TaxService } from '../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { AdminBranchesComponent } from '../branches/admin-branches.component';
 import { AdminPrinterSettingsComponent } from './printer-settings/admin-printer-settings.component';
@@ -86,6 +89,7 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   private readonly configService = inject(ConfigService);
   private readonly messageService = inject(MessageService);
   readonly printerService = inject(PrinterService);
+  readonly scaleService = inject(ScaleService);
   readonly scannerService = inject(ScannerService);
   private readonly tenantContext = inject(TenantContextService);
   private readonly router = inject(Router);
@@ -117,10 +121,9 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     this.tenantContext.hasFeature(FeatureKey.CfdiInvoicing),
   );
 
-  /** Scale card visible to Retail tenants with Core hardware */
+  /** Scale card visible to any tenant whose plan unlocks Core hardware */
   readonly canSeeScale = computed(() =>
-    this.tenantContext.hasFeature(FeatureKey.CoreHardware)
-    && this.authService.primaryMacroCategoryId() === MacroCategoryType.Retail,
+    this.tenantContext.hasFeature(FeatureKey.CoreHardware),
   );
 
   /** Print destinations visible when any kitchen-printing feature is on */
@@ -171,6 +174,31 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   fiscalCodigoPostal = '';
   readonly isSavingFiscal = signal(false);
   readonly saveFiscalSuccess = signal(false);
+
+  // ---- Default Tax configuration (AUDIT-053) ----
+  readonly taxService = inject(TaxService);
+  private readonly businessService = inject(BusinessService);
+  /** Currently selected `defaultTaxId` in the dropdown — null until admin picks */
+  readonly defaultTaxIdSelection = signal<number | null>(null);
+  /** Loading state for the persist call */
+  readonly isSavingDefaultTax = signal(false);
+  /** Brief success indicator on save */
+  readonly saveDefaultTaxSuccess = signal(false);
+
+  /** Dropdown options derived from the live TaxService catalog */
+  readonly taxOptions = computed(() =>
+    this.taxService.catalog().map(t => ({
+      label: t.name,
+      value: t.id,
+    })),
+  );
+
+  /** True when the form has changes pending — drives the save button */
+  readonly defaultTaxIsDirty = computed(() => {
+    const selected = this.defaultTaxIdSelection();
+    const stored = this.tenantContext.business()?.defaultTaxId ?? null;
+    return selected !== stored;
+  });
 
   // ---- Billing ----
   readonly showCancelDialog = signal(false);
@@ -392,6 +420,13 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
     // Refresh subscription status for billing tab
     this.authService.refreshSubscriptionStatus();
+
+    // Hydrate tax catalog + business settings so the Fiscal tab can
+    // bind its dropdown to live data. `ensureHydrated()` is idempotent
+    // (cached promise) so calling here is free if the guard or login
+    // already kicked it off.
+    await this.tenantContext.ensureHydrated();
+    this.defaultTaxIdSelection.set(this.tenantContext.business()?.defaultTaxId ?? null);
   }
 
   ngOnDestroy(): void {
@@ -423,6 +458,30 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     if (tab === 'hardware') {
       this.scannerService.startListening();
     }
+  }
+
+  /**
+   * Persists the chosen scale configuration through `ScaleService` and
+   * surfaces a success toast. Idempotent: clicking the currently-active
+   * type / protocol button is a silent no-op, so the user does not see
+   * a redundant toast for a non-change.
+   */
+  onScaleConfigUpdated(
+    type: 'none' | 'serial' | 'cloud',
+    protocol?: 'toledo' | 'epson' | 'generic',
+  ): void {
+    if (
+      type === this.scaleService.scaleType()
+      && (protocol === undefined || protocol === this.scaleService.scaleProtocol())
+    ) {
+      return;
+    }
+    this.scaleService.updateScaleConfig(type, protocol);
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Báscula actualizada',
+      life: 3000,
+    });
   }
 
   /**
@@ -572,6 +631,49 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly isFiscalCpValid = computed(() =>
     this.fiscalCodigoPostal.length === 0 || /^\d{5}$/.test(this.fiscalCodigoPostal),
   );
+
+  /**
+   * Persists the selected default tax to the business settings via
+   * `PUT /api/business/settings`. Updates the cached tenantContext
+   * snapshot on success so the dashboard banner and POS guard
+   * immediately stop blocking. On failure, surfaces an error toast.
+   */
+  async saveDefaultTax(): Promise<void> {
+    const selectedId = this.defaultTaxIdSelection();
+    if (selectedId === null) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Selecciona un impuesto antes de guardar',
+        life: 3000,
+      });
+      return;
+    }
+
+    this.isSavingDefaultTax.set(true);
+    this.saveDefaultTaxSuccess.set(false);
+    try {
+      await firstValueFrom(
+        this.businessService.updateSettings({ defaultTaxId: selectedId }),
+      );
+      this.tenantContext.setBusinessSettings({ defaultTaxId: selectedId });
+      this.saveDefaultTaxSuccess.set(true);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Impuesto por defecto guardado',
+        life: 3000,
+      });
+      setTimeout(() => this.saveDefaultTaxSuccess.set(false), 3000);
+    } catch {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'No se pudo guardar el impuesto por defecto',
+        detail: 'Verifica tu conexión e intenta de nuevo.',
+        life: 5000,
+      });
+    } finally {
+      this.isSavingDefaultTax.set(false);
+    }
+  }
 
   /** Saves fiscal config to the business config in Dexie + API */
   async saveFiscalConfig(): Promise<void> {

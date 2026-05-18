@@ -313,3 +313,105 @@ textarea.p-inputtextarea:enabled:focus {
     color: #374151 !important;
   }
 }
+
+// =============================================================================
+// Customer-selector autocomplete panel (appendTo="body")
+// ----------------------------------------------------------------------------
+// PrimeNG portals the panel out of the host's view-encapsulation tree, so the
+// item-content rules MUST live globally. Scoped to `.cs-autocomplete-panel`
+// so they only apply to this component's panel.
+// =============================================================================
+
+.cs-autocomplete-panel .p-autocomplete-item {
+  min-height: 64px; // CLAUDE.md touch target
+  padding: $space-3 $space-4;
+}
+
+.cs-ac-item {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: $color-primary-light;
+    color: $color-primary;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    text-align: left;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__phone {
+    font-size: 12px;
+    color: $color-text-sub;
+  }
+
+  &__pts {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: #FFF7ED;
+    color: #D97706;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+
+    i { font-size: 10px; }
+  }
+}
+
+// =============================================================================
+// Access-control autocomplete panel (appendTo="body") — gym reception
+// ----------------------------------------------------------------------------
+// Larger touch targets and font sizes than the customer-selector panel so the
+// receptionist can disambiguate from a wall-mounted touchscreen across the room.
+// =============================================================================
+
+.ac-autocomplete-panel .p-autocomplete-item {
+  min-height: 64px; // CLAUDE.md touch target
+  padding: 12px 20px;
+}
+
+.ac-ac-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+
+  &__name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  &__phone {
+    font-size: 1rem;
+    color: #6b7280;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+}

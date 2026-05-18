@@ -26,7 +26,11 @@
   <ul class="kds-card__items">
     @for (item of parsedItems(); track item.id) {
       <li class="kds-card__item">
-        <span class="kds-card__qty">{{ item.quantity }}×</span>
+        @if (isMeasureItem(item)) {
+          <span class="kds-card__qty qty-measure">{{ item.quantity | number:'1.3-3' }} {{ formatMeasureUnit(item.satUnitCode, true) }}</span>
+        } @else {
+          <span class="kds-card__qty qty-unit">{{ item.quantity }}{{ formatMeasureUnit(item.satUnitCode, false) === 'x' ? 'x' : ' ' + formatMeasureUnit(item.satUnitCode, false) }}</span>
+        }
         <div class="kds-card__item-body">
           <span class="kds-card__name">{{ item.productName }}</span>
           @if (item.sizeLabel) {

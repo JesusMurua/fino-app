@@ -5,8 +5,6 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CustomerFiscalData,
-  GlobalInvoiceRecord,
-  GlobalInvoiceSummary,
   InvoiceRequest,
   InvoiceResult,
   PAYMENT_METHOD_SAT_MAP,
@@ -108,6 +106,10 @@ export class InvoicingService {
   /**
    * Requests a global CFDI invoice for all uninvoiced orders in a date range.
    * Used from the Backoffice invoicing panel.
+   *
+   * Body fields are full UTC `DateTime` strings — the C# DTO is `DateTime`
+   * (not `DateOnly`), per the audited contract for `POST /invoicing/global`.
+   *
    * @param startDate Start of the date range
    * @param endDate End of the date range
    */
@@ -137,40 +139,6 @@ export class InvoicingService {
       return result;
     } finally {
       this.isSubmitting.set(false);
-    }
-  }
-
-  /**
-   * Fetches the summary of uninvoiced orders for a date range.
-   * @param startDate Start of the date range
-   * @param endDate End of the date range
-   */
-  async getUninvoicedSummary(startDate: Date, endDate: Date): Promise<GlobalInvoiceSummary> {
-    try {
-      return await firstValueFrom(
-        this.api.get<GlobalInvoiceSummary>(
-          `/invoicing/uninvoiced-summary?from=${startDate.toISOString()}&to=${endDate.toISOString()}`,
-        ),
-      );
-    } catch {
-      return { uninvoicedCount: 0, uninvoicedTotalCents: 0, publicoGeneralTotalCents: 0 };
-    }
-  }
-
-  /**
-   * Fetches global invoice history for display in the backoffice table.
-   * @param startDate Start of the date range
-   * @param endDate End of the date range
-   */
-  async getGlobalInvoiceHistory(startDate: Date, endDate: Date): Promise<GlobalInvoiceRecord[]> {
-    try {
-      return await firstValueFrom(
-        this.api.get<GlobalInvoiceRecord[]>(
-          `/invoicing/global/history?from=${startDate.toISOString()}&to=${endDate.toISOString()}`,
-        ),
-      );
-    } catch {
-      return [];
     }
   }
 

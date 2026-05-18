@@ -79,38 +79,14 @@
 }
 
 // -----------------------------------------------------------------------
-// Search input + dropdown
+// Search row — flex container for the autocomplete + quick-create button
 // -----------------------------------------------------------------------
 .cs-search {
-  position: relative;
   display: flex;
   gap: $space-2;
 
   &--compact {
-    .cs-search__input { min-height: 36px; font-size: 13px; }
     .cs-search__add { width: 36px; height: 36px; }
-  }
-
-  &__input-wrap {
-    position: relative;
-    flex: 1;
-  }
-
-  &__icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    color: $color-text-sub;
-    pointer-events: none;
-  }
-
-  &__input {
-    width: 100%;
-    padding-left: 36px !important;
-    min-height: 40px;
-    border-radius: $radius-button !important;
   }
 
   &__add {
@@ -139,84 +115,31 @@
 }
 
 // -----------------------------------------------------------------------
-// Dropdown results
+// p-autoComplete sizing — fill the flex row left of the + button.
+// `[styleClass]` lands on the inner `.p-autocomplete` span; we also target
+// the host element directly so `flex: 1` reaches the actual flex item.
 // -----------------------------------------------------------------------
-.cs-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  margin-top: 4px;
-  background: white;
-  border: 1px solid #E5E7EB;
+.cs-search__autocomplete { flex: 1; }
+
+:host ::ng-deep .cs-search > p-autocomplete {
+  flex: 1;
+  display: block;
+}
+
+:host ::ng-deep .cs-search__autocomplete,
+:host ::ng-deep .cs-search__autocomplete .p-inputtext {
+  width: 100%;
+}
+
+:host ::ng-deep .cs-search__autocomplete .p-inputtext {
+  min-height: 40px;
   border-radius: $radius-button;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  max-height: 280px;
-  overflow-y: auto;
+}
 
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: $space-2;
-    width: 100%;
-    padding: $space-2 $space-3;
-    border: none;
-    background: white;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.1s;
-
-    &:hover { background: #F9FAFB; }
-    &:not(:last-child) { border-bottom: 1px solid $color-border-soft; }
-  }
-
-  &__avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: $color-primary-light;
-    color: $color-primary;
-    font-size: 13px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  &__info {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    flex: 1;
-    text-align: left;
-  }
-
-  &__name {
-    font-size: $font-size-label;
-    font-weight: 600;
-    color: $color-text-title;
-  }
-
-  &__phone {
-    font-size: 12px;
-    color: $color-text-sub;
-  }
-
-  &__pts {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 1px 6px;
-    border-radius: 9999px;
-    background: #FFF7ED;
-    color: #D97706;
-    font-size: 11px;
-    font-weight: 600;
-
-    i { font-size: 10px; }
-  }
+// Compact mode — sidebar consumers (cart-panel) use this for tighter rows
+:host ::ng-deep .cs-search__input--compact.p-inputtext {
+  min-height: 36px;
+  font-size: 13px;
 }
 
 // -----------------------------------------------------------------------

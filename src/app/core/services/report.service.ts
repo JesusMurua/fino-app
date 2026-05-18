@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { DashboardChartsDto, ReportPeriod, ReportSummary } from '../models';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 
 /**
@@ -12,6 +13,12 @@ import { ApiService } from './api.service';
  * Summary data is fetched from the API.
  * Excel/PDF exports are downloaded as blobs via HttpClient directly
  * (ApiService does not support responseType: 'blob').
+ *
+ * All `from`/`to` query params are serialized as `yyyy-MM-dd` (local) so
+ * the C# `DateOnly` model binders accept them. The backend resolves
+ * timezone via `Branch.TimeZoneId` and uses a half-open interval
+ * `[startUtc, endUtc)` where `endUtc = midnight of the day after `to`,
+ * so `to` is inclusive at the local calendar-day level.
  */
 @Injectable({ providedIn: 'root' })
 export class ReportService {
@@ -33,9 +40,7 @@ export class ReportService {
    */
   async getSummary(branchId: number, from: Date, to: Date): Promise<ReportSummary> {
     return firstValueFrom(
-      this.api.get<ReportSummary>(
-        `/report/summary?from=${from.toISOString()}&to=${to.toISOString()}`,
-      ),
+      this.api.get<ReportSummary>('/report/summary', this.dateRangeParams(from, to)),
     );
   }
 
@@ -46,9 +51,11 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadExcel(branchId: number, from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/excel?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
-      this.http.get(url, { responseType: 'blob' }),
+      this.http.get(`${environment.apiUrl}/report/export/excel`, {
+        responseType: 'blob',
+        params: this.dateRangeHttpParams(from, to),
+      }),
     );
     this.triggerDownload(blob, `reporte-ventas-${this.formatDateRange(from, to)}.xlsx`);
   }
@@ -60,9 +67,11 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadPdf(branchId: number, from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/pdf?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
-      this.http.get(url, { responseType: 'blob' }),
+      this.http.get(`${environment.apiUrl}/report/export/pdf`, {
+        responseType: 'blob',
+        params: this.dateRangeHttpParams(from, to),
+      }),
     );
     this.triggerDownload(blob, `reporte-ventas-${this.formatDateRange(from, to)}.pdf`);
   }
@@ -76,9 +85,11 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadFiscalCsv(branchId: number, from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/fiscal-csv?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
-      this.http.get(url, { responseType: 'blob' }),
+      this.http.get(`${environment.apiUrl}/report/export/fiscal-csv`, {
+        responseType: 'blob',
+        params: this.dateRangeHttpParams(from, to),
+      }),
     );
     this.triggerDownload(blob, `fiscal-${this.formatDateRange(from, to)}.csv`);
   }
@@ -90,9 +101,7 @@ export class ReportService {
    */
   async getDashboardCharts(from: Date, to: Date): Promise<DashboardChartsDto> {
     return firstValueFrom(
-      this.api.get<DashboardChartsDto>(
-        `/report/charts?from=${from.toISOString()}&to=${to.toISOString()}`,
-      ),
+      this.api.get<DashboardChartsDto>('/report/charts', this.dateRangeParams(from, to)),
     );
   }
 
@@ -103,9 +112,11 @@ export class ReportService {
    * @param to End date (inclusive)
    */
   async downloadDetailedCsv(from: Date, to: Date): Promise<void> {
-    const url = `${environment.apiUrl}/report/export/sales-csv?from=${from.toISOString()}&to=${to.toISOString()}`;
     const blob = await firstValueFrom(
-      this.http.get(url, { responseType: 'blob' }),
+      this.http.get(`${environment.apiUrl}/report/export/sales-csv`, {
+        responseType: 'blob',
+        params: this.dateRangeHttpParams(from, to),
+      }),
     );
     this.triggerDownload(blob, `ventas-detalle-${this.formatDateRange(from, to)}.csv`);
   }
@@ -161,6 +172,24 @@ export class ReportService {
   //#region Private Helpers
 
   /**
+   * Builds the `from`/`to` params object for ApiService consumers.
+   */
+  private dateRangeParams(from: Date, to: Date): { from: string; to: string } {
+    return { from: toLocalIsoDate(from), to: toLocalIsoDate(to) };
+  }
+
+  /**
+   * Builds an `HttpParams` instance for blob download requests that go
+   * through `HttpClient` directly (ApiService does not support
+   * `responseType: 'blob'`).
+   */
+  private dateRangeHttpParams(from: Date, to: Date): HttpParams {
+    return new HttpParams()
+      .set('from', toLocalIsoDate(from))
+      .set('to', toLocalIsoDate(to));
+  }
+
+  /**
    * Creates a temporary <a> element to trigger a browser download.
    * @param blob File content
    * @param filename Suggested filename for the download
@@ -178,8 +207,7 @@ export class ReportService {
    * Formats a date range as "YYYY-MM-DD_YYYY-MM-DD" for filenames.
    */
   private formatDateRange(from: Date, to: Date): string {
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    return `${fmt(from)}_${fmt(to)}`;
+    return `${toLocalIsoDate(from)}_${toLocalIsoDate(to)}`;
   }
 
   //#endregion

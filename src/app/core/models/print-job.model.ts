@@ -1,3 +1,5 @@
+import { ProductType } from './product.model';
+
 /**
  * A single item included in a print job, extracted from the order.
  * Stored as a JSON array in PrintJobDto.structuredContent.
@@ -6,6 +8,10 @@ export interface PrintJobItem {
   id: string;
   quantity: number;
   productName: string;
+  /** Frozen product classification (BE Phase 4.5) — drives kg vs piece KDS render. */
+  productType?: ProductType;
+  /** SAT unit code (BE Phase 4.7+4.8) — drives unit suffix via `formatMeasureUnit`. */
+  satUnitCode?: string;
   sizeLabel?: string;
   extras: string[];
   notes?: string;

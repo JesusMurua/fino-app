@@ -1,3 +1,20 @@
+import { ProductMetadata } from './metadata.model';
+
+/**
+ * Product classification enum mirrored from the backend `ProductType`
+ * (commit 20260516024801_AddProductTypeEnum). Drives POS branching:
+ * weight-based items take the scale-capture flow, recipes go to KDS,
+ * memberships extend customer access, etc. Wire format is PascalCase
+ * string via JsonStringEnumConverter on the backend.
+ */
+export type ProductType =
+  | 'Standard'
+  | 'TrackedByUnit'
+  | 'TrackedByMeasure'
+  | 'Recipe'
+  | 'Service'
+  | 'Membership';
+
 /**
  * A size variant for a product (e.g. Small, Medium, Large).
  * priceDeltaCents is the surcharge relative to the base price (can be 0).
@@ -56,6 +73,12 @@ export interface ProductImage {
 export interface Product {
   id: number;
   name: string;
+  /**
+   * Strong classification enum (NON-NULLABLE).
+   * Drives POS flow branching — scale capture, KDS, membership extension, etc.
+   * Backend default is `'Standard'`; backfill migrated existing rows.
+   */
+  type: ProductType;
   /** Optional product description (ingredients, details, etc.) */
   description?: string;
   /** Optional barcode (EAN-13, UPC-A, etc.) */
@@ -89,11 +112,17 @@ export interface Product {
   /** ID of the printer destination for kitchen/station printing. Null = no kitchen printing. */
   printingDestinationId?: number | null;
   /**
-   * Free-form catalog metadata that drives vertical-specific behavior.
-   * For Gym memberships, the catalog tags the product with
-   * `{ membershipDurationDays: number }`; the cart UI reads this to
-   * surface the beneficiary selector and to seed the `CartItem.metadata`
-   * payload that triggers offline membership extension at sale time.
+   * Strongly-typed vertical metadata persisted as `jsonb` on the backend
+   * (`OwnsOne(...).ToJson()` per BDD-020). Day-1 keys cover Gym
+   * membership duration, KDS prep estimates, weight-based retail and
+   * service appointments — see `ProductMetadata` for the canonical shape.
    */
-  metadata?: Record<string, unknown>;
+  metadata?: ProductMetadata;
+  /**
+   * Tenant-specific dynamic metadata that lives outside the strict
+   * `ProductMetadata` schema. Maps to the parent entity's `ExtensionData`
+   * jsonb column (BDD-020 §2.6); the frontend treats it as an opaque
+   * passthrough.
+   */
+  extensionData?: Record<string, unknown>;
 }

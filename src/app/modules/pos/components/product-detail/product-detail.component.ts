@@ -27,6 +27,7 @@ import {
 import { CartService } from '../../../../core/services/cart.service';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { TenantContextService } from '../../../../core/services/tenant-context.service';
 
 /** Reactive form shape for the product detail page */
 interface DetailForm {
@@ -103,6 +104,15 @@ export class ProductDetailComponent implements OnInit {
     const groups = this.product()?.modifierGroups ?? [];
     return [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
   });
+
+  /**
+   * Whether the kitchen-notes textarea is rendered. Driven by the tenant's
+   * `hasKitchen` flag (FDD-024) so non-F&B verticals (Retail, Services,
+   * QuickService without kitchen) do not see an irrelevant input. The
+   * `notes` form control stays in the FormGroup as an empty string when
+   * hidden — it serializes to nothing on cart-line creation.
+   */
+  readonly showsKitchenNotes = computed(() => this.tenantContext.hasKitchen());
   //#endregion
 
   //#region Constructor
@@ -111,6 +121,7 @@ export class ProductDetailComponent implements OnInit {
     private readonly productService: ProductService,
     private readonly db: DatabaseService,
     private readonly cartService: CartService,
+    private readonly tenantContext: TenantContextService,
     public readonly location: Location,
   ) {}
   //#endregion
@@ -270,9 +281,7 @@ export class ProductDetailComponent implements OnInit {
     const quantity = this.form.controls.quantity.value ?? 1;
     const notes = this.form.controls.notes.value?.trim() || undefined;
 
-    for (let i = 0; i < quantity; i++) {
-      await this.cartService.addItem(product, size, selectedExtras, notes);
-    }
+    await this.cartService.addItem(product, size, selectedExtras, notes, quantity);
 
     this.location.back();
   }

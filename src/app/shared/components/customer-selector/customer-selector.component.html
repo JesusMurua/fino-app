@@ -1,8 +1,8 @@
 <!-- Selected customer chip -->
 @if (selectedCustomer(); as customer) {
   <div class="cs-chip" [class.cs-chip--compact]="compact()">
-    <span class="cs-chip__avatar">{{ customer.name.charAt(0) }}</span>
-    <span class="cs-chip__name">{{ customer.name }}</span>
+    <span class="cs-chip__avatar">{{ customer.firstName.charAt(0) }}</span>
+    <span class="cs-chip__name">{{ customer | customerName }}</span>
     @if (!compact()) {
       @if (customer.pointsBalance > 0) {
         <span class="cs-chip__badge cs-chip__badge--points">
@@ -20,42 +20,40 @@
     </button>
   </div>
 } @else {
-  <!-- Search input -->
+  <!-- Search autocomplete + quick-create button -->
   <div class="cs-search" [class.cs-search--compact]="compact()">
-    <div class="cs-search__input-wrap">
-      <i class="pi pi-search cs-search__icon"></i>
-      <input
-        type="text"
-        pInputText
-        [ngModel]="query()"
-        (ngModelChange)="onQueryChange($event)"
-        [placeholder]="placeholder()"
-        class="cs-search__input"
-        (focus)="query().length >= 2 && showDropdown.set(results().length > 0)"
-        (blur)="onBlur()"
-      />
-    </div>
+    <p-autoComplete
+      [ngModel]="acModel()"
+      (ngModelChange)="acModel.set($event)"
+      [suggestions]="results()"
+      (completeMethod)="onComplete($event)"
+      (onSelect)="onCustomerSelect($event)"
+      [forceSelection]="true"
+      [minLength]="2"
+      [delay]="300"
+      field="firstName"
+      appendTo="body"
+      panelStyleClass="cs-autocomplete-panel"
+      styleClass="cs-search__autocomplete"
+      [inputStyleClass]="compact() ? 'cs-search__input--compact' : ''"
+      [placeholder]="placeholder()"
+    >
+      <ng-template let-customer pTemplate="item">
+        <div class="cs-ac-item">
+          <span class="cs-ac-item__avatar">{{ customer.firstName.charAt(0) }}</span>
+          <div class="cs-ac-item__info">
+            <span class="cs-ac-item__name">{{ customer | customerName }}</span>
+            <span class="cs-ac-item__phone">{{ formatPhone(customer.phone) }}</span>
+          </div>
+          @if (customer.pointsBalance > 0) {
+            <span class="cs-ac-item__pts"><i class="pi pi-star"></i> {{ customer.pointsBalance }}</span>
+          }
+        </div>
+      </ng-template>
+    </p-autoComplete>
     <button type="button" class="cs-search__add" aria-label="Nuevo cliente" (click)="openCreate()">
       <i class="pi pi-plus"></i>
     </button>
-
-    <!-- Dropdown results -->
-    @if (showDropdown()) {
-      <div class="cs-dropdown">
-        @for (c of results(); track c.id) {
-          <button type="button" class="cs-dropdown__item" (mousedown)="selectResult(c)">
-            <span class="cs-dropdown__avatar">{{ c.name.charAt(0) }}</span>
-            <div class="cs-dropdown__info">
-              <span class="cs-dropdown__name">{{ c.name }}</span>
-              <span class="cs-dropdown__phone">{{ formatPhone(c.phone) }}</span>
-            </div>
-            @if (c.pointsBalance > 0) {
-              <span class="cs-dropdown__pts"><i class="pi pi-star"></i> {{ c.pointsBalance }}</span>
-            }
-          </button>
-        }
-      </div>
-    }
   </div>
 }
 
@@ -65,18 +63,29 @@
   [(visible)]="showCreateDialog"
   [modal]="true"
   [draggable]="false"
+  appendTo="body"
   [style]="{ width: '360px' }"
   styleClass="cs-create-dialog"
 >
   <div class="cs-create-form">
     <div class="cs-create-form__field">
-      <label for="cs-name">Nombre *</label>
+      <label for="cs-first-name">Nombre(s) *</label>
       <input
-        id="cs-name"
+        id="cs-first-name"
         type="text"
         pInputText
-        [(ngModel)]="createForm.name"
-        placeholder="Juan Pérez"
+        aria-required="true"
+        [(ngModel)]="createForm.firstName"
+        class="cs-create-form__input"
+      />
+    </div>
+    <div class="cs-create-form__field">
+      <label for="cs-last-name">Apellido(s)</label>
+      <input
+        id="cs-last-name"
+        type="text"
+        pInputText
+        [(ngModel)]="createForm.lastName"
         class="cs-create-form__input"
       />
     </div>
@@ -86,8 +95,8 @@
         id="cs-phone"
         type="tel"
         pInputText
+        aria-required="true"
         [(ngModel)]="createForm.phone"
-        placeholder="6671234567"
         maxlength="10"
         class="cs-create-form__input"
       />
@@ -102,7 +111,7 @@
       <button
         type="button"
         class="cs-btn cs-btn--primary"
-        [disabled]="isSavingNew() || !createForm.name.trim() || !createForm.phone.trim()"
+        [disabled]="isSavingNew() || !createForm.firstName.trim() || !createForm.phone.trim()"
         (click)="saveNewCustomer()"
       >
         @if (isSavingNew()) { <i class="pi pi-spin pi-spinner"></i> }

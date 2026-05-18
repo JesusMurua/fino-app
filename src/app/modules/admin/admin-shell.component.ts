@@ -133,7 +133,7 @@ export class AdminShellComponent implements OnInit {
     { path: 'registers',    icon: 'pi-wallet',     label: 'Cajas' },
     { path: 'invoicing',    icon: 'pi-receipt',    label: 'Facturación',   feature: FeatureKey.CfdiInvoicing },
     { path: 'reservations', icon: 'pi-calendar',   label: 'Reservaciones', feature: FeatureKey.TableMap },
-    { path: '/reception/access-control', icon: 'pi-id-card', label: 'Recepción', subCategory: SubCategoryType.Gym },
+    { path: 'access-dashboard', icon: 'pi-bolt', label: 'Acceso en vivo', subCategory: SubCategoryType.Gym, feature: FeatureKey.RealtimeAccessControl },
     { path: 'settings',     icon: 'pi-cog',        label: 'Configuración' },
   ];
 

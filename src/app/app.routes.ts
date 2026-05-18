@@ -8,6 +8,7 @@ import { posShellGuard } from './core/guards/pos-shell.guard';
 import { provisioningGuard } from './core/guards/provisioning.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { setupGuard } from './core/guards/setup.guard';
+import { taxConfigGuard } from './core/guards/tax-config.guard';
 import { terminalGuard } from './core/guards/terminal.guard';
 import { FeatureKey, UserRoleId } from './core/enums';
 
@@ -55,10 +56,23 @@ export const appRoutes: Routes = [
 			import('./modules/pin/pin.component').then((m) => m.PinComponent),
 	},
 
+	// --- Setup-required splash (staff sees this when defaultTaxId is missing) ---
+	// Bookmarkable / shareable lazy-loaded splash. Shown by `taxConfigGuard`
+	// to non-admin roles when business config is incomplete. Admins are
+	// redirected to `/admin/dashboard` (sticky banner there).
+	{
+		path: 'setup-required',
+		canActivate: [authGuard],
+		loadComponent: () =>
+			import('./modules/setup-required/setup-required.component').then(
+				(m) => m.SetupRequiredComponent,
+			),
+	},
+
 	// --- Machine-only routes (device token, no human session) ---
 	{
 		path: 'kiosk',
-		canActivate: [deviceAuthGuard, featureGuard],
+		canActivate: [deviceAuthGuard, featureGuard, taxConfigGuard],
 		data: { requiredFeature: FeatureKey.MaxKiosks },
 		loadChildren: () =>
 			import('./modules/kiosk/kiosk.routes').then((m) => m.kioskRoutes),
@@ -90,7 +104,7 @@ export const appRoutes: Routes = [
 	// --- Operational routes (identity + permissions + terminal) ---
 	{
 		path: 'pos',
-		canActivate: [authGuard, roleGuard, terminalGuard, posShellGuard],
+		canActivate: [authGuard, roleGuard, terminalGuard, posShellGuard, taxConfigGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/pos/pos.routes').then((m) => m.posRoutes),
@@ -104,7 +118,7 @@ export const appRoutes: Routes = [
 	},
 	{
 		path: 'tables',
-		canActivate: [authGuard, roleGuard, terminalGuard],
+		canActivate: [authGuard, roleGuard, terminalGuard, taxConfigGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter, UserRoleId.Host] },
 		loadComponent: () =>
 			import('./modules/tables/tables.component').then(

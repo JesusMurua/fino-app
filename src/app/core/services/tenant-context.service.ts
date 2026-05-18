@@ -1,10 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
+import { BusinessSettings } from '../models/business-settings.model';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
 import { extractFeaturesFromJwt, extractMacroCategoryFromJwt } from '../utils/jwt.utils';
+import { BusinessService } from './business.service';
 import { CatalogService } from './catalog.service';
+import { TaxService } from './tax.service';
 
 /**
  * Single source of truth for the current tenant's runtime context:
@@ -22,6 +26,8 @@ export class TenantContextService {
   //#region Injections
 
   private readonly catalogService = inject(CatalogService);
+  private readonly businessService = inject(BusinessService);
+  private readonly taxService = inject(TaxService);
 
   //#endregion
 
@@ -31,6 +37,22 @@ export class TenantContextService {
   private readonly _currentMacro = signal<MacroCategoryType | null>(null);
   private readonly _currentSubCategory = signal<SubCategoryType | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
+
+  /**
+   * Business settings (currently `{ defaultTaxId }`). Hydrated by
+   * `ensureHydrated()` post-auth. Null until the first hydration resolves.
+   * Read-shape `defaultTaxId` is nullable: a freshly onboarded tenant
+   * may not have selected one yet — the `TaxConfigGuard` blocks POS
+   * access in that state.
+   */
+  private readonly _business = signal<BusinessSettings | null>(null);
+
+  /**
+   * Cached promise of the in-flight or resolved hydration. Multiple
+   * callers (login awaiter, guards, dashboard banner) share a single
+   * round-trip. Reset on logout via `clear()`.
+   */
+  private hydrationPromise: Promise<void> | null = null;
 
   //#endregion
 
@@ -81,6 +103,47 @@ export class TenantContextService {
   readonly posExperience = computed<PosExperience | undefined>(
     () => this.currentBusinessType()?.posExperience,
   );
+
+  /** Business settings snapshot — null until `ensureHydrated()` resolves */
+  readonly business = this._business.asReadonly();
+
+  /**
+   * Tenant's default tax rate as integer percentage (e.g. `16` for IVA
+   * 16%, `0` for exempt). Returns `null` while the business config or
+   * the tax catalog are still loading, OR when the admin has not yet
+   * configured a default. **Safe to call from computed signals** — never
+   * throws. Consumers in the cart preview path use `?? 0` to render a
+   * neutral preview while hydration completes; the backend remains
+   * authoritative on save.
+   */
+  defaultTaxRatePercent(): number | null {
+    const businessSnapshot = this._business();
+    if (!businessSnapshot) return null;
+    const id = businessSnapshot.defaultTaxId;
+    if (id === null || id === undefined) return null;
+    const tax = this.taxService.findById(id);
+    return tax?.ratePercent ?? null;
+  }
+
+  /**
+   * Strict variant of `defaultTaxRatePercent()` for **write-side** code
+   * paths (persisting an order, generating a ticket, saving settings).
+   * Throws when the business has no default tax configured so the caller
+   * can surface an actionable toast instead of writing a malformed order.
+   *
+   * Never call this from a computed signal or template binding — see
+   * `defaultTaxRatePercent()` for the safe read variant.
+   */
+  requireDefaultTaxRatePercent(): number {
+    const rate = this.defaultTaxRatePercent();
+    if (rate === null) {
+      throw new Error(
+        'CONFIG_ERROR: El negocio no tiene impuesto configurado. ' +
+        'Operación bloqueada — ve a Configuración → Fiscal.',
+      );
+    }
+    return rate;
+  }
 
   /**
    * Returns true when the tenant has the given feature enabled.
@@ -216,12 +279,56 @@ export class TenantContextService {
     }
   }
 
+  /**
+   * Ensures the post-auth async dependencies are resolved before any
+   * caller acts on `business()` or `defaultTaxRatePercent()`. Idempotent:
+   * the cached promise is shared across all callers within a session.
+   *
+   * Hydrates in parallel:
+   *   - `BusinessService.getSettings()` → `_business`
+   *   - `TaxService.loadCatalog()` → tax catalog signal
+   *
+   * Errors are intentionally swallowed (fail-soft): the signals remain
+   * null/empty, and downstream guards / banners surface the missing
+   * config to the user as actionable UX. Throwing here would break the
+   * post-login flow on transient network glitches.
+   */
+  ensureHydrated(): Promise<void> {
+    if (this.hydrationPromise) return this.hydrationPromise;
+    this.hydrationPromise = this.runHydration();
+    return this.hydrationPromise;
+  }
+
+  private async runHydration(): Promise<void> {
+    try {
+      const [settings] = await Promise.all([
+        firstValueFrom(this.businessService.getSettings()).catch(() => null),
+        this.taxService.loadCatalog().catch(() => []),
+      ]);
+      if (settings) this._business.set(settings);
+    } catch {
+      // Swallow — best-effort hydration, see method docstring.
+    }
+  }
+
+  /**
+   * Updates the cached business settings after a successful save (e.g.
+   * the admin selects a `defaultTaxId` in the Fiscal tab). Components
+   * that consume `business()` re-render automatically.
+   */
+  setBusinessSettings(settings: BusinessSettings): void {
+    this._business.set(settings);
+  }
+
   /** Clears the tenant context — called on logout */
   clear(): void {
     this._currentPlan.set(PlanTypeId.Free);
     this._currentMacro.set(null);
     this._currentSubCategory.set(null);
     this._activeFeatures.set(new Set());
+    this._business.set(null);
+    this.hydrationPromise = null;
+    this.taxService.clear();
   }
 
   //#endregion

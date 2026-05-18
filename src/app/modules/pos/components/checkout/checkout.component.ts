@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,6 +11,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
 
 import { environment } from '../../../../../environments/environment';
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { MessageService } from 'primeng/api';
 
@@ -35,6 +37,7 @@ import { OrderPullDto, SyncService } from '../../../../core/services/sync.servic
 import { TableService } from '../../../../core/services/table.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { PromotionService } from '../../../../core/services/promotion.service';
+import { formatMeasureUnit, isMeasureItem } from '../../../../core/utils/product.utils';
 
 /** Internal step of the checkout flow */
 type CheckoutStep = 'payment' | 'confirmed';
@@ -43,6 +46,7 @@ type CheckoutStep = 'payment' | 'confirmed';
   selector: 'app-checkout',
   standalone: true,
   imports: [
+    DecimalPipe,
     FormsModule,
     ButtonModule,
     DialogModule,
@@ -60,6 +64,12 @@ type CheckoutStep = 'payment' | 'confirmed';
 export class CheckoutComponent implements OnInit {
 
   //#region Properties
+
+  /** Template predicate for measure-based items — drives kg/L/m display in summary. */
+  readonly isMeasureItem = isMeasureItem;
+
+  /** Template helper for the dynamic unit suffix from the SAT code. */
+  readonly formatMeasureUnit = formatMeasureUnit;
 
   /** Guards against double-tap on the confirm payment button */
   readonly isProcessing = signal(false);
@@ -269,10 +279,10 @@ export class CheckoutComponent implements OnInit {
    */
   readonly hasUnassignedMemberships = computed(() =>
     this.cartItems().some(item => {
-      const days = item.product.metadata?.['membershipDurationDays'];
+      const days = item.product.metadata?.membershipDurationDays;
       const isMembership = typeof days === 'number' && days > 0;
       if (!isMembership) return false;
-      const beneficiaryId = item.metadata?.['beneficiaryCustomerId'];
+      const beneficiaryId = item.metadata?.beneficiaryCustomerId;
       return typeof beneficiaryId !== 'number';
     }),
   );
@@ -724,7 +734,7 @@ export class CheckoutComponent implements OnInit {
           branchId: this.authService.branchId,
           cashRegisterSessionId: activeSessionId,
           customerId: this.customerService.selectedCustomer()?.id,
-          customerName: this.customerService.selectedCustomer()?.name,
+          customerName: formatCustomerName(this.customerService.selectedCustomer()) || undefined,
           tableId: this.tableId() ?? undefined,
           tableName: this.tableName() ?? undefined,
         };
@@ -776,12 +786,12 @@ export class CheckoutComponent implements OnInit {
    * leaks into the next customer's order.
    */
   private async resetCheckoutState(): Promise<void> {
-    await this.cartService.clearCart();
-    this.promotionService.clearCoupon();
-    this.customerService.clearSelection();
-    this.orderContextService.clearAddingToOrder();
-    // Note: activeTable is cleaned by releaseTable()/keepTable() — intentionally
-    // NOT removed here so the table release prompt still works on the confirmed step.
+    // Delegates to the centralised cleanup on CartService so every
+    // payment surface stays in sync. Note: activeTable is cleaned by
+    // releaseTable()/keepTable() — intentionally not part of the
+    // centralised reset so the F&B table-release prompt still works
+    // on the confirmed step.
+    await this.cartService.resetTransactionState();
   }
 
   /** Delegates to the centralized session guard in CashRegisterService */

@@ -3,6 +3,7 @@ import { catchError, EMPTY, firstValueFrom, Observable } from 'rxjs';
 
 import { Order, OrphanedOrderDto, ReconcileOrderRequest } from '../models';
 import { KitchenStatusId, SyncStatusId } from '../enums';
+import { toLocalIsoDate } from '../utils/date.utils';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { DatabaseService } from './database.service';
@@ -172,7 +173,7 @@ export class OrdersService implements OnDestroy {
     // Fallback: fetch from API if Dexie is empty
     if (orders.length === 0 && navigator.onLine) {
       try {
-        const dateParam = todayStart.toISOString().split('T')[0];
+        const dateParam = toLocalIsoDate(todayStart);
         const dtos = await firstValueFrom(
           this.api.get<any[]>(`/orders?date=${dateParam}`),
         );

@@ -581,5 +581,204 @@
         color: $color-text-title;
       }
     }
+
+    &--danger {
+      background: #DC2626;
+      color: white;
+      border: none;
+
+      &:hover:not(:disabled) { background: #B91C1C; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Drawer — Stats async loading state (FDD-027 §4.2)
+// -----------------------------------------------------------------------
+.drawer-stats__loading {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  color: $color-text-sub;
+  font-size: $font-size-label;
+
+  .pi-spinner {
+    color: $color-primary;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Drawer — Memberships section (FDD-027 §4.2)
+// -----------------------------------------------------------------------
+.drawer-memberships {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.drawer-membership {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  padding: $space-3 $space-4;
+  background: $color-primary-light;
+  border-radius: 12px;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-2;
+  }
+
+  &__name {
+    font-weight: 600;
+    color: $color-text-title;
+    font-size: $font-size-label;
+  }
+
+  &__range {
+    font-size: 13px;
+    color: $color-text-sub;
+  }
+
+  // Order reference (P7) — origin order UUID rendered as muted caption.
+  // Navigation deferred to the future Orders UI Epic; for now the user
+  // can hover to see the full UUID via the `title` attribute, or
+  // copy-paste from the truncated cell.
+  &__order-ref {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    margin-top: 4px;
+    color: $color-text-sub;
+  }
+
+  &__order-id {
+    font-family: monospace;
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Membership status badges — BEM modifiers (FDD-027 §4.2)
+// `$color-primary` covers Active; literals from CLAUDE.md design tokens
+// drive the rest until semantic Sass variables are introduced.
+// -----------------------------------------------------------------------
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: white;
+
+  &--active {
+    background: $color-primary;
+  }
+  &--expired {
+    background: #6B7280;
+  }
+  &--frozen {
+    background: #2563EB;
+  }
+  &--cancelled {
+    background: #DC2626;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Drawer — QR Gym Access section (Phase 3 / FDD-027)
+// Layout mirrors .drawer-memberships; buttons mirror .customer-form__btn.
+// -----------------------------------------------------------------------
+.drawer-qr {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  &__enrolled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space-3;
+    padding: $space-3 $space-4;
+    background: $color-primary-light;
+    border-radius: 12px;
+  }
+
+  &__enroll {
+    display: flex;
+    gap: $space-2;
+  }
+
+  &__input {
+    flex: 1;
+    min-height: 40px;
+    border-radius: $radius-button !important;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $space-2;
+    min-height: 40px;
+    padding: $space-2 $space-4;
+    border-radius: $radius-button;
+    font-size: $font-size-label;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+
+    &--primary {
+      background: $color-primary;
+      color: white;
+      border: none;
+
+      &:hover:not(:disabled) { background: #15803D; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
+    &--danger {
+      background: transparent;
+      color: #DC2626;
+      border: 1px solid #DC2626;
+
+      &:hover:not(:disabled) { background: #FEF2F2; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+
+  &__confirm-text {
+    margin: 0;
+    font-size: $font-size-base;
+    color: $color-text-title;
+    line-height: 1.5;
+  }
+}
+
+// -----------------------------------------------------------------------
+// Drawer — Orders paginator
+// -----------------------------------------------------------------------
+.drawer-orders__paginator {
+  margin-top: $space-3;
+
+  ::ng-deep .p-paginator {
+    background: transparent;
+    border: none;
+    padding: 0;
+    justify-content: center;
   }
 }

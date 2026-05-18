@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
-import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable } from '../models';
+import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, CustomerMembership, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable, Tax } from '../models';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -50,6 +50,8 @@ export class DatabaseService extends Dexie {
   pendingPrintJobs!: Table<PrintJobDto, number>;
   pendingPrintJobUpdates!: Table<PrintJobUpdateRecord, number>;
   cashRegisters!: Table<CashRegister, number>;
+  taxes!: Table<Tax, number>;
+  customerMemberships!: Table<CustomerMembership, number>;
   //#endregion
 
   //#region Constructor
@@ -247,6 +249,48 @@ export class DatabaseService extends Dexie {
     // Records persisted before this version simply load with `deviceId`
     // undefined; subsequent writes will carry the field.
     this.version(24).stores({}).upgrade(() => Promise.resolve());
+
+    // v25 — Tax catalog cache for offline-first dropdowns.
+    //
+    // Stores the response of `GET /api/taxes` so the product-form and
+    // admin-settings dropdowns survive cold-boot offline. Indexed by
+    // `code` (stable backend identifier) and `isDefault` (so the country
+    // default is queryable in O(1)).
+    this.version(25).stores({
+      taxes: 'id, code, isDefault',
+    });
+
+    // ─── v26 ── Customer model split (FDD-026)
+    // The legacy `name` index is incompatible with the new `firstName` /
+    // `lastName` shape. We drop the cached customers and let
+    // `CustomerService.loadCustomers()` rehydrate from the API on next
+    // mount. No in-place migration — the structural mismatch with the
+    // backend means cached rows would be invalid in either schema.
+    this.version(26).stores({
+      customers: '++id, branchId, phone, firstName, isActive',
+    }).upgrade(tx => tx.table('customers').clear());
+
+    // ─── v27 ── Customer scope correction (branchId → businessId)
+    // The backend returns customers business-wide (the `businessId`
+    // field), not branch-scoped. The previous `branchId` index never
+    // matched any record because the API never sent that field. We
+    // swap the index to `businessId` so Dexie queries finally hit.
+    // No `clear()` is required — every record currently in the store
+    // came from the API after v26 cleared, so they all already carry
+    // `businessId` and only need re-indexing under the new schema.
+    this.version(27).stores({
+      customers: '++id, businessId, phone, firstName, isActive',
+    });
+
+    // ─── v28 ── Customer memberships cache (P2 of FDD-027)
+    // Mirrors the `CustomerMembership` aggregate introduced by BDD-019.
+    // PK is the BE-assigned `id` (no auto-increment) so `bulkPut`
+    // upserts naturally on refresh-always loads. The `[customerId+status]`
+    // composite index is reserved for P5/P6 reception "active-only"
+    // lookups; P2 itself only filters by `customerId`.
+    this.version(28).stores({
+      customerMemberships: 'id, customerId, [customerId+status], validUntil',
+    });
   }
   //#endregion
 

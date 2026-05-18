@@ -1,4 +1,4 @@
-<div class="product-form-page">
+<div class="product-form-page layout-standard">
 
   <p-toast />
 
@@ -69,6 +69,20 @@
 
           <div class="form-grid form-grid--2col">
             <div class="form-field">
+              <label class="form-field__label" for="pf-type">Tipo de producto</label>
+              <p-dropdown
+                inputId="pf-type"
+                [options]="productTypes"
+                optionLabel="label"
+                optionValue="value"
+                formControlName="type"
+                placeholder="Tipo de producto"
+                styleClass="w-full"
+                [appendTo]="'body'"
+              />
+            </div>
+
+            <div class="form-field">
               <label class="form-field__label" for="pf-category">Categoría</label>
               <p-dropdown
                 inputId="pf-category"
@@ -77,7 +91,7 @@
                 optionValue="id"
                 formControlName="categoryId"
                 placeholder="Seleccionar categoría"
-                styleClass="form-field__input"
+                styleClass="w-full"
                 [appendTo]="'body'"
               />
             </div>
@@ -211,7 +225,7 @@
         <div class="form-section__body">
           <div class="form-grid form-grid--2col">
             <div class="form-field">
-              <label class="form-field__label" for="pf-price">Precio base (MXN)</label>
+              <label class="form-field__label" for="pf-price">Precio al cliente (MXN)</label>
               <p-inputNumber
                 inputId="pf-price"
                 mode="currency"
@@ -224,19 +238,82 @@
             </div>
 
             <div class="form-field">
-              <label class="form-field__label" for="pf-tax-rate">Tasa de IVA</label>
+              <label class="form-field__label" for="pf-tax-rate">Impuesto aplicable</label>
               <p-dropdown
                 inputId="pf-tax-rate"
                 formControlName="taxRate"
-                [options]="ivaRateOptions"
+                [options]="taxRateOptions()"
                 optionValue="value"
                 optionLabel="label"
                 styleClass="w-full"
               />
+              <small class="form-field__hint">
+                Solo cambia esto si este producto es la excepción.
+              </small>
             </div>
+          </div>
+
+          <!-- Tax inclusion toggle — bicephalous microcopy clarifies the
+               two states for non-technical owners. Default: ON (Mexican
+               standard). Forced to `true` on save when undefined so legacy
+               products never persist with an ambiguous null. -->
+          <div class="form-field form-field--row">
+            <div>
+              <label class="form-field__label" for="pf-tax-included">
+                ¿El precio ya incluye impuestos?
+              </label>
+              <small class="form-field__hint">
+                @if (productForm.controls.isTaxIncluded.value) {
+                  Activado: el cliente paga lo que ves arriba.
+                } @else {
+                  Desactivado: al cobrar le sumamos el impuesto.
+                }
+              </small>
+            </div>
+            <p-inputSwitch inputId="pf-tax-included" formControlName="isTaxIncluded" />
           </div>
         </div>
       </details>
+
+      <!-- ================================================================ -->
+      <!-- Section: Vigencia y membresía — sólo macro Services               -->
+      <!-- ================================================================ -->
+      @if (showsMembership()) {
+        <details
+          class="form-section"
+          [attr.open]="isSectionOpen('membership') ? '' : null"
+          (toggle)="onSectionToggle('membership', $event)"
+        >
+          <summary class="form-section__summary">
+            <i class="pi pi-clock form-section__icon"></i>
+            <span class="form-section__title">Vigencia y membresía</span>
+            <span class="form-section__badge form-section__badge--purple">Servicios</span>
+            <i class="pi pi-chevron-down form-section__chevron"></i>
+          </summary>
+
+          <div class="form-section__body">
+            <div class="form-field form-field--row">
+              <label class="form-field__label" for="pf-is-membership">¿Es un producto con vigencia?</label>
+              <p-inputSwitch inputId="pf-is-membership" formControlName="isMembership" />
+            </div>
+
+            @if (productForm.controls.isMembership.value) {
+              <div class="form-field">
+                <label class="form-field__label" for="pf-membership-days">Días de vigencia</label>
+                <p-inputNumber
+                  inputId="pf-membership-days"
+                  formControlName="membershipDurationDays"
+                  [min]="1"
+                  [max]="3650"
+                  suffix=" días"
+                  styleClass="w-full"
+                />
+                <span class="form-hint">Al cobrar este producto, la vigencia del cliente se extenderá por este número de días.</span>
+              </div>
+            }
+          </div>
+        </details>
+      }
 
       <!-- ================================================================ -->
       <!-- Section: Inventario — cerrada por default                         -->
@@ -284,46 +361,6 @@
           }
         </div>
       </details>
-
-      <!-- ================================================================ -->
-      <!-- Section: Vigencia y membresía — sólo macro Services               -->
-      <!-- ================================================================ -->
-      @if (showsMembership()) {
-        <details
-          class="form-section"
-          [attr.open]="isSectionOpen('membership') ? '' : null"
-          (toggle)="onSectionToggle('membership', $event)"
-        >
-          <summary class="form-section__summary">
-            <i class="pi pi-clock form-section__icon"></i>
-            <span class="form-section__title">Vigencia y membresía</span>
-            <span class="form-section__badge form-section__badge--purple">Servicios</span>
-            <i class="pi pi-chevron-down form-section__chevron"></i>
-          </summary>
-
-          <div class="form-section__body">
-            <div class="form-field form-field--row">
-              <label class="form-field__label" for="pf-is-membership">¿Es un producto con vigencia?</label>
-              <p-inputSwitch inputId="pf-is-membership" formControlName="isMembership" />
-            </div>
-
-            @if (productForm.controls.isMembership.value) {
-              <div class="form-field">
-                <label class="form-field__label" for="pf-membership-days">Días de vigencia</label>
-                <p-inputNumber
-                  inputId="pf-membership-days"
-                  formControlName="membershipDurationDays"
-                  [min]="1"
-                  [max]="3650"
-                  suffix=" días"
-                  styleClass="w-full"
-                />
-                <span class="form-hint">Al cobrar este producto, la vigencia del cliente se extenderá por este número de días.</span>
-              </div>
-            }
-          </div>
-        </details>
-      }
 
       <!-- ================================================================ -->
       <!-- Section: Modificadores — sólo F&B / QuickService / kitchen        -->
@@ -516,7 +553,7 @@
                       formControlName="printingDestinationId"
                       placeholder="Sin impresión de cocina"
                       [showClear]="true"
-                      styleClass="form-field__input"
+                      styleClass="w-full"
                       [appendTo]="'body'"
                     />
                     <span class="form-hint">El ticket de cocina se enviará a este destino al completar la venta.</span>

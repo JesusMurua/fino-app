@@ -1,0 +1,33 @@
+<p-toast />
+
+<!-- Unified POS shell — header + chameleon stage + cart -->
+<div class="unified-pos">
+
+  <!-- Header (full width) — owns shift chip, sync indicator, view toggle -->
+  <app-pos-header class="unified-pos__header" />
+
+  <!-- Stage: keypad OR product grid, swapped by the chameleon toggle -->
+  <div class="unified-pos__stage">
+    @switch (viewMode()) {
+      @case ('keypad') {
+        <app-keypad-stage />
+      }
+      @case ('grid') {
+        <app-product-grid-inner />
+      }
+    }
+  </div>
+
+  <!-- Right pane: shared cart-panel with opt-in glassmorphism. The hub
+       (`<app-restaurant-hub>`) does NOT pass this flag, so its cart stays
+       opaque white and avoids transparent-bleed. See AUDIT-052. -->
+  <aside class="unified-pos__cart">
+    <app-cart-panel [isGlassMode]="true" />
+  </aside>
+
+  <!-- Delivery panel — global overlay when hasDelivery feature is on -->
+  @if (configService.hasDelivery()) {
+    <app-delivery-panel />
+  }
+
+</div>
