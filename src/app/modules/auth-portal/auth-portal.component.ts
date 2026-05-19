@@ -128,7 +128,7 @@ export class AuthPortalComponent implements OnInit {
       case 'kiosk':     return '/kiosk';
       case 'kitchen':   return '/kitchen';
       case 'reception':
-        return '/reception/access-control';
+        return '/reception';
       default:          return null;
     }
   }
