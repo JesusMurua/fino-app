@@ -198,7 +198,7 @@
       <div class="settings-content">
 
         <!-- No transport supported warning -->
-        @if (!printerService.isSupported()) {
+        @if (!printerService.isSupported() && printerService.printMode() === 'browser') {
           <div class="msg msg--warning" style="grid-column: 1 / -1">
             <i class="pi pi-exclamation-triangle"></i>
             Tu navegador no soporta impresión directa. Usa Chrome o Edge.
@@ -263,7 +263,32 @@
               <button type="button" class="btn-secondary btn-secondary--sm" (click)="printerService.connect()">Cambiar</button>
             </div>
           } @else {
-            @if (printerService.serialSupported() && printerService.bluetoothSupported()) {
+            <!-- Print mode toggle (Hybrid Print Switch) -->
+            <div class="printer-type-toggle">
+              <button
+                type="button"
+                [class.active]="printerService.printMode() === 'browser'"
+                (click)="printerService.setPrintMode('browser')"
+              >
+                Navegador
+              </button>
+              <button
+                type="button"
+                [class.active]="printerService.printMode() === 'bridge'"
+                (click)="printerService.setPrintMode('bridge')"
+              >
+                Bridge (HTTP)
+              </button>
+            </div>
+
+            @if (printerService.printMode() === 'bridge') {
+              <div class="field mt-3">
+                <label for="bridgePrinterId" class="block mb-2 font-medium">ID de la Impresora (Bridge)</label>
+                <input [ngModel]="printerService.bridgePrinterId()" id="bridgePrinterId" placeholder="Ej: KITCHEN_1" pInputText class="w-full" (change)="printerService.setBridgePrinterId($any($event.target).value)" />
+              </div>
+            }
+
+            @if (printerService.printMode() === 'browser' && printerService.serialSupported() && printerService.bluetoothSupported()) {
               <div class="printer-type-toggle">
                 <button
                   type="button"
@@ -292,12 +317,12 @@
             <button
               type="button"
               class="btn-primary"
-              [disabled]="!printerService.isSupported()"
+              [disabled]="(printerService.printMode() === 'browser' && !printerService.isSupported()) || (printerService.printMode() === 'bridge' && !printerService.bridgePrinterId())"
               (click)="printerService.connect(printerService.printerType())"
               style="align-self: center"
             >
               <i class="pi pi-link"></i>
-              {{ printerService.printerType() === 'bluetooth' ? 'Conectar vía Bluetooth' : 'Conectar vía USB' }}
+              {{ printerService.printMode() === 'bridge' ? 'Activar Bridge' : (printerService.printerType() === 'bluetooth' ? 'Conectar vía Bluetooth' : 'Conectar vía USB') }}
             </button>
           }
         </section>

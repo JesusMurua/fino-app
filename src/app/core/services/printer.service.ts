@@ -1,9 +1,12 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
+import { DEFAULT_BRIDGE_PRINTER_ID } from '../models';
 import { ConfigService } from './config.service';
 import { PrinterTransport } from './printer-transport.interface';
 import { SerialTransport } from './serial-transport';
 import { BluetoothTransport } from './bluetooth-transport';
+import { BridgeHttpTransport } from './bridge-http-transport';
+import { PrintBridgeService } from './print-bridge.service';
 
 // ============================================================================
 // ESC/POS Command Constants
@@ -57,14 +60,13 @@ export class PrinterService {
 
   //#region Injections
   private readonly configService = inject(ConfigService);
+  private readonly printBridgeService = inject(PrintBridgeService);
   //#endregion
 
   //#region Properties
 
-  /** Whether any printer transport is available in this browser */
-  readonly isSupported = signal(
-    'serial' in navigator || 'bluetooth' in navigator,
-  );
+  /** Whether any printer transport is available — bridge mode is always supported (HTTP). */
+  readonly isSupported = computed(() => this.printMode() === 'bridge' || 'serial' in navigator || 'bluetooth' in navigator);
 
   /** Whether Web Bluetooth is available */
   readonly bluetoothSupported = signal('bluetooth' in navigator);
@@ -76,6 +78,18 @@ export class PrinterService {
   readonly printerType = signal<'serial' | 'bluetooth'>(
     this.configService.loadDeviceConfig().printerType ?? 'serial',
   );
+
+  /**
+   * Hybrid print routing mode — `browser` uses Web Serial / Web Bluetooth
+   * locally; `bridge` POSTs Base64 payloads to `/api/Hardware/print` for
+   * the Fino Bridge Windows service to relay to the physical printer.
+   */
+  readonly printMode = signal<'browser' | 'bridge'>(
+    this.configService.loadDeviceConfig().printMode ?? 'browser',
+  );
+
+  /** Logical printer ID forwarded to the Fino Bridge when `printMode === 'bridge'`. */
+  readonly bridgePrinterId = signal<string>(this.configService.loadDeviceConfig().bridgePrinterId ?? '');
 
   /** Whether a printer is currently connected */
   readonly printerConnected = signal(false);
@@ -117,11 +131,12 @@ export class PrinterService {
       await this.transport.connect();
       this.syncStateFromTransport();
 
-      // Send ESC/POS init command
-      await this.sendBytes(ESC_INIT);
-
-      // Persist printer type
-      this.savePrinterType(this.printerType());
+      // Browser-only side effects: physical init pulse + persisting the chosen transport type.
+      // In bridge mode the HTTP transport has no init handshake and printerType is irrelevant.
+      if (this.printMode() === 'browser') {
+        await this.sendBytes(ESC_INIT);
+        this.savePrinterType(this.printerType());
+      }
     } catch (error) {
       console.error('[PrinterService] Failed to connect:', error);
       this.resetState();
@@ -134,6 +149,14 @@ export class PrinterService {
    * Called on app init — silently fails if no device available.
    */
   async tryAutoConnect(): Promise<void> {
+    // Bridge mode: HTTP transport is stateless — wire it up directly and exit.
+    if (this.printMode() === 'bridge') {
+      if (!this.bridgePrinterId()) return;
+      this.transport = this.createTransport('serial'); // type arg is ignored; createTransport returns BridgeHttpTransport when printMode is 'bridge'
+      this.syncStateFromTransport();
+      return;
+    }
+
     // Try serial first (most common)
     if ('serial' in navigator) {
       try {
@@ -336,10 +359,20 @@ export class PrinterService {
   //#region Private Helpers
 
   /**
-   * Creates a transport instance based on type.
-   * Wires up callbacks for config persistence.
+   * Creates a transport instance based on the requested type.
+   *
+   * When `DeviceConfig.printMode === 'bridge'`, the local Web Serial /
+   * Web Bluetooth transports are bypassed entirely in favour of the
+   * cloud HTTP bridge — the `type` argument is preserved on the
+   * `printerType` signal but does not affect transport selection.
+   *
+   * Wires up callbacks for config persistence on the local transports.
    */
   private createTransport(type: 'serial' | 'bluetooth'): PrinterTransport {
+    if (this.printMode() === 'bridge') {
+      return new BridgeHttpTransport(this.printBridgeService, this.bridgePrinterId() || DEFAULT_BRIDGE_PRINTER_ID);
+    }
+
     if (type === 'bluetooth') {
       const bt = new BluetoothTransport();
       const config = this.configService.loadDeviceConfig();
@@ -391,8 +424,27 @@ export class PrinterService {
       this.lastPrintError.set(null);
     } catch (error) {
       console.error('[PrinterService] Failed to send bytes:', error);
-      this.resetState();
-      const message = error instanceof Error ? error.message : 'Error de comunicación con la impresora';
+      let message = error instanceof Error ? error.message : 'Error de comunicación con la impresora';
+      if (this.printMode() === 'bridge') {
+        const status = (error as { status?: number })?.status;
+        const bridgeMessages: Record<number, string> = {
+          400: 'Configuración de Bridge inválida. Verifica el ID.',
+          401: 'Sesión expirada. Vuelve a iniciar sesión.',
+          403: 'Sin permisos para imprimir. Contacta al administrador.',
+          429: 'Demasiadas impresiones por minuto. Espera un momento.',
+          503: 'Servicio no disponible. Reintenta en unos segundos.',
+        };
+        if (status && bridgeMessages[status]) {
+          message = bridgeMessages[status];
+          if (status === 400 || status === 401 || status === 403) {
+            // Fatal — config or auth issue won't recover on retry. Reset to force reconnect.
+            this.resetState();
+          }
+        }
+      } else {
+        // Browser mode: any I/O failure indicates physical disconnect.
+        this.resetState();
+      }
       this.lastPrintError.set(message);
       throw new Error(message);
     }
@@ -410,6 +462,42 @@ export class PrinterService {
   private savePrinterType(type: 'serial' | 'bluetooth'): void {
     const config = this.configService.loadDeviceConfig();
     this.configService.saveDeviceConfig({ ...config, printerType: type });
+  }
+
+  /**
+   * Switches the hybrid print routing mode and persists the choice to `DeviceConfig`.
+   * If a transport is currently connected, it is disconnected first so the next print
+   * routes through the new mode. Public wrapper is sync to avoid floating-promise
+   * warnings from template (click) handlers.
+   */
+  setPrintMode(mode: 'browser' | 'bridge'): void {
+    this.handleSetPrintMode(mode).catch(err => console.error('[PrinterService] setPrintMode failed:', err));
+  }
+  private async handleSetPrintMode(mode: 'browser' | 'bridge'): Promise<void> {
+    if (this.printerConnected()) {
+      await this.disconnect().catch(() => undefined);
+    }
+    this.printMode.set(mode);
+    const config = this.configService.loadDeviceConfig();
+    this.configService.saveDeviceConfig({ ...config, printMode: mode });
+  }
+
+  /**
+   * Updates the bridge printer ID and persists it. When already connected in bridge
+   * mode, the current transport is disconnected so the next print uses the new ID
+   * (BridgeHttpTransport captures the ID in its constructor). Public wrapper is sync
+   * to avoid floating-promise warnings from template (change) handlers.
+   */
+  setBridgePrinterId(id: string): void {
+    this.handleSetBridgePrinterId(id).catch(err => console.error('[PrinterService] setBridgePrinterId failed:', err));
+  }
+  private async handleSetBridgePrinterId(id: string): Promise<void> {
+    if (this.printerConnected() && this.printMode() === 'bridge') {
+      await this.disconnect().catch(() => undefined);
+    }
+    this.bridgePrinterId.set(id);
+    const config = this.configService.loadDeviceConfig();
+    this.configService.saveDeviceConfig({ ...config, bridgePrinterId: id });
   }
 
   /** Builds ESC/POS byte array for a ticket from structured lines */
