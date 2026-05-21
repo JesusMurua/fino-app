@@ -30,7 +30,7 @@ import { TenantContextService } from '../../../../core/services/tenant-context.s
 
 /** Mode option for the activation-code dropdown */
 interface ModeOption {
-  value: DeviceConfig['mode'];
+  value: DeviceConfig['mode'] | 'bridge';
   label: string;
   icon: string;
 }
@@ -51,13 +51,14 @@ const NOW_TICK_INTERVAL_MS = 60_000;
 const ONLINE_WINDOW_MS = 10 * 60_000;
 
 /** Human-readable labels for the mode column */
-const MODE_LABELS: Record<DeviceConfig['mode'], string> = {
+const MODE_LABELS: Record<DeviceConfig['mode'] | 'bridge', string> = {
   cashier:   'Cajero',
   tables:    'Mesas',
   kitchen:   'Cocina',
   kiosk:     'Kiosko',
   mobile:    'Móvil',
   reception: 'Recepción / Check-in',
+  bridge:    'Fino Bridge',
 };
 
 /**
@@ -157,7 +158,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    * the visibility of the cash-register dropdown so it appears only
    * for the `cashier` mode (the only one that uses a register).
    */
-  private readonly selectedModeSignal = signal<DeviceConfig['mode']>('cashier');
+  private readonly selectedModeSignal = signal<DeviceConfig['mode'] | 'bridge'>('cashier');
 
   /**
    * Cash registers the admin can pick from when generating a `cashier`
@@ -250,7 +251,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    */
   readonly generateForm = this.fb.group({
     branchId: this.fb.control(0, [Validators.required, Validators.min(1)]),
-    mode: this.fb.control<DeviceConfig['mode']>('cashier', [Validators.required]),
+    mode: this.fb.control<DeviceConfig['mode'] | 'bridge'>('cashier', [Validators.required]),
     name: this.fb.control('', [
       Validators.required,
       Validators.maxLength(60),
@@ -307,6 +308,8 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (isServices && this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
+    // Hardware headless service (available to all plans as Core Infrastructure)
+    modes.push({ value: 'bridge', label: 'Fino Bridge', icon: 'pi pi-server' });
     return modes;
   });
 
@@ -913,7 +916,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   }
 
   /** Human label for the Mode column */
-  modeLabel(mode: DeviceConfig['mode']): string {
+  modeLabel(mode: DeviceConfig['mode'] | 'bridge'): string {
     return MODE_LABELS[mode] ?? mode;
   }
 

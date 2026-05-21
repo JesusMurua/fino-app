@@ -7,12 +7,16 @@ import { DeviceConfig } from './device-config.model';
  * `branchName` is denormalized server-side so the UI does not join against
  * the branches signal on every render. `lastSeenAt` is `null` for devices
  * that have never sent a heartbeat since being registered.
+ *
+ * Note: `mode` may include `'bridge'` (Fino Bridge headless Windows service)
+ * in addition to the Angular UI modes — bridges appear in the fleet table
+ * once activated server-side by the native service.
  */
 export interface DeviceListItem {
   id: number;
   deviceUuid: string;
   name: string;
-  mode: DeviceConfig['mode'];
+  mode: DeviceConfig['mode'] | 'bridge';
   isActive: boolean;
   branchId: number;
   branchName: string;
@@ -42,10 +46,13 @@ export interface ToggleActiveResponse {
  * admin completes provisioning + register binding in a single trip
  * instead of two screens. Only meaningful when `mode === 'cashier'`; the
  * UI hides the field for other modes.
+ *
+ * Note: `mode` may include `'bridge'` (Fino Bridge headless Windows service);
+ * the resulting code is redeemed by the native service, never by Angular.
  */
 export interface GenerateCodePayload {
   branchId: number;
-  mode: DeviceConfig['mode'];
+  mode: DeviceConfig['mode'] | 'bridge';
   name: string;
   cashRegisterId?: number;
 }
@@ -57,11 +64,14 @@ export interface GenerateCodePayload {
  * metadata the admin pre-configured so the UI can render the success card
  * without re-reading the form (which is reset right after a successful
  * generation).
+ *
+ * Note: `mode` may include `'bridge'` (Fino Bridge headless Windows service)
+ * — the success card shows the same code/branch/name metadata regardless.
  */
 export interface GenerateCodeResponse {
   code: string;
   name: string;
-  mode: DeviceConfig['mode'];
+  mode: DeviceConfig['mode'] | 'bridge';
   branchName: string;
   /** ISO date string — when the code was issued */
   createdAt: string;
@@ -73,11 +83,14 @@ export interface GenerateCodeResponse {
  * Row shape returned by `GET /api/device/pending-codes`. Lists every
  * activation code that has been issued but not yet redeemed by a device,
  * letting the admin verify which pairings are still in flight.
+ *
+ * Note: `mode` may include `'bridge'` (Fino Bridge headless Windows service)
+ * — pending bridge codes show up here until the native service redeems them.
  */
 export interface PendingDeviceCodeDto {
   code: string;
   name: string;
-  mode: DeviceConfig['mode'];
+  mode: DeviceConfig['mode'] | 'bridge';
   branchId: number;
   branchName: string;
   /** ISO date string — when the code was issued */
@@ -113,6 +126,11 @@ export interface ActivateDeviceResponse {
   deviceToken: string;
   /** Custom device name pre-configured by the admin when issuing the code */
   name: string;
+  /**
+   * Note: intentionally narrow. Angular clients only activate UI modes.
+   * 'bridge' codes are redeemed by the native Windows service downstream,
+   * never by this Angular application.
+   */
   mode: DeviceConfig['mode'];
   branchId: number;
   branchName: string;
@@ -133,9 +151,13 @@ export interface ActivateDeviceResponse {
  * `effectiveLimit` is the resolved cap for the tenant's plan + branch
  * combination. When `isUnlimited` is true the value should be ignored
  * by the UI (`Infinity` is rendered as the `∞` glyph instead).
+ *
+ * Note: `mode` may include `'bridge'` (Fino Bridge headless Windows service);
+ * the backend emits `isUnlimited: true` for it on every plan since the
+ * Bridge is treated as Core Infrastructure.
  */
 export interface DeviceModeQuotaDto {
-  mode: DeviceConfig['mode'];
+  mode: DeviceConfig['mode'] | 'bridge';
   usage: number;
   effectiveLimit: number;
   isLimitReached: boolean;

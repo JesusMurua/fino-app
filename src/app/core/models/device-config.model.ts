@@ -15,6 +15,8 @@
  * Back Office (Owner/Manager) is NOT a device mode — laptops that hit
  * `/admin` never persist a DeviceConfig; `terminalGuard` bypasses the
  * hardware check based on role, not on a synthetic mode value.
+ *
+ * Note: 'bridge' is intentionally excluded from this union. The Bridge is a headless Windows service, not an Angular UI mode, and should never be persisted in local storage.
  */
 export interface DeviceConfig {
   mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen' | 'mobile' | 'reception';
