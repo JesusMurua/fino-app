@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, NonNullableFormBuilder } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
@@ -398,6 +398,34 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Lifecycle
+
+  constructor() {
+    // Auto-naming logic that reacts to both async quota updates and form selections
+    effect(() => {
+      const mode = this.selectedModeSignal();
+      const branchId = this.generateForm.controls.branchId.value;
+      const quota = this.currentModeQuota(); // Reacts when async loadDeviceLimits finishes
+
+      if (this.generateForm.controls.name.dirty || !branchId || !mode) return;
+
+      const branch = this.branches().find(b => b.id === branchId);
+      const branchName = branch?.name || '';
+      const modeLabel = this.modeLabel(mode);
+
+      // Formatting: Bridge doesn't need a number. Others get Usage + 1.
+      let autoName = mode === 'bridge'
+        ? `${modeLabel} ${branchName}`
+        : `${modeLabel} ${branchName} ${(quota?.usage || 0) + 1}`;
+
+      // Clean double spaces and truncate to avoid validation errors
+      autoName = autoName.replace(/\s+/g, ' ').trim().substring(0, 60);
+
+      // Use emitEvent: false to prevent form loops
+      if (this.generateForm.controls.name.value !== autoName) {
+        this.generateForm.controls.name.setValue(autoName, { emitEvent: false });
+      }
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     // Wire form-value mirrors for the dropdown reactivity. Subscribed

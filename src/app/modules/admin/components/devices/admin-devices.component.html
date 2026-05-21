@@ -175,6 +175,15 @@
           <span class="activation-code__hint">
             Válido hasta {{ last.expiresAt | date:'short' }}. Ingrésalo en el nuevo dispositivo desde "Dispositivo no vinculado".
           </span>
+          @if (last.mode === 'bridge') {
+            <div class="mt-4 pt-3 border-top-1 surface-border">
+              <a href="/downloads/FinoBridge_Setup.exe" download="FinoBridge_Setup.exe" class="p-button p-button-outlined p-button-info w-full flex justify-content-center no-underline">
+                <i class="pi pi-download mr-2"></i>
+                <span class="p-button-label">Descargar Instalador para Windows</span>
+              </a>
+              <small class="block text-center mt-2 text-color-secondary">Instala este programa en la computadora que controlará las impresoras de esta sucursal.</small>
+            </div>
+          }
         </div>
       }
 
