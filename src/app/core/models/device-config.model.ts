@@ -15,6 +15,8 @@
  * Back Office (Owner/Manager) is NOT a device mode — laptops that hit
  * `/admin` never persist a DeviceConfig; `terminalGuard` bypasses the
  * hardware check based on role, not on a synthetic mode value.
+ *
+ * Note: 'bridge' is intentionally excluded from this union. The Bridge is a headless Windows service, not an Angular UI mode, and should never be persisted in local storage.
  */
 export interface DeviceConfig {
   mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen' | 'mobile' | 'reception';
@@ -38,6 +40,16 @@ export interface DeviceConfig {
   printerName?: string;
   /** Connection type: serial (USB) or bluetooth */
   printerType?: 'serial' | 'bluetooth';
+  /**
+   * Hybrid print routing mode:
+   *   browser — bytes go straight from this browser to the printer via
+   *             Web Serial / Web Bluetooth (legacy default).
+   *   bridge  — bytes are POSTed (Base64) to `/api/Hardware/print` and
+   *             relayed by the Fino Bridge Windows service over SignalR.
+   */
+  printMode?: 'browser' | 'bridge';
+  /** Logical printer ID forwarded to the Fino Bridge when `printMode === 'bridge'`. */
+  bridgePrinterId?: string;
   /** Saved Bluetooth device ID for auto-reconnect */
   bluetoothDeviceId?: string;
   /** Saved Bluetooth device display name */
@@ -65,3 +77,6 @@ export const DEFAULT_DEVICE_CONFIG: DeviceConfig = {
   branchName:     '',
   configuredAt:   '',
 };
+
+/** Default printer ID used by the cloud bridge when no specific ID is configured. */
+export const DEFAULT_BRIDGE_PRINTER_ID = 'DEFAULT_PRINTER';

@@ -1,0 +1,109 @@
+<div
+  class="kiosk"
+  [class.kiosk--granted]="bannerState() === 'GRANTED'"
+  [class.kiosk--denied]="bannerState() === 'DENIED'"
+  [class.kiosk--unknown]="bannerState() === 'UNKNOWN'"
+  [class.kiosk--idle]="bannerState() === 'IDLE'"
+  [class.kiosk--upsell]="bannerState() === 'UPSELL'"
+>
+
+  <!-- Connection status pill (top-right) — discreet but always visible
+       so a wall-mounted device with a flaky SignalR socket is diagnosable
+       without taking it off the wall. -->
+  <div
+    class="kiosk__pill"
+    [class.kiosk__pill--connected]="signalrService.connectionState() === 'connected'"
+    [class.kiosk__pill--reconnecting]="signalrService.connectionState() === 'reconnecting'"
+    [class.kiosk__pill--offline]="signalrService.connectionState() === 'disconnected'"
+    [class.kiosk__pill--unauthorized]="signalrService.connectionState() === 'unauthorized'"
+  >
+    <span class="kiosk__pill-dot"></span>
+    @switch (signalrService.connectionState()) {
+      @case ('connected')    { <span>En línea</span> }
+      @case ('reconnecting') { <span>Reconectando…</span> }
+      @case ('unauthorized') { <span>Plan limitado</span> }
+      @default               { <span>Sin conexión</span> }
+    }
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- IDLE — brand + clock + invitation copy.                                 -->
+  <!-- Always alive even when the hub never connects (plan upsell / offline). -->
+  <!-- ====================================================================== -->
+  @if (bannerState() === 'IDLE') {
+    <section class="kiosk__idle">
+      <header class="kiosk__brand">
+        <h1 class="kiosk__business">{{ businessName() }}</h1>
+        @if (branchName()) {
+          <p class="kiosk__branch">{{ branchName() }}</p>
+        }
+      </header>
+
+      <div class="kiosk__clock">
+        <span class="kiosk__time">{{ timeLabel() }}</span>
+        <span class="kiosk__date">{{ dateLabel() }}</span>
+      </div>
+
+      <p class="kiosk__hint">Acércate al lector con tu credencial</p>
+    </section>
+  }
+
+  <!-- ====================================================================== -->
+  <!-- GRANTED — green welcome, customer name + reason.                        -->
+  <!-- ====================================================================== -->
+  @if (bannerState() === 'GRANTED') {
+    <section class="kiosk__banner kiosk__banner--granted" role="status" aria-live="polite">
+      <!-- Premium UX slot: photo if/when the wire DTO carries it. Falls
+           back to the iconography so MVP renders complete. -->
+      @if (displayedAttempt()?.customerPhotoUrl; as photo) {
+        <img class="kiosk__photo" [src]="photo" [alt]="displayedAttempt()?.customerName || ''" />
+      } @else {
+        <i class="kiosk__icon pi pi-check-circle"></i>
+      }
+      <h1 class="kiosk__title">¡Bienvenido!</h1>
+      @if (displayedAttempt()?.customerName; as name) {
+        <p class="kiosk__customer">{{ name }}</p>
+      }
+      <p class="kiosk__reason">{{ displayedAttempt()?.reasonLabel }}</p>
+    </section>
+  }
+
+  <!-- ====================================================================== -->
+  <!-- DENIED — known customer, membership invalid. Show the exact reason.    -->
+  <!-- ====================================================================== -->
+  @if (bannerState() === 'DENIED') {
+    <section class="kiosk__banner kiosk__banner--denied" role="status" aria-live="polite">
+      <i class="kiosk__icon pi pi-times-circle"></i>
+      <h1 class="kiosk__title">Acceso denegado</h1>
+      @if (displayedAttempt()?.customerName; as name) {
+        <p class="kiosk__customer">{{ name }}</p>
+      }
+      <p class="kiosk__reason">{{ displayedAttempt()?.reasonLabel }}</p>
+      <p class="kiosk__action">Acude a recepción para más información</p>
+    </section>
+  }
+
+  <!-- ====================================================================== -->
+  <!-- UNKNOWN — unrecognized credential. No customer to greet; redirect.     -->
+  <!-- ====================================================================== -->
+  @if (bannerState() === 'UNKNOWN') {
+    <section class="kiosk__banner kiosk__banner--unknown" role="status" aria-live="polite">
+      <i class="kiosk__icon pi pi-question-circle"></i>
+      <h1 class="kiosk__title">Credencial no reconocida</h1>
+      <p class="kiosk__action">Acude a recepción</p>
+    </section>
+  }
+
+  <!-- ====================================================================== -->
+  <!-- UPSELL — plan does not unlock RealtimeAccessControl. Static banner.    -->
+  <!-- ====================================================================== -->
+  @if (bannerState() === 'UPSELL') {
+    <section class="kiosk__banner kiosk__banner--upsell" role="status" aria-live="polite">
+      <i class="kiosk__icon pi pi-lock"></i>
+      <h1 class="kiosk__title">Función no disponible</h1>
+      <p class="kiosk__reason">El Control de Acceso en Tiempo Real no está incluido en tu plan actual.</p>
+      <p class="kiosk__action">Contacta a soporte para actualizar.</p>
+    </section>
+  }
+
+</div>

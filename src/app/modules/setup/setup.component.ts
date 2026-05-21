@@ -286,7 +286,7 @@ export class SetupComponent implements OnInit {
         this.router.navigate(['/kitchen']);
         break;
       case 'reception':
-        this.router.navigate(['/reception/access-control']);
+        this.router.navigate(['/reception']);
         break;
       default:
         this.router.navigate(['/pin']);

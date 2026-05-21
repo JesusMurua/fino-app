@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, NonNullableFormBuilder } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
@@ -30,7 +30,7 @@ import { TenantContextService } from '../../../../core/services/tenant-context.s
 
 /** Mode option for the activation-code dropdown */
 interface ModeOption {
-  value: DeviceConfig['mode'];
+  value: DeviceConfig['mode'] | 'bridge';
   label: string;
   icon: string;
 }
@@ -51,13 +51,14 @@ const NOW_TICK_INTERVAL_MS = 60_000;
 const ONLINE_WINDOW_MS = 10 * 60_000;
 
 /** Human-readable labels for the mode column */
-const MODE_LABELS: Record<DeviceConfig['mode'], string> = {
+const MODE_LABELS: Record<DeviceConfig['mode'] | 'bridge', string> = {
   cashier:   'Cajero',
   tables:    'Mesas',
   kitchen:   'Cocina',
   kiosk:     'Kiosko',
   mobile:    'Móvil',
   reception: 'Recepción / Check-in',
+  bridge:    'Fino Bridge',
 };
 
 /**
@@ -157,7 +158,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    * the visibility of the cash-register dropdown so it appears only
    * for the `cashier` mode (the only one that uses a register).
    */
-  private readonly selectedModeSignal = signal<DeviceConfig['mode']>('cashier');
+  private readonly selectedModeSignal = signal<DeviceConfig['mode'] | 'bridge'>('cashier');
 
   /**
    * Cash registers the admin can pick from when generating a `cashier`
@@ -250,7 +251,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    */
   readonly generateForm = this.fb.group({
     branchId: this.fb.control(0, [Validators.required, Validators.min(1)]),
-    mode: this.fb.control<DeviceConfig['mode']>('cashier', [Validators.required]),
+    mode: this.fb.control<DeviceConfig['mode'] | 'bridge'>('cashier', [Validators.required]),
     name: this.fb.control('', [
       Validators.required,
       Validators.maxLength(60),
@@ -307,6 +308,8 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (isServices && this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
+    // Hardware headless service (available to all plans as Core Infrastructure)
+    modes.push({ value: 'bridge', label: 'Fino Bridge', icon: 'pi pi-server' });
     return modes;
   });
 
@@ -395,6 +398,34 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Lifecycle
+
+  constructor() {
+    // Auto-naming logic that reacts to both async quota updates and form selections
+    effect(() => {
+      const mode = this.selectedModeSignal();
+      const branchId = this.generateForm.controls.branchId.value;
+      const quota = this.currentModeQuota(); // Reacts when async loadDeviceLimits finishes
+
+      if (this.generateForm.controls.name.dirty || !branchId || !mode) return;
+
+      const branch = this.branches().find(b => b.id === branchId);
+      const branchName = branch?.name || '';
+      const modeLabel = this.modeLabel(mode);
+
+      // Formatting: Bridge doesn't need a number. Others get Usage + 1.
+      let autoName = mode === 'bridge'
+        ? `${modeLabel} ${branchName}`
+        : `${modeLabel} ${branchName} ${(quota?.usage || 0) + 1}`;
+
+      // Clean double spaces and truncate to avoid validation errors
+      autoName = autoName.replace(/\s+/g, ' ').trim().substring(0, 60);
+
+      // Use emitEvent: false to prevent form loops
+      if (this.generateForm.controls.name.value !== autoName) {
+        this.generateForm.controls.name.setValue(autoName, { emitEvent: false });
+      }
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     // Wire form-value mirrors for the dropdown reactivity. Subscribed
@@ -913,7 +944,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   }
 
   /** Human label for the Mode column */
-  modeLabel(mode: DeviceConfig['mode']): string {
+  modeLabel(mode: DeviceConfig['mode'] | 'bridge'): string {
     return MODE_LABELS[mode] ?? mode;
   }
 

@@ -1,0 +1,245 @@
+// Wall-mounted kiosk — fills the viewport, no scrolling, no chrome.
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+.kiosk {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // Smooth gradient swap between states so the kiosk feels alive,
+  // not like a slideshow of unrelated screens.
+  transition: background 0.5s ease;
+
+  // ---- Background gradients by state -----------------------------------
+  &--idle {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  &--granted {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  }
+  &--denied {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  }
+  &--unknown {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  }
+  &--upsell {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  }
+
+  // ---- Connection pill (top-right) ------------------------------------
+  &__pill {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+
+  &__pill-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #9ca3af;
+  }
+
+  &__pill--connected &__pill-dot {
+    background: #16a34a;
+    animation: kiosk-pulse 2s infinite;
+  }
+  &__pill--reconnecting &__pill-dot {
+    background: #f59e0b;
+    animation: kiosk-pulse 1s infinite;
+  }
+  &__pill--offline &__pill-dot {
+    background: #dc2626;
+  }
+  &__pill--unauthorized &__pill-dot {
+    background: #64748b;
+  }
+
+  // ---- IDLE state -----------------------------------------------------
+  &__idle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+    text-align: center;
+    color: #1e293b;
+    animation: kiosk-fade-in 0.6s ease;
+    padding: 0 64px;
+  }
+
+  &__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__business {
+    font-size: clamp(48px, 6vw, 80px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    color: #0f172a;
+    line-height: 1.1;
+  }
+
+  &__branch {
+    font-size: clamp(20px, 2vw, 28px);
+    font-weight: 400;
+    color: #64748b;
+    margin: 0;
+  }
+
+  &__clock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__time {
+    font-size: clamp(96px, 14vw, 180px);
+    font-weight: 200;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: #0f172a;
+    letter-spacing: -0.05em;
+  }
+
+  &__date {
+    font-size: clamp(20px, 2.5vw, 32px);
+    color: #64748b;
+    text-transform: capitalize;
+  }
+
+  &__hint {
+    font-size: clamp(18px, 2vw, 24px);
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+  }
+
+  // ---- Banner states (GRANTED / DENIED / UNKNOWN / UPSELL) ------------
+  &__banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 64px;
+    color: #fff;
+    text-align: center;
+    max-width: 90vw;
+    // Banner entry choreography — fade plus subtle scale so the kiosk
+    // feels responsive without being theatrical.
+    animation: kiosk-banner-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  &__icon {
+    font-size: clamp(120px, 18vw, 220px) !important;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1;
+  }
+
+  // Photo slot — sized for 7"–10" tablets at conversation distance.
+  // Reserved markup; rendered only when `customerPhotoUrl` is non-null.
+  &__photo {
+    width: clamp(180px, 20vw, 280px);
+    height: clamp(180px, 20vw, 280px);
+    border-radius: 50%;
+    object-fit: cover;
+    border: 8px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  &__title {
+    font-size: clamp(56px, 8vw, 112px);
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    line-height: 1.1;
+  }
+
+  &__customer {
+    font-size: clamp(32px, 4vw, 56px);
+    font-weight: 500;
+    margin: 0;
+    opacity: 0.95;
+  }
+
+  &__reason {
+    font-size: clamp(22px, 2.5vw, 36px);
+    font-weight: 400;
+    margin: 0;
+    opacity: 0.9;
+    max-width: 80vw;
+  }
+
+  &__action {
+    font-size: clamp(18px, 2vw, 26px);
+    font-weight: 400;
+    margin: 24px 0 0 0;
+    opacity: 0.85;
+    padding: 16px 32px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 12px;
+  }
+}
+
+// ---- Keyframes --------------------------------------------------------
+@keyframes kiosk-banner-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kiosk-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kiosk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+// Respect users who set prefers-reduced-motion — animations strip down
+// to instantaneous swaps so accessibility settings are honoured even
+// on a kiosk device.
+@media (prefers-reduced-motion: reduce) {
+  .kiosk,
+  .kiosk__banner,
+  .kiosk__idle,
+  .kiosk__pill-dot {
+    animation: none !important;
+    transition: none !important;
+  }
+}
