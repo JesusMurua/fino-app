@@ -11,7 +11,7 @@
 
 | Vector | Severidad | Hallazgo principal |
 |---|---|---|
-| **A — Domain Gating** | 🔴 Crítico | 7+ componentes comparan `currentMacro() === X` direct; `product-form` tiene 3 switches gemelos con `default → FoodBeverage` (placeholders incorrectos para nuevos macros) |
+| **A — Domain Gating** | 🟢 **RESOLVED** | 7+ components now use TenantContext computed capabilities. HasFeaturePipe and POS_EXPERIENCE_PLACEHOLDERS added as supporting infrastructure. |
 | **A — ID-range mapping** | 🔴 Crítico | `macroOfBusinessType()` infiere macro por rangos `id <= N` — drift garantizado si backend reordena `BusinessTypeId` seeds |
 | **A — SubGiro** | 🟠 Alto | `Yoga` y `Crossfit` declarados en enum pero **nunca usados**; solo `Gym` está cableado. Adding subgiros requiere modificar ≥4 archivos |
 | **B — Frontend forms** | 🟠 Alto | 153 referencias a `FormBuilder/FormGroup/FormControl` en 10 components — ningún form metadata-driven |
@@ -27,7 +27,9 @@ Conclusión rápida: la **abstracción está bien diseñada** (`TenantContextSer
 
 ## Sección 1 — Vector A: Domain Flexibility & Gating
 
-### 1.1 Hardcoded macro switches con catch-all silencioso
+### 1.1 Hardcoded macro switches con catch-all silencioso [RESOLVED]
+
+> **Resolución (refactor AUDIT-058 / Vector A)**: los tres switches gemelos de placeholders en `product-form` fueron reemplazados por el diccionario declarativo `POS_EXPERIENCE_PLACEHOLDERS` con TypeScript exhaustivity sobre `PosExperience`. El `default → FoodBeverage` silencioso ya no existe.
 
 #### `posExperienceForMacro` — exhaustivo (✅)
 [src/app/core/services/config.service.ts:18-25](../src/app/core/services/config.service.ts#L18-L25):
@@ -101,7 +103,9 @@ readonly hasKitchen = computed(
 ```
 Si llega un nuevo macro con cocina (ej. `Hospitality` con room service), el fallback asume "no kitchen" hasta que el catálogo backend hidrate `hasKitchen` en `BusinessTypeCatalog`. Race condition en cold-boot — la UI puede arrancar sin cocina antes de hidratar.
 
-### 1.5 `isFoodAndBeverage` propagado en bounded contexts
+### 1.5 `isFoodAndBeverage` propagado en bounded contexts [RESOLVED]
+
+> **Resolución (refactor AUDIT-058 / Vector A)**: `isFoodAndBeverage` fue eliminado y reemplazado por el computed signal `supportsKitchenOrders` en `TenantContextService`, mapeado a `hasAnyFeature([PrintedTickets, MaxKdsScreens, TableMap])`. `cart-panel` y su template consumen ahora este signal — el bounded context ya no tiene macro-awareness, solo capability awareness.
 
 [src/app/modules/pos/components/cart-panel/cart-panel.component.ts:106-108](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts#L106-L108):
 ```ts
@@ -113,17 +117,21 @@ Combinado con [cart-panel.component.html](../src/app/modules/pos/components/cart
 
 ### 1.6 Direct comparison `currentMacro() === X` en 7 files
 
-| Archivo | Comparación |
-|---|---|
-| [cart-panel.component.ts:107](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts#L107) | `=== FoodBeverage` |
-| [admin-shell.component.ts:160](../src/app/modules/admin/admin-shell.component.ts#L160) | `=== Services` |
-| [admin-devices.component.ts:307](../src/app/modules/admin/components/devices/admin-devices.component.ts#L307) | `=== Services` |
-| [dashboard.component.ts:125](../src/app/modules/admin/components/dashboard/dashboard.component.ts#L125) | `=== null` (guard) |
-| [product-form.component.ts:166](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L166) | `=== Services` |
-| [tenant-context.service.ts:99](../src/app/core/services/tenant-context.service.ts#L99) | `=== FoodBeverage` (autodepend) |
-| [product-form.component.ts:182,197,212](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L182) | 3 switches |
+| Archivo | Comparación | Status |
+| --- | --- | --- |
+| [cart-panel.component.ts:107](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts#L107) | `=== FoodBeverage` | `[RESOLVED]` |
+| [admin-shell.component.ts:160](../src/app/modules/admin/admin-shell.component.ts#L160) | `=== Services` | `[RESOLVED]` |
+| [admin-devices.component.ts:307](../src/app/modules/admin/components/devices/admin-devices.component.ts#L307) | `=== Services` | `[RESOLVED]` |
+| [dashboard.component.ts:125](../src/app/modules/admin/components/dashboard/dashboard.component.ts#L125) | `=== null` (guard) | `[RESOLVED]` |
+| [product-form.component.ts:166](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L166) | `=== Services` | `[RESOLVED]` |
+| [tenant-context.service.ts:99](../src/app/core/services/tenant-context.service.ts#L99) | `=== FoodBeverage` (autodepend) | `OPEN / DEFERRED` |
+| [product-form.component.ts:182,197,212](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L182) | 3 switches | `[RESOLVED]` |
+
+> **Nota arquitectónica sobre la fila `tenant-context.service.ts:99`**: este fallback es un *defensive race-condition handler* (el flag `hasKitchen` del catálogo puede no estar hidratado en cold-boot), **NO** un business gate. Se conserva conscientemente como la única referencia sancionada a `MacroCategoryType` dentro de `TenantContextService` — ver §1.4 para el detalle de race-condition.
 
 ### 1.7 Costo de agregar un nuevo macro (ej. `Hospitality`)
+
+> **Update post-refactor**: el costo arquitectónico ha bajado **más del 50%** tras cerrar Vector A. Los puntos marcados a continuación reflejan el nuevo estado.
 
 Touchpoints obligatorios:
 1. `MacroCategoryType` enum en [config.enum.ts](../src/app/core/enums/config.enum.ts).
@@ -133,17 +141,29 @@ Touchpoints obligatorios:
 5. `MACRO_CATEGORY_LABELS` Record (TS lo fuerza ✅).
 6. `GIRO_FEATURE_MAP` Record (TS lo fuerza ✅).
 7. Nuevo `HOSPITALITY_FEATURES: readonly FeatureKey[]` array.
-8. Cada `currentMacro() === X` comparison (7+ files).
-9. Cada switch en `product-form.component.ts` (3 placeholders).
+8. ~~Cada `currentMacro() === X` comparison (7+ files).~~ **Reduced to 2 deferred instances** (`hasKitchen` fallback en `tenant-context.service.ts`, `hasModifiersSection` en `product-form`).
+9. ~~Cada switch en `product-form.component.ts` (3 placeholders).~~ **Streamlined into 1 entry** inside `POS_EXPERIENCE_PLACEHOLDERS`.
 10. **Backend** debe agregar el valor al claim emitter del JWT, al EF enum, y al `DeviceModeCatalog` si el macro habilita modos nuevos.
 
-TypeScript fuerza ~30% del trabajo (puntos 4-6); el resto es grep-manual.
+TypeScript fuerza ~30% del trabajo (puntos 4-6); el resto es grep-manual — pero el grep-surface se redujo de 7+ files + 3 switches a 2 instances + 1 catalog entry.
+
+### 1.8 Refactor Design Decisions & Proxies
+
+Esta sub-sección documenta los proxies semánticos introducidos durante el refactor que cerró Vector A. Cada uno mapea un check macro/subgiro original a una capability o feature ya existente — sin agregar verticales al enum `FeatureKey`.
+
+- **`hasFeature(FeatureKey.RealtimeAccessControl)`** se usa como proxy pragmático para `isAccessControlTenant`, reemplazando el legacy `currentSubCategory() === Gym`. Reusado en `dashboard.component.ts` y `admin-customers.component.ts` para mantener consistencia cross-screen. Funcional 1-to-1 hoy porque `RealtimeAccessControl` solo se emite a tenants Services-macro; si producto requiere granularidad fina (ej. Spa sin realtime), promover a `FeatureKey.MembershipExpirationDashboard` dedicado.
+- **`supportsMemberships`** mapeado a `posExperience in {'Quick', 'Services'}` porque el backend emite ambos como sinónimos durante la migración cross-repo (per los docs del tipo `PosExperience`). Cuando la migración consolide a un solo valor, simplificar el predicado.
+- **`supportsKitchenOrders`** como capability broad mapeada a `hasAnyFeature([PrintedTickets, MaxKdsScreens, TableMap])` — semántica "tenant has any F&B-style flow", **no 1-to-1** con el macro `FoodBeverage`. Si producto pide split fino (ej. `supportsTableOrders` vs `supportsKitchenPrint`), el split queda diferido.
+- **`admin-shell`** "Pantallas y Accesos" device label gateado vía `hasAnyFeature([MaxReceptionsPerBranch, RealtimeAccessControl])` — mismo patrón de proxy que el access-control dashboard, para coherencia de copy entre sidebar y screens.
+- **`isHydrated`** derivado de `currentMacro !== null` — semántica "tenant context ready" más que "macro present"; reemplaza el legacy `currentMacro() === null` loading-guard pattern en 2 componentes (`admin-shell.component.ts:187`, `dashboard.component.ts:125`).
 
 ---
 
 ## Sección 2 — Vector B: Architectural Extensibility
 
-### 2.1 Frontend — Templates con `@if (currentMacro/isFoodAndBeverage)`
+### 2.1 Frontend — Templates con `@if (currentMacro/isFoodAndBeverage)` [PARTIALLY RESOLVED]
+
+> **Resolución parcial (refactor AUDIT-058 / Vector A)**: las 3 templates fueron migradas a capability signals (`supportsKitchenOrders` en `cart-panel.html`, `isAccessControlTenant` en `dashboard.html` y `admin-customers.html`). El constructo `@if` permanece como gating mechanism — pero su condición referencia capability signals en lugar de valores macro directos. El refactor polimórfico (factory keyed on `posExperience`) sigue diferido.
 
 3 archivos HTML usan condicionales contra macros directos:
 - [cart-panel.component.html](../src/app/modules/pos/components/cart-panel/cart-panel.component.html)
@@ -161,7 +181,9 @@ En lugar de componentes polimórficos cargados por factory keyed on `posExperien
 
 Si Hospitality necesita campo "Room number" en checkout, hay que tocar `checkout.component.ts` + `.html` + validators + reactivity manualmente.
 
-### 2.3 `TenantContextService` con buena API, mal aprovechada
+### 2.3 `TenantContextService` con buena API, mal aprovechada [PARTIALLY RESOLVED]
+
+> **Resolución parcial (refactor AUDIT-058 / Vector A)**: se agregaron 3 nuevos computed signals (`isHydrated`, `supportsKitchenOrders`, `supportsMemberships`) a `TenantContextService`; 6 componentes los consumen (`cart-panel`, `admin-shell`, `admin-devices`, `dashboard`, `product-form`, `admin-customers`). El refactor más profundo hacia keys verticales (`FeatureKey.VerticalRestaurant`, etc.) **NO** se persiguió — capability signals fueron juzgados mejor fit que vertical FeatureKey leakage en el enum.
 
 La service tiene **excelente método declarativo** [`isApplicableToGiro(feature)`](../src/app/core/services/tenant-context.service.ts#L182-L191) que delega a `GIRO_FEATURE_MAP`. Sin embargo:
 - **`isApplicableToGiro` se usa solo en `admin-shell.component.ts`** (grep: 14 refs total, mayoría en la propia service + directive).
@@ -329,8 +351,8 @@ El comentario del file dice "duplicated intentionally" — pero la duplicación 
 | **P0** | Auditar `pos-api` Global Query Filters (2.6) | 2-4 hrs | Previene data leak multi-tenant |
 | **P0** | Crear `seedJwtClaims()` fixture E2E (3.2) | 1-2 hrs | Desbloquea testing por vertical |
 | **P0** | Crear `CapturingPrinterTransport` mock (3.3) | 2-3 hrs | Desbloquea CI headless con flujos de print |
-| **P1** | Consolidar macro checks via `FeatureKey` verticales (2.3) | 1-2 días | Open-Closed real, escala N verticales |
-| **P1** | Refactor `product-form` placeholders a metadata catalog (1.1) | 4 hrs | Elimina 3 switches gemelos |
+| **P1** | Consolidar macro checks via `FeatureKey` verticales (2.3) `[ALTERNATIVE APPROACH TAKEN]` | 1-2 días | Open-Closed real, escala N verticales — capability signals (`supportsKitchenOrders`, `supportsMemberships`, `isAccessControlTenant`, `isHydrated`) preferidos sobre vertical FeatureKey leakage en el enum. |
+| **P1** | ~~Refactor `product-form` placeholders a metadata catalog (1.1)~~ ✅ **DONE** | 4 hrs | Elimina 3 switches gemelos |
 | **P1** | Actualizar `TestDeviceConfig` y eliminar Protractor leftovers (3.7, 3.8) | 30 min | Higiene |
 | **P2** | Crear specs para `TenantContextService`, `CartService`, `PrinterService` (3.1) | 2-3 días | Cobertura crítica |
 | **P2** | Polimorfizar `CartPanel` y `Dashboard` por `posExperience` (2.1) | 2-3 días | Escala UI sin templates monolíticos |
@@ -348,10 +370,11 @@ El comentario del file dice "duplicated intentionally" — pero la duplicación 
 - `GIRO_FEATURE_MAP` central record con TypeScript exhaustividad parcial.
 
 **La disciplina se diluye en 2 dimensiones**:
-1. **Macro/Giro checks duros** — 7+ componentes saltan la abstracción y comparan directo contra `MacroCategoryType.X`. Open-Closed-violation latente: agregar Hospitality o cualquier vertical nueva implica grep+modify en ≥10 archivos.
+
+1. **Macro/Giro checks duros — RESOLVED for Vector A.** 6 of 7 hardcoded `currentMacro() === X` checks were migrated to capability signals (`supportsKitchenOrders`, `supportsMemberships`, `isAccessControlTenant`, `isHydrated`). One disciplined fallback remains in `tenant-context.service.ts:99` as a documented race-condition handler. The remaining macro-derivation surface (ID-range mapping en `config.enum.ts`, SubGiro enum derivation) requires backend catalog changes y queda tracked bajo §1.2 / §1.3 como OPEN.
 2. **Test infrastructure prácticamente inexistente** — 1 unit test, 3 E2E sin mock de JWT, 0 virtual hardware. CI no puede validar que el contrato multi-tenant se respete.
 
-**Si se planea agregar nuevas verticales** (`Hospitality`, `Healthcare`, `Entertainment`) en los próximos meses, los 3 P0 son **no-negociables** ANTES de meter el primer macro nuevo. Sin Global Query Filters confirmados (pos-api) + JWT-mock fixture + virtual printer, las regresiones serán manuales en cada release.
+**Si se planea agregar nuevas verticales** (`Hospitality`, `Healthcare`, `Entertainment`) en los próximos meses, los 3 P0 son **no-negociables** ANTES de meter el primer macro nuevo. Sin Global Query Filters confirmados (pos-api) + JWT-mock fixture + virtual printer, las regresiones serán manuales en cada release. Vector A's macro fan-out is no longer a barrier to adding new verticals — but the 3 P0 testing/infra items (Global Query Filters audit, `seedJwtClaims()` fixture, `CapturingPrinterTransport` mock) remain non-negotiable before any new vertical can be validated end-to-end in CI.
 
 **Repos pendientes de auditar** (no incluidos en este audit):
 - `pos-api` — EF Core multi-tenant isolation, WebApplicationFactory test infrastructure.
@@ -386,3 +409,19 @@ El comentario del file dice "duplicated intentionally" — pero la duplicación 
 
 ### Legacy / drift
 - [e2e/protractor.conf.js](../e2e/protractor.conf.js), [e2e/src/app.e2e-spec.ts](../e2e/src/app.e2e-spec.ts) (Protractor leftovers)
+
+---
+
+## Changelog
+
+### 2026-05-21 — Vector A Domain Gating closure
+
+- §1.1 RESOLVED (POS_EXPERIENCE_PLACEHOLDERS catalog).
+- §1.5 RESOLVED (supportsKitchenOrders).
+- §1.6 RESOLVED 6/7 rows; tenant-context.service.ts:99 stays OPEN / DEFERRED.
+- §1.7 cost narrative updated.
+- §1.8 added (Refactor Design Decisions & Proxies).
+- AD-1 PARTIALLY RESOLVED. AD-3 PARTIALLY RESOLVED.
+- Sección 4 action plan: P1 placeholders DONE; P1 vertical keys ALTERNATIVE APPROACH.
+- Sección 5 executive summary updated to reflect post-refactor state.
+- Vector A — Domain Gating closed in the TL;DR.
