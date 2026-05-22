@@ -6,7 +6,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 
-import { FeatureKey, MacroCategoryType, SubCategoryType, UserRoleId } from '../../core/enums';
+import { FeatureKey, SubCategoryType, UserRoleId } from '../../core/enums';
 import { PLAN_HIERARCHY, pricingGroupForMacro } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogService } from '../../core/services/catalog.service';
@@ -156,9 +156,16 @@ export class AdminShellComponent implements OnInit {
    */
   labelFor(item: NavItem): string {
     if (item.path === 'devices') {
-      const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
-      const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
-      if (isGym || isServices) return 'Pantallas y Accesos';
+      // Tenants with reception screens or real-time access control manage
+      // check-in panels and turnstiles, not POS terminals — surface the
+      // truer label. Mapped to capability features instead of the macro
+      // so any future vertical that gains these features inherits the
+      // rebrand automatically (AUDIT-058 Vector A).
+      const isAccessControlTenant = this.tenantContext.hasAnyFeature([
+        FeatureKey.MaxReceptionsPerBranch,
+        FeatureKey.RealtimeAccessControl,
+      ]);
+      if (isAccessControlTenant) return 'Pantallas y Accesos';
     }
     return item.label;
   }
@@ -184,7 +191,7 @@ export class AdminShellComponent implements OnInit {
   isLocked(item: NavItem): boolean {
     if (!item.feature) return false;
     if (this.tenantContext.hasFeature(item.feature)) return false;
-    if (this.tenantContext.currentMacro() === null) return false;
+    if (!this.tenantContext.isHydrated()) return false;
     return this.tenantContext.isApplicableToGiro(item.feature);
   }
 

@@ -1,0 +1,388 @@
+# AUDIT-058 — Domain Flexibility, Multi-tenant Extensibility & Testability
+
+**Fecha:** 2026-05-21
+**Branch:** `feat/gym-reception-v2`
+**Alcance:** Frontend (Angular 18 + PrimeNG 17). Inferencias sobre `pos-api` y `pos-local-bridge` marcadas como `[NO VERIFICADO]` — auditarse en repos separados.
+**Objetivo:** Evaluar readiness para flexibilidad total de dominio (nuevos macros / giros / subgiros), escalabilidad a largo plazo, y testing automatizado (E2E / Integration). Identificar hardcoded assumptions, architectural leakage y gaps de test infrastructure.
+
+---
+
+## TL;DR
+
+| Vector | Severidad | Hallazgo principal |
+|---|---|---|
+| **A — Domain Gating** | 🔴 Crítico | 7+ componentes comparan `currentMacro() === X` direct; `product-form` tiene 3 switches gemelos con `default → FoodBeverage` (placeholders incorrectos para nuevos macros) |
+| **A — ID-range mapping** | 🔴 Crítico | `macroOfBusinessType()` infiere macro por rangos `id <= N` — drift garantizado si backend reordena `BusinessTypeId` seeds |
+| **A — SubGiro** | 🟠 Alto | `Yoga` y `Crossfit` declarados en enum pero **nunca usados**; solo `Gym` está cableado. Adding subgiros requiere modificar ≥4 archivos |
+| **B — Frontend forms** | 🟠 Alto | 153 referencias a `FormBuilder/FormGroup/FormControl` en 10 components — ningún form metadata-driven |
+| **B — Backend Global Filters** | 🔴 `[NO VERIFICADO]` | Endpoints exigen `branchId` explícito (`/branch/{id}/config`, `/api/Devices/limits?branchId=`) → fuerte sospecha de que EF Core **NO** tiene `HasQueryFilter` transparente. Data-leak risk en endpoints nuevos. |
+| **B — Bridge supervisors** | `[NO VERIFICADO]` | No puedo confirmar si supervisors del Fino Bridge consultan `features` claim antes de inicializar. Audit separado requerido. |
+| **C — Unit tests** | 🔴 Crítico | **1 archivo `.spec.ts`** en `src/` (`cash-register.service.spec.ts`) vs ~150+ archivos productivos |
+| **C — Mock JWT** | 🔴 Crítico | E2E fixture solo seedea DeviceConfig; **no existe `seedJwtClaims()`** para variar macro/features/plan en tests |
+| **C — Virtual hardware** | 🔴 Crítico | Sin `MockPrinterTransport` / `VirtualScanner` — flujos print/scan no testeables en CI headless |
+
+Conclusión rápida: la **abstracción está bien diseñada** (`TenantContextService`, `*appFeature`, `featureGuard`, `FeatureKey` enum), pero **la disciplina se diluye** en 7+ componentes que saltan la capa con `currentMacro() === X`. La test infra es prácticamente inexistente — sin mock JWT + virtual hardware no se puede validar el contrato multi-tenant en CI.
+
+---
+
+## Sección 1 — Vector A: Domain Flexibility & Gating
+
+### 1.1 Hardcoded macro switches con catch-all silencioso
+
+#### `posExperienceForMacro` — exhaustivo (✅)
+[src/app/core/services/config.service.ts:18-25](../src/app/core/services/config.service.ts#L18-L25):
+```ts
+function posExperienceForMacro(macro: MacroCategoryType): PosExperience {
+  switch (macro) {
+    case MacroCategoryType.FoodBeverage: return 'Restaurant';
+    case MacroCategoryType.QuickService: return 'Counter';
+    case MacroCategoryType.Retail:       return 'Retail';
+    case MacroCategoryType.Services:     return 'Quick';
+  }
+}
+```
+Sin `default` — TypeScript narrowing fuerza exhaustividad. Agregar un macro nuevo rompe build aquí. **OK por diseño.**
+
+#### `product-form` placeholders — 3 switches gemelos con `default` peligroso
+[src/app/modules/admin/components/products/product-form/product-form.component.ts:182-217](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L182-L217):
+```ts
+switch (this.tenantContext.currentMacro()) {
+  case MacroCategoryType.Retail:       return 'Ej. Coca-Cola 600ml';
+  case MacroCategoryType.Services:     return 'Ej. Mensualidad';
+  case MacroCategoryType.QuickService: return 'Ej. Café americano';
+  default:                             return 'Ej. Torta de Milanesa';   // ← FoodBeverage assumption
+}
+```
+**Tres switches idénticos** (`namePlaceholder`, `modifierGroupPlaceholder`, `modifierExtraPlaceholder`). Si agregas `Hospitality`, **se renderiza con placeholders de Restaurante silenciosamente**. Open-Closed violado.
+
+### 1.2 ID-range hardcoded para inferir macro
+
+[src/app/core/enums/config.enum.ts:106-111](../src/app/core/enums/config.enum.ts#L106-L111):
+```ts
+export function macroOfBusinessType(id: BusinessTypeId): MacroCategoryType {
+  if (id <= 3)  return MacroCategoryType.FoodBeverage;
+  if (id <= 9)  return MacroCategoryType.QuickService;
+  if (id <= 16) return MacroCategoryType.Retail;
+  return MacroCategoryType.Services;
+}
+```
+Range conditions sobre IDs autoincrementales = acoplamiento al orden de seeding del backend. **Si backend reordena `BusinessTypeId` values o inserta entre rangos**, el frontend asigna macro incorrecto sin error. Drift garantizado entre dos repos que mantienen la "misma" tabla mentalmente.
+
+### 1.3 SubGiro hardcoded en componentes
+
+[src/app/modules/admin/admin-shell.component.ts:159-161](../src/app/modules/admin/admin-shell.component.ts#L159-L161):
+```ts
+const isGym = this.tenantContext.currentSubCategory() === SubCategoryType.Gym;
+const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
+if (isGym || isServices) return 'Pantallas y Accesos';
+```
+
+[src/app/core/enums/config.enum.ts:138-141](../src/app/core/enums/config.enum.ts#L138-L141):
+```ts
+export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
+  if (id === BusinessTypeId.Gimnasio) return SubCategoryType.Gym;
+  return SubCategoryType.Generic;
+}
+```
+
+`SubCategoryType.Yoga` y `SubCategoryType.Crossfit` están **declarados pero nunca usados**. Adding Yoga/Crossfit/Spa requiere:
+- Update `subCategoryOfBusinessType()`.
+- Update cada `currentSubCategory() === SubCategoryType.Gym` (admin-shell, admin-customers, dashboard, admin-products → 5 files con refs a `SubCategoryType.*`).
+- Update `posExperience` resolution si nueva subcat necesita layout distinto.
+
+### 1.4 `hasKitchen` con fallback codeado al macro
+
+[src/app/core/services/tenant-context.service.ts:97-100](../src/app/core/services/tenant-context.service.ts#L97-L100):
+```ts
+readonly hasKitchen = computed(
+  () => this.currentBusinessType()?.hasKitchen
+    ?? (this.currentMacro() === MacroCategoryType.FoodBeverage),
+);
+```
+Si llega un nuevo macro con cocina (ej. `Hospitality` con room service), el fallback asume "no kitchen" hasta que el catálogo backend hidrate `hasKitchen` en `BusinessTypeCatalog`. Race condition en cold-boot — la UI puede arrancar sin cocina antes de hidratar.
+
+### 1.5 `isFoodAndBeverage` propagado en bounded contexts
+
+[src/app/modules/pos/components/cart-panel/cart-panel.component.ts:106-108](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts#L106-L108):
+```ts
+readonly isFoodAndBeverage = computed(() =>
+  this.tenantContext.currentMacro() === MacroCategoryType.FoodBeverage,
+);
+```
+Combinado con [cart-panel.component.html](../src/app/modules/pos/components/cart-panel/cart-panel.component.html) que tiene `@if` contra esto, mete macro-awareness en un componente que debería ser polimórfico (`RestaurantCartPanel` vs `RetailCartPanel` por factory).
+
+### 1.6 Direct comparison `currentMacro() === X` en 7 files
+
+| Archivo | Comparación |
+|---|---|
+| [cart-panel.component.ts:107](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts#L107) | `=== FoodBeverage` |
+| [admin-shell.component.ts:160](../src/app/modules/admin/admin-shell.component.ts#L160) | `=== Services` |
+| [admin-devices.component.ts:307](../src/app/modules/admin/components/devices/admin-devices.component.ts#L307) | `=== Services` |
+| [dashboard.component.ts:125](../src/app/modules/admin/components/dashboard/dashboard.component.ts#L125) | `=== null` (guard) |
+| [product-form.component.ts:166](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L166) | `=== Services` |
+| [tenant-context.service.ts:99](../src/app/core/services/tenant-context.service.ts#L99) | `=== FoodBeverage` (autodepend) |
+| [product-form.component.ts:182,197,212](../src/app/modules/admin/components/products/product-form/product-form.component.ts#L182) | 3 switches |
+
+### 1.7 Costo de agregar un nuevo macro (ej. `Hospitality`)
+
+Touchpoints obligatorios:
+1. `MacroCategoryType` enum en [config.enum.ts](../src/app/core/enums/config.enum.ts).
+2. `macroOfBusinessType()` range table.
+3. `parseMacroCategoryClaim()` switch en [jwt.utils.ts:55-66](../src/app/core/utils/jwt.utils.ts#L55-L66).
+4. `posExperienceForMacro()` switch (TS lo fuerza ✅).
+5. `MACRO_CATEGORY_LABELS` Record (TS lo fuerza ✅).
+6. `GIRO_FEATURE_MAP` Record (TS lo fuerza ✅).
+7. Nuevo `HOSPITALITY_FEATURES: readonly FeatureKey[]` array.
+8. Cada `currentMacro() === X` comparison (7+ files).
+9. Cada switch en `product-form.component.ts` (3 placeholders).
+10. **Backend** debe agregar el valor al claim emitter del JWT, al EF enum, y al `DeviceModeCatalog` si el macro habilita modos nuevos.
+
+TypeScript fuerza ~30% del trabajo (puntos 4-6); el resto es grep-manual.
+
+---
+
+## Sección 2 — Vector B: Architectural Extensibility
+
+### 2.1 Frontend — Templates con `@if (currentMacro/isFoodAndBeverage)`
+
+3 archivos HTML usan condicionales contra macros directos:
+- [cart-panel.component.html](../src/app/modules/pos/components/cart-panel/cart-panel.component.html)
+- [admin-customers.component.html](../src/app/modules/admin/components/customers/admin-customers.component.html)
+- [dashboard.component.html](../src/app/modules/admin/components/dashboard/dashboard.component.html)
+
+En lugar de componentes polimórficos cargados por factory keyed on `posExperience`, hay templates monolíticos con bloques condicionales. **Crecimiento lineal mal contenido**: cada nuevo vertical agrega `@if` blocks al mismo file en lugar de crear un nuevo componente.
+
+### 2.2 Forms estáticos, no metadata-driven
+
+**153 referencias** a `FormBuilder/FormGroup/FormControl` en 10 component files. Cada form es hand-rolled. No hay:
+- Definición declarativa de forms por giro (ej. `FormSchema[giro]`).
+- Generación dinámica desde catalog backend.
+- Validators driven by tenant claims.
+
+Si Hospitality necesita campo "Room number" en checkout, hay que tocar `checkout.component.ts` + `.html` + validators + reactivity manualmente.
+
+### 2.3 `TenantContextService` con buena API, mal aprovechada
+
+La service tiene **excelente método declarativo** [`isApplicableToGiro(feature)`](../src/app/core/services/tenant-context.service.ts#L182-L191) que delega a `GIRO_FEATURE_MAP`. Sin embargo:
+- **`isApplicableToGiro` se usa solo en `admin-shell.component.ts`** (grep: 14 refs total, mayoría en la propia service + directive).
+- Los componentes prefieren la ruta dura `currentMacro() === X` (7+ files).
+
+**Refactor sugerido**: extender `FeatureKey` con keys verticales (`VerticalRestaurant`, `VerticalGym`, `VerticalHospitality`) y migrar todos los checks `currentMacro() === ...` a `hasFeature(FeatureKey.VerticalGym)`. Centraliza el sistema en un solo grafo declarativo.
+
+### 2.4 `*appFeature` directive — buen patrón infrautilizado
+
+[src/app/shared/directives/app-feature.directive.ts](../src/app/shared/directives/app-feature.directive.ts) es excelente:
+- Reacciona via `effect()` a signals de TenantContextService.
+- Dos modos: `hide` (saca del DOM) vs `lock` (renderiza con clase `feature-locked`).
+- 14 referencias totales en el codebase. **Subutilizada** — muchos componentes prefieren `@if` template-level en lugar de la directiva.
+
+### 2.5 JWT claim parsing tolerante a backend drift (señal de fragilidad)
+
+[src/app/core/utils/jwt.utils.ts:32-34](../src/app/core/utils/jwt.utils.ts#L32-L34):
+```ts
+let feats = payload.features;
+if (typeof feats === 'string') {
+  try { feats = JSON.parse(feats); } catch { return undefined; }
+}
+```
+[jwt.utils.ts:54](../src/app/core/utils/jwt.utils.ts#L54):
+```ts
+const normalised = value.toLowerCase().replace(/[^a-z]/g, '');
+```
+Estos branches existen porque el backend ha emitido el mismo claim en formatos distintos en distintos momentos. **Contrato JWT no congelado** → riesgo de regresión silenciosa cada vez que backend ajusta `JsonSerializerOptions`. Sugerir contract test en CI compartido entre repos.
+
+### 2.6 `[NO VERIFICADO]` Backend EF Core Global Query Filters
+
+Sin acceso al repo `pos-api`. Inferencias desde el frontend:
+- JWT carga `businessId` y `branchId` claims.
+- Endpoints como `/api/branch/{id}/config`, `/api/Devices/limits?branchId={id}` — el `branchId` se pasa **explícitamente** en URL/query.
+- Si EF Core tuviera `HasQueryFilter` transparente sobre `BranchId`, el frontend no necesitaría pasarlo (el filtro se aplicaría desde el JWT claim server-side).
+- **Sospecha fuerte**: el backend NO aplica filtros globales transparentes a nivel de DbContext.
+
+**Recomendación urgente**: auditar `pos-api` para confirmar si existen `modelBuilder.Entity<T>().HasQueryFilter(e => e.BranchId == _tenantContext.BranchId)` para entidades scopeables. Si no, cualquier endpoint nuevo es susceptible a data leak por omisión de WHERE.
+
+### 2.7 `[NO VERIFICADO]` Bridge supervisors no inspeccionados
+
+Sin acceso a `pos-local-bridge`. Inferencias desde frontend + audit anterior del backend:
+- El device JWT del bridge incluye `features` claim.
+- `BridgeHub.OnConnectedAsync` agrupa por `mode === 'bridge'` vs otros.
+- **No puedo verificar** si los supervisors del Bridge (impresora, scanner, scale, biometric) consultan `features` antes de inicializarse o si arrancan todos ciegamente.
+
+**Recomendación**: pedir audit explícito del bridge enfocado en supervisor lifecycle vs feature claims.
+
+---
+
+## Sección 3 — Vector C: Testability & Infrastructure Resiliency
+
+### 3.1 Cobertura unit testing despreciable
+
+- **1 archivo `.spec.ts` en `src/`** ([cash-register.service.spec.ts](../src/app/core/services/cash-register.service.spec.ts)).
+- Ratio: **1 test : ~150+ archivos productivos** (~0.6%).
+
+Servicios críticos sin test:
+- `TenantContextService` — ¿qué pasa con cada combinación macro × plan × features?
+- `AuthService` — flujo JWT, refresh, logout
+- `CartService` — cents/totals/promos
+- `SyncService` — offline-first sync
+- `PrinterService` — ESC/POS bytes
+- `PrintService` — orchestration
+- `BridgeHttpTransport`, `PrintBridgeService` — recién agregados, sin test
+
+Componentes sin `.spec.ts`: 100%.
+
+### 3.2 E2E con cobertura mínima + sin mock JWT
+
+**3 archivos E2E**: [login.spec.ts](../e2e/tests/login.spec.ts), [pin.spec.ts](../e2e/tests/pin.spec.ts), [stock-receipts.spec.ts](../e2e/tests/stock-receipts.spec.ts).
+
+Único fixture: [`seedDeviceConfig()`](../e2e/fixtures/device-config.ts) — inyecta DeviceConfig en localStorage. **NO existe equivalente para JWT con claims variables**. Para testear "Gym tenant ve banner X" o "FoodBeverage tenant tiene cocina visible", necesitas:
+
+```ts
+// FALTANTE:
+export async function seedJwtClaims(page: Page, claims: {
+  macroCategory: 'FoodBeverage' | 'QuickService' | 'Retail' | 'Services';
+  features: FeatureKey[];
+  planType: PlanTypeId;
+  subCategory?: SubCategoryType;
+}): Promise<void> { /* construye JWT mock, lo mete en localStorage */ }
+```
+
+Sin esto, **es imposible** testear el matrix Vertical × Plan × Features end-to-end.
+
+### 3.3 No virtual hardware abstractions
+
+- `SerialTransport`, `BluetoothTransport`, `BridgeHttpTransport` implementan [`PrinterTransport`](../src/app/core/services/printer-transport.interface.ts) — buen abstracto.
+- **No existe `VirtualPrinterTransport` / `CapturingPrinterTransport`** para tests E2E o integration.
+- Sin esto: tests que ejerzan flujo "checkout → print" no pueden correr en CI headless. El frontend escupe "Impresora no conectada" en cada test.
+
+Recomendación:
+```ts
+// public mock que captura bytes en memoria
+export class CapturingPrinterTransport implements PrinterTransport {
+  bytesWritten: Uint8Array[] = [];
+  get isConnected() { return true; }
+  async write(data: Uint8Array) { this.bytesWritten.push(data); }
+  // ...
+}
+```
+Inyectable en tests via `providers: [{ provide: PrinterService, useFactory: () => mock }]`.
+
+### 3.4 `[NO VERIFICADO]` Sin WebApplicationFactory audit (backend)
+
+Cannot inspect `pos-api`. Standard pattern .NET integration tests:
+```csharp
+public class CustomWebApplicationFactory : WebApplicationFactory<Program> {
+  protected override void ConfigureWebHost(IWebHostBuilder builder) {
+    builder.ConfigureServices(services => {
+      services.AddSingleton<ITenantContext>(MockTenantContext.Gym());
+    });
+  }
+}
+```
+
+Si no existe en pos-api → cada integration test arranca host real con DB real → tests slow + flaky + sin variabilidad de claims.
+
+### 3.5 Sin loopback de SignalR hubs
+
+El frontend tiene 3 clientes SignalR ([ScaleSignalrService](../src/app/core/services/scale.signalr.service.ts), [KitchenService](../src/app/core/services/kitchen.service.ts), [AccessDashboardSignalrService](../src/app/core/services/access-dashboard.signalr.service.ts)). Para testear "el bridge recibe `OpenTurnstile` y abre el torniquete":
+- Necesitas **virtual SignalR server** en tests del bridge (.NET) que emita eventos al hub local del bridge.
+- No verificable sin acceso al repo del bridge.
+
+### 3.6 `playwright.config.ts` solo Chromium, sin matriz de claims
+
+[playwright.config.ts:23-27](../playwright.config.ts#L23-L27):
+```ts
+projects: [
+  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+],
+```
+
+Sólo un browser, sin proyectos para distintas verticales. Idealmente:
+```ts
+projects: [
+  { name: 'restaurant', use: { storageState: 'states/restaurant.json' } },
+  { name: 'gym',         use: { storageState: 'states/gym.json' } },
+  { name: 'retail',      use: { storageState: 'states/retail.json' } },
+],
+```
+
+### 3.7 `TestDeviceConfig` desfasado del modelo real
+
+[e2e/fixtures/device-config.ts:21](../e2e/fixtures/device-config.ts#L21):
+```ts
+export interface TestDeviceConfig {
+  mode: 'cashier' | 'kiosk' | 'tables' | 'kitchen';   // ← falta mobile, reception, bridge
+  ...
+}
+```
+El comentario del file dice "duplicated intentionally" — pero la duplicación se quedó atrás. Tests E2E con `mode: 'bridge'` no compilan.
+
+### 3.8 Protractor leftovers en `e2e/`
+
+[e2e/protractor.conf.js](../e2e/protractor.conf.js), [e2e/src/app.e2e-spec.ts](../e2e/src/app.e2e-spec.ts), [e2e/src/app.po.ts](../e2e/src/app.po.ts), [e2e/tsconfig.json](../e2e/tsconfig.json) — restos del scaffold legacy de Angular CLI con Protractor. Conviven con Playwright moderno. Confunde a developers nuevos.
+
+---
+
+## Sección 4 — Mapa de acción priorizado
+
+| Prioridad | Item | Esfuerzo | Pago |
+|---|---|---|---|
+| **P0** | Auditar `pos-api` Global Query Filters (2.6) | 2-4 hrs | Previene data leak multi-tenant |
+| **P0** | Crear `seedJwtClaims()` fixture E2E (3.2) | 1-2 hrs | Desbloquea testing por vertical |
+| **P0** | Crear `CapturingPrinterTransport` mock (3.3) | 2-3 hrs | Desbloquea CI headless con flujos de print |
+| **P1** | Consolidar macro checks via `FeatureKey` verticales (2.3) | 1-2 días | Open-Closed real, escala N verticales |
+| **P1** | Refactor `product-form` placeholders a metadata catalog (1.1) | 4 hrs | Elimina 3 switches gemelos |
+| **P1** | Actualizar `TestDeviceConfig` y eliminar Protractor leftovers (3.7, 3.8) | 30 min | Higiene |
+| **P2** | Crear specs para `TenantContextService`, `CartService`, `PrinterService` (3.1) | 2-3 días | Cobertura crítica |
+| **P2** | Polimorfizar `CartPanel` y `Dashboard` por `posExperience` (2.1) | 2-3 días | Escala UI sin templates monolíticos |
+| **P3** | Forms metadata-driven (2.2) | 1-2 semanas | Largo plazo |
+
+---
+
+## Sección 5 — Resumen ejecutivo
+
+**Frontend está mejor arquitecturado de lo aparente**:
+- `TenantContextService` declarativa con API completa.
+- `*appFeature` structural directive limpia.
+- `featureGuard` route guard data-driven via `route.data['requiredFeature']`.
+- JWT parsing defensivo contra backend drift.
+- `GIRO_FEATURE_MAP` central record con TypeScript exhaustividad parcial.
+
+**La disciplina se diluye en 2 dimensiones**:
+1. **Macro/Giro checks duros** — 7+ componentes saltan la abstracción y comparan directo contra `MacroCategoryType.X`. Open-Closed-violation latente: agregar Hospitality o cualquier vertical nueva implica grep+modify en ≥10 archivos.
+2. **Test infrastructure prácticamente inexistente** — 1 unit test, 3 E2E sin mock de JWT, 0 virtual hardware. CI no puede validar que el contrato multi-tenant se respete.
+
+**Si se planea agregar nuevas verticales** (`Hospitality`, `Healthcare`, `Entertainment`) en los próximos meses, los 3 P0 son **no-negociables** ANTES de meter el primer macro nuevo. Sin Global Query Filters confirmados (pos-api) + JWT-mock fixture + virtual printer, las regresiones serán manuales en cada release.
+
+**Repos pendientes de auditar** (no incluidos en este audit):
+- `pos-api` — EF Core multi-tenant isolation, WebApplicationFactory test infrastructure.
+- `pos-local-bridge` — supervisor lifecycle vs feature claims, virtual hardware abstractions, SignalR loopback testing.
+
+---
+
+## Apéndice — Archivos analizados
+
+### TenantContext + claim parsing
+- [src/app/core/services/tenant-context.service.ts](../src/app/core/services/tenant-context.service.ts)
+- [src/app/core/utils/jwt.utils.ts](../src/app/core/utils/jwt.utils.ts)
+- [src/app/core/enums/config.enum.ts](../src/app/core/enums/config.enum.ts)
+- [src/app/core/enums/feature-key.enum.ts](../src/app/core/enums/feature-key.enum.ts)
+
+### Feature gating infra
+- [src/app/shared/directives/app-feature.directive.ts](../src/app/shared/directives/app-feature.directive.ts)
+- [src/app/core/guards/feature.guard.ts](../src/app/core/guards/feature.guard.ts)
+
+### Componentes con macro checks directos
+- [src/app/modules/pos/components/cart-panel/cart-panel.component.ts](../src/app/modules/pos/components/cart-panel/cart-panel.component.ts)
+- [src/app/modules/admin/admin-shell.component.ts](../src/app/modules/admin/admin-shell.component.ts)
+- [src/app/modules/admin/components/devices/admin-devices.component.ts](../src/app/modules/admin/components/devices/admin-devices.component.ts)
+- [src/app/modules/admin/components/dashboard/dashboard.component.ts](../src/app/modules/admin/components/dashboard/dashboard.component.ts)
+- [src/app/modules/admin/components/products/product-form/product-form.component.ts](../src/app/modules/admin/components/products/product-form/product-form.component.ts)
+
+### Test infrastructure
+- [src/app/core/services/cash-register.service.spec.ts](../src/app/core/services/cash-register.service.spec.ts) (único)
+- [e2e/tests/login.spec.ts](../e2e/tests/login.spec.ts), [pin.spec.ts](../e2e/tests/pin.spec.ts), [stock-receipts.spec.ts](../e2e/tests/stock-receipts.spec.ts)
+- [e2e/fixtures/device-config.ts](../e2e/fixtures/device-config.ts)
+- [playwright.config.ts](../playwright.config.ts)
+
+### Legacy / drift
+- [e2e/protractor.conf.js](../e2e/protractor.conf.js), [e2e/src/app.e2e-spec.ts](../e2e/src/app.e2e-spec.ts) (Protractor leftovers)

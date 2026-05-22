@@ -7,7 +7,7 @@
     } @else {
       <span class="cart-panel__title">Orden #{{ nextOrderNumber() }}</span>
     }
-    @if (isFoodAndBeverage() && activeTableName()) {
+    @if (supportsKitchenOrders() && activeTableName()) {
       <span class="cart-panel__table-badge">{{ activeTableName() }}</span>
     }
     @if (itemCount() > 0) {
@@ -234,7 +234,7 @@
     }
 
     <!-- Assign table button (FDD-001) — F&B-only, hidden for Gym/Retail/Services -->
-    @if (isFoodAndBeverage() && canAssignTable()) {
+    @if (supportsKitchenOrders() && canAssignTable()) {
       <button
         type="button"
         class="btn-assign-table"
@@ -252,7 +252,7 @@
       </div>
     }
 
-    @if (isFoodAndBeverage() && showSendToKitchen()) {
+    @if (supportsKitchenOrders() && showSendToKitchen()) {
       @if (addingToOrder(); as adding) {
         <p-button
           [label]="isProcessing() ? 'Enviando...' : 'Agregar a Orden #' + adding.orderNumber"
@@ -313,7 +313,7 @@
 </aside>
 
 <!-- Table selector dialog (FDD-001) — F&B only -->
-@if (isFoodAndBeverage()) {
+@if (supportsKitchenOrders()) {
   <app-table-selector-dialog
     [(visible)]="showTableSelector"
     (tableSelected)="onTableSelected($event)"
@@ -322,7 +322,7 @@
 
 <!-- Inline cash quick-pay dialog (non-F&B verticals only). The component
      itself owns its visibility, but cart-panel toggles it via `showQuickPay`. -->
-@if (!isFoodAndBeverage()) {
+@if (!supportsKitchenOrders()) {
   <app-quick-pay
     [visible]="showQuickPay()"
     (visibleChange)="showQuickPay.set($event)"

@@ -333,8 +333,9 @@
       }
     </div>
 
-    <!-- QR Gym Access — Phase 3 (Gym vertical only) -->
-    @if (isGymTenant()) {
+    <!-- QR Access Enrollment — gated by `RealtimeAccessControl` feature
+         (gyms, spas, recurring-service tenants). See AUDIT-058 §1.10 -->
+    @if (isAccessControlTenant()) {
       <div class="drawer-section drawer-qr">
         <h3 class="drawer-section__title">Acceso al gimnasio (QR)</h3>
 

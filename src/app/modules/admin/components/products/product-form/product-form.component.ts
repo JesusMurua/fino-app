@@ -42,6 +42,7 @@ import { PrinterDestinationService } from '../../../../../core/services/printer-
 import { TaxService } from '../../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../../core/services/tenant-context.service';
 import { getHttpErrorSummary } from '../../../../../core/utils/http-error.utils';
+import { placeholdersFor } from './product-form.placeholders';
 
 /**
  * Reactive form for a single product size (Chico/Grande/etc).
@@ -156,66 +157,34 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly MacroCategoryType = MacroCategoryType;
 
   /**
-   * True when the current tenant should see the "membership / vigencia"
-   * configuration block — i.e. any Services-macro tenant (gyms, spas,
-   * subscriptions, etc.). Non-Services tenants never see these fields
-   * and the form's defaults result in a `metadata: undefined` payload,
-   * so nothing leaks across verticals.
+   * True when the current tenant sells subscription / membership products
+   * (gym mensualidades, spa packages, etc.). Delegated to
+   * `TenantContextService.supportsMemberships` so the capability is
+   * defined in a single declarative place rather than re-derived from
+   * the macro per component (AUDIT-058 Vector A).
    */
-  readonly showsMembership = computed(() =>
-    this.tenantContext.currentMacro() === MacroCategoryType.Services,
-  );
+  readonly showsMembership = this.tenantContext.supportsMemberships;
 
   /**
    * Vertical-aware placeholder copy. Keyed off the tenant's `posExperience`
-   * (resolved from the business type) with a fallback by macro category for
-   * tenants whose sub-category has not yet been hydrated. Restaurant copy is
-   * the safe default since the form was originally designed for it.
+   * (resolved from the business type) via the `POS_EXPERIENCE_PLACEHOLDERS`
+   * catalog — adding a new vertical now means adding ONE catalog entry,
+   * not chasing three twin-switches across this file.
+   *
+   * `placeholdersFor()` applies a Restaurant fallback while
+   * `posExperience()` is still undefined during cold-boot hydration.
    */
-  readonly namePlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Ej. Torta de Milanesa';
-      case 'Counter':    return 'Ej. Café americano';
-      case 'Retail':     return 'Ej. Coca-Cola 600ml';
-      case 'Quick':      return 'Ej. Mensualidad';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Ej. Coca-Cola 600ml';
-      case MacroCategoryType.Services:     return 'Ej. Mensualidad';
-      case MacroCategoryType.QuickService: return 'Ej. Café americano';
-      default:                             return 'Ej. Torta de Milanesa';
-    }
-  });
+  readonly namePlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).name,
+  );
 
-  readonly modifierGroupPlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Nombre del grupo (ej. Proteína, Salsas)';
-      case 'Counter':    return 'Nombre del grupo (ej. Tamaño, Leche)';
-      case 'Retail':     return 'Nombre del grupo (ej. Variedad)';
-      case 'Quick':      return 'Nombre del grupo (ej. Variantes)';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Nombre del grupo (ej. Variedad)';
-      case MacroCategoryType.Services:     return 'Nombre del grupo (ej. Variantes)';
-      case MacroCategoryType.QuickService: return 'Nombre del grupo (ej. Tamaño, Leche)';
-      default:                             return 'Nombre del grupo (ej. Proteína, Salsas)';
-    }
-  });
+  readonly modifierGroupPlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).modifierGroup,
+  );
 
-  readonly modifierExtraPlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Ej. Queso extra, Sin cebolla';
-      case 'Counter':    return 'Ej. Leche de almendra';
-      case 'Retail':     return 'Ej. Color rojo, Talla M';
-      case 'Quick':      return 'Ej. Opción adicional';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Ej. Color rojo, Talla M';
-      case MacroCategoryType.Services:     return 'Ej. Opción adicional';
-      case MacroCategoryType.QuickService: return 'Ej. Leche de almendra';
-      default:                             return 'Ej. Queso extra, Sin cebolla';
-    }
-  });
+  readonly modifierExtraPlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).modifierExtra,
+  );
 
   /** Maximum number of images allowed per product */
   static readonly MAX_IMAGES = 5;

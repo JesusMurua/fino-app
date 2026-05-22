@@ -104,6 +104,55 @@ export class TenantContextService {
     () => this.currentBusinessType()?.posExperience,
   );
 
+  /**
+   * True when the post-auth hydration cycle has completed — i.e. the
+   * tenant's macro category has been resolved from the JWT (and any
+   * downstream features, sub-category, business settings followed).
+   *
+   * Use this in components that need to defer rendering until the
+   * tenant context is known (e.g. dashboards, sidebars), instead of
+   * the legacy pattern `currentMacro() === null`. Avoids leaking macro
+   * comparisons into views whose intent is "wait for ready", not
+   * "branch by vertical".
+   */
+  readonly isHydrated = computed(() => this._currentMacro() !== null);
+
+  /**
+   * True when the tenant can route line items to a kitchen — drives the
+   * "send to kitchen" button, kitchen comanda printing, and table
+   * assignment in the cart.
+   *
+   * Mapped to F&B-style capability features (`PrintedTickets`,
+   * `MaxKdsScreens`, `TableMap`) rather than the macro itself, so a
+   * future vertical (e.g. Hospitality / Room Service) gains these flows
+   * by acquiring the features without touching cart-panel code.
+   */
+  readonly supportsKitchenOrders = computed(() =>
+    this.hasAnyFeature([
+      FeatureKey.PrintedTickets,
+      FeatureKey.MaxKdsScreens,
+      FeatureKey.TableMap,
+    ]),
+  );
+
+  /**
+   * True when the tenant sells subscription / membership products
+   * (gym mensualidades, spa packages, recurring services).
+   *
+   * Mapped to `posExperience in {'Quick', 'Services'}` — the backend
+   * emits `'Services'` as the canonical value for Services-macro tenants
+   * but the internal catalog still uses `'Quick'` as a synonym during
+   * the cross-repo migration (see `PosExperience` type docs).
+   *
+   * If product later decouples memberships from Services-vertical,
+   * promote this to a dedicated `FeatureKey.MembershipProducts` claim
+   * on the backend.
+   */
+  readonly supportsMemberships = computed(() => {
+    const exp = this.posExperience();
+    return exp === 'Quick' || exp === 'Services';
+  });
+
   /** Business settings snapshot — null until `ensureHydrated()` resolves */
   readonly business = this._business.asReadonly();
 

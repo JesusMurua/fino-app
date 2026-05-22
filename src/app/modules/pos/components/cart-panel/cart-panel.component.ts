@@ -20,7 +20,7 @@ import {
   getBeneficiaryId,
   isMembershipItem,
 } from '../../../../core/models';
-import { KitchenStatusId, MacroCategoryType, SyncStatusId } from '../../../../core/enums';
+import { KitchenStatusId, SyncStatusId } from '../../../../core/enums';
 import { calculateOrderTaxFromSnapshot } from '../../../../core/utils/tax.utils';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartFlowService } from '../../../../core/services/cart-flow.service';
@@ -97,20 +97,22 @@ export class CartPanelComponent implements OnInit {
   readonly showSendToKitchen = computed(() => this.configService.hasKitchen());
 
   /**
-   * True when the tenant's macro category is Food & Beverage. Used to
-   * hide kitchen / table UI for non-F&B verticals (Gym, Retail,
-   * Services) where mesas, comandas y cocina don't apply. Layered on
-   * top of the existing `showSendToKitchen()` feature flag so even an
-   * F&B tenant without a kitchen still gets the right experience.
+   * True when the tenant can route line items to a kitchen (kitchen
+   * tickets, KDS screens, or table-map assignment). Drives the
+   * mesa / send-to-kitchen / checkout-vs-quick-pay branching.
+   *
+   * Delegated to `TenantContextService.supportsKitchenOrders`, which
+   * is mapped to the underlying capability features (PrintedTickets /
+   * MaxKdsScreens / TableMap) rather than the macro itself — keeps
+   * this component vertical-agnostic per AUDIT-058 Vector A.
    */
-  readonly isFoodAndBeverage = computed(() =>
-    this.tenantContext.currentMacro() === MacroCategoryType.FoodBeverage,
-  );
+  readonly supportsKitchenOrders = this.tenantContext.supportsKitchenOrders;
 
   /**
-   * Controls the inline `<app-quick-pay>` dialog used by non-F&B verticals
-   * (Services, Retail, Counter, Quick) to skip `/pos/checkout` and complete
-   * a cash sale in one step. Wired only when `!isFoodAndBeverage()`.
+   * Controls the inline `<app-quick-pay>` dialog used by non-kitchen
+   * verticals (Services, Retail, Counter, Quick) to skip `/pos/checkout`
+   * and complete a cash sale in one step. Wired only when
+   * `!supportsKitchenOrders()`.
    */
   readonly showQuickPay = signal(false);
 
@@ -236,16 +238,18 @@ export class CartPanelComponent implements OnInit {
   /**
    * Primary checkout action.
    *
-   * - F&B (`isFoodAndBeverage()`): navigates to the full `/pos/checkout`
-   *   page, which supports card / split payments + tipping.
-   * - Non-F&B (Services, Retail, Counter, Quick): opens the inline
-   *   `<app-quick-pay>` dialog so the cashier can ring up a cash sale in
-   *   one tap without leaving the POS view. This preserves the legacy
-   *   `quick-pos`/`retail-pos` UX after the unified-shell refactor.
+   * - Kitchen-capable tenants (`supportsKitchenOrders()`): navigates to
+   *   the full `/pos/checkout` page, which supports card / split
+   *   payments + tipping.
+   * - Non-kitchen tenants (Services, Retail, Counter, Quick): opens the
+   *   inline `<app-quick-pay>` dialog so the cashier can ring up a cash
+   *   sale in one tap without leaving the POS view. This preserves the
+   *   legacy `quick-pos` / `retail-pos` UX after the unified-shell
+   *   refactor.
    */
   onCheckout(): void {
     if (!this.requireOpenSession()) return;
-    if (this.isFoodAndBeverage()) {
+    if (this.supportsKitchenOrders()) {
       this.router.navigate(['/pos/checkout']);
       return;
     }
