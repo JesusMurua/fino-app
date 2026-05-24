@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, timeout, catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
@@ -52,6 +52,34 @@ export class ApiService {
   get<T>(path: string, params?: ApiParams): Observable<T> {
     return this.http
       .get<T>(`${this.baseUrl}${path}`, params ? { params } : {})
+      .pipe(
+        timeout(REQUEST_TIMEOUT_MS),
+        catchError(error => this.handleError(error)),
+      );
+  }
+
+  /**
+   * Performs a GET request returning the full `HttpResponse<T>` so callers
+   * can read response headers (`ETag`, `Cache-Control`) alongside the body.
+   *
+   * Introduced by FDD-028 to support ETag / `If-None-Match` negotiation
+   * inside `CatalogService`. Other callers should keep using `get<T>()`
+   * which returns the body directly. Non-breaking for the ~30 existing
+   * call sites.
+   *
+   * @param path Relative path appended to baseUrl (e.g. '/catalog/macro-categories').
+   * @param options Optional `params` and `headers` (e.g. `{ 'If-None-Match': etag }`).
+   */
+  getFull<T>(
+    path: string,
+    options?: { params?: ApiParams; headers?: Record<string, string> },
+  ): Observable<HttpResponse<T>> {
+    return this.http
+      .get<T>(`${this.baseUrl}${path}`, {
+        observe:  'response',
+        params:   options?.params,
+        headers:  options?.headers,
+      })
       .pipe(
         timeout(REQUEST_TIMEOUT_MS),
         catchError(error => this.handleError(error)),
