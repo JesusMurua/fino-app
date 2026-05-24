@@ -43,6 +43,8 @@ import { TaxService } from '../../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../../core/services/tenant-context.service';
 import { getHttpErrorSummary } from '../../../../../core/utils/http-error.utils';
 import { placeholdersFor } from './product-form.placeholders';
+import { ProductPreviewComponent } from './components/product-preview.component';
+import { schemaFor } from './schemas/product-form.registry';
 
 /**
  * Reactive form for a single product size (Chico/Grande/etc).
@@ -135,6 +137,7 @@ const modifierGroupMinMaxValidator: ValidatorFn = (
     InputTextareaModule,
     ToastModule,
     TooltipModule,
+    ProductPreviewComponent,
   ],
   providers: [MessageService],
   templateUrl: './product-form.component.html',
@@ -297,6 +300,18 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       membershipDays: v.membershipDurationDays ?? 0,
       image: this.previewImageUrl(),
     };
+  });
+
+  /**
+   * Preview variant resolved from the active `PosExperience` via the
+   * schema registry. Drives `<app-product-preview>` polymorphism so the
+   * preview pane stays free of any direct macro/giro comparison.
+   * Returns `null` until the tenant context has hydrated `posExperience`
+   * — the template renders a minimal fallback while waiting.
+   */
+  readonly activePreviewVariant = computed(() => {
+    const experience = this.tenantContext.posExperience();
+    return experience ? schemaFor(experience).previewVariant : null;
   });
 
   /** Convenience accessor — sizes FormArray */
