@@ -63,3 +63,61 @@ export interface ZoneTypeCatalog {
   name: string;
   sortOrder: number;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// FDD-028 F4 — Cohort C (NEW DTOs from BDD-021)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Macro category catalog entry — wire shape of `GET /api/Catalog/macro-categories`
+ * (NEW endpoint, BDD-021 §5.1.1).
+ *
+ * Carries the typed metadata signals that drive vertical-aware
+ * rendering (`posExperience`, `hasKitchen`, `hasTables`). Replaces the
+ * frontend's hardcoded `macroOfBusinessType()` ID-range helper — see
+ * FDD-028 D6 and AUDIT-058 §1.2.
+ */
+export interface MacroCategoryDto {
+  id:            number;
+  /** Kebab-case stable identifier (`'food-beverage'`, `'quick-service'`, …). */
+  internalCode:  string;
+  publicName:    string;
+  description:   string | null;
+  posExperience: PosExperience;
+  hasKitchen:    boolean;
+  hasTables:     boolean;
+}
+
+/**
+ * Plan type catalog entry — wire shape of `GET /api/Catalog/plan-types`
+ * (NEW frontend consumer surface).
+ *
+ * Distinct from `PlanCatalogDto` (the feature manifest at `/plans`) —
+ * this is the commercial tier catalog. Available for future onboarding
+ * flows that need monthly price + currency without the full feature
+ * matrix.
+ */
+export interface PlanTypeDto {
+  id:           number;
+  code:         string;
+  name:         string;
+  sortOrder:    number;
+  monthlyPrice: number | null;
+  /** ISO 4217 currency code (e.g. `'MXN'`). */
+  currency:     string;
+}
+
+/**
+ * Access method catalog entry — wire shape of `GET /api/Catalog/access-methods`
+ * (NEW frontend consumer surface).
+ *
+ * Mirrors the shape of `AccessReasonCatalog`. Used by future reception
+ * UIs that need to display the method by which an access attempt was
+ * authenticated (QR, manual, PIN, etc.).
+ */
+export interface AccessMethodCatalog {
+  id:        number;
+  code:      string;
+  name:      string;
+  sortOrder: number;
+}

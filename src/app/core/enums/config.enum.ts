@@ -99,16 +99,11 @@ export enum BusinessTypeId {
   Gimnasio       = 20,
 }
 
-/**
- * Derives the parent macro category from a sub-giro id. Matches the
- * seed order (1-3=FoodBeverage, 4-9=QuickService, 10-16=Retail, 17-20=Services).
- */
-export function macroOfBusinessType(id: BusinessTypeId): MacroCategoryType {
-  if (id <= 3)  return MacroCategoryType.FoodBeverage;
-  if (id <= 9)  return MacroCategoryType.QuickService;
-  if (id <= 16) return MacroCategoryType.Retail;
-  return MacroCategoryType.Services;
-}
+// Note: `macroOfBusinessType(id)` ID-range helper deleted in FDD-028
+// F4 (closes AUDIT-058 §1.2 Critical). Backend now ships
+// `BusinessTypeDto.primaryMacroCategoryId` as an explicit FK; resolve
+// the macro via `catalogService.resolveMacro(businessTypeId)` which
+// joins against the cached `/catalog/macro-categories` response.
 
 /**
  * Vertical sub-category — secondary axis of tenant context, layered on

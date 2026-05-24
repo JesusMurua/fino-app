@@ -80,13 +80,38 @@ export class TenantContextService {
 
   /**
    * Business type catalog entry matching the tenant's current sub-category.
-   * Looks up `catalogService.businessTypes()` by `code === currentSubCategory()`.
+   *
+   * Looks up `catalogService.businessTypes()` by `code === currentSubCategory()`,
+   * then **enriches** with the joined `MacroCategoryDto` via
+   * `catalogService.resolveMacro()` — overriding `hasKitchen`, `hasTables`
+   * and `posExperience` with the authoritative values from the
+   * `/catalog/macro-categories` endpoint (FDD-028 F4 / D6 Option A).
+   *
+   * Backwards-compatible during F4–F5: when the macro join returns null
+   * (backend not yet hydrated, or running against pre-BDD-021 backend),
+   * falls back to the raw `BusinessTypeCatalog` fields. F3 will reshape
+   * `BusinessTypeDto` to drop these derived fields and rely solely on
+   * the macro join.
+   *
    * Returns null when no sub-category is set or no match exists.
    */
   readonly currentBusinessType = computed<BusinessTypeCatalog | null>(() => {
     const sub = this._currentSubCategory();
     if (sub === null) return null;
-    return this.catalogService.businessTypes().find(b => b.code === sub) ?? null;
+    const bt = this.catalogService.businessTypes().find(b => b.code === sub) ?? null;
+    if (!bt) return null;
+
+    // F4 join — enrich with MacroCategoryDto fields when the macro
+    // catalog is hydrated. Pre-hydration: passthrough (bt as-is).
+    const macro = this.catalogService.resolveMacro(bt.id);
+    if (!macro) return bt;
+
+    return {
+      ...bt,
+      hasKitchen:    macro.hasKitchen,
+      hasTables:     macro.hasTables,
+      posExperience: macro.posExperience,
+    };
   });
 
   /**

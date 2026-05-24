@@ -8,11 +8,14 @@ import {
   CatalogCacheRow,
 } from '../models/catalog-cache.model';
 import {
+  AccessMethodCatalog,
   BusinessTypeCatalog,
   DeviceModeCatalog,
   DisplayStatusCatalog,
   KitchenStatusCatalog,
+  MacroCategoryDto,
   PaymentMethodCatalog,
+  PlanTypeDto,
   ZoneTypeCatalog,
 } from '../models/catalog.model';
 import {
@@ -57,6 +60,14 @@ export class CatalogService {
   readonly deviceModes     = signal<DeviceModeCatalog[]>(DEVICE_MODES);
   readonly businessTypes   = signal<BusinessTypeCatalog[]>(BUSINESS_TYPES);
   readonly zoneTypes       = signal<ZoneTypeCatalog[]>(ZONE_TYPES);
+
+  // ── FDD-028 F4 (Cohort C) ─ new consumer surface, no hardcoded fallback.
+  // Initial value is `[]`; F6 will commit seed JSONs under
+  // `src/assets/catalog-seed/` to provide first-install offline values.
+  readonly macroCategories = signal<MacroCategoryDto[]>([]);
+  readonly planTypes       = signal<PlanTypeDto[]>([]);
+  readonly accessMethods   = signal<AccessMethodCatalog[]>([]);
+  readonly accessReasons   = signal<AccessReasonCatalog[]>([]);
 
   /**
    * Backend-delivered feature manifest, keyed by planTypeId. Null until
@@ -108,17 +119,24 @@ export class CatalogService {
    * — a focused follow-up — will add ETag negotiation to that service.
    */
   async loadAll(): Promise<void> {
-    // Cohort A1 + A2 — Dexie + ETag (FDD-028 F1 + F2).
+    // Cohorts A1 + A2 + C — Dexie + ETag (FDD-028 F1 + F2 + F4).
     const cached = Promise.allSettled([
+      // A1 (F1)
       this.hydrateRoute('/catalog/kitchen-statuses', this.kitchenStatuses),
       this.hydrateRoute('/catalog/display-statuses', this.displayStatuses),
       this.hydrateRoute('/catalog/payment-methods',  this.paymentMethods),
       this.hydrateRoute('/catalog/device-modes',     this.deviceModes),
       this.hydrateRoute('/catalog/zone-types',       this.zoneTypes),
+      // A2 (F2)
       this.hydrateRouteApply<PlanCatalogDto>(
         '/catalog/plans',
         payload => this._planApiFeatures.set(this.parsePlanDto(payload)),
       ),
+      // C (F4) — new consumer surface
+      this.hydrateRoute('/catalog/macro-categories', this.macroCategories),
+      this.hydrateRoute('/catalog/plan-types',       this.planTypes),
+      this.hydrateRoute('/catalog/access-methods',   this.accessMethods),
+      this.hydrateRoute('/catalog/access-reasons',   this.accessReasons),
     ]);
 
     // Legacy pattern — FDD-028 F3 will migrate /catalog/business-types
@@ -366,15 +384,40 @@ export class CatalogService {
   }
 
   /**
+   * Resolves a `BusinessTypeDto` to its `MacroCategoryDto` by joining on
+   * `primaryMacroCategoryId` (FDD-028 F4 / D6).
+   *
+   * The returned `MacroCategoryDto` carries the macro-derived attributes
+   * (`posExperience`, `hasKitchen`, `hasTables`, `internalCode`) that the
+   * F3-reshaped `BusinessTypeDto` no longer ships. Replaces the
+   * hardcoded `macroOfBusinessType()` ID-range helper deleted in this
+   * phase (closes AUDIT-058 §1.2).
+   *
+   * @returns The joined `MacroCategoryDto` or `null` if either catalog
+   *          has not been hydrated yet or the business type id is unknown.
+   */
+  resolveMacro(businessTypeId: number): MacroCategoryDto | null {
+    const bt = this.businessTypes().find(b => b.id === businessTypeId);
+    if (!bt) return null;
+    const macroId = (bt as BusinessTypeCatalog & { primaryMacroCategoryId?: number }).primaryMacroCategoryId;
+    if (typeof macroId !== 'number') return null;
+    return this.macroCategories().find(m => m.id === macroId) ?? null;
+  }
+
+  /**
    * Fetches the access-reason catalog used by the live reception
    * dashboard to translate `AccessResultDto.accessReasonId` into a
    * human-readable label. Seeded by the backend `DbInitializer` and
    * exposed at `/catalog/access-reasons` (anonymous).
+   *
+   * @deprecated Since FDD-028 F4 / FR-012, prefer the symmetric signal
+   * `catalogService.accessReasons()`. This Promise wrapper is kept for
+   * BC; it now resolves immediately from the cached signal value
+   * (hydrated by `loadAll()` at boot via the same Dexie + ETag pattern
+   * as the rest of Cohort C). Consumers can migrate at their own pace.
    */
   getAccessReasons(): Promise<AccessReasonCatalog[]> {
-    return firstValueFrom(
-      this.api.get<AccessReasonCatalog[]>('/catalog/access-reasons'),
-    );
+    return Promise.resolve(this.accessReasons());
   }
 
   //#endregion
