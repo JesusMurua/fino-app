@@ -58,8 +58,16 @@ export class CatalogService {
   readonly businessTypes   = signal<BusinessTypeCatalog[]>(BUSINESS_TYPES);
   readonly zoneTypes       = signal<ZoneTypeCatalog[]>(ZONE_TYPES);
 
-  /** Backend-delivered feature manifest, keyed by planTypeId. Null until fetched. */
-  private readonly _planApiFeatures = signal<Map<PlanTypeId, FeatureKey[]> | null>(null);
+  /**
+   * Backend-delivered feature manifest, keyed by planTypeId. Null until
+   * fetched.
+   *
+   * After F2 of FDD-028 (warn-and-keep policy D5), the value type is
+   * `(FeatureKey | string)[]` — unknown feature strings from the backend
+   * are preserved (with a console.warn) so the UI can render them as
+   * opaque-but-present features rather than silently dropping them.
+   */
+  private readonly _planApiFeatures = signal<Map<PlanTypeId, (FeatureKey | string)[]> | null>(null);
 
   /**
    * Live pricing catalog — commercial metadata from `PLAN_CATALOG`
@@ -87,65 +95,110 @@ export class CatalogService {
    * Cohort A1 (5 wire-compatible endpoints) — kitchen / display / payment
    * / device / zone — flow through the Dexie + ETag cache (FDD-028 F1):
    * Dexie hit → signal hydrate → background revalidate via `If-None-Match`.
-   * Each `hydrateRoute()` handles its own errors so one failure cannot
-   * block the others.
    *
-   * Legacy pattern (business-types, plans) still goes through plain
-   * `api.get()` — F3 and F2 of FDD-028 will migrate them respectively.
+   * Cohort A2 (FDD-028 F2): `/catalog/plans` uses the same cache pattern
+   * via `hydrateRouteApply` with a transform callback that projects the
+   * raw `PlanCatalogDto[]` into the derived feature map.
+   *
+   * Legacy pattern (`/catalog/business-types`) still goes through plain
+   * `api.get()` — F3 of FDD-028 will migrate it (Cohort B reshape).
+   *
+   * `/api/Taxes` remains owned by `tax.service.ts` (separate Dexie cache
+   * with tenant-default + offline-create business logic). FDD-028 F2.1
+   * — a focused follow-up — will add ETag negotiation to that service.
    */
   async loadAll(): Promise<void> {
-    // Cohort A1 — Dexie + ETag (FDD-028 F1).
-    const cohortA1 = Promise.allSettled([
+    // Cohort A1 + A2 — Dexie + ETag (FDD-028 F1 + F2).
+    const cached = Promise.allSettled([
       this.hydrateRoute('/catalog/kitchen-statuses', this.kitchenStatuses),
       this.hydrateRoute('/catalog/display-statuses', this.displayStatuses),
       this.hydrateRoute('/catalog/payment-methods',  this.paymentMethods),
       this.hydrateRoute('/catalog/device-modes',     this.deviceModes),
       this.hydrateRoute('/catalog/zone-types',       this.zoneTypes),
+      this.hydrateRouteApply<PlanCatalogDto>(
+        '/catalog/plans',
+        payload => this._planApiFeatures.set(this.parsePlanDto(payload)),
+      ),
     ]);
 
-    // Legacy pattern — FDD-028 F2 / F3 will migrate these.
+    // Legacy pattern — FDD-028 F3 will migrate /catalog/business-types
+    // (Cohort B reshape: BusinessTypeDto + client-side macro join).
     const legacy = Promise.allSettled([
       firstValueFrom(this.api.get<BusinessTypeCatalog[]>('/catalog/business-types')),
-      firstValueFrom(this.api.get<PlanCatalogDto[]>('/catalog/plans')),
     ]);
 
-    const [, legacyResults] = await Promise.all([cohortA1, legacy]);
+    const [, legacyResults] = await Promise.all([cached, legacy]);
     if (legacyResults[0].status === 'fulfilled') this.businessTypes.set(legacyResults[0].value);
-    if (legacyResults[1].status === 'fulfilled') this._planApiFeatures.set(this.parsePlanDto(legacyResults[1].value));
   }
 
   /**
-   * Fetches only the plan catalog on demand. Used by callers that
-   * cannot wait for `loadAll()` (e.g. upgrade surfaces that need the
-   * freshest feature list after an entitlement change). Silent on
-   * failure — fallback static catalog remains in place.
+   * Fetches the plan catalog on demand. Used by callers that need a
+   * fresh manifest immediately after an entitlement change (e.g.
+   * `TenantContextService` upgrade events).
+   *
+   * F2 of FDD-028: flows through the same Dexie + ETag cache pattern
+   * as the boot path. Force-bypasses the stale-while-revalidate
+   * shortcut by always issuing the network revalidation regardless of
+   * Dexie freshness, so an entitlement change is reflected within one
+   * round-trip rather than at the next 24h boundary.
    */
   async fetchPlanCatalog(): Promise<void> {
+    const route  = '/catalog/plans';
+    const cached = await this.db.catalogCache.get(route);
+    const etag   = cached?.etag ?? '';
     try {
-      const dto = await firstValueFrom(this.api.get<PlanCatalogDto[]>('/catalog/plans'));
-      this._planApiFeatures.set(this.parsePlanDto(dto));
+      const headers  = etag ? { 'If-None-Match': etag } : undefined;
+      const response = await firstValueFrom(
+        this.api.getFull<PlanCatalogDto[]>(route, headers ? { headers } : undefined),
+      );
+
+      if (response.status === 304) {
+        await this.safeDexieUpdate(route, { fetchedAt: Date.now() });
+        // Signal already reflects the cached payload; nothing to do.
+        return;
+      }
+
+      if (response.status === 200 && response.body) {
+        await this.writeCacheRow(route, response.body, this.readEtag(response.headers));
+        this._planApiFeatures.set(this.parsePlanDto(response.body));
+      }
     } catch {
       // Fallback stays in effect; not surfaced to the user.
     }
   }
 
   /**
-   * Validates backend feature strings against the `FeatureKey` enum and
-   * drops unknowns. Keeps the contract one-way: the client enum is the
-   * authoritative list of renderable features.
+   * Parses backend feature strings into the typed plan manifest.
    *
-   * NOTE: F5 of FDD-028 D5 will migrate this to "warn-and-keep" — log
-   * unknowns at `console.warn` and preserve them in the signal as opaque
-   * strings instead of silently dropping. Today's silent-drop is kept
-   * intact during F1 to avoid scope creep.
+   * **F2 of FDD-028 (D5: warn-and-keep policy)**: unknown feature
+   * strings (i.e. backend introduced a `FeatureKey` value before the
+   * FE enum was updated) are logged at `console.warn` AND kept in the
+   * result so the UI can render them as opaque-but-present features
+   * rather than silently disappearing. Replaces the prior silent-drop
+   * behaviour from before F2.
    */
-  private parsePlanDto(dto: PlanCatalogDto[]): Map<PlanTypeId, FeatureKey[]> {
-    const known = new Set<string>(Object.values(FeatureKey));
-    const result = new Map<PlanTypeId, FeatureKey[]>();
+  private parsePlanDto(dto: PlanCatalogDto[]): Map<PlanTypeId, (FeatureKey | string)[]> {
+    const known    = new Set<string>(Object.values(FeatureKey));
+    const result   = new Map<PlanTypeId, (FeatureKey | string)[]>();
+    const unknowns = new Set<string>();
+
     for (const entry of dto) {
-      const valid = entry.features.filter(f => known.has(f)) as FeatureKey[];
-      result.set(entry.planTypeId, valid);
+      for (const f of entry.features) {
+        if (!known.has(f)) unknowns.add(f);
+      }
+      // Preserve the full list verbatim — warn-and-keep, not warn-and-drop.
+      result.set(entry.planTypeId, [...entry.features]);
     }
+
+    if (unknowns.size > 0) {
+      console.warn(
+        '[CatalogService] Plan catalog references unknown FeatureKey strings — '
+        + 'preserved as opaque values per FDD-028 D5. Update the FE FeatureKey '
+        + 'enum to render them as first-class features.',
+        Array.from(unknowns),
+      );
+    }
+
     return result;
   }
 
@@ -174,28 +227,7 @@ export class CatalogService {
     route: string,
     targetSignal: WritableSignal<T[]>,
   ): Promise<void> {
-    const cached  = await this.db.catalogCache.get(route);
-    const isFresh = !!cached && (Date.now() - cached.fetchedAt) < CATALOG_CACHE_MAX_AGE_MS;
-
-    // Step 2 — hot path: serve from Dexie immediately, then revalidate.
-    if (isFresh && cached) {
-      targetSignal.set(cached.payload as T[]);
-      // Fire-and-forget background revalidation. Errors handled inside.
-      void this.revalidateRoute<T>(route, cached.etag, targetSignal);
-      return;
-    }
-
-    // Step 3 — cold or stale: full network fetch (no If-None-Match).
-    try {
-      const response = await firstValueFrom(this.api.getFull<T[]>(route));
-      if (response.status === 200 && response.body) {
-        await this.writeCacheRow(route, response.body, this.readEtag(response.headers));
-        targetSignal.set(response.body);
-      }
-    } catch {
-      // Network failure — signal keeps its current value (hardcoded
-      // fallback during F1–F5, seed JSON after F6 lands).
-    }
+    return this.hydrateRouteApply<T>(route, payload => targetSignal.set(payload));
   }
 
   /**
@@ -208,6 +240,49 @@ export class CatalogService {
     etag:  string,
     targetSignal: WritableSignal<T[]>,
   ): Promise<void> {
+    return this.revalidateRouteApply<T>(route, etag, payload => targetSignal.set(payload));
+  }
+
+  /**
+   * Callback-based variant of `hydrateRoute` (F2 of FDD-028). Same Dexie
+   * + ETag pattern, but the consumer supplies an arbitrary `onPayload`
+   * function instead of a writable signal. Enables routes whose
+   * consumer-visible state is **derived** from the raw payload (e.g.
+   * `/catalog/plans` projects `PlanCatalogDto[]` into a
+   * `Map<PlanTypeId, (FeatureKey | string)[]>`).
+   *
+   * The signal-based `hydrateRoute` delegates to this method.
+   */
+  private async hydrateRouteApply<T>(
+    route: string,
+    onPayload: (payload: T[]) => void,
+  ): Promise<void> {
+    const cached  = await this.db.catalogCache.get(route);
+    const isFresh = !!cached && (Date.now() - cached.fetchedAt) < CATALOG_CACHE_MAX_AGE_MS;
+
+    if (isFresh && cached) {
+      onPayload(cached.payload as T[]);
+      void this.revalidateRouteApply<T>(route, cached.etag, onPayload);
+      return;
+    }
+
+    try {
+      const response = await firstValueFrom(this.api.getFull<T[]>(route));
+      if (response.status === 200 && response.body) {
+        await this.writeCacheRow(route, response.body, this.readEtag(response.headers));
+        onPayload(response.body);
+      }
+    } catch {
+      // Network failure — consumer state keeps its current value.
+    }
+  }
+
+  /** Callback-based counterpart to `revalidateRoute` (F2 of FDD-028). */
+  private async revalidateRouteApply<T>(
+    route: string,
+    etag:  string,
+    onPayload: (payload: T[]) => void,
+  ): Promise<void> {
     try {
       const headers  = etag ? { 'If-None-Match': etag } : undefined;
       const response = await firstValueFrom(
@@ -215,17 +290,16 @@ export class CatalogService {
       );
 
       if (response.status === 304) {
-        // Unchanged — bump fetchedAt to defer the next stale-check.
         await this.safeDexieUpdate(route, { fetchedAt: Date.now() });
         return;
       }
 
       if (response.status === 200 && response.body) {
         await this.writeCacheRow(route, response.body, this.readEtag(response.headers));
-        targetSignal.set(response.body);
+        onPayload(response.body);
       }
     } catch {
-      // Silent — the previously-cached signal value remains valid.
+      // Silent — consumer state remains valid.
     }
   }
 

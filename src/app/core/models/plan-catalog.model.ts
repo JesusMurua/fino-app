@@ -42,8 +42,16 @@ export interface PricingTier {
   monthlyPrice: Record<PricingGroup, number>;
   /** MXN pesos per month when billed annually. */
   annualPrice: Record<PricingGroup, number>;
-  /** Cumulative FeatureKeys unlocked by this tier. */
-  features: FeatureKey[];
+  /**
+   * Cumulative FeatureKeys unlocked by this tier.
+   *
+   * After FDD-028 F2 (warn-and-keep policy D5), this array can carry
+   * opaque strings the backend introduces before the FE enum is updated.
+   * Rendering layers MUST handle `string` entries gracefully — typically
+   * by falling back to the raw string when `FEATURE_LABELS[key]` is
+   * undefined.
+   */
+  features: readonly (FeatureKey | string)[];
   /**
    * Stripe Price IDs used by the onboarding checkout, indexed by
    * `[cycle][group]`. Absent for Free (no Stripe call) and for tiers that

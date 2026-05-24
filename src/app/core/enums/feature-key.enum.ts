@@ -9,6 +9,21 @@ import { MacroCategoryType } from './config.enum';
  *
  * Source of truth: `.claude/business-rules-matrix.md`
  */
+/**
+ * Type guard for the FDD-028 D5 "warn-and-keep" policy.
+ *
+ * Backend `/catalog/plans` responses may carry feature strings the FE
+ * enum doesn't know about yet (a new `FeatureKey` shipped on the API
+ * before the FE was redeployed). The cache preserves them verbatim; the
+ * render layer uses this guard to narrow `(FeatureKey | string)[]` to
+ * `FeatureKey[]` before mapping to `FEATURE_LABELS`. Unknowns silently
+ * drop at render time but remain in the signal for the next deploy to
+ * pick up.
+ */
+export function isKnownFeatureKey(value: FeatureKey | string): value is FeatureKey {
+  return (Object.values(FeatureKey) as string[]).includes(value);
+}
+
 export enum FeatureKey {
   // --- Core (available on every plan, every giro) -------------------------
   /** Thermal printers, USB/BT scanners, local scales, cash drawer */

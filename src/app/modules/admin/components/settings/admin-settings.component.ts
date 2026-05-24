@@ -23,6 +23,7 @@ import {
 import {
   FeatureKey,
   GIRO_FEATURE_MAP,
+  isKnownFeatureKey,
   MACRO_CATEGORY_LABELS,
   MacroCategoryType,
   PlanTypeId,
@@ -287,7 +288,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
 
     const group = pricingGroupForMacro(macro);
     const currentTierFeatures = new Set<FeatureKey>(
-      catalog.find(t => t.planTypeId === currentPlan)?.features ?? [],
+      // Filter to known FeatureKeys before constructing the Set — the
+      // FDD-028 D5 wider type `(FeatureKey | string)[]` would otherwise
+      // be a contravariance violation for `Set<FeatureKey>`.
+      (catalog.find(t => t.planTypeId === currentPlan)?.features ?? []).filter(isKnownFeatureKey),
     );
     // Keeps F&B-only bullets (TableMap, WaiterApp, …) out of Retail/Services cards.
     const applicableFeatures = macro !== null
@@ -303,6 +307,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         name: tier.name,
         price: `$${tier.monthlyPrice[group].toLocaleString('es-MX')}/mes`,
         features: tier.features
+          // Narrow `(FeatureKey | string)[]` → `FeatureKey[]`. Unknown
+          // strings (FDD-028 D5 warn-and-keep) drop at render time but
+          // remain in the signal for the next FE deploy to render.
+          .filter(isKnownFeatureKey)
           .filter(key => !currentTierFeatures.has(key))
           .filter(key => applicableFeatures === null || applicableFeatures.has(key))
           .map(key => FEATURE_LABELS[key]),

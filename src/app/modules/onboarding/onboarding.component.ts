@@ -17,6 +17,7 @@ import {
   BusinessTypeId,
   FeatureKey,
   GIRO_FEATURE_MAP,
+  isKnownFeatureKey,
   MACRO_CATEGORY_LABELS,
   MacroCategoryType,
   deriveSubCategory,
@@ -282,6 +283,10 @@ export class OnboardingComponent implements OnInit {
       const isLocked = !allowed.has(slug);
       const priceTable = cycle === 'annual' ? tier.annualPrice : tier.monthlyPrice;
       const features = tier.features
+        // Narrow `(FeatureKey | string)[]` → `FeatureKey[]`. Unknown
+        // strings (FDD-028 D5 warn-and-keep) drop at render time but
+        // remain in the signal for the next FE deploy to render.
+        .filter(isKnownFeatureKey)
         .filter(key => applicableFeatures === null || applicableFeatures.has(key))
         .map(key => FEATURE_LABELS[key]);
       return {
