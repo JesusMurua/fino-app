@@ -1,0 +1,8 @@
+[
+  { "id": 1, "code": "free",         "name": "Disponible",   "color": "#6B7280", "sortOrder": 1 },
+  { "id": 2, "code": "in_kitchen",   "name": "En cocina",    "color": "#F59E0B", "sortOrder": 2 },
+  { "id": 3, "code": "ready",        "name": "Listo",        "color": "#10B981", "sortOrder": 3 },
+  { "id": 4, "code": "waiting_bill", "name": "Pidió cuenta", "color": "#3B82F6", "sortOrder": 4 },
+  { "id": 5, "code": "paid",         "name": "Pagada",       "color": "#6B7280", "sortOrder": 5 },
+  { "id": 6, "code": "reserved",     "name": "Reservada",    "color": "#8B5CF6", "sortOrder": 6 }
+]

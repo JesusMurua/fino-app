@@ -5,7 +5,8 @@ export * from './business-config.model';
 export * from './business-giro.model';
 export * from './business-settings.model';
 export * from './catalog.model';
-export * from './catalog.constants';
+// catalog.constants deleted in FDD-028 F6 — hardcoded fallbacks replaced
+// by seed JSONs under src/assets/catalog-seed/ + Dexie cache (D2).
 export * from './device-config.model';
 export * from './device.model';
 export * from './category.model';

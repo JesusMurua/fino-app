@@ -18,14 +18,12 @@ import {
   PlanTypeDto,
   ZoneTypeCatalog,
 } from '../models/catalog.model';
-import {
-  BUSINESS_TYPES,
-  DEVICE_MODES,
-  DISPLAY_STATUSES,
-  KITCHEN_STATUSES,
-  PAYMENT_METHODS,
-  ZONE_TYPES,
-} from '../models/catalog.constants';
+// FDD-028 F6: hardcoded `catalog.constants.ts` deleted. Cold-boot
+// offline UX now relies on the Dexie cache (FDD-028 D2) with a
+// last-resort fallback to seed JSONs under `src/assets/catalog-seed/`
+// (see `loadSeedFallback()` below). `PLAN_CATALOG` is retained because
+// it carries commercial metadata (prices, Stripe IDs, badges) that the
+// backend does NOT serve — see plan-catalog.model.ts.
 import { PLAN_CATALOG } from '../models/catalog.fallback';
 import { PricingTier } from '../models/plan-catalog.model';
 import { ApiService } from './api.service';
@@ -54,12 +52,18 @@ export class CatalogService {
   private readonly api = inject(ApiService);
   private readonly db  = inject(DatabaseService);
 
-  readonly kitchenStatuses = signal<KitchenStatusCatalog[]>(KITCHEN_STATUSES);
-  readonly displayStatuses = signal<DisplayStatusCatalog[]>(DISPLAY_STATUSES);
-  readonly paymentMethods  = signal<PaymentMethodCatalog[]>(PAYMENT_METHODS);
-  readonly deviceModes     = signal<DeviceModeCatalog[]>(DEVICE_MODES);
-  readonly businessTypes   = signal<BusinessTypeCatalog[]>(BUSINESS_TYPES);
-  readonly zoneTypes       = signal<ZoneTypeCatalog[]>(ZONE_TYPES);
+  // FDD-028 F6: initial values are `[]`. Hydration order on app boot:
+  // (1) Dexie cache hit (≤ 20 ms) — populated on first online session;
+  // (2) network fetch (with `If-None-Match` on revalidate);
+  // (3) seed JSON fallback (`src/assets/catalog-seed/<route>.json`)
+  //     on network failure when Dexie is also empty (first-install offline).
+  // See `loadSeedFallback()` and `hydrateRouteApply()` for the chain.
+  readonly kitchenStatuses = signal<KitchenStatusCatalog[]>([]);
+  readonly displayStatuses = signal<DisplayStatusCatalog[]>([]);
+  readonly paymentMethods  = signal<PaymentMethodCatalog[]>([]);
+  readonly deviceModes     = signal<DeviceModeCatalog[]>([]);
+  readonly businessTypes   = signal<BusinessTypeCatalog[]>([]);
+  readonly zoneTypes       = signal<ZoneTypeCatalog[]>([]);
 
   // ── FDD-028 F4 (Cohort C) ─ new consumer surface, no hardcoded fallback.
   // Initial value is `[]`; F6 will commit seed JSONs under
@@ -289,10 +293,17 @@ export class CatalogService {
       if (response.status === 200 && response.body) {
         await this.writeCacheRow(route, response.body, this.readEtag(response.headers));
         onPayload(response.body);
+        return;
       }
     } catch {
-      // Network failure — consumer state keeps its current value.
+      // Network failure — fall through to seed JSON fallback below.
     }
+
+    // FDD-028 F6 step 4 — last-resort fallback to the bundled seed JSON
+    // (only reaches here if Dexie was empty AND network failed). Empty
+    // result keeps the signal at its initial `[]` value.
+    const seed = await this.loadSeedFallback<T>(route);
+    if (seed.length > 0) onPayload(seed);
   }
 
   /** Callback-based counterpart to `revalidateRoute` (F2 of FDD-028). */
@@ -345,6 +356,35 @@ export class CatalogService {
       await this.db.catalogCache.update(route, patch);
     } catch (err) {
       console.warn(`[CatalogService] Failed to update cache row for ${route}:`, err);
+    }
+  }
+
+  /**
+   * Last-resort fallback for first-install cold-boot without network
+   * (FDD-028 F6 step 4 of the §7.3 fallback chain). Fetches the
+   * bundled seed JSON under `src/assets/catalog-seed/<resource>.json`
+   * — present for routes that had a hardcoded fallback before F6
+   * (kitchen-statuses, display-statuses, payment-methods, device-modes,
+   * zone-types, business-types, macro-categories) and absent for new
+   * Cohort C routes that ship empty until first online sync.
+   *
+   * Returns `[]` on any failure (missing file, parse error, fetch
+   * rejection) — silent degradation; caller keeps signal at `[]`.
+   *
+   * Manual seed maintenance for now; `npm run sync-catalog-seed`
+   * (future) will regenerate them against production backend when
+   * `DbInitializer` changes.
+   */
+  private async loadSeedFallback<T>(route: string): Promise<T[]> {
+    const resource = route.split('/').pop();
+    if (!resource) return [];
+    try {
+      const response = await fetch(`/assets/catalog-seed/${resource}.json`);
+      if (!response.ok) return [];
+      const data = await response.json() as T[];
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
     }
   }
 

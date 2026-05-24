@@ -1,0 +1,22 @@
+[
+  { "id": 1,  "primaryMacroCategoryId": 1, "name": "Restaurante" },
+  { "id": 2,  "primaryMacroCategoryId": 1, "name": "Bar / Cantina" },
+  { "id": 3,  "primaryMacroCategoryId": 1, "name": "Sports Bar / Wings" },
+  { "id": 4,  "primaryMacroCategoryId": 2, "name": "Taquería" },
+  { "id": 5,  "primaryMacroCategoryId": 2, "name": "Dogos" },
+  { "id": 6,  "primaryMacroCategoryId": 2, "name": "Hamburguesas" },
+  { "id": 7,  "primaryMacroCategoryId": 2, "name": "Cafetería" },
+  { "id": 8,  "primaryMacroCategoryId": 2, "name": "Paletería / Nevería" },
+  { "id": 9,  "primaryMacroCategoryId": 2, "name": "Panadería / Repostería" },
+  { "id": 10, "primaryMacroCategoryId": 3, "name": "Abarrotes / Miscelánea" },
+  { "id": 11, "primaryMacroCategoryId": 3, "name": "Expendio / Depósito" },
+  { "id": 12, "primaryMacroCategoryId": 3, "name": "Refaccionaria" },
+  { "id": 13, "primaryMacroCategoryId": 3, "name": "Ferretería" },
+  { "id": 14, "primaryMacroCategoryId": 3, "name": "Papelería" },
+  { "id": 15, "primaryMacroCategoryId": 3, "name": "Farmacia" },
+  { "id": 16, "primaryMacroCategoryId": 3, "name": "Boutique / Ropa y Calzado" },
+  { "id": 17, "primaryMacroCategoryId": 4, "name": "Estética / Barbería" },
+  { "id": 18, "primaryMacroCategoryId": 4, "name": "Taller Mecánico" },
+  { "id": 19, "primaryMacroCategoryId": 4, "name": "Consultorio / Clínica" },
+  { "id": 20, "primaryMacroCategoryId": 4, "name": "Gimnasio / Deportes" }
+]

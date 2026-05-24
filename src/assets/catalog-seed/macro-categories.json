@@ -1,0 +1,6 @@
+[
+  { "id": 1, "internalCode": "food-beverage",  "publicName": "Restaurantes y Bares",     "description": null, "posExperience": "Restaurant", "hasKitchen": true,  "hasTables": true  },
+  { "id": 2, "internalCode": "quick-service",  "publicName": "Comida Rápida y Cafés",    "description": null, "posExperience": "Counter",    "hasKitchen": true,  "hasTables": false },
+  { "id": 3, "internalCode": "retail",         "publicName": "Tiendas y Comercios",       "description": null, "posExperience": "Retail",     "hasKitchen": false, "hasTables": false },
+  { "id": 4, "internalCode": "services",       "publicName": "Servicios Especializados",  "description": null, "posExperience": "Services",   "hasKitchen": false, "hasTables": false }
+]
