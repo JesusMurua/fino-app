@@ -15,10 +15,12 @@
 | **A — ID-range mapping** | 🔴 Crítico | `macroOfBusinessType()` infiere macro por rangos `id <= N` — drift garantizado si backend reordena `BusinessTypeId` seeds |
 | **A — SubGiro** | 🟠 Alto | `Yoga` y `Crossfit` declarados en enum pero **nunca usados**; solo `Gym` está cableado. Adding subgiros requiere modificar ≥4 archivos |
 | **B — Frontend forms** | 🟠 Alto | 153 referencias a `FormBuilder/FormGroup/FormControl` en 10 components — ningún form metadata-driven |
-| **B — Backend Global Filters** | 🔴 `[NO VERIFICADO]` | Endpoints exigen `branchId` explícito (`/branch/{id}/config`, `/api/Devices/limits?branchId=`) → fuerte sospecha de que EF Core **NO** tiene `HasQueryFilter` transparente. Data-leak risk en endpoints nuevos. |
+| **B — Backend Global Filters** | 🟢 **RESOLVED** | `ApplyTenantFilters` en `POS.Repository/ApplicationDbContext.cs` + `IBranchScoped` / `IBusinessScoped` markers + `BranchInjectionInterceptor`. Suspicion falsified by cross-repo evidence; URL-level `branchId` params are independent of DbContext-level filters. |
 | **B — Bridge supervisors** | `[NO VERIFICADO]` | No puedo confirmar si supervisors del Fino Bridge consultan `features` claim antes de inicializar. Audit separado requerido. |
+| **C — WebApplicationFactory** | 🟢 **RESOLVED** | `POS.IntegrationTests/Infrastructure/CustomWebApplicationFactory.cs` + `JwtTestFactory.cs` + `FakeTenantContext.cs` + `TenantIsolationTests.cs` + `CatalogApiTests.cs` (35/35 facts). Real-JWT-signed, no auth bypass. |
+| **C — SignalR loopback** | 🔴 **CONFIRMED MISSING** | Backend audit: `grep` on `POS.IntegrationTests` for `HubConnection`/`HubConnectionBuilder`/`Microsoft.AspNetCore.SignalR.Client` returns zero matches. Production hubs `/hubs/kds` + `/hubs/bridge` have no loopback tests. |
 | **C — Unit tests** | 🔴 Crítico | **1 archivo `.spec.ts`** en `src/` (`cash-register.service.spec.ts`) vs ~150+ archivos productivos |
-| **C — Mock JWT** | 🔴 Crítico | E2E fixture solo seedea DeviceConfig; **no existe `seedJwtClaims()`** para variar macro/features/plan en tests |
+| **C — Mock JWT** | 🟢 **RESOLVED** | `seedJwtClaims()` fixture + 5 pre-canned scenarios (`TEST_TENANT_SCENARIOS`) + smoke spec validating all scenarios. See §3.2. |
 | **C — Virtual hardware** | 🔴 Crítico | Sin `MockPrinterTransport` / `VirtualScanner` — flujos print/scan no testeables en CI headless |
 
 Conclusión rápida: la **abstracción está bien diseñada** (`TenantContextService`, `*appFeature`, `featureGuard`, `FeatureKey` enum), pero **la disciplina se diluye** en 7+ componentes que saltan la capa con `currentMacro() === X`. La test infra es prácticamente inexistente — sin mock JWT + virtual hardware no se puede validar el contrato multi-tenant en CI.
@@ -57,7 +59,9 @@ switch (this.tenantContext.currentMacro()) {
 ```
 **Tres switches idénticos** (`namePlaceholder`, `modifierGroupPlaceholder`, `modifierExtraPlaceholder`). Si agregas `Hospitality`, **se renderiza con placeholders de Restaurante silenciosamente**. Open-Closed violado.
 
-### 1.2 ID-range hardcoded para inferir macro
+### 1.2 ID-range hardcoded para inferir macro [RESOLVABLE — gated on FDD-028 F4]
+
+> **Resolution path (FDD-028 / Vector A complement)**: el helper `macroOfBusinessType()` queda eliminado en la fase F4 de [FDD-028](FDD-028-catalog-api-integration.md). Reemplazo: `catalogService.resolveMacro(businessTypeId)` joins `BusinessTypeDto` cached + `MacroCategoryDto` cached por `primaryMacroCategoryId`. Backend ahora ship `BusinessTypeDto.primaryMacroCategoryId` como FK explícita (BDD-021), eliminando la necesidad de inferir macro por rangos de ID en el frontend. **Status pasa a RESOLVED cuando F4 mergea**.
 
 [src/app/core/enums/config.enum.ts:106-111](../src/app/core/enums/config.enum.ts#L106-L111):
 ```ts
@@ -92,7 +96,9 @@ export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
 - Update cada `currentSubCategory() === SubCategoryType.Gym` (admin-shell, admin-customers, dashboard, admin-products → 5 files con refs a `SubCategoryType.*`).
 - Update `posExperience` resolution si nueva subcat necesita layout distinto.
 
-### 1.4 `hasKitchen` con fallback codeado al macro
+### 1.4 `hasKitchen` con fallback codeado al macro [RESOLVABLE — gated on FDD-028 F3 + F6 + F5]
+
+> **Resolution path (FDD-028)**: la race condition en cold-boot desaparece cuando [FDD-028](FDD-028-catalog-api-integration.md) cierra: (a) F3 cambia la fuente de `hasKitchen` de `currentBusinessType()?.hasKitchen` (campo que ya no existe en `BusinessTypeDto`) a `TenantContextService.currentBusinessType()` synthetic shape que joinea con `MacroCategoryDto` cached; (b) F6 commitea seed JSONs bajo `src/assets/catalog-seed/*.json` garantizando que `MacroCategoryDto` está disponible en cualquier boot (incluyendo first-install offline); (c) F5 elimina el fallback macro-based en `tenant-context.service.ts:99-100` alongside la migración del enum. **Status pasa a RESOLVED cuando F3 + F6 + F5 mergean**.
 
 [src/app/core/services/tenant-context.service.ts:97-100](../src/app/core/services/tenant-context.service.ts#L97-L100):
 ```ts
@@ -172,7 +178,9 @@ Esta sub-sección documenta los proxies semánticos introducidos durante el refa
 
 En lugar de componentes polimórficos cargados por factory keyed on `posExperience`, hay templates monolíticos con bloques condicionales. **Crecimiento lineal mal contenido**: cada nuevo vertical agrega `@if` blocks al mismo file en lugar de crear un nuevo componente.
 
-### 2.2 Forms estáticos, no metadata-driven
+### 2.2 Forms estáticos, no metadata-driven [PARTIALLY RESOLVED — product-form POC only]
+
+> **Resolución parcial (Vector B POC)**: se implementó la arquitectura de 3 capas (`schemas/*` → `ProductFormBuilderService` → renderers `<app-form-field>` / `<app-form-section>` / `<app-product-preview>`) **acotada al `product-form`**. El `@switch (currentMacro())` del preview pane fue reemplazado por `<app-product-preview [variant]="schemaFor(posExperience()).previewVariant">`. Los otros 9 archivos con FormBuilder permanecen hand-rolled — extensión gradual via **"Rule of 3"** (cuando un segundo form requiera el patrón, el `ProductFormBuilderService` se generaliza a `shared/`).
 
 **153 referencias** a `FormBuilder/FormGroup/FormControl` en 10 component files. Cada form es hand-rolled. No hay:
 - Definición declarativa de forms por giro (ej. `FormSchema[giro]`).
@@ -213,15 +221,25 @@ const normalised = value.toLowerCase().replace(/[^a-z]/g, '');
 ```
 Estos branches existen porque el backend ha emitido el mismo claim en formatos distintos en distintos momentos. **Contrato JWT no congelado** → riesgo de regresión silenciosa cada vez que backend ajusta `JsonSerializerOptions`. Sugerir contract test en CI compartido entre repos.
 
-### 2.6 `[NO VERIFICADO]` Backend EF Core Global Query Filters
+### 2.6 Backend EF Core Global Query Filters [RESOLVED — cross-repo evidence delivered]
 
-Sin acceso al repo `pos-api`. Inferencias desde el frontend:
+> **Resolution (cross-repo audit 2026-05-23)**: la sospecha está **falseada**. EF Core Global Query Filters **están presentes** en `pos-api`. Evidence:
+> - `POS.Repository/ApplicationDbContext.cs::ApplyTenantFilters(ModelBuilder)` invocado desde `OnModelCreating`.
+> - Marker interfaces: `POS.Domain/Interfaces/IBranchScoped.cs` (`int BranchId`) + `POS.Domain/Interfaces/IBusinessScoped.cs` (`int BusinessId`).
+> - `ITenantContext` (Scoped) inyectado al DbContext; resuelto per-request desde JWT claims por `POS.Repository/Tenancy/HttpTenantContext.cs`.
+> - `ApplyTenantFilters` itera `modelBuilder.Model.GetEntityTypes()` y construye expression-tree filters `e => !ctx.{Scope}.HasValue || e.{Scope} == ctx.{Scope}.Value` vía `IMutableEntityType.SetQueryFilter`. Para entidades que implementan ambas markers, los predicados se componen con `Expression.AndAlso`.
+> - Write-side guard: `POS.Repository/Interceptors/BranchInjectionInterceptor.cs` overwrites `BranchId` on inserts para `IBranchScoped`.
+> - Filters degrade to no-op cuando `ITenantContext` regresa `null` (background jobs, EF design-time tooling, migrations, seeding) — by design.
+>
+> **Frontend explicit `branchId` URL params son independientes del DbContext-level filter** (likely para cross-branch admin flows explícitos). Routine endpoints **sí** están protegidos.
+
+Sin acceso al repo `pos-api` al momento del audit original. Inferencias desde el frontend (legacy — superseded by cross-repo evidence above):
 - JWT carga `businessId` y `branchId` claims.
 - Endpoints como `/api/branch/{id}/config`, `/api/Devices/limits?branchId={id}` — el `branchId` se pasa **explícitamente** en URL/query.
 - Si EF Core tuviera `HasQueryFilter` transparente sobre `BranchId`, el frontend no necesitaría pasarlo (el filtro se aplicaría desde el JWT claim server-side).
-- **Sospecha fuerte**: el backend NO aplica filtros globales transparentes a nivel de DbContext.
+- ~~**Sospecha fuerte**: el backend NO aplica filtros globales transparentes a nivel de DbContext.~~ **FALSEADA** — ver resolución arriba.
 
-**Recomendación urgente**: auditar `pos-api` para confirmar si existen `modelBuilder.Entity<T>().HasQueryFilter(e => e.BranchId == _tenantContext.BranchId)` para entidades scopeables. Si no, cualquier endpoint nuevo es susceptible a data leak por omisión de WHERE.
+~~**Recomendación urgente**: auditar `pos-api` para confirmar si existen `modelBuilder.Entity<T>().HasQueryFilter(e => e.BranchId == _tenantContext.BranchId)` para entidades scopeables.~~ **HECHO** — confirmado presente.
 
 ### 2.7 `[NO VERIFICADO]` Bridge supervisors no inspeccionados
 
@@ -252,7 +270,9 @@ Servicios críticos sin test:
 
 Componentes sin `.spec.ts`: 100%.
 
-### 3.2 E2E con cobertura mínima + sin mock JWT
+### 3.2 E2E con cobertura mínima + sin mock JWT [RESOLVED]
+
+> **Resolución (Vector C §3.2)**: implementado `seedJwtClaims(page, claims)` + `mockAuthMeEndpoint(page, claims)` en [e2e/fixtures/jwt-mock.ts](../e2e/fixtures/jwt-mock.ts). Sintetiza un JWT firmado-formato + AuthUser completo (con `primaryMacroCategoryId` numérico, `onboardingStatusId: 3`, `features[]`, `currentBranchId`) e inyecta en `localStorage` antes de cualquier script de página. Adicional: [e2e/fixtures/scenarios.ts](../e2e/fixtures/scenarios.ts) con 5 escenarios pre-canned (`RESTAURANT_PRO`, `QUICK_SERVICE_PRO`, `RETAIL_BASIC`, `GYM_PRO`, `FREE_TIER`). Validado vía [e2e/tests/jwt-mock-smoke.spec.ts](../e2e/tests/jwt-mock-smoke.spec.ts) — 5/5 tests verde, smoke spec valida el contrato del fixture (token shape, AuthUser shape, JWT claims). Nota: full vertical-aware UI rendering end-to-end espera resolución de §3.3 (CapturingPrinterTransport) y mocks de `/business/settings` + `/tax/catalog`.
 
 **3 archivos E2E**: [login.spec.ts](../e2e/tests/login.spec.ts), [pin.spec.ts](../e2e/tests/pin.spec.ts), [stock-receipts.spec.ts](../e2e/tests/stock-receipts.spec.ts).
 
@@ -288,9 +308,18 @@ export class CapturingPrinterTransport implements PrinterTransport {
 ```
 Inyectable en tests via `providers: [{ provide: PrinterService, useFactory: () => mock }]`.
 
-### 3.4 `[NO VERIFICADO]` Sin WebApplicationFactory audit (backend)
+### 3.4 WebApplicationFactory audit (backend) [RESOLVED — cross-repo evidence delivered]
 
-Cannot inspect `pos-api`. Standard pattern .NET integration tests:
+> **Resolution (cross-repo audit 2026-05-23)**: `POS.IntegrationTests` project **existe** en `pos-api` (xUnit 2.9.3 + `Microsoft.AspNetCore.Mvc.Testing` 10.0.3 + EF Core InMemory 10.0.4 + FluentAssertions 6.12.2). Evidence:
+> - `POS.IntegrationTests/Infrastructure/CustomWebApplicationFactory.cs` — extends `WebApplicationFactory<Program>`. Static ctor sets JWT/Stripe/HMAC test secrets antes de `Program.Main`. `ConfigureWebHost` swaps `DbContextOptions<ApplicationDbContext>` a `UseInMemoryDatabase($"PosTests_{Guid.NewGuid():N}")`, remueve hosted services en namespace `POS.API.Workers`.
+> - `POS.IntegrationTests/Infrastructure/JwtTestFactory.cs` — forja real HS256 tokens con la misma key que el test host valida. Métodos: `CreateUserToken(businessId, branchId, userId, role)`, `CreateDeviceToken(businessId, branchId, mode, features[])`.
+> - `POS.IntegrationTests/Infrastructure/FakeTenantContext.cs` — mutable `ITenantContext` para DbContext-level tests.
+> - `POS.IntegrationTests/Infrastructure/InMemoryModelCustomizer.cs` — pre-registra `JsonDocument? ↔ string` value converter.
+> - `POS.IntegrationTests/Tenancy/TenantIsolationTests.cs` — `IClassFixture<CustomWebApplicationFactory>`, seeds Business B + 2 orders, runs both HTTP test y DbContext-level test.
+> - Adicional: `POS.IntegrationTests/Catalogs/CatalogApiTests.cs` ships 13 integration tests para BDD-021 (35/35 facts passing incluyendo theory expansions). Ver [BDD-021 §9.2](BDD-021-Dynamic-Catalogs-API.md).
+> - **Authentication mocking**: NO bypass handler. Tests firman JWTs reales con la symmetric key del validator. Tenant seeding per test class.
+
+Cannot inspect `pos-api` al momento del audit original. Standard pattern .NET integration tests (legacy — superseded by cross-repo evidence above):
 ```csharp
 public class CustomWebApplicationFactory : WebApplicationFactory<Program> {
   protected override void ConfigureWebHost(IWebHostBuilder builder) {
@@ -303,7 +332,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program> {
 
 Si no existe en pos-api → cada integration test arranca host real con DB real → tests slow + flaky + sin variabilidad de claims.
 
-### 3.5 Sin loopback de SignalR hubs
+### 3.5 Sin loopback de SignalR hubs [CONFIRMED MISSING — cross-repo evidence]
+
+> **Cross-repo audit confirmation (2026-05-23)**: backend audit verificó explícitamente:
+> - `grep` on `POS.IntegrationTests` for `HubConnection`, `HubConnectionBuilder`, `Microsoft.AspNetCore.SignalR.Client`, `TestServer.*Hub`, `SignalRTest` → **zero matches**.
+> - `Microsoft.AspNetCore.SignalR.Client` NuGet **NOT referenced** from the test project.
+> - Production hubs registrados en `POS.API/Program.cs:395-396`: `/hubs/kds` (KdsHub) + `/hubs/bridge` (BridgeHub).
+> - **Ningún** hub tiene loopback / end-to-end integration test que asserte event emission.
+> - Las únicas referencias a "SignalR" en el repo son design docs (`docs/AUDIT-026`, `docs/BDD-010`) — no test code.
+>
+> **Status remains OPEN as a backend testing gap.** FDD-028 no toca esta surface; tracking aparte.
 
 El frontend tiene 3 clientes SignalR ([ScaleSignalrService](../src/app/core/services/scale.signalr.service.ts), [KitchenService](../src/app/core/services/kitchen.service.ts), [AccessDashboardSignalrService](../src/app/core/services/access-dashboard.signalr.service.ts)). Para testear "el bridge recibe `OpenTurnstile` y abre el torniquete":
 - Necesitas **virtual SignalR server** en tests del bridge (.NET) que emita eventos al hub local del bridge.
@@ -425,3 +463,22 @@ El comentario del file dice "duplicated intentionally" — pero la duplicación 
 - Sección 4 action plan: P1 placeholders DONE; P1 vertical keys ALTERNATIVE APPROACH.
 - Sección 5 executive summary updated to reflect post-refactor state.
 - Vector A — Domain Gating closed in the TL;DR.
+
+### 2026-05-21 — Vector B POC + Vector C §3.2 closure
+
+- §2.2 PARTIALLY RESOLVED (product-form POC: 3-layer schema architecture — `schemas/product-form.{schema,registry,validators}.ts`, `ProductFormBuilderService`, renderers `<app-form-field>` / `<app-form-section>` / `<app-product-preview>`). Preview pane `@switch (currentMacro())` replaced by `<app-product-preview [variant]>`. Other 9 forms remain hand-rolled — Rule of 3 trigger documented.
+- §3.2 RESOLVED (`seedJwtClaims()` fixture + `mockAuthMeEndpoint()` + 5 pre-canned `TEST_TENANT_SCENARIOS` + 5/5 green smoke spec).
+- TL;DR "C — Mock JWT" row → RESOLVED. "B — Frontend forms" row remains 🟠 Alto (only 1 of 10 forms migrated; POC scope).
+- §1.2, §1.3, §1.4 remain strictly OPEN. §2.1 / §2.3 stay at prior PARTIALLY RESOLVED. §2.4-§2.7, §3.1, §3.3-§3.8 untouched.
+
+### 2026-05-23 — Cross-repo evidence absorbed + FDD-028 closures proposed
+
+Applied via [FDD-028 Appendix A](FDD-028-catalog-api-integration.md).
+
+- §2.6 (Global Query Filters): 🔴 `[NO VERIFICADO]` → 🟢 **RESOLVED**. Evidence: `POS.Repository/ApplicationDbContext.cs::ApplyTenantFilters` + `IBranchScoped`/`IBusinessScoped` markers + `BranchInjectionInterceptor`. Sospecha original (frontend pasa `branchId` explícito ⇒ no global filters) está **falseada** — los URL-level params son independientes del DbContext-level filter.
+- §3.4 (WebApplicationFactory): 🔴 `[NO VERIFICADO]` → 🟢 **RESOLVED**. Evidence: `POS.IntegrationTests/Infrastructure/{CustomWebApplicationFactory, JwtTestFactory, FakeTenantContext, InMemoryModelCustomizer}.cs` + `Tenancy/TenantIsolationTests.cs` + `Catalogs/CatalogApiTests.cs` (35/35 facts).
+- §1.2 (ID-range mapping `macroOfBusinessType`): 🔴 Crítico → 🟡 **RESOLVABLE** (gated on FDD-028 F4). Backend ahora ship `BusinessTypeDto.primaryMacroCategoryId` como FK explícita; F4 elimina el helper y reemplaza con `catalogService.resolveMacro(businessTypeId)` join.
+- §1.4 (hasKitchen race condition): OPEN → 🟡 **RESOLVABLE** (gated on FDD-028 F3 + F6 + F5). Race eliminada por Dexie persistence + seed JSON fallback + `TenantContextService.currentBusinessType()` synthetic shape with join.
+- §2.7 (Bridge supervisors): still 🔴 `[NO VERIFICADO]` — `pos-local-bridge` audit pending.
+- §3.5 (SignalR loopback): 🔴 Crítico → 🔴 **CONFIRMED MISSING**. Backend audit verified zero matches for `HubConnection*` in `POS.IntegrationTests`; `Microsoft.AspNetCore.SignalR.Client` NuGet not referenced.
+- TL;DR table updated: `B — Backend Global Filters` row → 🟢 RESOLVED; new `C — WebApplicationFactory` row added → 🟢 RESOLVED; new `C — SignalR loopback` row added → 🔴 CONFIRMED MISSING.
