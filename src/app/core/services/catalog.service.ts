@@ -378,9 +378,13 @@ export class CatalogService {
     return this.zoneTypes().find(s => s.code === code);
   }
 
-  /** Returns business type config by code */
-  getBusinessType(code: string): BusinessTypeCatalog | undefined {
-    return this.businessTypes().find(s => s.code === code);
+  /**
+   * Returns business type config by id (FDD-028 F3 — replaces the
+   * legacy `getBusinessType(code: string)` lookup since `code` is no
+   * longer in the BDD-021 `BusinessTypeDto` wire shape).
+   */
+  getBusinessTypeById(id: number): BusinessTypeCatalog | undefined {
+    return this.businessTypes().find(s => s.id === id);
   }
 
   /**
@@ -390,8 +394,8 @@ export class CatalogService {
    * The returned `MacroCategoryDto` carries the macro-derived attributes
    * (`posExperience`, `hasKitchen`, `hasTables`, `internalCode`) that the
    * F3-reshaped `BusinessTypeDto` no longer ships. Replaces the
-   * hardcoded `macroOfBusinessType()` ID-range helper deleted in this
-   * phase (closes AUDIT-058 §1.2).
+   * hardcoded `macroOfBusinessType()` ID-range helper deleted in F4
+   * (closes AUDIT-058 §1.2).
    *
    * @returns The joined `MacroCategoryDto` or `null` if either catalog
    *          has not been hydrated yet or the business type id is unknown.
@@ -399,9 +403,7 @@ export class CatalogService {
   resolveMacro(businessTypeId: number): MacroCategoryDto | null {
     const bt = this.businessTypes().find(b => b.id === businessTypeId);
     if (!bt) return null;
-    const macroId = (bt as BusinessTypeCatalog & { primaryMacroCategoryId?: number }).primaryMacroCategoryId;
-    if (typeof macroId !== 'number') return null;
-    return this.macroCategories().find(m => m.id === macroId) ?? null;
+    return this.macroCategories().find(m => m.id === bt.primaryMacroCategoryId) ?? null;
   }
 
   /**

@@ -45,15 +45,39 @@ export interface DeviceModeCatalog {
  */
 export type PosExperience = 'Restaurant' | 'Counter' | 'Retail' | 'Quick' | 'Services';
 
-/** Business type catalog entry with feature flags */
+/**
+ * Business type catalog entry.
+ *
+ * **FDD-028 F3 reshape (BDD-021 Cohort B)**: the backend `BusinessTypeDto`
+ * now ships `{ id, primaryMacroCategoryId, name }` only. The legacy
+ * fields `code` / `hasKitchen` / `hasTables` / `posExperience` /
+ * `sortOrder` are marked **optional** during the transition so the
+ * hardcoded `BUSINESS_TYPES` fallback (which still carries them) and
+ * the new backend wire (which doesn't) both satisfy this interface.
+ * F6 deletes the hardcoded fallback; F5 can then tighten the interface
+ * to drop the optionals entirely.
+ *
+ * Macro-derived attributes (`hasKitchen`, `hasTables`, `posExperience`)
+ * are now sourced from the joined `MacroCategoryDto` via
+ * `catalogService.resolveMacro(primaryMacroCategoryId)`. Consumers
+ * should prefer the `MacroCategoryDto` join over reading these fields
+ * directly from `BusinessTypeCatalog`.
+ */
 export interface BusinessTypeCatalog {
   id: number;
-  code: string;
+  /** FK to `MacroCategoryDto.id`. Required after F3 — backend always ships it. */
+  primaryMacroCategoryId: number;
   name: string;
-  hasKitchen: boolean;
-  hasTables: boolean;
-  posExperience: PosExperience;
-  sortOrder: number;
+  /** @deprecated Legacy field — removed from backend wire in BDD-021. Resolve macro instead. */
+  code?: string;
+  /** @deprecated Now lives on `MacroCategoryDto`. Use `resolveMacro().hasKitchen`. */
+  hasKitchen?: boolean;
+  /** @deprecated Now lives on `MacroCategoryDto`. Use `resolveMacro().hasTables`. */
+  hasTables?: boolean;
+  /** @deprecated Now lives on `MacroCategoryDto`. Use `resolveMacro().posExperience`. */
+  posExperience?: PosExperience;
+  /** @deprecated Removed from backend wire in BDD-021. */
+  sortOrder?: number;
 }
 
 /** Zone type catalog entry */

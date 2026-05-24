@@ -151,7 +151,10 @@ export class ConfigService {
       const btCatalog = config.businessTypeCatalog
         ? { ...config.businessTypeCatalog, posExperience: posExperience ?? config.businessTypeCatalog.posExperience }
         : posExperience
-          ? { id: 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
+          // FDD-028 F3: synthetic placeholder when no businessTypeCatalog
+          // exists yet. `primaryMacroCategoryId` is now required on the
+          // interface; fall back to the resolved macroId, or 0 if unknown.
+          ? { id: 0, primaryMacroCategoryId: macroId ?? 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
           : config.businessTypeCatalog;
 
       // Use `||` (not `??`) on string fields so an empty remote string
