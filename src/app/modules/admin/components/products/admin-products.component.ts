@@ -18,7 +18,7 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImportPreview, ProductImportResult } from '../../../../core/models';
-import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES, MacroCategoryType, SubCategoryType } from '../../../../core/enums';
+import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES, MacroCategoryCode, SubCategoryType } from '../../../../core/enums';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -89,10 +89,10 @@ export class AdminProductsComponent implements OnInit {
       return 'Ej. Membresías';
     }
     switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.FoodBeverage:
-      case MacroCategoryType.QuickService:
+      case MacroCategoryCode.FoodBeverage:
+      case MacroCategoryCode.QuickService:
         return 'Ej. Bebidas';
-      case MacroCategoryType.Retail:
+      case MacroCategoryCode.Retail:
         return 'Ej. Categoría o departamento';
       default:
         return 'Ej. Categoría';

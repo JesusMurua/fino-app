@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { MacroCategoryType } from '../../core/enums';
+import { idToCode, MacroCategoryCode } from '../../core/enums';
 import {
   DeviceConfig,
   LAST_AUTH_ENTRY_KEY,
@@ -38,13 +38,13 @@ const DEFAULT_OPERATIONAL_CARD: OperationalCardDescriptor = {
  *   - Services     → Recepción y Membresías (gym/spa/services)
  *   - FoodBeverage → Punto de Venta (caja + comandas + mesas)
  */
-const OPERATIONAL_CARD_BY_MACRO: Partial<Record<MacroCategoryType, OperationalCardDescriptor>> = {
-  [MacroCategoryType.Services]: {
+const OPERATIONAL_CARD_BY_MACRO: Partial<Record<MacroCategoryCode, OperationalCardDescriptor>> = {
+  [MacroCategoryCode.Services]: {
     icon: 'pi pi-id-card',
     title: 'Recepción y Membresías',
     subtitle: 'Gestión de socios, accesos y vigencias.',
   },
-  [MacroCategoryType.FoodBeverage]: {
+  [MacroCategoryCode.FoodBeverage]: {
     icon: 'pi pi-shopping-cart',
     title: 'Punto de Venta',
     subtitle: 'Caja, comanderas y servicio a mesas.',
@@ -56,12 +56,12 @@ const OPERATIONAL_CARD_BY_MACRO: Partial<Record<MacroCategoryType, OperationalCa
  * from the cached PosExperience when no live user session is available
  * (e.g. browser was logged out but the device was paired previously).
  */
-function macroFromPosExperience(experience: string | undefined): MacroCategoryType | null {
+function macroFromPosExperience(experience: string | undefined): MacroCategoryCode | null {
   switch (experience) {
-    case 'Restaurant': return MacroCategoryType.FoodBeverage;
-    case 'Counter':    return MacroCategoryType.QuickService;
-    case 'Retail':     return MacroCategoryType.Retail;
-    case 'Quick':      return MacroCategoryType.Services;
+    case 'Restaurant': return MacroCategoryCode.FoodBeverage;
+    case 'Counter':    return MacroCategoryCode.QuickService;
+    case 'Retail':     return MacroCategoryCode.Retail;
+    case 'Quick':      return MacroCategoryCode.Services;
     default:           return null;
   }
 }
@@ -141,9 +141,10 @@ export class AuthPortalComponent implements OnInit {
    *   2. Cached device config (`ConfigService.posExperience` → macro).
    *   3. None — falls back to the generic "Terminal de Operación" card.
    */
-  private readonly currentMacro = computed<MacroCategoryType | null>(() => {
+  private readonly currentMacro = computed<MacroCategoryCode | null>(() => {
     const fromSession = this.authService.primaryMacroCategoryId();
-    if (fromSession !== null) return fromSession;
+    // F5: session field is wire-shape numeric; translate to canonical code.
+    if (fromSession !== null) return idToCode(fromSession);
     return macroFromPosExperience(this.configService.posExperience());
   });
 

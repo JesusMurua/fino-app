@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { MacroCategoryType, UserRoleId } from '../enums';
+import { idToCode, MacroCategoryCode, UserRoleId } from '../enums';
 import { PosExperience } from '../models/catalog.model';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
@@ -13,11 +13,11 @@ import { TenantContextService } from './tenant-context.service';
  * with the offline catalog seed; the resolver also accepts `'Services'`
  * straight from the backend (see the switch in `resolvePosRoute`).
  */
-const MACRO_POS_EXPERIENCE: Record<MacroCategoryType, PosExperience> = {
-  [MacroCategoryType.FoodBeverage]: 'Restaurant',
-  [MacroCategoryType.QuickService]: 'Counter',
-  [MacroCategoryType.Retail]:       'Retail',
-  [MacroCategoryType.Services]:     'Quick',
+const MACRO_POS_EXPERIENCE: Record<MacroCategoryCode, PosExperience> = {
+  [MacroCategoryCode.FoodBeverage]: 'Restaurant',
+  [MacroCategoryCode.QuickService]: 'Counter',
+  [MacroCategoryCode.Retail]:       'Retail',
+  [MacroCategoryCode.Services]:     'Quick',
 };
 
 /**
@@ -117,7 +117,8 @@ export class DeviceRoutingService {
     if (!experience) {
       const macroId = this.authService.primaryMacroCategoryId();
       if (macroId !== null) {
-        experience = MACRO_POS_EXPERIENCE[macroId];
+        // F5: Record now keys on the canonical string code; wire reality is numeric.
+        experience = MACRO_POS_EXPERIENCE[idToCode(macroId)];
       }
     }
 

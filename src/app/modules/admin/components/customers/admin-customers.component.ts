@@ -20,7 +20,7 @@ import {
   MembershipStatus,
 } from '../../../../core/models';
 import { QrStatusResponseDto } from '../../../../core/models/qr-access.model';
-import { SubCategoryType } from '../../../../core/enums';
+import { FeatureKey } from '../../../../core/enums';
 import { CustomerService } from '../../../../core/services/customer.service';
 import { QrAccessService } from '../../../../core/services/qr-access.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
@@ -56,12 +56,14 @@ export class AdminCustomersComponent implements OnInit {
   private readonly messageService = inject(MessageService);
 
   /**
-   * True when the tenant is on the Gym vertical. Drives visibility of
-   * the QR enrollment section in the drawer (FDD-027 / Access Control).
-   * Mirror of `DashboardComponent.isGymTenant`.
+   * True when the tenant runs real-time access-control flows (gyms, spas,
+   * recurring services). Drives visibility of the QR enrollment section
+   * in the drawer (FDD-027 / Access Control). Mapped to
+   * `FeatureKey.RealtimeAccessControl` per AUDIT-058 Vector A so the
+   * capability is uniformly defined across dashboard + customer modules.
    */
-  readonly isGymTenant = computed(() =>
-    this.tenantContext.currentSubCategory() === SubCategoryType.Gym,
+  readonly isAccessControlTenant = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.RealtimeAccessControl),
   );
 
   /** All customers for the data table */
@@ -457,7 +459,7 @@ export class AdminCustomersComponent implements OnInit {
    * customer's data.
    */
   private async loadQrStatus(customerId: number): Promise<void> {
-    if (!this.isGymTenant()) return;
+    if (!this.isAccessControlTenant()) return;
     this.isLoadingQr.set(true);
     try {
       const status = await this.qrAccessService.getQrStatus(customerId);

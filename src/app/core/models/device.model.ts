@@ -1,4 +1,3 @@
-import { MacroCategoryType } from '../enums';
 import { DeviceConfig } from './device-config.model';
 
 /**
@@ -136,7 +135,12 @@ export interface ActivateDeviceResponse {
   branchName: string;
   businessId: number;
   businessName: string;
-  primaryMacroCategoryId?: MacroCategoryType;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Backend seed identifiers (1..4) flow through verbatim.
+   */
+  primaryMacroCategoryId?: number;
   hasKitchen?: boolean;
   hasTables?: boolean;
 }

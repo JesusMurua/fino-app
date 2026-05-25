@@ -1,4 +1,4 @@
-import { MacroCategoryType, PlanTypeId, UserRoleId } from '../enums';
+import { PlanTypeId, UserRoleId } from '../enums';
 
 /** Branch summary returned in the login response */
 export interface BranchInfo {
@@ -30,7 +30,13 @@ export interface AuthUser {
    * Primary macro category — drives feature gating, pricing and POS experience.
    * Sub-giros live server-side (`BusinessGiro` N:M) and are NOT carried here.
    */
-  primaryMacroCategoryId: MacroCategoryType;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
+   */
+  primaryMacroCategoryId: number;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */
@@ -62,8 +68,13 @@ export interface RegisterRequest {
   ownerName: string;
   email: string;
   password: string;
-  /** Primary macro FK — use MacroCategoryType enum */
-  primaryMacroCategoryId: MacroCategoryType;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
+   */
+  primaryMacroCategoryId: number;
   /** Numeric plan FK — use PlanTypeId enum */
   planTypeId: PlanTypeId;
   /** ISO 3166-1 alpha-2 country code (e.g. 'MX') — drives tax engine defaults */
@@ -93,7 +104,13 @@ export interface LoginResponse {
   /** Numeric plan FK */
   planTypeId: PlanTypeId;
   /** Primary macro FK — sub-giros are fetched separately when needed */
-  primaryMacroCategoryId: MacroCategoryType;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
+   */
+  primaryMacroCategoryId: number;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */

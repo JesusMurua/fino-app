@@ -1,4 +1,4 @@
-import { MacroCategoryType } from './config.enum';
+import { MacroCategoryCode } from './config.enum';
 
 /**
  * Feature keys emitted by the backend in the JWT `features` claim.
@@ -9,6 +9,21 @@ import { MacroCategoryType } from './config.enum';
  *
  * Source of truth: `.claude/business-rules-matrix.md`
  */
+/**
+ * Type guard for the FDD-028 D5 "warn-and-keep" policy.
+ *
+ * Backend `/catalog/plans` responses may carry feature strings the FE
+ * enum doesn't know about yet (a new `FeatureKey` shipped on the API
+ * before the FE was redeployed). The cache preserves them verbatim; the
+ * render layer uses this guard to narrow `(FeatureKey | string)[]` to
+ * `FeatureKey[]` before mapping to `FEATURE_LABELS`. Unknowns silently
+ * drop at render time but remain in the signal for the next deploy to
+ * pick up.
+ */
+export function isKnownFeatureKey(value: FeatureKey | string): value is FeatureKey {
+  return (Object.values(FeatureKey) as string[]).includes(value);
+}
+
 export enum FeatureKey {
   // --- Core (available on every plan, every giro) -------------------------
   /** Thermal printers, USB/BT scanners, local scales, cash drawer */
@@ -154,9 +169,9 @@ const SERVICES_FEATURES: readonly FeatureKey[] = [
  * Drives `TenantContextService.isApplicableToGiro()` — used by the UI to
  * decide hide vs. upsell-lock for each feature.
  */
-export const GIRO_FEATURE_MAP: Record<MacroCategoryType, readonly FeatureKey[]> = {
-  [MacroCategoryType.FoodBeverage]: FOOD_AND_BEVERAGE_FEATURES,
-  [MacroCategoryType.QuickService]: QUICK_SERVICE_FEATURES,
-  [MacroCategoryType.Retail]:       RETAIL_FEATURES,
-  [MacroCategoryType.Services]:     SERVICES_FEATURES,
+export const GIRO_FEATURE_MAP: Record<MacroCategoryCode, readonly FeatureKey[]> = {
+  [MacroCategoryCode.FoodBeverage]: FOOD_AND_BEVERAGE_FEATURES,
+  [MacroCategoryCode.QuickService]: QUICK_SERVICE_FEATURES,
+  [MacroCategoryCode.Retail]:       RETAIL_FEATURES,
+  [MacroCategoryCode.Services]:     SERVICES_FEATURES,
 };

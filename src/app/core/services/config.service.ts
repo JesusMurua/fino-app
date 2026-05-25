@@ -7,7 +7,7 @@ import {
   DeviceConfig,
   PosExperience,
 } from '../models';
-import { MacroCategoryType } from '../enums';
+import { codeToId, MacroCategoryCode } from '../enums';
 import { ApiService } from './api.service';
 import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
@@ -15,12 +15,12 @@ import { DeviceConfigStore } from './device-config.store';
 import { TenantContextService } from './tenant-context.service';
 
 /** Derives the default POS experience variant from the primary macro category. */
-function posExperienceForMacro(macro: MacroCategoryType): PosExperience {
+function posExperienceForMacro(macro: MacroCategoryCode): PosExperience {
   switch (macro) {
-    case MacroCategoryType.FoodBeverage: return 'Restaurant';
-    case MacroCategoryType.QuickService: return 'Counter';
-    case MacroCategoryType.Retail:       return 'Retail';
-    case MacroCategoryType.Services:     return 'Quick';
+    case MacroCategoryCode.FoodBeverage: return 'Restaurant';
+    case MacroCategoryCode.QuickService: return 'Counter';
+    case MacroCategoryCode.Retail:       return 'Retail';
+    case MacroCategoryCode.Services:     return 'Quick';
   }
 }
 
@@ -151,7 +151,10 @@ export class ConfigService {
       const btCatalog = config.businessTypeCatalog
         ? { ...config.businessTypeCatalog, posExperience: posExperience ?? config.businessTypeCatalog.posExperience }
         : posExperience
-          ? { id: 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
+          // FDD-028 F3: synthetic placeholder when no businessTypeCatalog
+          // exists yet. `primaryMacroCategoryId` is wire-shape numeric;
+          // translate from the canonical string code via codeToId.
+          ? { id: 0, primaryMacroCategoryId: macroId !== null ? codeToId(macroId) : 0, code: '', name: '', hasKitchen: remote.hasKitchen ?? false, hasTables: remote.hasTables ?? false, posExperience, sortOrder: 0 }
           : config.businessTypeCatalog;
 
       // Use `||` (not `??`) on string fields so an empty remote string

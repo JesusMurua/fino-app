@@ -623,108 +623,27 @@
     <aside class="product-form-page__preview">
       <div class="preview__label">Vista previa</div>
 
-      @switch (tenantContext.currentMacro()) {
-
-        @case (MacroCategoryType.FoodBeverage) {
-          <div class="preview-card preview-card--fb">
-            <div class="preview-card__image">
-              @if (previewProduct().image) {
-                <img [src]="previewProduct().image" [alt]="previewProduct().name" />
-              } @else {
-                <i class="pi pi-image"></i>
-              }
-            </div>
-            <div class="preview-card__body">
-              @if (previewProduct().category) {
-                <div class="preview-card__category">{{ previewProduct().category }}</div>
-              }
-              <div class="preview-card__name">
-                {{ previewProduct().name || 'Nombre del producto' }}
-              </div>
-              <div class="preview-card__price">
-                ${{ previewProduct().pricePesos | number:'1.2-2' }}
-              </div>
-            </div>
-            @if (!previewProduct().isAvailable) {
-              <span class="preview-card__unavailable">No disponible</span>
-            }
-          </div>
-        }
-
-        @case (MacroCategoryType.QuickService) {
-          <button class="preview-quick-btn" type="button" disabled>
-            <span class="preview-quick-btn__name">
-              {{ previewProduct().name || 'Nombre del producto' }}
-            </span>
-            <span class="preview-quick-btn__price">
-              ${{ previewProduct().pricePesos | number:'1.2-2' }}
-            </span>
-            @if (!previewProduct().isAvailable) {
-              <span class="preview-quick-btn__unavailable">No disponible</span>
-            }
-          </button>
-        }
-
-        @case (MacroCategoryType.Retail) {
-          <div class="preview-row">
-            <div class="preview-row__image">
-              @if (previewProduct().image) {
-                <img [src]="previewProduct().image" [alt]="previewProduct().name" />
-              } @else {
-                <i class="pi pi-image"></i>
-              }
-            </div>
-            <div class="preview-row__info">
-              <div class="preview-row__name">
-                {{ previewProduct().name || 'Nombre del producto' }}
-              </div>
-              <div class="preview-row__sku">
-                SKU: {{ previewProduct().barcode || '—' }}
-              </div>
-              @if (productForm.controls.trackStock.value) {
-                <div class="preview-row__stock">
-                  Stock: {{ previewProduct().currentStock }}
-                </div>
-              }
-            </div>
-            <div class="preview-row__price">
-              ${{ previewProduct().pricePesos | number:'1.2-2' }}
-            </div>
-          </div>
-        }
-
-        @case (MacroCategoryType.Services) {
-          <div class="preview-service">
-            <i class="pi pi-clock preview-service__icon"></i>
-            <div class="preview-service__name">
+      <!-- AUDIT-058 Vector B POC: polymorphic preview driven by the schema
+           registry's `previewVariant` instead of a hardcoded macro switch.
+           Adding a new vertical preview requires extending `PreviewVariant`
+           + adding ONE `@case` inside `<app-product-preview>` — never
+           touching this template. -->
+      <app-product-preview
+        [variant]="activePreviewVariant()"
+        [product]="previewProduct()"
+        [showStock]="productForm.controls.trackStock.value"
+      />
+      @if (!activePreviewVariant()) {
+        <div class="preview-card">
+          <div class="preview-card__body">
+            <div class="preview-card__name">
               {{ previewProduct().name || 'Nombre del producto' }}
             </div>
-            @if (previewProduct().isMembership && previewProduct().membershipDays > 0) {
-              <div class="preview-service__duration">
-                {{ previewProduct().membershipDays }} días de vigencia
-              </div>
-            }
-            <div class="preview-service__price">
+            <div class="preview-card__price">
               ${{ previewProduct().pricePesos | number:'1.2-2' }}
             </div>
-            @if (!previewProduct().isAvailable) {
-              <span class="preview-service__unavailable">No disponible</span>
-            }
           </div>
-        }
-
-        @default {
-          <div class="preview-card">
-            <div class="preview-card__body">
-              <div class="preview-card__name">
-                {{ previewProduct().name || 'Nombre del producto' }}
-              </div>
-              <div class="preview-card__price">
-                ${{ previewProduct().pricePesos | number:'1.2-2' }}
-              </div>
-            </div>
-          </div>
-        }
+        </div>
       }
 
       <p class="preview__hint">

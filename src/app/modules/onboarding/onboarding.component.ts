@@ -15,10 +15,13 @@ import {
 } from '../../core/models';
 import {
   BusinessTypeId,
+  codeToId,
   FeatureKey,
   GIRO_FEATURE_MAP,
+  idToCode,
+  isKnownFeatureKey,
   MACRO_CATEGORY_LABELS,
-  MacroCategoryType,
+  MacroCategoryCode,
   deriveSubCategory,
 } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
@@ -41,7 +44,7 @@ interface SubGiroOption {
 
 /** Macro card rendered at the top of Step 1. */
 interface MacroCard {
-  id: MacroCategoryType;
+  id: MacroCategoryCode;
   label: string;
   description: string;
   /** PrimeNG icon class, e.g. 'pi pi-shopping-bag' */
@@ -71,11 +74,11 @@ const PAID_PLANS: PlanSlug[] = ['basic', 'pro', 'enterprise'];
  *   - Retail       → all 4 tiers
  *   - Services     → Free / Pro (Basic and Enterprise locked)
  */
-const AVAILABLE_PLANS_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanSlug>> = {
-  [MacroCategoryType.FoodBeverage]: new Set(['free', 'basic', 'pro', 'enterprise']),
-  [MacroCategoryType.QuickService]: new Set(['free', 'basic', 'pro']),
-  [MacroCategoryType.Retail]:       new Set(['free', 'basic', 'pro', 'enterprise']),
-  [MacroCategoryType.Services]:     new Set(['free', 'pro']),
+const AVAILABLE_PLANS_BY_MACRO: Record<MacroCategoryCode, ReadonlySet<PlanSlug>> = {
+  [MacroCategoryCode.FoodBeverage]: new Set(['free', 'basic', 'pro', 'enterprise']),
+  [MacroCategoryCode.QuickService]: new Set(['free', 'basic', 'pro']),
+  [MacroCategoryCode.Retail]:       new Set(['free', 'basic', 'pro', 'enterprise']),
+  [MacroCategoryCode.Services]:     new Set(['free', 'pro']),
 };
 
 /** Short tagline per plan — kept local to the onboarding UI (not in the catalog). */
@@ -96,8 +99,8 @@ const FREE_BADGE_FALLBACK = 'Gratis';
  */
 const MACRO_CARDS: MacroCard[] = [
   {
-    id: MacroCategoryType.FoodBeverage,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryType.FoodBeverage],
+    id: MacroCategoryCode.FoodBeverage,
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.FoodBeverage],
     description: 'Mesas, comandas y cocina',
     icon: 'pi pi-apple',
     accent: '#EF4444',
@@ -110,8 +113,8 @@ const MACRO_CARDS: MacroCard[] = [
     ],
   },
   {
-    id: MacroCategoryType.QuickService,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryType.QuickService],
+    id: MacroCategoryCode.QuickService,
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.QuickService],
     description: 'Mostrador, con o sin cocina',
     icon: 'pi pi-sun',
     accent: '#F59E0B',
@@ -127,8 +130,8 @@ const MACRO_CARDS: MacroCard[] = [
     ],
   },
   {
-    id: MacroCategoryType.Retail,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryType.Retail],
+    id: MacroCategoryCode.Retail,
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Retail],
     description: 'Inventario rápido, sin errores',
     icon: 'pi pi-shopping-bag',
     accent: '#3B82F6',
@@ -145,8 +148,8 @@ const MACRO_CARDS: MacroCard[] = [
     ],
   },
   {
-    id: MacroCategoryType.Services,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryType.Services],
+    id: MacroCategoryCode.Services,
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Services],
     description: 'Cobras por lo que haces',
     icon: 'pi pi-wrench',
     accent: '#8B5CF6',
@@ -214,7 +217,7 @@ export class OnboardingComponent implements OnInit {
   //#region Step 1 — Macro + sub-giros
 
   /** Currently selected macro — always a single value (radio behavior). */
-  readonly selectedMacroId = signal<MacroCategoryType | null>(null);
+  readonly selectedMacroId = signal<MacroCategoryCode | null>(null);
 
   /**
    * Selected sub-giros for the ACTIVE macro only — changing macro resets
@@ -227,7 +230,7 @@ export class OnboardingComponent implements OnInit {
   readonly customGiroText = signal('');
 
   /** Mascot skin tracks hover → falls back to the selected macro's skin. */
-  readonly hoveredMacroId = signal<MacroCategoryType | null>(null);
+  readonly hoveredMacroId = signal<MacroCategoryCode | null>(null);
   readonly mascotSkin = computed<BrioSkin>(() => {
     const hoverId = this.hoveredMacroId();
     const activeId = this.selectedMacroId();
@@ -282,6 +285,10 @@ export class OnboardingComponent implements OnInit {
       const isLocked = !allowed.has(slug);
       const priceTable = cycle === 'annual' ? tier.annualPrice : tier.monthlyPrice;
       const features = tier.features
+        // Narrow `(FeatureKey | string)[]` → `FeatureKey[]`. Unknown
+        // strings (FDD-028 D5 warn-and-keep) drop at render time but
+        // remain in the signal for the next FE deploy to render.
+        .filter(isKnownFeatureKey)
         .filter(key => applicableFeatures === null || applicableFeatures.has(key))
         .map(key => FEATURE_LABELS[key]);
       return {
@@ -377,7 +384,8 @@ export class OnboardingComponent implements OnInit {
     // fetch below may overwrite this with the authoritative server state.
     const macro = this.authService.primaryMacroCategoryId();
     if (macro !== null) {
-      this.selectedMacroId.set(macro);
+      // F5: signal keys on the canonical string code; wire reality is numeric.
+      this.selectedMacroId.set(idToCode(macro));
     }
 
     // Silent hydration — best-effort. If the call fails (first-time
@@ -399,7 +407,8 @@ export class OnboardingComponent implements OnInit {
     this.businessService.getGiro().subscribe({
       next: (snapshot) => {
         if (snapshot.primaryMacroCategoryId !== null) {
-          this.selectedMacroId.set(snapshot.primaryMacroCategoryId);
+          // F5: signal keys on the canonical string code; wire reality is numeric.
+          this.selectedMacroId.set(idToCode(snapshot.primaryMacroCategoryId));
         }
 
         const hydratedIds: number[] = [...snapshot.subGiroIds];
@@ -423,7 +432,7 @@ export class OnboardingComponent implements OnInit {
   //#region Step 1 — Interaction
 
   /** Radio behavior: click on the same macro only toggles expand (no-op). */
-  selectMacro(id: MacroCategoryType): void {
+  selectMacro(id: MacroCategoryCode): void {
     if (this.selectedMacroId() === id) return;
     this.selectedMacroId.set(id);
     // Clear sub-giros + custom text when the active macro changes.
@@ -431,7 +440,7 @@ export class OnboardingComponent implements OnInit {
     this.customGiroText.set('');
   }
 
-  hoverMacro(id: MacroCategoryType | null): void {
+  hoverMacro(id: MacroCategoryCode | null): void {
     this.hoveredMacroId.set(id);
   }
 
@@ -487,7 +496,8 @@ export class OnboardingComponent implements OnInit {
     const subGiroIds = this.selectedSubGiroIds()
       .filter((id): id is BusinessTypeId => id !== OTRA_SUB_ID);
     const payload: UpdateBusinessGiroRequest = {
-      primaryMacroCategoryId: macro,
+      // F5: wire shape is numeric; translate from the canonical code.
+      primaryMacroCategoryId: codeToId(macro),
       subGiroIds,
     };
     if (this.isOtraChecked()) {

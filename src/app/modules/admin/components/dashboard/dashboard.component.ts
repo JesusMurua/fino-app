@@ -17,7 +17,7 @@ import {
   DashboardSummary,
   isCurrentlyValid,
 } from '../../../../core/models';
-import { FeatureKey, KitchenStatusId, SubCategoryType } from '../../../../core/enums';
+import { FeatureKey, KitchenStatusId } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CatalogService } from '../../../../core/services/catalog.service';
@@ -85,9 +85,15 @@ export class DashboardComponent implements OnInit {
     return settings.defaultTaxId === null || settings.defaultTaxId === undefined;
   });
 
-  /** True when the tenant is on the Gym vertical (drives membership widget visibility) */
-  readonly isGymTenant = computed(() =>
-    this.tenantContext.currentSubCategory() === SubCategoryType.Gym,
+  /**
+   * True when the tenant runs real-time access-control flows (gyms, spas,
+   * recurring services). Drives visibility of the expiring-memberships
+   * widget. Mapped to `FeatureKey.RealtimeAccessControl` per AUDIT-058
+   * Vector A so the dashboard reacts to capability features instead of
+   * the macro/sub-category enum.
+   */
+  readonly isAccessControlTenant = computed(() =>
+    this.tenantContext.hasFeature(FeatureKey.RealtimeAccessControl),
   );
 
   /**
@@ -122,7 +128,7 @@ export class DashboardComponent implements OnInit {
    */
   readonly isDataReady = computed(() => {
     if (this.authService.currentUser() === null) return false;
-    if (this.tenantContext.currentMacro() === null) return false;
+    if (!this.tenantContext.isHydrated()) return false;
     if (this.productService.isLoading()) return false;
     return true;
   });
@@ -401,14 +407,14 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     // Parallelize tenant hydration and the daily summary fetch — they
-    // are independent and `isGymTenant()` needs the tenant macro/sub
-    // category resolved before deciding whether to hit the gym widget.
+    // are independent and `isAccessControlTenant()` needs the active-features
+    // set resolved before deciding whether to hit the memberships widget.
     await Promise.all([
       this.tenantContext.ensureHydrated(),
       this.loadData(),
     ]);
 
-    if (this.isGymTenant()) {
+    if (this.isAccessControlTenant()) {
       try {
         this.expiringMemberships.set(
           await this.customerMembershipsService.getExpiringSoon(7),

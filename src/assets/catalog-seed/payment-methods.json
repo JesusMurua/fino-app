@@ -1,0 +1,6 @@
+[
+  { "id": 1, "code": "Cash",     "name": "Efectivo",      "sortOrder": 1 },
+  { "id": 2, "code": "Card",     "name": "Tarjeta",       "sortOrder": 2 },
+  { "id": 3, "code": "Transfer", "name": "Transferencia", "sortOrder": 3 },
+  { "id": 4, "code": "Other",    "name": "Otro",          "sortOrder": 4 }
+]

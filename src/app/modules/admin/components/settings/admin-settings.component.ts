@@ -23,8 +23,10 @@ import {
 import {
   FeatureKey,
   GIRO_FEATURE_MAP,
+  idToCode,
+  isKnownFeatureKey,
   MACRO_CATEGORY_LABELS,
-  MacroCategoryType,
+  MacroCategoryCode,
   PlanTypeId,
 } from '../../../../core/enums';
 import { ApiService } from '../../../../core/services/api.service';
@@ -281,17 +283,23 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     const currentPlan = this.authService.planTypeId();
     const currentLevel = PLAN_HIERARCHY[currentPlan] ?? 0;
     const macro = this.authService.primaryMacroCategoryId();
-    const allowed = macro !== null
-      ? AVAILABLE_PLAN_TYPES_BY_MACRO[macro]
+    // F5: wire-shape `macro` is numeric; the Record lookups now key on
+    // the canonical string code, so translate at the call boundary.
+    const macroCode = macro !== null ? idToCode(macro) : null;
+    const allowed = macroCode !== null
+      ? AVAILABLE_PLAN_TYPES_BY_MACRO[macroCode]
       : new Set<PlanTypeId>([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]);
 
-    const group = pricingGroupForMacro(macro);
+    const group = pricingGroupForMacro(macroCode);
     const currentTierFeatures = new Set<FeatureKey>(
-      catalog.find(t => t.planTypeId === currentPlan)?.features ?? [],
+      // Filter to known FeatureKeys before constructing the Set — the
+      // FDD-028 D5 wider type `(FeatureKey | string)[]` would otherwise
+      // be a contravariance violation for `Set<FeatureKey>`.
+      (catalog.find(t => t.planTypeId === currentPlan)?.features ?? []).filter(isKnownFeatureKey),
     );
     // Keeps F&B-only bullets (TableMap, WaiterApp, …) out of Retail/Services cards.
-    const applicableFeatures = macro !== null
-      ? new Set<FeatureKey>(GIRO_FEATURE_MAP[macro])
+    const applicableFeatures = macroCode !== null
+      ? new Set<FeatureKey>(GIRO_FEATURE_MAP[macroCode])
       : null;
 
     return catalog
@@ -303,6 +311,10 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
         name: tier.name,
         price: `$${tier.monthlyPrice[group].toLocaleString('es-MX')}/mes`,
         features: tier.features
+          // Narrow `(FeatureKey | string)[]` → `FeatureKey[]`. Unknown
+          // strings (FDD-028 D5 warn-and-keep) drop at render time but
+          // remain in the signal for the next FE deploy to render.
+          .filter(isKnownFeatureKey)
           .filter(key => !currentTierFeatures.has(key))
           .filter(key => applicableFeatures === null || applicableFeatures.has(key))
           .map(key => FEATURE_LABELS[key]),
@@ -341,13 +353,16 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
   readonly showKitchenToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
     if (macro === null) return false;
-    return macro === MacroCategoryType.FoodBeverage || macro === MacroCategoryType.QuickService;
+    // F5: comparisons happen against the canonical string code.
+    const code = idToCode(macro);
+    return code === MacroCategoryCode.FoodBeverage || code === MacroCategoryCode.QuickService;
   });
 
   /** Tables row visible only for Food & Beverage */
   readonly showTablesToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
-    return macro === MacroCategoryType.FoodBeverage;
+    if (macro === null) return false;
+    return idToCode(macro) === MacroCategoryCode.FoodBeverage;
   });
 
   /**
@@ -362,16 +377,19 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
     const macro = this.authService.primaryMacroCategoryId();
     if (macro === null) return { icon: '…', name: 'Cargando…', description: '' };
 
-    const iconByMacro: Record<MacroCategoryType, string> = {
-      [MacroCategoryType.FoodBeverage]: '🍽️',
-      [MacroCategoryType.QuickService]: '☕',
-      [MacroCategoryType.Retail]:       '🛒',
-      [MacroCategoryType.Services]:     '🛠️',
+    const iconByMacro: Record<MacroCategoryCode, string> = {
+      [MacroCategoryCode.FoodBeverage]: '🍽️',
+      [MacroCategoryCode.QuickService]: '☕',
+      [MacroCategoryCode.Retail]:       '🛒',
+      [MacroCategoryCode.Services]:     '🛠️',
     };
 
+    // F5: macro is wire-shape numeric; translate to the canonical code
+    // for both Record lookups (icon + label).
+    const code = idToCode(macro);
     return {
-      icon: iconByMacro[macro],
-      name: MACRO_CATEGORY_LABELS[macro],
+      icon: iconByMacro[code],
+      name: MACRO_CATEGORY_LABELS[code],
       description: this.tenantContext.currentBusinessType()?.name ?? '',
     };
   });

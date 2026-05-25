@@ -34,7 +34,7 @@ import {
   ProductType,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
-import { FeatureKey, MacroCategoryType } from '../../../../../core/enums';
+import { FeatureKey, MacroCategoryCode } from '../../../../../core/enums';
 import { DatabaseService } from '../../../../../core/services/database.service';
 import { ProductService, SaveProductDto } from '../../../../../core/services/product.service';
 import { ScannerService } from '../../../../../core/services/scanner.service';
@@ -42,6 +42,9 @@ import { PrinterDestinationService } from '../../../../../core/services/printer-
 import { TaxService } from '../../../../../core/services/tax.service';
 import { TenantContextService } from '../../../../../core/services/tenant-context.service';
 import { getHttpErrorSummary } from '../../../../../core/utils/http-error.utils';
+import { placeholdersFor } from './product-form.placeholders';
+import { ProductPreviewComponent } from './components/product-preview.component';
+import { schemaFor } from './schemas/product-form.registry';
 
 /**
  * Reactive form for a single product size (Chico/Grande/etc).
@@ -134,6 +137,7 @@ const modifierGroupMinMaxValidator: ValidatorFn = (
     InputTextareaModule,
     ToastModule,
     TooltipModule,
+    ProductPreviewComponent,
   ],
   providers: [MessageService],
   templateUrl: './product-form.component.html',
@@ -152,70 +156,38 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly tenantContext = inject(TenantContextService);
   readonly printerDestinationService = inject(PrinterDestinationService);
 
-  /** Exposed to the template so structural directives can compare against macros */
-  readonly MacroCategoryType = MacroCategoryType;
+  /** Exposed to the template so structural directives can compare against macro codes */
+  readonly MacroCategoryCode = MacroCategoryCode;
 
   /**
-   * True when the current tenant should see the "membership / vigencia"
-   * configuration block — i.e. any Services-macro tenant (gyms, spas,
-   * subscriptions, etc.). Non-Services tenants never see these fields
-   * and the form's defaults result in a `metadata: undefined` payload,
-   * so nothing leaks across verticals.
+   * True when the current tenant sells subscription / membership products
+   * (gym mensualidades, spa packages, etc.). Delegated to
+   * `TenantContextService.supportsMemberships` so the capability is
+   * defined in a single declarative place rather than re-derived from
+   * the macro per component (AUDIT-058 Vector A).
    */
-  readonly showsMembership = computed(() =>
-    this.tenantContext.currentMacro() === MacroCategoryType.Services,
-  );
+  readonly showsMembership = this.tenantContext.supportsMemberships;
 
   /**
    * Vertical-aware placeholder copy. Keyed off the tenant's `posExperience`
-   * (resolved from the business type) with a fallback by macro category for
-   * tenants whose sub-category has not yet been hydrated. Restaurant copy is
-   * the safe default since the form was originally designed for it.
+   * (resolved from the business type) via the `POS_EXPERIENCE_PLACEHOLDERS`
+   * catalog — adding a new vertical now means adding ONE catalog entry,
+   * not chasing three twin-switches across this file.
+   *
+   * `placeholdersFor()` applies a Restaurant fallback while
+   * `posExperience()` is still undefined during cold-boot hydration.
    */
-  readonly namePlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Ej. Torta de Milanesa';
-      case 'Counter':    return 'Ej. Café americano';
-      case 'Retail':     return 'Ej. Coca-Cola 600ml';
-      case 'Quick':      return 'Ej. Mensualidad';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Ej. Coca-Cola 600ml';
-      case MacroCategoryType.Services:     return 'Ej. Mensualidad';
-      case MacroCategoryType.QuickService: return 'Ej. Café americano';
-      default:                             return 'Ej. Torta de Milanesa';
-    }
-  });
+  readonly namePlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).name,
+  );
 
-  readonly modifierGroupPlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Nombre del grupo (ej. Proteína, Salsas)';
-      case 'Counter':    return 'Nombre del grupo (ej. Tamaño, Leche)';
-      case 'Retail':     return 'Nombre del grupo (ej. Variedad)';
-      case 'Quick':      return 'Nombre del grupo (ej. Variantes)';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Nombre del grupo (ej. Variedad)';
-      case MacroCategoryType.Services:     return 'Nombre del grupo (ej. Variantes)';
-      case MacroCategoryType.QuickService: return 'Nombre del grupo (ej. Tamaño, Leche)';
-      default:                             return 'Nombre del grupo (ej. Proteína, Salsas)';
-    }
-  });
+  readonly modifierGroupPlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).modifierGroup,
+  );
 
-  readonly modifierExtraPlaceholder = computed(() => {
-    switch (this.tenantContext.posExperience()) {
-      case 'Restaurant': return 'Ej. Queso extra, Sin cebolla';
-      case 'Counter':    return 'Ej. Leche de almendra';
-      case 'Retail':     return 'Ej. Color rojo, Talla M';
-      case 'Quick':      return 'Ej. Opción adicional';
-    }
-    switch (this.tenantContext.currentMacro()) {
-      case MacroCategoryType.Retail:       return 'Ej. Color rojo, Talla M';
-      case MacroCategoryType.Services:     return 'Ej. Opción adicional';
-      case MacroCategoryType.QuickService: return 'Ej. Leche de almendra';
-      default:                             return 'Ej. Queso extra, Sin cebolla';
-    }
-  });
+  readonly modifierExtraPlaceholder = computed(
+    () => placeholdersFor(this.tenantContext.posExperience()).modifierExtra,
+  );
 
   /** Maximum number of images allowed per product */
   static readonly MAX_IMAGES = 5;
@@ -269,8 +241,8 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly hasModifiersSection = computed(() => {
     if (this.tenantContext.hasKitchen()) return true;
     const macro = this.tenantContext.currentMacro();
-    return macro === MacroCategoryType.FoodBeverage
-      || macro === MacroCategoryType.QuickService;
+    return macro === MacroCategoryCode.FoodBeverage
+      || macro === MacroCategoryCode.QuickService;
   });
 
   /** Whether the Datos fiscales section is shown — gated by CFDI feature. */
@@ -328,6 +300,18 @@ export class ProductFormComponent implements OnInit, OnDestroy {
       membershipDays: v.membershipDurationDays ?? 0,
       image: this.previewImageUrl(),
     };
+  });
+
+  /**
+   * Preview variant resolved from the active `PosExperience` via the
+   * schema registry. Drives `<app-product-preview>` polymorphism so the
+   * preview pane stays free of any direct macro/giro comparison.
+   * Returns `null` until the tenant context has hydrated `posExperience`
+   * — the template renders a minimal fallback while waiting.
+   */
+  readonly activePreviewVariant = computed(() => {
+    const experience = this.tenantContext.posExperience();
+    return experience ? schemaFor(experience).previewVariant : null;
   });
 
   /** Convenience accessor — sizes FormArray */

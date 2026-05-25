@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { FeatureKey, MacroCategoryCode, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { BusinessSettings } from '../models/business-settings.model';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
@@ -34,7 +34,7 @@ export class TenantContextService {
   //#region Backing signals
 
   private readonly _currentPlan = signal<PlanTypeId>(PlanTypeId.Free);
-  private readonly _currentMacro = signal<MacroCategoryType | null>(null);
+  private readonly _currentMacro = signal<MacroCategoryCode | null>(null);
   private readonly _currentSubCategory = signal<SubCategoryType | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
 
@@ -80,13 +80,38 @@ export class TenantContextService {
 
   /**
    * Business type catalog entry matching the tenant's current sub-category.
-   * Looks up `catalogService.businessTypes()` by `code === currentSubCategory()`.
+   *
+   * Looks up `catalogService.businessTypes()` by `code === currentSubCategory()`,
+   * then **enriches** with the joined `MacroCategoryDto` via
+   * `catalogService.resolveMacro()` — overriding `hasKitchen`, `hasTables`
+   * and `posExperience` with the authoritative values from the
+   * `/catalog/macro-categories` endpoint (FDD-028 F4 / D6 Option A).
+   *
+   * Backwards-compatible during F4–F5: when the macro join returns null
+   * (backend not yet hydrated, or running against pre-BDD-021 backend),
+   * falls back to the raw `BusinessTypeCatalog` fields. F3 will reshape
+   * `BusinessTypeDto` to drop these derived fields and rely solely on
+   * the macro join.
+   *
    * Returns null when no sub-category is set or no match exists.
    */
   readonly currentBusinessType = computed<BusinessTypeCatalog | null>(() => {
     const sub = this._currentSubCategory();
     if (sub === null) return null;
-    return this.catalogService.businessTypes().find(b => b.code === sub) ?? null;
+    const bt = this.catalogService.businessTypes().find(b => b.code === sub) ?? null;
+    if (!bt) return null;
+
+    // F4 join — enrich with MacroCategoryDto fields when the macro
+    // catalog is hydrated. Pre-hydration: passthrough (bt as-is).
+    const macro = this.catalogService.resolveMacro(bt.id);
+    if (!macro) return bt;
+
+    return {
+      ...bt,
+      hasKitchen:    macro.hasKitchen,
+      hasTables:     macro.hasTables,
+      posExperience: macro.posExperience,
+    };
   });
 
   /**
@@ -96,13 +121,62 @@ export class TenantContextService {
    */
   readonly hasKitchen = computed(
     () => this.currentBusinessType()?.hasKitchen
-      ?? (this.currentMacro() === MacroCategoryType.FoodBeverage),
+      ?? (this.currentMacro() === MacroCategoryCode.FoodBeverage),
   );
 
   /** POS experience variant for the current tenant — drives UI verticalization */
   readonly posExperience = computed<PosExperience | undefined>(
     () => this.currentBusinessType()?.posExperience,
   );
+
+  /**
+   * True when the post-auth hydration cycle has completed — i.e. the
+   * tenant's macro category has been resolved from the JWT (and any
+   * downstream features, sub-category, business settings followed).
+   *
+   * Use this in components that need to defer rendering until the
+   * tenant context is known (e.g. dashboards, sidebars), instead of
+   * the legacy pattern `currentMacro() === null`. Avoids leaking macro
+   * comparisons into views whose intent is "wait for ready", not
+   * "branch by vertical".
+   */
+  readonly isHydrated = computed(() => this._currentMacro() !== null);
+
+  /**
+   * True when the tenant can route line items to a kitchen — drives the
+   * "send to kitchen" button, kitchen comanda printing, and table
+   * assignment in the cart.
+   *
+   * Mapped to F&B-style capability features (`PrintedTickets`,
+   * `MaxKdsScreens`, `TableMap`) rather than the macro itself, so a
+   * future vertical (e.g. Hospitality / Room Service) gains these flows
+   * by acquiring the features without touching cart-panel code.
+   */
+  readonly supportsKitchenOrders = computed(() =>
+    this.hasAnyFeature([
+      FeatureKey.PrintedTickets,
+      FeatureKey.MaxKdsScreens,
+      FeatureKey.TableMap,
+    ]),
+  );
+
+  /**
+   * True when the tenant sells subscription / membership products
+   * (gym mensualidades, spa packages, recurring services).
+   *
+   * Mapped to `posExperience in {'Quick', 'Services'}` — the backend
+   * emits `'Services'` as the canonical value for Services-macro tenants
+   * but the internal catalog still uses `'Quick'` as a synonym during
+   * the cross-repo migration (see `PosExperience` type docs).
+   *
+   * If product later decouples memberships from Services-vertical,
+   * promote this to a dedicated `FeatureKey.MembershipProducts` claim
+   * on the backend.
+   */
+  readonly supportsMemberships = computed(() => {
+    const exp = this.posExperience();
+    return exp === 'Quick' || exp === 'Services';
+  });
 
   /** Business settings snapshot — null until `ensureHydrated()` resolves */
   readonly business = this._business.asReadonly();
@@ -211,7 +285,7 @@ export class TenantContextService {
    */
   setContext(
     plan: PlanTypeId,
-    macro: MacroCategoryType,
+    macro: MacroCategoryCode,
     features: readonly string[],
     subCategory?: SubCategoryType | null,
   ): void {
@@ -273,9 +347,9 @@ export class TenantContextService {
       this._activeFeatures.set(this.parseFeatures(features));
     }
 
-    const macro = extractMacroCategoryFromJwt(token);
-    if (macro !== null) {
-      this._currentMacro.set(macro);
+    const macroCode = extractMacroCategoryFromJwt(token);
+    if (macroCode !== null) {
+      this._currentMacro.set(macroCode);
     }
   }
 

@@ -1,0 +1,5 @@
+[
+  { "id": 1, "code": "Pending",   "name": "En cocina", "color": "#F59E0B", "sortOrder": 1 },
+  { "id": 2, "code": "Ready",     "name": "Listo",     "color": "#10B981", "sortOrder": 2 },
+  { "id": 3, "code": "Delivered", "name": "Entregado", "color": "#3B82F6", "sortOrder": 3 }
+]

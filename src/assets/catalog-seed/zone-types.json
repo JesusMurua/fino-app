@@ -1,0 +1,5 @@
+[
+  { "id": 1, "code": "Salon",    "name": "Salón", "sortOrder": 1 },
+  { "id": 2, "code": "BarSeats", "name": "Barra", "sortOrder": 2 },
+  { "id": 3, "code": "Other",    "name": "Otro",  "sortOrder": 3 }
+]

@@ -1,9 +1,10 @@
-import { MacroCategoryType, PlanTypeId } from '../enums';
+import { MacroCategoryCode, PlanTypeId } from '../enums';
 
 /**
  * Parses the query-param handshake between the Landing Page and the
  * restaurant-app. The Landing always emits slugs as strings; this module
- * maps those slugs to the macro category enum the backend expects.
+ * maps those slugs to the canonical macro category code the rest of
+ * the app uses for comparisons.
  *
  * Sub-giros (Taquería, Ferretería, etc.) are NOT committed at registration —
  * the onboarding wizard captures them later and persists via
@@ -18,55 +19,55 @@ import { MacroCategoryType, PlanTypeId } from '../enums';
 
 /**
  * Maps every accepted giro slug (canonical + common aliases) to its
- * parent `MacroCategoryType`. Sub-giro slugs resolve to their macro so
+ * parent `MacroCategoryCode`. Sub-giro slugs resolve to their macro so
  * the registration handshake stays coarse-grained; finer-grained
  * selection happens in the onboarding wizard.
  */
-const GIRO_SLUG_MAP: Record<string, MacroCategoryType> = {
+const GIRO_SLUG_MAP: Record<string, MacroCategoryCode> = {
   // Food & Beverage — macro + aliases
-  'food-beverage':   MacroCategoryType.FoodBeverage,
-  restaurant:        MacroCategoryType.FoodBeverage,
-  restaurante:       MacroCategoryType.FoodBeverage,
-  bar:               MacroCategoryType.FoodBeverage,
-  'bar-cantina':     MacroCategoryType.FoodBeverage,
-  cantina:           MacroCategoryType.FoodBeverage,
-  'sports-bar':      MacroCategoryType.FoodBeverage,
+  'food-beverage':   MacroCategoryCode.FoodBeverage,
+  restaurant:        MacroCategoryCode.FoodBeverage,
+  restaurante:       MacroCategoryCode.FoodBeverage,
+  bar:               MacroCategoryCode.FoodBeverage,
+  'bar-cantina':     MacroCategoryCode.FoodBeverage,
+  cantina:           MacroCategoryCode.FoodBeverage,
+  'sports-bar':      MacroCategoryCode.FoodBeverage,
 
   // Quick service — macro + aliases
-  'quick-service':   MacroCategoryType.QuickService,
-  cafe:              MacroCategoryType.QuickService,
-  cafeteria:         MacroCategoryType.QuickService,
-  taqueria:          MacroCategoryType.QuickService,
-  dogos:             MacroCategoryType.QuickService,
-  hamburguesas:      MacroCategoryType.QuickService,
-  pizzeria:          MacroCategoryType.QuickService,
-  paleteria:         MacroCategoryType.QuickService,
-  panaderia:         MacroCategoryType.QuickService,
+  'quick-service':   MacroCategoryCode.QuickService,
+  cafe:              MacroCategoryCode.QuickService,
+  cafeteria:         MacroCategoryCode.QuickService,
+  taqueria:          MacroCategoryCode.QuickService,
+  dogos:             MacroCategoryCode.QuickService,
+  hamburguesas:      MacroCategoryCode.QuickService,
+  pizzeria:          MacroCategoryCode.QuickService,
+  paleteria:         MacroCategoryCode.QuickService,
+  panaderia:         MacroCategoryCode.QuickService,
 
   // Retail — macro + aliases
-  retail:              MacroCategoryType.Retail,
-  'retail-commerce':   MacroCategoryType.Retail,
-  abarrotes:           MacroCategoryType.Retail,
-  'abarrotes-retail':  MacroCategoryType.Retail,
-  expendio:            MacroCategoryType.Retail,
-  refaccionaria:       MacroCategoryType.Retail,
-  ferreteria:          MacroCategoryType.Retail,
-  papeleria:           MacroCategoryType.Retail,
-  farmacia:            MacroCategoryType.Retail,
-  boutique:            MacroCategoryType.Retail,
+  retail:              MacroCategoryCode.Retail,
+  'retail-commerce':   MacroCategoryCode.Retail,
+  abarrotes:           MacroCategoryCode.Retail,
+  'abarrotes-retail':  MacroCategoryCode.Retail,
+  expendio:            MacroCategoryCode.Retail,
+  refaccionaria:       MacroCategoryCode.Retail,
+  ferreteria:          MacroCategoryCode.Retail,
+  papeleria:           MacroCategoryCode.Retail,
+  farmacia:            MacroCategoryCode.Retail,
+  boutique:            MacroCategoryCode.Retail,
 
   // Services — macro + aliases
-  services:                   MacroCategoryType.Services,
-  servicios:                  MacroCategoryType.Services,
-  'servicios-especializados': MacroCategoryType.Services,
-  'specialized-services':     MacroCategoryType.Services,
-  estetica:                   MacroCategoryType.Services,
-  barberia:                   MacroCategoryType.Services,
-  taller:                     MacroCategoryType.Services,
-  'taller-mecanico':          MacroCategoryType.Services,
-  consultorio:                MacroCategoryType.Services,
-  clinica:                    MacroCategoryType.Services,
-  gimnasio:                   MacroCategoryType.Services,
+  services:                   MacroCategoryCode.Services,
+  servicios:                  MacroCategoryCode.Services,
+  'servicios-especializados': MacroCategoryCode.Services,
+  'specialized-services':     MacroCategoryCode.Services,
+  estetica:                   MacroCategoryCode.Services,
+  barberia:                   MacroCategoryCode.Services,
+  taller:                     MacroCategoryCode.Services,
+  'taller-mecanico':          MacroCategoryCode.Services,
+  consultorio:                MacroCategoryCode.Services,
+  clinica:                    MacroCategoryCode.Services,
+  gimnasio:                   MacroCategoryCode.Services,
 };
 
 /**
@@ -91,12 +92,13 @@ const PLAN_SLUG_MAP: Record<string, PlanTypeId> = {
  */
 export interface RegistrationIntent {
   /**
-   * Resolved macro category FK. `null` when the URL had no `giro` param
-   * (user must then pick one from the dropdown). If the URL DID provide
-   * a giro but it did not match any known slug, `parseRegistrationIntent`
-   * throws — this field is never a silent fallback.
+   * Resolved canonical macro category code. `null` when the URL had no
+   * `giro` param (user must then pick one from the dropdown). If the
+   * URL DID provide a giro but it did not match any known slug,
+   * `parseRegistrationIntent` throws — this field is never a silent
+   * fallback.
    */
-  primaryMacroCategoryId: MacroCategoryType | null;
+  primaryMacroCategoryCode: MacroCategoryCode | null;
   /** Resolved plan FK */
   planTypeId: PlanTypeId;
   /** Normalized ISO country code, upper-case — defaults to 'MX' */
@@ -109,13 +111,13 @@ export interface RegistrationIntent {
   /**
    * The original giro slug from the URL, normalized to lowercase.
    * Used only for the UI badge / analytics — the source of truth is
-   * `primaryMacroCategoryId`. `null` when the URL had no giro.
+   * `primaryMacroCategoryCode`. `null` when the URL had no giro.
    */
   giroSlug: string | null;
 }
 
 /**
- * Resolves a giro slug from the landing URL to a `MacroCategoryType`.
+ * Resolves a giro slug from the landing URL to a `MacroCategoryCode`.
  * Fail-fast policy — no default fallback: an empty or unknown slug
  * throws, the caller is responsible for catching the error and
  * stopping the flow before any other state is built.
@@ -123,7 +125,7 @@ export interface RegistrationIntent {
  * @param slug Raw query-param value (may be null or mixed-case)
  * @throws Error when the slug is missing or does not match any known giro
  */
-export function resolveMacroSlug(slug: string | null | undefined): MacroCategoryType {
+export function resolveMacroSlug(slug: string | null | undefined): MacroCategoryCode {
   if (!slug) {
     throw new Error('Invalid or missing business type slug. Cannot proceed.');
   }
@@ -169,14 +171,14 @@ export function parseRegistrationIntent(
 
   // Fail-fast: if a giro slug IS provided but does not match any known
   // value, `resolveMacroSlug` throws and the caller must catch it.
-  // If no slug was provided at all, `primaryMacroCategoryId` is left
+  // If no slug was provided at all, `primaryMacroCategoryCode` is left
   // null so the register form can render the dropdown.
-  const primaryMacroCategoryId: MacroCategoryType | null = giroRaw
+  const primaryMacroCategoryCode: MacroCategoryCode | null = giroRaw
     ? resolveMacroSlug(giroRaw)
     : null;
 
   return {
-    primaryMacroCategoryId,
+    primaryMacroCategoryCode,
     planTypeId: resolvePlanSlug(planRaw),
     countryCode: (countryRaw?.trim().toUpperCase()) || 'MX',
     planSlug: planRaw ? planRaw.trim().toLowerCase() : null,

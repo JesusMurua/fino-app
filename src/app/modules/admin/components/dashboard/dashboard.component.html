@@ -345,9 +345,11 @@
       </section>
     }
 
-    <!-- Gym: Memberships expiring or recently expired
-         (sourced from GET /memberships/expiring?days=7). -->
-    @if (isGymTenant()) {
+    <!-- Access-control tenants (Gym, Spa, Services): Memberships
+         expiring or recently expired (sourced from
+         GET /memberships/expiring?days=7). Gated by
+         `FeatureKey.RealtimeAccessControl` — see AUDIT-058 §1.6 -->
+    @if (isAccessControlTenant()) {
       <section class="section-card">
         <h2 class="section-card__title">Membresías por vencer</h2>
         <p class="section-card__subtitle">Próximas a vencer o vencidas en los últimos 7 días</p>

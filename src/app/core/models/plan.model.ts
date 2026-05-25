@@ -1,4 +1,4 @@
-import { MacroCategoryType, PlanTypeId } from '../enums';
+import { MacroCategoryCode, PlanTypeId } from '../enums';
 
 /**
  * Computed plan metadata derived from auth state. Kept here because
@@ -7,8 +7,13 @@ import { MacroCategoryType, PlanTypeId } from '../enums';
  */
 export interface PlanInfo {
   planTypeId: PlanTypeId;
-  /** Null until the user logs in and the tenant context is hydrated */
-  primaryMacroCategoryId: MacroCategoryType | null;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Null until the user logs in and the tenant context
+   * is hydrated.
+   */
+  primaryMacroCategoryId: number | null;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
   isOnTrial: boolean;
@@ -59,9 +64,9 @@ export const PLAN_DISPLAY_NAME: Record<PlanTypeId, string> = {
  *
  * Source of truth: `.claude/business-rules-matrix.md`.
  */
-export const AVAILABLE_PLAN_TYPES_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanTypeId>> = {
-  [MacroCategoryType.FoodBeverage]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]),
-  [MacroCategoryType.QuickService]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
-  [MacroCategoryType.Retail]:       new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
-  [MacroCategoryType.Services]:     new Set([PlanTypeId.Free, PlanTypeId.Pro]),
+export const AVAILABLE_PLAN_TYPES_BY_MACRO: Record<MacroCategoryCode, ReadonlySet<PlanTypeId>> = {
+  [MacroCategoryCode.FoodBeverage]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]),
+  [MacroCategoryCode.QuickService]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryCode.Retail]:       new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryCode.Services]:     new Set([PlanTypeId.Free, PlanTypeId.Pro]),
 };

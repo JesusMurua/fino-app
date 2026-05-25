@@ -52,11 +52,58 @@ export enum PlanTypeId {
  * IDs match the backend `MacroCategory` catalog. There are exactly 4
  * values and they drive feature gating, pricing, and POS experience.
  */
-export enum MacroCategoryType {
-  FoodBeverage = 1,
-  QuickService = 2,
-  Retail       = 3,
-  Services     = 4,
+/**
+ * Canonical string-literal representation of a macro category — the
+ * single source of truth for business comparisons, Record keys, and
+ * typed switch statements. Mirrors `MacroCategoryDto.internalCode`
+ * from BDD-021 §5.1.1.
+ *
+ * The numeric `MacroCategoryType` enum that previously held this role
+ * was deleted in FDD-028 F5 B4. Wire-shape fields (JWT
+ * `primaryMacroCategoryId`, AuthUser, etc.) now type as plain `number`
+ * matching the backend payload; the {@link idToCode} / {@link codeToId}
+ * helpers below bridge the wire boundary.
+ */
+export const MacroCategoryCode = {
+  FoodBeverage: 'food-beverage',
+  QuickService: 'quick-service',
+  Retail:       'retail',
+  Services:     'services',
+} as const;
+
+export type MacroCategoryCode = typeof MacroCategoryCode[keyof typeof MacroCategoryCode];
+
+/**
+ * Translates a numeric macro id (wire reality — `1..4`) to its
+ * canonical string code. Used at every wire boundary where
+ * `primaryMacroCategoryId` enters the app (JWT parse, auth response,
+ * device handshake, branch config).
+ *
+ * @throws RangeError when `id` is outside `1..4` — backend never emits
+ *         unknown ids; if this throws, treat it as a hard bug.
+ */
+export function idToCode(id: number): MacroCategoryCode {
+  switch (id) {
+    case 1: return MacroCategoryCode.FoodBeverage;
+    case 2: return MacroCategoryCode.QuickService;
+    case 3: return MacroCategoryCode.Retail;
+    case 4: return MacroCategoryCode.Services;
+    default: throw new RangeError(`[idToCode] Unknown macro id: ${id}`);
+  }
+}
+
+/**
+ * Translates a canonical string code to its numeric macro id (wire
+ * shape). Used when building request payloads (`UpdateBusinessGiroRequest`,
+ * `RegisterRequest`) where the backend expects the numeric id.
+ */
+export function codeToId(code: MacroCategoryCode): number {
+  switch (code) {
+    case MacroCategoryCode.FoodBeverage: return 1;
+    case MacroCategoryCode.QuickService: return 2;
+    case MacroCategoryCode.Retail:       return 3;
+    case MacroCategoryCode.Services:     return 4;
+  }
 }
 
 /**
@@ -99,20 +146,15 @@ export enum BusinessTypeId {
   Gimnasio       = 20,
 }
 
-/**
- * Derives the parent macro category from a sub-giro id. Matches the
- * seed order (1-3=FoodBeverage, 4-9=QuickService, 10-16=Retail, 17-20=Services).
- */
-export function macroOfBusinessType(id: BusinessTypeId): MacroCategoryType {
-  if (id <= 3)  return MacroCategoryType.FoodBeverage;
-  if (id <= 9)  return MacroCategoryType.QuickService;
-  if (id <= 16) return MacroCategoryType.Retail;
-  return MacroCategoryType.Services;
-}
+// Note: `macroOfBusinessType(id)` ID-range helper deleted in FDD-028
+// F4 (closes AUDIT-058 §1.2 Critical). Backend now ships
+// `BusinessTypeDto.primaryMacroCategoryId` as an explicit FK; resolve
+// the macro via `catalogService.resolveMacro(businessTypeId)` which
+// joins against the cached `/catalog/macro-categories` response.
 
 /**
  * Vertical sub-category — secondary axis of tenant context, layered on
- * top of `MacroCategoryType`. Drives UI verticalization (POS layout
+ * top of `MacroCategoryCode`. Drives UI verticalization (POS layout
  * variants, cart slots, member selectors) without changing feature
  * gating, which remains keyed by the macro.
  *
@@ -183,11 +225,11 @@ export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {
   [PlanTypeId.Enterprise]: 'Enterprise',
 };
 
-export const MACRO_CATEGORY_LABELS: Record<MacroCategoryType, string> = {
-  [MacroCategoryType.FoodBeverage]: 'Restaurantes y Bares',
-  [MacroCategoryType.QuickService]: 'Comida Rápida y Cafés',
-  [MacroCategoryType.Retail]:       'Tiendas y Comercios',
-  [MacroCategoryType.Services]:     'Servicios Especializados',
+export const MACRO_CATEGORY_LABELS: Record<MacroCategoryCode, string> = {
+  [MacroCategoryCode.FoodBeverage]: 'Restaurantes y Bares',
+  [MacroCategoryCode.QuickService]: 'Comida Rápida y Cafés',
+  [MacroCategoryCode.Retail]:       'Tiendas y Comercios',
+  [MacroCategoryCode.Services]:     'Servicios Especializados',
 };
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {

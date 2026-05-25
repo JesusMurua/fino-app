@@ -2,16 +2,21 @@ import { FeatureKey, PlanTypeId } from '../enums';
 import { PricingTier } from './plan-catalog.model';
 
 /**
- * Offline fallback for the pricing catalog.
+ * Commercial metadata for the pricing catalog (prices, badges, Stripe
+ * Price IDs) — the **only** catalog data that the backend does NOT
+ * serve. The sibling fallback `catalog.constants.ts` was deleted in
+ * FDD-028 F6 once the runtime cache pattern (Dexie + ETag + seed JSONs
+ * under `src/assets/catalog-seed/`) replaced the in-bundle fallback
+ * model; this file survives because its content is frontend-owned
+ * commercial data that has no backend equivalent.
  *
  * **This module is intentionally NOT re-exported from `core/models/index.ts`.**
  * The only legitimate consumer is `CatalogService`, which merges this
- * static data with the backend's feature manifest fetched from
+ * commercial data with the backend's feature manifest fetched from
  * `GET /api/catalog/plans`. UI components must read from
  * `catalogService.planCatalog()` instead of importing `PLAN_CATALOG`
  * directly, so the backend stays the single source of truth for
- * features and this file only provides commercial metadata (prices,
- * badges, Stripe Price IDs) that the API does not yet serve.
+ * features.
  *
  * Features in each tier are cumulative: Basic extends Free, Pro extends
  * Basic, Enterprise extends Pro. Prices are MXN **pesos** (integers) —

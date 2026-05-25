@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 
 import { AppConfig, CashMovement, CashRegister, CashRegisterSession, Category, CartItem, Customer, CustomerMembership, DiscountPreset, EmployeeHash, InventoryItem, InventoryMovement, Order, PrinterDestination, PrintJobDto, PrintJobUpdateRecord, Product, Promotion, RestaurantTable, Tax } from '../models';
+import { CatalogCacheRow } from '../models/catalog-cache.model';
 
 /**
  * IndexedDB wrapper using Dexie.js.
@@ -52,6 +53,7 @@ export class DatabaseService extends Dexie {
   cashRegisters!: Table<CashRegister, number>;
   taxes!: Table<Tax, number>;
   customerMemberships!: Table<CustomerMembership, number>;
+  catalogCache!: Table<CatalogCacheRow, string>;
   //#endregion
 
   //#region Constructor
@@ -290,6 +292,17 @@ export class DatabaseService extends Dexie {
     // lookups; P2 itself only filters by `customerId`.
     this.version(28).stores({
       customerMemberships: 'id, customerId, [customerId+status], validUntil',
+    });
+
+    // ─── v29 ── Catalog response cache (F1 of FDD-028)
+    // Persists every `GET /api/Catalog/*` (and `/api/Taxes`) body +
+    // ETag so cold-boot reads hit Dexie (≤ 20 ms) instead of network.
+    // PK is the canonical lowercase route string
+    // (e.g. `/catalog/kitchen-statuses`); secondary index on
+    // `fetchedAt` supports future TTL-based eviction sweeps. Hard
+    // freshness cap of 24h enforced in code (see CATALOG_CACHE_MAX_AGE_MS).
+    this.version(29).stores({
+      catalogCache: 'route, fetchedAt',
     });
   }
   //#endregion

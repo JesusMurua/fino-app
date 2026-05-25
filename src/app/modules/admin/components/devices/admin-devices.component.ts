@@ -22,7 +22,7 @@ import {
   GenerateCodeResponse,
   PendingDeviceCodeDto,
 } from '../../../../core/models';
-import { FeatureKey, MacroCategoryType } from '../../../../core/enums';
+import { FeatureKey } from '../../../../core/enums';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DeviceService } from '../../../../core/services/device.service';
@@ -304,8 +304,10 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (this.tenantContext.hasFeature(FeatureKey.MaxKiosks)) {
       modes.push({ value: 'kiosk', label: 'Kiosko', icon: 'pi pi-mobile' });
     }
-    const isServices = this.tenantContext.currentMacro() === MacroCategoryType.Services;
-    if (isServices && this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
+    // `MaxReceptionsPerBranch` lives only in the Services giro's feature map,
+    // so the feature presence alone implies the macro — the previous explicit
+    // `=== Services` check was redundant (AUDIT-058 Vector A).
+    if (this.tenantContext.hasFeature(FeatureKey.MaxReceptionsPerBranch)) {
       modes.push({ value: 'reception', label: 'Pantalla de Recepción / Check-in', icon: 'pi pi-id-card' });
     }
     // Hardware headless service (available to all plans as Core Infrastructure)
