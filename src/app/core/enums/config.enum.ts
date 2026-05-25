@@ -154,7 +154,7 @@ export enum BusinessTypeId {
 
 /**
  * Vertical sub-category — secondary axis of tenant context, layered on
- * top of `MacroCategoryType`. Drives UI verticalization (POS layout
+ * top of `MacroCategoryCode`. Drives UI verticalization (POS layout
  * variants, cart slots, member selectors) without changing feature
  * gating, which remains keyed by the macro.
  *

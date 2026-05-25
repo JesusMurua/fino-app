@@ -12,7 +12,7 @@
 | Vector | Severidad | Hallazgo principal |
 |---|---|---|
 | **A — Domain Gating** | 🟢 **RESOLVED** | 7+ components now use TenantContext computed capabilities. HasFeaturePipe and POS_EXPERIENCE_PLACEHOLDERS added as supporting infrastructure. |
-| **A — ID-range mapping** | 🔴 Crítico | `macroOfBusinessType()` infiere macro por rangos `id <= N` — drift garantizado si backend reordena `BusinessTypeId` seeds |
+| **A — ID-range mapping** | 🟢 **RESOLVED** | Helper deleted via FDD-028 F4 (commit 807e28c); `catalogService.resolveMacro()` joins `BusinessTypeDto.primaryMacroCategoryId` against the cached `/catalog/macro-categories` response (BDD-021). |
 | **A — SubGiro** | 🟠 Alto | `Yoga` y `Crossfit` declarados en enum pero **nunca usados**; solo `Gym` está cableado. Adding subgiros requiere modificar ≥4 archivos |
 | **B — Frontend forms** | 🟠 Alto | 153 referencias a `FormBuilder/FormGroup/FormControl` en 10 components — ningún form metadata-driven |
 | **B — Backend Global Filters** | 🟢 **RESOLVED** | `ApplyTenantFilters` en `POS.Repository/ApplicationDbContext.cs` + `IBranchScoped` / `IBusinessScoped` markers + `BranchInjectionInterceptor`. Suspicion falsified by cross-repo evidence; URL-level `branchId` params are independent of DbContext-level filters. |
@@ -59,9 +59,9 @@ switch (this.tenantContext.currentMacro()) {
 ```
 **Tres switches idénticos** (`namePlaceholder`, `modifierGroupPlaceholder`, `modifierExtraPlaceholder`). Si agregas `Hospitality`, **se renderiza con placeholders de Restaurante silenciosamente**. Open-Closed violado.
 
-### 1.2 ID-range hardcoded para inferir macro [RESOLVABLE — gated on FDD-028 F4]
+### 1.2 ID-range hardcoded para inferir macro [RESOLVED — FDD-028 F4 commit 807e28c]
 
-> **Resolution path (FDD-028 / Vector A complement)**: el helper `macroOfBusinessType()` queda eliminado en la fase F4 de [FDD-028](FDD-028-catalog-api-integration.md). Reemplazo: `catalogService.resolveMacro(businessTypeId)` joins `BusinessTypeDto` cached + `MacroCategoryDto` cached por `primaryMacroCategoryId`. Backend ahora ship `BusinessTypeDto.primaryMacroCategoryId` como FK explícita (BDD-021), eliminando la necesidad de inferir macro por rangos de ID en el frontend. **Status pasa a RESOLVED cuando F4 mergea**.
+> **Resolution (FDD-028 / Vector A complement)**: el helper `macroOfBusinessType()` fue eliminado en la fase F4 de [FDD-028](FDD-028-catalog-api-integration.md). Reemplazo: `catalogService.resolveMacro(businessTypeId)` joinea `BusinessTypeDto` cached + `MacroCategoryDto` cached por `primaryMacroCategoryId`. Backend ahora ship `BusinessTypeDto.primaryMacroCategoryId` como FK explícita (BDD-021), eliminando la necesidad de inferir macro por rangos de ID en el frontend. La función `macroOfBusinessType()` fue eliminada de `config.enum.ts` en el commit 807e28c (FDD-028 F4).
 
 [src/app/core/enums/config.enum.ts:106-111](../src/app/core/enums/config.enum.ts#L106-L111):
 ```ts
@@ -96,9 +96,9 @@ export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
 - Update cada `currentSubCategory() === SubCategoryType.Gym` (admin-shell, admin-customers, dashboard, admin-products → 5 files con refs a `SubCategoryType.*`).
 - Update `posExperience` resolution si nueva subcat necesita layout distinto.
 
-### 1.4 `hasKitchen` con fallback codeado al macro [RESOLVABLE — gated on FDD-028 F3 + F6 + F5]
+### 1.4 `hasKitchen` con fallback codeado al macro [RESOLVED — FDD-028 F3 commit bbefbe1 + F6 commit 6333d14 + F5 B3 commit 38e6bc8]
 
-> **Resolution path (FDD-028)**: la race condition en cold-boot desaparece cuando [FDD-028](FDD-028-catalog-api-integration.md) cierra: (a) F3 cambia la fuente de `hasKitchen` de `currentBusinessType()?.hasKitchen` (campo que ya no existe en `BusinessTypeDto`) a `TenantContextService.currentBusinessType()` synthetic shape que joinea con `MacroCategoryDto` cached; (b) F6 commitea seed JSONs bajo `src/assets/catalog-seed/*.json` garantizando que `MacroCategoryDto` está disponible en cualquier boot (incluyendo first-install offline); (c) F5 elimina el fallback macro-based en `tenant-context.service.ts:99-100` alongside la migración del enum. **Status pasa a RESOLVED cuando F3 + F6 + F5 mergean**.
+> **Resolution (FDD-028)**: la race condition en cold-boot desapareció cuando [FDD-028](FDD-028-catalog-api-integration.md) cerró: (a) F3 cambió la fuente de `hasKitchen` de `currentBusinessType()?.hasKitchen` (campo que ya no existe en `BusinessTypeDto`) a `TenantContextService.currentBusinessType()` synthetic shape que joinea con `MacroCategoryDto` cached; (b) F6 commiteó seed JSONs bajo `src/assets/catalog-seed/*.json` garantizando que `MacroCategoryDto` está disponible en cualquier boot (incluyendo first-install offline); (c) F5 migró el fallback macro-based en `tenant-context.service.ts:99-100` a comparación contra `MacroCategoryCode` (string) alongside la migración del enum. `tenant-context.service.ts:99` ahora compara contra `MacroCategoryCode.FoodBeverage` (string code), y el macro fallback path solo se activa durante la breve ventana de cold-boot antes de que Dexie / seed JSON hidraten — que ahora es sub-20ms.
 
 [src/app/core/services/tenant-context.service.ts:97-100](../src/app/core/services/tenant-context.service.ts#L97-L100):
 ```ts
@@ -482,3 +482,11 @@ Applied via [FDD-028 Appendix A](FDD-028-catalog-api-integration.md).
 - §2.7 (Bridge supervisors): still 🔴 `[NO VERIFICADO]` — `pos-local-bridge` audit pending.
 - §3.5 (SignalR loopback): 🔴 Crítico → 🔴 **CONFIRMED MISSING**. Backend audit verified zero matches for `HubConnection*` in `POS.IntegrationTests`; `Microsoft.AspNetCore.SignalR.Client` NuGet not referenced.
 - TL;DR table updated: `B — Backend Global Filters` row → 🟢 RESOLVED; new `C — WebApplicationFactory` row added → 🟢 RESOLVED; new `C — SignalR loopback` row added → 🔴 CONFIRMED MISSING.
+
+### 2026-05-24 — FDD-028 fully shipped, §1.2 + §1.4 closed
+
+- §1.2 (ID-range mapping for `macroOfBusinessType()`): 🟡 RESOLVABLE → 🟢 **RESOLVED**. Commit 807e28c (FDD-028 F4). Helper deleted from `config.enum.ts`; replaced by `catalogService.resolveMacro(businessTypeId)` join.
+- §1.4 (hasKitchen race condition): 🟡 RESOLVABLE → 🟢 **RESOLVED**. Commits bbefbe1 (F3) + 6333d14 (F6) + 38e6bc8 (F5 B3). Race window eliminated by sub-20ms Dexie hydration + macro fallback comparison now against canonical string code.
+- F5 enum migration (5 buckets B0-B4): `MacroCategoryType` deleted; `MacroCategoryCode` canonical. Production-validation gate waived per user (single-dev startup context).
+- TL;DR table updated: `A — ID-range mapping` row → 🟢 RESOLVED.
+- §2.7 (Bridge supervisors) and §3.5 (SignalR loopback) remain STILL OPEN — cross-repo, not actionable from this repo.

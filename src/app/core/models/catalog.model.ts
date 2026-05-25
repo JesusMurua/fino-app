@@ -49,13 +49,15 @@ export type PosExperience = 'Restaurant' | 'Counter' | 'Retail' | 'Quick' | 'Ser
  * Business type catalog entry.
  *
  * **FDD-028 F3 reshape (BDD-021 Cohort B)**: the backend `BusinessTypeDto`
- * now ships `{ id, primaryMacroCategoryId, name }` only. The legacy
- * fields `code` / `hasKitchen` / `hasTables` / `posExperience` /
- * `sortOrder` are marked **optional** during the transition so the
- * hardcoded `BUSINESS_TYPES` fallback (which still carries them) and
- * the new backend wire (which doesn't) both satisfy this interface.
- * F6 deletes the hardcoded fallback; F5 can then tighten the interface
- * to drop the optionals entirely.
+ * ships `{ id, primaryMacroCategoryId, name }` only. The legacy fields
+ * `code` / `hasKitchen` / `hasTables` / `posExperience` / `sortOrder`
+ * remain **optional** on the interface — wire responses from BDD-021
+ * never carry them, but consumer code that touches these fields still
+ * compiles. A future cleanup can tighten the interface to drop the
+ * optionals entirely (the hardcoded `BUSINESS_TYPES` fallback that
+ * once required them was deleted in F6; seed JSONs under
+ * `src/assets/catalog-seed/business-types.json` now ship only the
+ * three required fields).
  *
  * Macro-derived attributes (`hasKitchen`, `hasTables`, `posExperience`)
  * are now sourced from the joined `MacroCategoryDto` via
