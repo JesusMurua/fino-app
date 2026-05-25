@@ -52,11 +52,68 @@ export enum PlanTypeId {
  * IDs match the backend `MacroCategory` catalog. There are exactly 4
  * values and they drive feature gating, pricing, and POS experience.
  */
+/**
+ * @deprecated Use {@link MacroCategoryCode} for business comparisons,
+ * Record keys, and switch labels. This numeric enum is retained DURING
+ * the FDD-028 F5 migration so wire-shape fields (JWT
+ * `primaryMacroCategoryId`, AuthUser, etc.) and legacy consumers
+ * continue to compile. Will be deleted in the F5 cleanup bucket once
+ * all internal consumers reference `MacroCategoryCode`.
+ */
 export enum MacroCategoryType {
   FoodBeverage = 1,
   QuickService = 2,
   Retail       = 3,
   Services     = 4,
+}
+
+// ────────────────────────────────────────────────────────────────────
+// FDD-028 F5 — Canonical string-literal representation
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Canonical string-literal representation of a macro category — the
+ * new source of truth for business comparisons, Record keys, and typed
+ * switch statements. Mirrors `MacroCategoryDto.internalCode` from
+ * BDD-021 §5.1.1.
+ *
+ * Replaces {@link MacroCategoryType} at the end of FDD-028 F5. Until
+ * then, both representations coexist with explicit translation via
+ * {@link idToCode} / {@link codeToId}.
+ */
+export const MacroCategoryCode = {
+  FoodBeverage: 'food-beverage',
+  QuickService: 'quick-service',
+  Retail:       'retail',
+  Services:     'services',
+} as const;
+
+export type MacroCategoryCode = typeof MacroCategoryCode[keyof typeof MacroCategoryCode];
+
+/** Numeric-to-string lookup. Used at JWT / auth boundary deserialization. */
+export const MACRO_ID_TO_CODE: Record<MacroCategoryType, MacroCategoryCode> = {
+  [MacroCategoryType.FoodBeverage]: MacroCategoryCode.FoodBeverage,
+  [MacroCategoryType.QuickService]: MacroCategoryCode.QuickService,
+  [MacroCategoryType.Retail]:       MacroCategoryCode.Retail,
+  [MacroCategoryType.Services]:     MacroCategoryCode.Services,
+};
+
+/** String-to-numeric lookup. Used for backwards-compat wire-shape calls. */
+export const MACRO_CODE_TO_ID: Record<MacroCategoryCode, MacroCategoryType> = {
+  [MacroCategoryCode.FoodBeverage]: MacroCategoryType.FoodBeverage,
+  [MacroCategoryCode.QuickService]: MacroCategoryType.QuickService,
+  [MacroCategoryCode.Retail]:       MacroCategoryType.Retail,
+  [MacroCategoryCode.Services]:     MacroCategoryType.Services,
+};
+
+/** Translates a numeric macro id to its canonical string code. */
+export function idToCode(id: MacroCategoryType): MacroCategoryCode {
+  return MACRO_ID_TO_CODE[id];
+}
+
+/** Translates a canonical string code to its numeric macro id. */
+export function codeToId(code: MacroCategoryCode): MacroCategoryType {
+  return MACRO_CODE_TO_ID[code];
 }
 
 /**
