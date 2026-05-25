@@ -1,4 +1,4 @@
-import { MacroCategoryType, PlanTypeId } from '../enums';
+import { MacroCategoryCode, MacroCategoryType, PlanTypeId } from '../enums';
 
 /**
  * Computed plan metadata derived from auth state. Kept here because
@@ -64,9 +64,9 @@ export const PLAN_DISPLAY_NAME: Record<PlanTypeId, string> = {
  *
  * Source of truth: `.claude/business-rules-matrix.md`.
  */
-export const AVAILABLE_PLAN_TYPES_BY_MACRO: Record<MacroCategoryType, ReadonlySet<PlanTypeId>> = {
-  [MacroCategoryType.FoodBeverage]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]),
-  [MacroCategoryType.QuickService]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
-  [MacroCategoryType.Retail]:       new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
-  [MacroCategoryType.Services]:     new Set([PlanTypeId.Free, PlanTypeId.Pro]),
+export const AVAILABLE_PLAN_TYPES_BY_MACRO: Record<MacroCategoryCode, ReadonlySet<PlanTypeId>> = {
+  [MacroCategoryCode.FoodBeverage]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro, PlanTypeId.Enterprise]),
+  [MacroCategoryCode.QuickService]: new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryCode.Retail]:       new Set([PlanTypeId.Free, PlanTypeId.Basic, PlanTypeId.Pro]),
+  [MacroCategoryCode.Services]:     new Set([PlanTypeId.Free, PlanTypeId.Pro]),
 };

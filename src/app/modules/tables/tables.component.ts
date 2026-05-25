@@ -15,7 +15,7 @@ import {
   ZoneType,
   normalizeDisplayStatus,
 } from '../../core/models';
-import { KitchenStatusId, MacroCategoryType, TableStatus } from '../../core/enums';
+import { idToCode, KitchenStatusId, MacroCategoryCode, TableStatus } from '../../core/enums';
 import { Reservation } from '../../core/models/reservation.model';
 import { CatalogService } from '../../core/services/catalog.service';
 import { DatabaseService } from '../../core/services/database.service';
@@ -1179,8 +1179,11 @@ export class TablesComponent implements OnInit, OnDestroy {
   /** Whether KPI strip should be visible based on primary macro category */
   showKpis(): boolean {
     const macro = this.authService.primaryMacroCategoryId();
-    return macro === MacroCategoryType.FoodBeverage
-      || macro === MacroCategoryType.QuickService;
+    if (macro === null) return false;
+    // F5: comparisons happen against the canonical string code.
+    const code = idToCode(macro);
+    return code === MacroCategoryCode.FoodBeverage
+      || code === MacroCategoryCode.QuickService;
   }
 
   /**

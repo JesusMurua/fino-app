@@ -10,7 +10,7 @@ import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 
 import { BranchDeliveryConfig, UpsertDeliveryConfigRequest } from '../../../../core/models';
-import { FeatureKey, MacroCategoryType, OrderSource } from '../../../../core/enums';
+import { FeatureKey, idToCode, MacroCategoryCode, OrderSource } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchPayload, BranchService } from '../../../../core/services/branch.service';
 import { BranchDeliveryConfigService } from '../../../../core/services/branch-delivery-config.service';
@@ -123,13 +123,16 @@ export class AdminBranchesComponent implements OnInit {
   readonly showKitchenToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
     if (macro === null) return false;
-    return macro === MacroCategoryType.FoodBeverage || macro === MacroCategoryType.QuickService;
+    // F5: comparisons happen against the canonical string code.
+    const code = idToCode(macro);
+    return code === MacroCategoryCode.FoodBeverage || code === MacroCategoryCode.QuickService;
   });
 
   /** Whether the "¿Tiene mesas?" toggle is relevant to the tenant's macro */
   readonly showTablesToggle = computed(() => {
     const macro = this.authService.primaryMacroCategoryId();
-    return macro === MacroCategoryType.FoodBeverage;
+    if (macro === null) return false;
+    return idToCode(macro) === MacroCategoryCode.FoodBeverage;
   });
 
   /** Reveal delivery section only when editing + the feature is unlocked */

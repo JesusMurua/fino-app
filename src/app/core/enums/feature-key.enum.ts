@@ -1,4 +1,4 @@
-import { MacroCategoryType } from './config.enum';
+import { MacroCategoryCode } from './config.enum';
 
 /**
  * Feature keys emitted by the backend in the JWT `features` claim.
@@ -169,9 +169,9 @@ const SERVICES_FEATURES: readonly FeatureKey[] = [
  * Drives `TenantContextService.isApplicableToGiro()` — used by the UI to
  * decide hide vs. upsell-lock for each feature.
  */
-export const GIRO_FEATURE_MAP: Record<MacroCategoryType, readonly FeatureKey[]> = {
-  [MacroCategoryType.FoodBeverage]: FOOD_AND_BEVERAGE_FEATURES,
-  [MacroCategoryType.QuickService]: QUICK_SERVICE_FEATURES,
-  [MacroCategoryType.Retail]:       RETAIL_FEATURES,
-  [MacroCategoryType.Services]:     SERVICES_FEATURES,
+export const GIRO_FEATURE_MAP: Record<MacroCategoryCode, readonly FeatureKey[]> = {
+  [MacroCategoryCode.FoodBeverage]: FOOD_AND_BEVERAGE_FEATURES,
+  [MacroCategoryCode.QuickService]: QUICK_SERVICE_FEATURES,
+  [MacroCategoryCode.Retail]:       RETAIL_FEATURES,
+  [MacroCategoryCode.Services]:     SERVICES_FEATURES,
 };

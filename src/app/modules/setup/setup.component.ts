@@ -6,7 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { ActivateDeviceResponse, DeviceConfig } from '../../core/models';
-import { MacroCategoryType } from '../../core/enums';
+import { idToCode, MacroCategoryCode, MacroCategoryType } from '../../core/enums';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -140,7 +140,7 @@ export class SetupComponent implements OnInit {
    * Populated by `submitEmail` and `submitCode` so `availableModes`
    * can filter the picker before the user gets to it.
    */
-  private readonly tenantMacro = signal<MacroCategoryType | null>(null);
+  private readonly tenantMacro = signal<MacroCategoryCode | null>(null);
   private readonly tenantHasKitchen = signal<boolean | null>(null);
   private readonly tenantHasTables = signal<boolean | null>(null);
 
@@ -160,8 +160,8 @@ export class SetupComponent implements OnInit {
     const hasKitchen = this.tenantHasKitchen();
     const hasTables = this.tenantHasTables();
 
-    const isFoodPrepVertical = macro === MacroCategoryType.FoodBeverage
-      || macro === MacroCategoryType.QuickService;
+    const isFoodPrepVertical = macro === MacroCategoryCode.FoodBeverage
+      || macro === MacroCategoryCode.QuickService;
 
     return this.modes.filter(mode => {
       switch (mode.value) {
@@ -179,7 +179,7 @@ export class SetupComponent implements OnInit {
           // generic Services tomorrow). Hide it for Food/Quick/Retail.
           // Degrade open when the macro hint hasn't shipped yet.
           if (macro === null) return true;
-          return macro === MacroCategoryType.Services;
+          return macro === MacroCategoryCode.Services;
         default:
           return true;
       }
@@ -596,7 +596,8 @@ export class SetupComponent implements OnInit {
    */
   private captureVerticalHints(hints: VerticalHints): void {
     if (hints.primaryMacroCategoryId !== undefined) {
-      this.tenantMacro.set(hints.primaryMacroCategoryId);
+      // F5: signal keys on the canonical string code; wire reality is numeric.
+      this.tenantMacro.set(idToCode(hints.primaryMacroCategoryId));
     }
     if (hints.hasKitchen !== undefined) {
       this.tenantHasKitchen.set(hints.hasKitchen);

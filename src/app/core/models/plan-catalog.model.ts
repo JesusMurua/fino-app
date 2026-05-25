@@ -1,4 +1,4 @@
-import { FeatureKey, MacroCategoryType, PlanTypeId } from '../enums';
+import { FeatureKey, MacroCategoryCode, PlanTypeId } from '../enums';
 
 /**
  * Public types, pricing utilities and UI labels for the plan catalog.
@@ -19,15 +19,15 @@ import { FeatureKey, MacroCategoryType, PlanTypeId } from '../enums';
 export type PricingGroup = 'general' | 'standard' | 'restaurant';
 
 /** Maps every macro to its pricing lane. */
-export const PRICING_GROUP_BY_MACRO: Record<MacroCategoryType, PricingGroup> = {
-  [MacroCategoryType.FoodBeverage]: 'restaurant',
-  [MacroCategoryType.QuickService]: 'standard',
-  [MacroCategoryType.Retail]:       'standard',
-  [MacroCategoryType.Services]:     'general',
+export const PRICING_GROUP_BY_MACRO: Record<MacroCategoryCode, PricingGroup> = {
+  [MacroCategoryCode.FoodBeverage]: 'restaurant',
+  [MacroCategoryCode.QuickService]: 'standard',
+  [MacroCategoryCode.Retail]:       'standard',
+  [MacroCategoryCode.Services]:     'general',
 };
 
 /** Resolves the pricing lane for a macro; falls back to `'general'`. */
-export function pricingGroupForMacro(macro: MacroCategoryType | null): PricingGroup {
+export function pricingGroupForMacro(macro: MacroCategoryCode | null): PricingGroup {
   return macro !== null ? PRICING_GROUP_BY_MACRO[macro] : 'general';
 }
 

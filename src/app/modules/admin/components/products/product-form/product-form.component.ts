@@ -34,7 +34,7 @@ import {
   ProductType,
   SAT_UNIT_OPTIONS,
 } from '../../../../../core/models';
-import { FeatureKey, MacroCategoryType } from '../../../../../core/enums';
+import { FeatureKey, MacroCategoryCode } from '../../../../../core/enums';
 import { DatabaseService } from '../../../../../core/services/database.service';
 import { ProductService, SaveProductDto } from '../../../../../core/services/product.service';
 import { ScannerService } from '../../../../../core/services/scanner.service';
@@ -156,8 +156,8 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly tenantContext = inject(TenantContextService);
   readonly printerDestinationService = inject(PrinterDestinationService);
 
-  /** Exposed to the template so structural directives can compare against macros */
-  readonly MacroCategoryType = MacroCategoryType;
+  /** Exposed to the template so structural directives can compare against macro codes */
+  readonly MacroCategoryCode = MacroCategoryCode;
 
   /**
    * True when the current tenant sells subscription / membership products
@@ -241,8 +241,8 @@ export class ProductFormComponent implements OnInit, OnDestroy {
   readonly hasModifiersSection = computed(() => {
     if (this.tenantContext.hasKitchen()) return true;
     const macro = this.tenantContext.currentMacro();
-    return macro === MacroCategoryType.FoodBeverage
-      || macro === MacroCategoryType.QuickService;
+    return macro === MacroCategoryCode.FoodBeverage
+      || macro === MacroCategoryCode.QuickService;
   });
 
   /** Whether the Datos fiscales section is shown — gated by CFDI feature. */

@@ -9,16 +9,16 @@ import { PasswordModule } from 'primeng/password';
 
 import { environment } from '../../../environments/environment';
 import { RegisterRequest } from '../../core/models';
-import { MACRO_CATEGORY_LABELS, MacroCategoryType } from '../../core/enums';
+import { codeToId, MACRO_CATEGORY_LABELS, MacroCategoryCode } from '../../core/enums';
 import { AuthService } from '../../core/services/auth.service';
 import { RegistrationIntent, parseRegistrationIntent } from '../../core/utils/registration.utils';
 
 /** Icon used next to each macro category in the read-only badge (landing-driven flow) */
-const MACRO_BADGE_ICON: Record<MacroCategoryType, string> = {
-  [MacroCategoryType.FoodBeverage]: '🍽️',
-  [MacroCategoryType.QuickService]: '☕',
-  [MacroCategoryType.Retail]:       '🛒',
-  [MacroCategoryType.Services]:     '🛠️',
+const MACRO_BADGE_ICON: Record<MacroCategoryCode, string> = {
+  [MacroCategoryCode.FoodBeverage]: '🍽️',
+  [MacroCategoryCode.QuickService]: '☕',
+  [MacroCategoryCode.Retail]:       '🛒',
+  [MacroCategoryCode.Services]:     '🛠️',
 };
 
 /** Typed error surfaced to the template — avoids substring matching on messages */
@@ -77,11 +77,13 @@ export class RegisterComponent implements OnInit {
   readonly giroBadge = computed(() => {
     if (!this.hasGiroFromUrl()) return null;
     const id = this.form.getRawValue().primaryMacroCategoryId
-      ?? this.intent?.primaryMacroCategoryId ?? null;
+      ?? this.intent?.primaryMacroCategoryCode ?? null;
     if (id === null) return null;
     return {
       icon:  MACRO_BADGE_ICON[id],
-      label: MACRO_CATEGORY_LABELS[id],
+      // MACRO_CATEGORY_LABELS stays keyed by MacroCategoryType until B4
+      // cleanup — translate the canonical code to the numeric id here.
+      label: MACRO_CATEGORY_LABELS[codeToId(id)],
     };
   });
 
@@ -90,10 +92,10 @@ export class RegisterComponent implements OnInit {
    * The 4 macro categories defined in `.claude/business-rules-matrix.md`.
    */
   readonly businessTypeOptions = [
-    { label: 'Restaurantes y Bares',     value: MacroCategoryType.FoodBeverage },
-    { label: 'Comida Rápida y Cafés',   value: MacroCategoryType.QuickService },
-    { label: 'Tiendas y Comercios',      value: MacroCategoryType.Retail },
-    { label: 'Servicios Especializados', value: MacroCategoryType.Services },
+    { label: 'Restaurantes y Bares',     value: MacroCategoryCode.FoodBeverage },
+    { label: 'Comida Rápida y Cafés',   value: MacroCategoryCode.QuickService },
+    { label: 'Tiendas y Comercios',      value: MacroCategoryCode.Retail },
+    { label: 'Servicios Especializados', value: MacroCategoryCode.Services },
   ];
 
   /** Landing URL for the "back to plans" link */
@@ -105,7 +107,7 @@ export class RegisterComponent implements OnInit {
     email:                  ['', [Validators.required, Validators.email]],
     password:               ['', [Validators.required, Validators.minLength(8)]],
     confirmPassword:        ['', Validators.required],
-    primaryMacroCategoryId: this.fb.control<MacroCategoryType | null>(null, Validators.required),
+    primaryMacroCategoryId: this.fb.control<MacroCategoryCode | null>(null, Validators.required),
   }, { validators: passwordMatchValidator });
 
   //#endregion
@@ -123,8 +125,8 @@ export class RegisterComponent implements OnInit {
       return;
     }
     this.hasGiroFromUrl.set(this.intent.giroSlug !== null);
-    if (this.intent.primaryMacroCategoryId !== null) {
-      this.form.patchValue({ primaryMacroCategoryId: this.intent.primaryMacroCategoryId });
+    if (this.intent.primaryMacroCategoryCode !== null) {
+      this.form.patchValue({ primaryMacroCategoryId: this.intent.primaryMacroCategoryCode });
     }
   }
 
@@ -177,8 +179,8 @@ export class RegisterComponent implements OnInit {
     const { businessName, ownerName, email, password, primaryMacroCategoryId } = this.form.getRawValue();
     // Validators.required guarantees the macro is set at this point;
     // if the URL handshake brought one, it was patched into the form during ngOnInit.
-    const resolvedMacroId = primaryMacroCategoryId ?? this.intent.primaryMacroCategoryId;
-    if (resolvedMacroId === null) {
+    const resolvedMacroCode = primaryMacroCategoryId ?? this.intent.primaryMacroCategoryCode;
+    if (resolvedMacroCode === null) {
       this.isLoading.set(false);
       this.form.markAllAsTouched();
       return;
@@ -189,7 +191,8 @@ export class RegisterComponent implements OnInit {
       ownerName:              ownerName!.trim(),
       email:                  email!.trim(),
       password:               password!,
-      primaryMacroCategoryId: resolvedMacroId,
+      // F5: RegisterRequest wire shape is numeric; translate from code.
+      primaryMacroCategoryId: codeToId(resolvedMacroCode),
       planTypeId:             this.intent.planTypeId,
       countryCode:            this.intent.countryCode,
       timeZoneId:             Intl.DateTimeFormat().resolvedOptions().timeZone,

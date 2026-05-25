@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { codeToId, FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { FeatureKey, MacroCategoryCode, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { BusinessSettings } from '../models/business-settings.model';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
@@ -34,7 +34,7 @@ export class TenantContextService {
   //#region Backing signals
 
   private readonly _currentPlan = signal<PlanTypeId>(PlanTypeId.Free);
-  private readonly _currentMacro = signal<MacroCategoryType | null>(null);
+  private readonly _currentMacro = signal<MacroCategoryCode | null>(null);
   private readonly _currentSubCategory = signal<SubCategoryType | null>(null);
   private readonly _activeFeatures = signal<ReadonlySet<FeatureKey>>(new Set());
 
@@ -121,7 +121,7 @@ export class TenantContextService {
    */
   readonly hasKitchen = computed(
     () => this.currentBusinessType()?.hasKitchen
-      ?? (this.currentMacro() === MacroCategoryType.FoodBeverage),
+      ?? (this.currentMacro() === MacroCategoryCode.FoodBeverage),
   );
 
   /** POS experience variant for the current tenant — drives UI verticalization */
@@ -285,7 +285,7 @@ export class TenantContextService {
    */
   setContext(
     plan: PlanTypeId,
-    macro: MacroCategoryType,
+    macro: MacroCategoryCode,
     features: readonly string[],
     subCategory?: SubCategoryType | null,
   ): void {
@@ -347,12 +347,9 @@ export class TenantContextService {
       this._activeFeatures.set(this.parseFeatures(features));
     }
 
-    // F5 B1: `extractMacroCategoryFromJwt` now returns the canonical
-    // `MacroCategoryCode` string; translate to the numeric
-    // `MacroCategoryType` until the signal type itself migrates in B3.
     const macroCode = extractMacroCategoryFromJwt(token);
     if (macroCode !== null) {
-      this._currentMacro.set(codeToId(macroCode));
+      this._currentMacro.set(macroCode);
     }
   }
 

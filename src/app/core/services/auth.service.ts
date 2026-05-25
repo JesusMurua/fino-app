@@ -18,7 +18,7 @@ import {
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
-import { BACK_OFFICE_ROLES, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { BACK_OFFICE_ROLES, idToCode, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { extractFeaturesFromJwt } from '../utils/jwt.utils';
 import { ApiService } from './api.service';
 import { BranchContextService } from './branch-context.service';
@@ -748,7 +748,10 @@ export class AuthService {
     const jwtFeatures = extractFeaturesFromJwt(user.token);
     const features = jwtFeatures ?? user.features ?? [];
     const subCategory = this.extractSubCategoryFromJwt(user.token);
-    this.tenantContext.setContext(this.planTypeId(), macro, features, subCategory);
+    // F5: TenantContextService now keys on the canonical string code,
+    // not the numeric id. Wire-shape (auth.user.primaryMacroCategoryId)
+    // stays numeric; translate at the propagation boundary.
+    this.tenantContext.setContext(this.planTypeId(), idToCode(macro), features, subCategory);
   }
 
   //#endregion
