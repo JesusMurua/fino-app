@@ -81,9 +81,7 @@ export class RegisterComponent implements OnInit {
     if (id === null) return null;
     return {
       icon:  MACRO_BADGE_ICON[id],
-      // MACRO_CATEGORY_LABELS stays keyed by MacroCategoryType until B4
-      // cleanup — translate the canonical code to the numeric id here.
-      label: MACRO_CATEGORY_LABELS[codeToId(id)],
+      label: MACRO_CATEGORY_LABELS[id],
     };
   });
 

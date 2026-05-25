@@ -18,7 +18,7 @@ import {
   SubscriptionStatus,
   sha256Hex,
 } from '../models';
-import { BACK_OFFICE_ROLES, idToCode, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { BACK_OFFICE_ROLES, idToCode, PlanTypeId, SubCategoryType } from '../enums';
 import { extractFeaturesFromJwt } from '../utils/jwt.utils';
 import { ApiService } from './api.service';
 import { BranchContextService } from './branch-context.service';
@@ -98,7 +98,7 @@ export class AuthService {
    * Callers that require a concrete macro must handle null explicitly;
    * there is no fallback to a generic default.
    */
-  readonly primaryMacroCategoryId = signal<MacroCategoryType | null>(
+  readonly primaryMacroCategoryId = signal<number | null>(
     this.loadUserFromStorage()?.primaryMacroCategoryId ?? null,
   );
 

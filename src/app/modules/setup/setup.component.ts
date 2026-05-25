@@ -6,7 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 
 import { ActivateDeviceResponse, DeviceConfig } from '../../core/models';
-import { idToCode, MacroCategoryCode, MacroCategoryType } from '../../core/enums';
+import { idToCode, MacroCategoryCode } from '../../core/enums';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -35,7 +35,8 @@ interface BranchOption {
  * that haven't shipped the enrichment yet will simply skip filtering.
  */
 interface VerticalHints {
-  primaryMacroCategoryId?: MacroCategoryType;
+  /** Wire-shape numeric macro id (1..4). Translate via `idToCode` for business comparisons. */
+  primaryMacroCategoryId?: number;
   hasKitchen?: boolean;
   hasTables?: boolean;
 }

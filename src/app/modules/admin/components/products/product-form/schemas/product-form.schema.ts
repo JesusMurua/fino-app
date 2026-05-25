@@ -163,7 +163,7 @@ export interface SectionDescriptor {
  * Preview-pane variant — selects which child renderer
  * `<app-product-preview>` instantiates.
  *
- * Today's mapping (from `MacroCategoryType` direct switch in the legacy
+ * Today's mapping (from `MacroCategoryCode` direct switch in the legacy
  * template): FoodBeverage → card-fb, QuickService → button-counter,
  * Retail → row-retail, Services / Quick → service-tile.
  */

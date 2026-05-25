@@ -384,12 +384,12 @@ export class AdminSettingsComponent implements OnInit, OnDestroy {
       [MacroCategoryCode.Services]:     '🛠️',
     };
 
-    // F5: macro is wire-shape numeric; translate for the code-keyed
-    // Record. MACRO_CATEGORY_LABELS stays keyed by MacroCategoryType
-    // until B4 cleanup, so it accepts the numeric value directly.
+    // F5: macro is wire-shape numeric; translate to the canonical code
+    // for both Record lookups (icon + label).
+    const code = idToCode(macro);
     return {
-      icon: iconByMacro[idToCode(macro)],
-      name: MACRO_CATEGORY_LABELS[macro],
+      icon: iconByMacro[code],
+      name: MACRO_CATEGORY_LABELS[code],
       description: this.tenantContext.currentBusinessType()?.name ?? '',
     };
   });

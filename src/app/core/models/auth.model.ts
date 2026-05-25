@@ -1,4 +1,4 @@
-import { MacroCategoryType, PlanTypeId, UserRoleId } from '../enums';
+import { PlanTypeId, UserRoleId } from '../enums';
 
 /** Branch summary returned in the login response */
 export interface BranchInfo {
@@ -32,11 +32,11 @@ export interface AuthUser {
    */
   /**
    * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
-   * the deprecated {@link MacroCategoryType} enum so the value is
-   * comparable to backend seed identifiers. Consumers needing the
-   * canonical string code should translate via `idToCode(...)`.
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
    */
-  primaryMacroCategoryId: MacroCategoryType;
+  primaryMacroCategoryId: number;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */
@@ -68,14 +68,13 @@ export interface RegisterRequest {
   ownerName: string;
   email: string;
   password: string;
-  /** Primary macro FK — use MacroCategoryType enum */
   /**
    * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
-   * the deprecated {@link MacroCategoryType} enum so the value is
-   * comparable to backend seed identifiers. Consumers needing the
-   * canonical string code should translate via `idToCode(...)`.
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
    */
-  primaryMacroCategoryId: MacroCategoryType;
+  primaryMacroCategoryId: number;
   /** Numeric plan FK — use PlanTypeId enum */
   planTypeId: PlanTypeId;
   /** ISO 3166-1 alpha-2 country code (e.g. 'MX') — drives tax engine defaults */
@@ -107,11 +106,11 @@ export interface LoginResponse {
   /** Primary macro FK — sub-giros are fetched separately when needed */
   /**
    * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
-   * the deprecated {@link MacroCategoryType} enum so the value is
-   * comparable to backend seed identifiers. Consumers needing the
-   * canonical string code should translate via `idToCode(...)`.
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Consumers needing the canonical string code should
+   * translate via `idToCode(...)`.
    */
-  primaryMacroCategoryId: MacroCategoryType;
+  primaryMacroCategoryId: number;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
   /** 1=Pending, 2=InProgress, 3=Completed */

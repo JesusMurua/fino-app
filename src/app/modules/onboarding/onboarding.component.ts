@@ -100,7 +100,7 @@ const FREE_BADGE_FALLBACK = 'Gratis';
 const MACRO_CARDS: MacroCard[] = [
   {
     id: MacroCategoryCode.FoodBeverage,
-    label: MACRO_CATEGORY_LABELS[codeToId(MacroCategoryCode.FoodBeverage)],
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.FoodBeverage],
     description: 'Mesas, comandas y cocina',
     icon: 'pi pi-apple',
     accent: '#EF4444',
@@ -114,7 +114,7 @@ const MACRO_CARDS: MacroCard[] = [
   },
   {
     id: MacroCategoryCode.QuickService,
-    label: MACRO_CATEGORY_LABELS[codeToId(MacroCategoryCode.QuickService)],
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.QuickService],
     description: 'Mostrador, con o sin cocina',
     icon: 'pi pi-sun',
     accent: '#F59E0B',
@@ -131,7 +131,7 @@ const MACRO_CARDS: MacroCard[] = [
   },
   {
     id: MacroCategoryCode.Retail,
-    label: MACRO_CATEGORY_LABELS[codeToId(MacroCategoryCode.Retail)],
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Retail],
     description: 'Inventario rápido, sin errores',
     icon: 'pi pi-shopping-bag',
     accent: '#3B82F6',
@@ -149,7 +149,7 @@ const MACRO_CARDS: MacroCard[] = [
   },
   {
     id: MacroCategoryCode.Services,
-    label: MACRO_CATEGORY_LABELS[codeToId(MacroCategoryCode.Services)],
+    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Services],
     description: 'Cobras por lo que haces',
     icon: 'pi pi-wrench',
     accent: '#8B5CF6',
@@ -469,9 +469,7 @@ export class OnboardingComponent implements OnInit {
   readonly selectedMacroLabel = computed(() => {
     const id = this.selectedMacroId();
     if (id === null) return '';
-    // MACRO_CATEGORY_LABELS stays keyed by MacroCategoryType until B4
-    // cleanup — translate the canonical code to the numeric id here.
-    return MACRO_CATEGORY_LABELS[codeToId(id)];
+    return MACRO_CATEGORY_LABELS[id];
   });
 
   /** Whether Step 1's "Continuar" button should be enabled. */

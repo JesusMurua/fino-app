@@ -1,4 +1,4 @@
-import { MacroCategoryCode, MacroCategoryType, PlanTypeId } from '../enums';
+import { MacroCategoryCode, PlanTypeId } from '../enums';
 
 /**
  * Computed plan metadata derived from auth state. Kept here because
@@ -9,11 +9,11 @@ export interface PlanInfo {
   planTypeId: PlanTypeId;
   /**
    * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
-   * the deprecated {@link MacroCategoryType} enum so the value lines
-   * up with backend seed identifiers. Null until the user logs in and
-   * the tenant context is hydrated.
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Null until the user logs in and the tenant context
+   * is hydrated.
    */
-  primaryMacroCategoryId: MacroCategoryType | null;
+  primaryMacroCategoryId: number | null;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
   isOnTrial: boolean;

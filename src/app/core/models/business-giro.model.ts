@@ -1,4 +1,4 @@
-import { BusinessTypeId, MacroCategoryType } from '../enums';
+import { BusinessTypeId } from '../enums';
 
 /**
  * Payload for `PUT /api/business/giro` — idempotent write of the
@@ -16,10 +16,11 @@ import { BusinessTypeId, MacroCategoryType } from '../enums';
 export interface UpdateBusinessGiroRequest {
   /**
    * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
-   * the deprecated {@link MacroCategoryType} enum so the value lines
-   * up with backend seed identifiers on the PUT payload.
+   * `number` since the legacy `MacroCategoryType` numeric enum was
+   * deleted in B4. Backend seed identifiers (1..4) flow through here
+   * verbatim on the PUT payload.
    */
-  primaryMacroCategoryId: MacroCategoryType;
+  primaryMacroCategoryId: number;
   subGiroIds: BusinessTypeId[];
   customGiroDescription?: string;
 }
@@ -34,7 +35,8 @@ export interface UpdateBusinessGiroRequest {
  * a macro but skipped sub-giro refinement.
  */
 export interface BusinessGiroResponse {
-  primaryMacroCategoryId: MacroCategoryType | null;
+  /** Wire-shape numeric macro id; `null` until Step 1 is submitted. */
+  primaryMacroCategoryId: number | null;
   subGiroIds: BusinessTypeId[];
   customGiroDescription: string | null;
 }

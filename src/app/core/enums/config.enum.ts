@@ -53,33 +53,16 @@ export enum PlanTypeId {
  * values and they drive feature gating, pricing, and POS experience.
  */
 /**
- * @deprecated Use {@link MacroCategoryCode} for business comparisons,
- * Record keys, and switch labels. This numeric enum is retained DURING
- * the FDD-028 F5 migration so wire-shape fields (JWT
- * `primaryMacroCategoryId`, AuthUser, etc.) and legacy consumers
- * continue to compile. Will be deleted in the F5 cleanup bucket once
- * all internal consumers reference `MacroCategoryCode`.
- */
-export enum MacroCategoryType {
-  FoodBeverage = 1,
-  QuickService = 2,
-  Retail       = 3,
-  Services     = 4,
-}
-
-// ────────────────────────────────────────────────────────────────────
-// FDD-028 F5 — Canonical string-literal representation
-// ────────────────────────────────────────────────────────────────────
-
-/**
  * Canonical string-literal representation of a macro category — the
- * new source of truth for business comparisons, Record keys, and typed
- * switch statements. Mirrors `MacroCategoryDto.internalCode` from
- * BDD-021 §5.1.1.
+ * single source of truth for business comparisons, Record keys, and
+ * typed switch statements. Mirrors `MacroCategoryDto.internalCode`
+ * from BDD-021 §5.1.1.
  *
- * Replaces {@link MacroCategoryType} at the end of FDD-028 F5. Until
- * then, both representations coexist with explicit translation via
- * {@link idToCode} / {@link codeToId}.
+ * The numeric `MacroCategoryType` enum that previously held this role
+ * was deleted in FDD-028 F5 B4. Wire-shape fields (JWT
+ * `primaryMacroCategoryId`, AuthUser, etc.) now type as plain `number`
+ * matching the backend payload; the {@link idToCode} / {@link codeToId}
+ * helpers below bridge the wire boundary.
  */
 export const MacroCategoryCode = {
   FoodBeverage: 'food-beverage',
@@ -90,30 +73,37 @@ export const MacroCategoryCode = {
 
 export type MacroCategoryCode = typeof MacroCategoryCode[keyof typeof MacroCategoryCode];
 
-/** Numeric-to-string lookup. Used at JWT / auth boundary deserialization. */
-export const MACRO_ID_TO_CODE: Record<MacroCategoryType, MacroCategoryCode> = {
-  [MacroCategoryType.FoodBeverage]: MacroCategoryCode.FoodBeverage,
-  [MacroCategoryType.QuickService]: MacroCategoryCode.QuickService,
-  [MacroCategoryType.Retail]:       MacroCategoryCode.Retail,
-  [MacroCategoryType.Services]:     MacroCategoryCode.Services,
-};
-
-/** String-to-numeric lookup. Used for backwards-compat wire-shape calls. */
-export const MACRO_CODE_TO_ID: Record<MacroCategoryCode, MacroCategoryType> = {
-  [MacroCategoryCode.FoodBeverage]: MacroCategoryType.FoodBeverage,
-  [MacroCategoryCode.QuickService]: MacroCategoryType.QuickService,
-  [MacroCategoryCode.Retail]:       MacroCategoryType.Retail,
-  [MacroCategoryCode.Services]:     MacroCategoryType.Services,
-};
-
-/** Translates a numeric macro id to its canonical string code. */
-export function idToCode(id: MacroCategoryType): MacroCategoryCode {
-  return MACRO_ID_TO_CODE[id];
+/**
+ * Translates a numeric macro id (wire reality — `1..4`) to its
+ * canonical string code. Used at every wire boundary where
+ * `primaryMacroCategoryId` enters the app (JWT parse, auth response,
+ * device handshake, branch config).
+ *
+ * @throws RangeError when `id` is outside `1..4` — backend never emits
+ *         unknown ids; if this throws, treat it as a hard bug.
+ */
+export function idToCode(id: number): MacroCategoryCode {
+  switch (id) {
+    case 1: return MacroCategoryCode.FoodBeverage;
+    case 2: return MacroCategoryCode.QuickService;
+    case 3: return MacroCategoryCode.Retail;
+    case 4: return MacroCategoryCode.Services;
+    default: throw new RangeError(`[idToCode] Unknown macro id: ${id}`);
+  }
 }
 
-/** Translates a canonical string code to its numeric macro id. */
-export function codeToId(code: MacroCategoryCode): MacroCategoryType {
-  return MACRO_CODE_TO_ID[code];
+/**
+ * Translates a canonical string code to its numeric macro id (wire
+ * shape). Used when building request payloads (`UpdateBusinessGiroRequest`,
+ * `RegisterRequest`) where the backend expects the numeric id.
+ */
+export function codeToId(code: MacroCategoryCode): number {
+  switch (code) {
+    case MacroCategoryCode.FoodBeverage: return 1;
+    case MacroCategoryCode.QuickService: return 2;
+    case MacroCategoryCode.Retail:       return 3;
+    case MacroCategoryCode.Services:     return 4;
+  }
 }
 
 /**
@@ -235,11 +225,11 @@ export const PLAN_TYPE_LABELS: Record<PlanTypeId, string> = {
   [PlanTypeId.Enterprise]: 'Enterprise',
 };
 
-export const MACRO_CATEGORY_LABELS: Record<MacroCategoryType, string> = {
-  [MacroCategoryType.FoodBeverage]: 'Restaurantes y Bares',
-  [MacroCategoryType.QuickService]: 'Comida Rápida y Cafés',
-  [MacroCategoryType.Retail]:       'Tiendas y Comercios',
-  [MacroCategoryType.Services]:     'Servicios Especializados',
+export const MACRO_CATEGORY_LABELS: Record<MacroCategoryCode, string> = {
+  [MacroCategoryCode.FoodBeverage]: 'Restaurantes y Bares',
+  [MacroCategoryCode.QuickService]: 'Comida Rápida y Cafés',
+  [MacroCategoryCode.Retail]:       'Tiendas y Comercios',
+  [MacroCategoryCode.Services]:     'Servicios Especializados',
 };
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessTypeId, string> = {
