@@ -30,6 +30,12 @@ export interface AuthUser {
    * Primary macro category — drives feature gating, pricing and POS experience.
    * Sub-giros live server-side (`BusinessGiro` N:M) and are NOT carried here.
    */
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value is
+   * comparable to backend seed identifiers. Consumers needing the
+   * canonical string code should translate via `idToCode(...)`.
+   */
   primaryMacroCategoryId: MacroCategoryType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;
@@ -63,6 +69,12 @@ export interface RegisterRequest {
   email: string;
   password: string;
   /** Primary macro FK — use MacroCategoryType enum */
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value is
+   * comparable to backend seed identifiers. Consumers needing the
+   * canonical string code should translate via `idToCode(...)`.
+   */
   primaryMacroCategoryId: MacroCategoryType;
   /** Numeric plan FK — use PlanTypeId enum */
   planTypeId: PlanTypeId;
@@ -93,6 +105,12 @@ export interface LoginResponse {
   /** Numeric plan FK */
   planTypeId: PlanTypeId;
   /** Primary macro FK — sub-giros are fetched separately when needed */
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value is
+   * comparable to backend seed identifiers. Consumers needing the
+   * canonical string code should translate via `idToCode(...)`.
+   */
   primaryMacroCategoryId: MacroCategoryType;
   /** ISO date string — null if no trial */
   trialEndsAt?: string;

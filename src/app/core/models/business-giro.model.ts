@@ -14,6 +14,11 @@ import { BusinessTypeId, MacroCategoryType } from '../enums';
  *     without materializing a synthetic `BusinessTypeId`.
  */
 export interface UpdateBusinessGiroRequest {
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value lines
+   * up with backend seed identifiers on the PUT payload.
+   */
   primaryMacroCategoryId: MacroCategoryType;
   subGiroIds: BusinessTypeId[];
   customGiroDescription?: string;

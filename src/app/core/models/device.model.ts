@@ -136,6 +136,11 @@ export interface ActivateDeviceResponse {
   branchName: string;
   businessId: number;
   businessName: string;
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value lines
+   * up with backend seed identifiers.
+   */
   primaryMacroCategoryId?: MacroCategoryType;
   hasKitchen?: boolean;
   hasTables?: boolean;

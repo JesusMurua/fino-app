@@ -7,7 +7,12 @@ import { MacroCategoryType, PlanTypeId } from '../enums';
  */
 export interface PlanInfo {
   planTypeId: PlanTypeId;
-  /** Null until the user logs in and the tenant context is hydrated */
+  /**
+   * Wire-shape numeric macro id (FDD-028 F5 / wire reality). Typed as
+   * the deprecated {@link MacroCategoryType} enum so the value lines
+   * up with backend seed identifiers. Null until the user logs in and
+   * the tenant context is hydrated.
+   */
   primaryMacroCategoryId: MacroCategoryType | null;
   trialEndsAt?: string;
   /** True when trialEndsAt is in the future */
