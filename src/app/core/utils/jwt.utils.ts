@@ -5,7 +5,7 @@
  * without triggering the auth interceptor → AuthService cycle.
  */
 
-import { MacroCategoryType } from '../enums';
+import { MacroCategoryCode } from '../enums';
 
 /**
  * Extracts the `features` claim from a JWT payload as a string array.
@@ -40,7 +40,7 @@ export function extractFeaturesFromJwt(token: string): readonly string[] | undef
 
 /**
  * Maps a backend `macroCategory` claim string to the typed
- * `MacroCategoryType` enum.
+ * `MacroCategoryCode` string-literal union (FDD-028 F5 B1).
  *
  * Tolerant by design: the backend may emit casing variations
  * (`"services"`, `"Services"`), spaces (`"Quick Service"`), ampersands
@@ -49,19 +49,19 @@ export function extractFeaturesFromJwt(token: string): readonly string[] | undef
  * backend tweak does not silently break tenant context hydration. An
  * unknown / empty value resolves to `null`.
  */
-export function parseMacroCategoryClaim(value: unknown): MacroCategoryType | null {
+export function parseMacroCategoryClaim(value: unknown): MacroCategoryCode | null {
   if (typeof value !== 'string') return null;
   const normalised = value.toLowerCase().replace(/[^a-z]/g, '');
   switch (normalised) {
     case 'foodbeverage':
     case 'foodandbeverage':
-      return MacroCategoryType.FoodBeverage;
+      return MacroCategoryCode.FoodBeverage;
     case 'quickservice':
-      return MacroCategoryType.QuickService;
+      return MacroCategoryCode.QuickService;
     case 'retail':
-      return MacroCategoryType.Retail;
+      return MacroCategoryCode.Retail;
     case 'services':
-      return MacroCategoryType.Services;
+      return MacroCategoryCode.Services;
     default:
       return null;
   }
@@ -76,7 +76,7 @@ export function parseMacroCategoryClaim(value: unknown): MacroCategoryType | nul
  * @param token Raw JWT string — must be the standard three-segment
  *              `header.payload.signature` shape.
  */
-export function extractMacroCategoryFromJwt(token: string): MacroCategoryType | null {
+export function extractMacroCategoryFromJwt(token: string): MacroCategoryCode | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;

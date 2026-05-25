@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
+import { codeToId, FeatureKey, MacroCategoryType, PlanTypeId, SubCategoryType } from '../enums';
 import { GIRO_FEATURE_MAP } from '../enums/feature-key.enum';
 import { BusinessSettings } from '../models/business-settings.model';
 import { BusinessTypeCatalog, PosExperience } from '../models/catalog.model';
@@ -347,9 +347,12 @@ export class TenantContextService {
       this._activeFeatures.set(this.parseFeatures(features));
     }
 
-    const macro = extractMacroCategoryFromJwt(token);
-    if (macro !== null) {
-      this._currentMacro.set(macro);
+    // F5 B1: `extractMacroCategoryFromJwt` now returns the canonical
+    // `MacroCategoryCode` string; translate to the numeric
+    // `MacroCategoryType` until the signal type itself migrates in B3.
+    const macroCode = extractMacroCategoryFromJwt(token);
+    if (macroCode !== null) {
+      this._currentMacro.set(codeToId(macroCode));
     }
   }
 
