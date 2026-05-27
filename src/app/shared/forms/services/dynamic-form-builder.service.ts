@@ -72,10 +72,10 @@ export class DynamicFormBuilderService {
     for (const section of schema.sections) {
       for (const descriptor of section.fields) {
         if (this.isArrayField(descriptor)) continue;
-        controls[descriptor.key] = this.fb.control(
-          descriptor.defaultValue,
-          resolveValidators(descriptor.validators),
-        );
+        controls[descriptor.key] = this.fb.control(descriptor.defaultValue, {
+          validators: resolveValidators(descriptor.validators),
+          updateOn: descriptor.updateOn,
+        });
       }
     }
 

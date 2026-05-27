@@ -33,6 +33,8 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl } from '@angular/forms';
 
+import { resolveErrorMessage } from './error-catalog';
+
 @Component({
   selector: 'app-print-control-error',
   standalone: true,
@@ -77,7 +79,9 @@ export class PrintControlErrorComponent implements OnInit {
   /**
    * Resolves the message to display for the control's first active error.
    * Returns null when the control is valid OR has not yet been
-   * touched / made dirty.
+   * touched / made dirty. Resolution priority (override → catalog →
+   * fallback) is delegated to the shared `resolveErrorMessage` helper
+   * extracted in FDD-032 Phase 1 (Rule-of-3 with PrintFormError).
    */
   getErrorMessage(): string | null {
     const ctrl = this.control;
@@ -90,63 +94,7 @@ export class PrintControlErrorComponent implements OnInit {
     const firstKey = Object.keys(errors)[0];
     if (!firstKey) return null;
 
-    // Priority 1 — messages override.
-    const override = this.messages?.[firstKey];
-    if (override !== undefined) return override;
-
-    // Priority 2 — default catalog.
-    return this.resolveDefaultMessage(firstKey, errors[firstKey]);
-  }
-
-  //#endregion
-
-  //#region Default catalog
-
-  private resolveDefaultMessage(key: string, errorData: unknown): string {
-    switch (key) {
-      case 'required':
-        return 'Campo requerido';
-
-      case 'nonBlank':
-        return 'No puede contener solo espacios';
-
-      case 'positiveNumber':
-        return 'Debe ser un número positivo';
-
-      case 'maxlength': {
-        const n = (errorData as { requiredLength?: number })?.requiredLength;
-        return n !== undefined ? `Máximo ${n} caracteres` : 'Valor inválido';
-      }
-
-      case 'minlength': {
-        const n = (errorData as { requiredLength?: number })?.requiredLength;
-        return n !== undefined ? `Mínimo ${n} caracteres` : 'Valor inválido';
-      }
-
-      case 'min': {
-        const n = (errorData as { min?: number })?.min;
-        return n !== undefined ? `Valor mínimo: ${n}` : 'Valor inválido';
-      }
-
-      case 'max': {
-        const n = (errorData as { max?: number })?.max;
-        return n !== undefined ? `Valor máximo: ${n}` : 'Valor inválido';
-      }
-
-      // FDD-031 §4.3 — async + cross-field validator error keys.
-      case 'availability':
-        return 'No disponible';
-
-      case 'dateRange':
-        return 'Fecha de inicio debe ser anterior a la de fin';
-
-      case 'matchingFields':
-        return 'Los valores no coinciden';
-
-      // Priority 3 — fallback for keys not in the catalog.
-      default:
-        return 'Valor inválido';
-    }
+    return resolveErrorMessage(firstKey, errors[firstKey], this.messages);
   }
 
   //#endregion

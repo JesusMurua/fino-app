@@ -119,8 +119,16 @@ export class DynamicFormComponent<TKey extends string = string> implements OnIni
 
   /**
    * Consumer-invokable submit trigger. Marks all controls as touched
-   * (surfaces errors), then either emits `(submitted)` if valid or
-   * focuses the first invalid control's input element.
+   * (surfaces errors), then applies the FDD-032 §10.4 focus priority:
+   *
+   *   Priority 1 — an individual control is invalid → focus the first
+   *   invalid input (preserves FDD-029 §10 behavior).
+   *
+   *   Priority 2 — every control is valid but `formGroup.errors` is
+   *   present (cross-field validator failed) → focus the
+   *   PrintFormError banner via `document.getElementById`. The banner
+   *   is a sibling of this component (consumer-placed), so the lookup
+   *   must be global.
    */
   submit(): void {
     this.formGroup.markAllAsTouched();
@@ -131,12 +139,17 @@ export class DynamicFormComponent<TKey extends string = string> implements OnIni
     }
 
     const firstInvalidKey = this.findFirstInvalidControlKey();
-    if (firstInvalidKey === null) return;
+    if (firstInvalidKey !== null) {
+      const inputId = `${this.effectiveFormId}-${firstInvalidKey}`;
+      const el = this.elementRef.nativeElement.querySelector(`#${inputId}`);
+      if (el instanceof HTMLElement) el.focus();
+      return;
+    }
 
-    const inputId = `${this.effectiveFormId}-${firstInvalidKey}`;
-    const el = this.elementRef.nativeElement.querySelector(`#${inputId}`);
-    if (el instanceof HTMLElement) {
-      el.focus();
+    if (this.formGroup.errors) {
+      const bannerId = `${this.effectiveFormId}-form-error`;
+      const bannerEl = document.getElementById(bannerId);
+      if (bannerEl) bannerEl.focus();
     }
   }
 

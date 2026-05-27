@@ -83,6 +83,32 @@ describe('DynamicFormBuilderService', () => {
     expect(group.get('sizes')).toBeNull();
   });
 
+  // ------------------------------------------------------------------
+  // FDD-032 §3 NF-4 — updateOn descriptor field
+  // ------------------------------------------------------------------
+
+  it('buildControls applies updateOn from descriptor to FormControl', () => {
+    const schema: DynamicFormSchema<'name'> = {
+      sections: [
+        {
+          id: 'm',
+          title: 'M',
+          fields: [
+            { key: 'name', kind: 'text', label: 'N', defaultValue: '', updateOn: 'blur' },
+          ],
+        },
+      ],
+    };
+    const controls = service.buildControls(schema);
+    expect(controls.name.updateOn).toBe('blur');
+  });
+
+  it('buildControls defaults updateOn to "change" when descriptor omits it', () => {
+    const controls = service.buildControls(TEST_SCHEMA);
+    // TEST_SCHEMA never sets updateOn → Angular default applies.
+    expect(controls.name.updateOn).toBe('change');
+  });
+
 });
 
 // ------------------------------------------------------------------

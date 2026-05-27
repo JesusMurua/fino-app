@@ -33,6 +33,7 @@ export { DynamicFormComponent } from './components/dynamic-form.component';
 export { FormSectionComponent } from './components/form-section.component';
 export { FormFieldComponent } from './components/form-field.component';
 export { PrintControlErrorComponent } from './components/print-control-error.component';
+export { PrintFormErrorComponent } from './components/print-form-error.component';
 
 // Validators (re-export from validators barrel)
 export {

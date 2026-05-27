@@ -154,4 +154,66 @@ describe('DynamicFormComponent', () => {
     expect(focusSpy).toHaveBeenCalledTimes(1);
   });
 
+  // ------------------------------------------------------------------
+  // FDD-032 §10.4 — Banner focus priority rule
+  // ------------------------------------------------------------------
+
+  it('focuses the banner when formGroup.errors but every control is valid', () => {
+    host.schema = {
+      sections: [
+        {
+          id: 's',
+          title: 'S',
+          fields: [{ key: 'name', kind: 'text', label: 'N', defaultValue: 'ok' }],
+        },
+      ],
+    };
+    // Wire a real cross-field validator so the form-level error persists
+    // across Angular's reactive-forms binding lifecycle (initial control
+    // binding triggers updateValueAndValidity on the FormGroup, which
+    // would otherwise clear a manual setErrors call).
+    host.formGroup = new FormGroup(
+      { name: new FormControl('ok') },
+      () => ({ dateRange: true }),
+    );
+    fixture.detectChanges();
+
+    const fakeBanner = { focus: jasmine.createSpy('focus') } as unknown as HTMLElement;
+    spyOn(document, 'getElementById').and.returnValue(fakeBanner);
+
+    host.child.submit();
+
+    expect(host.submitCount).toBe(0);
+    expect(document.getElementById).toHaveBeenCalledWith('form-test-form-error');
+    expect((fakeBanner as unknown as { focus: jasmine.Spy }).focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT focus the banner when an individual control is invalid (priority rule)', () => {
+    host.schema = {
+      sections: [
+        {
+          id: 's',
+          title: 'S',
+          fields: [
+            { key: 'name', kind: 'text', label: 'N', defaultValue: '', validators: ['required'] },
+          ],
+        },
+      ],
+    };
+    // Same robust pattern: a form-level validator coexists with a control-level
+    // required validator. Priority rule says first-invalid wins → banner skipped.
+    host.formGroup = new FormGroup(
+      { name: new FormControl('', Validators.required) },
+      () => ({ dateRange: true }),
+    );
+    fixture.detectChanges();
+
+    const getByIdSpy = spyOn(document, 'getElementById').and.callThrough();
+
+    host.child.submit();
+
+    // First-invalid path wins; banner lookup never happens.
+    expect(getByIdSpy).not.toHaveBeenCalledWith('form-test-form-error');
+  });
+
 });

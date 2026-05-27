@@ -124,6 +124,13 @@ export interface FieldDescriptor<TKey extends string = string> {
    * contract and FDD-031 §4.3 for the integration design.
    */
   asyncValidators?: readonly AsyncValidatorRef[];
+
+  /**
+   * Optional update strategy passed to the FormControl constructor.
+   * Defaults to Angular's 'change' when omitted. Use 'blur' to throttle
+   * async validators that hit the network (FDD-032 §3 NF-4).
+   */
+  updateOn?: 'change' | 'blur' | 'submit';
 }
 
 /**
