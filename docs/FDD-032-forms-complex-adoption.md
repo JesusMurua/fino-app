@@ -18,11 +18,11 @@ FDD-032 cierra la fase **F2 — Adoption** de [AUDIT-059 §6](AUDIT-059-forms-an
    - `FieldDescriptor.updateOn?` field para evitar API spam en async validators.
    - Catalog map extraído a `error-catalog.ts` (Rule-of-3 entre PrintControlError + PrintFormError).
 2. **admin-devices migration** (Phase 2): 2 forms (activation code generator + fleet edit dialog) usando reactive options para tenant-feature filtering y cash register filtering.
-3. **reservation-form migration** (Phase 3): 1 form con custom widgets (`chip-select`, `customer-autocomplete`), async validator (availability check), cross-field validator (date-range), y consumer-side `ReservationAvailabilityService`.
+3. **reservation-form migration** (Phase 3): 1 form migrated under a hybrid pattern — `<app-dynamic-form>` orchestrates the kinds it supports (text, dropdown, textarea, chip-select); raw widgets (`<p-calendar>`, partySize stepper, `CustomerSelectorComponent`) bind to the same FormGroup for fields that lack a shareable kind. Ships the `chip-select` custom widget + `ReservationAvailabilityService` async validator with `updateOn: 'blur'`. Customer-autocomplete widget, date-range cross-field, and banner usage are NOT shipped — see §4.3 and the Known Deviations section for the corrections made on 2026-05-27 after verifying against production code.
 
 Más cleanup en Phase 4 (ESLint allow-list reduction + product-form shim TODO comments).
 
-**Estimación:** 5-5.5 días sequencial, **~4-4.5 días con Phase 1+2 paralelizables**.
+**Estimación:** 5.5-6 días sequential, **~4-4.5 días con Phase 1+2 paralelizables** (see §12 Total estimate table).
 
 ### Closes / Related
 
@@ -34,10 +34,12 @@ Más cleanup en Phase 4 (ESLint allow-list reduction + product-form shim TODO co
 
 ### Scope rationale — triple-delivery FDD
 
-A diferencia de FDD-031 (puro platform) o FDD-030 (puro consumer), FDD-032 mezcla platform extension + 2 consumer migrations. Razón:
+A diferencia de FDD-031 (puro platform) o FDD-030 (puro consumer), FDD-032 mezcla platform extension + 2 consumer migrations. Razón original:
 
-- El `<app-print-form-error>` banner es necesario **por** reservation-form (cross-field errors). Splittear lo metería en un FDD intermedio que co-evoluciona con reservation-form — overhead.
+- El `<app-print-form-error>` banner se anticipó como necesario por reservation-form (cross-field errors). Splittear lo metería en un FDD intermedio que co-evoluciona con reservation-form — overhead.
 - admin-devices + reservation-form son la totalidad del backlog de F2 consumer migrations. Splittearlos en FDDs separados dejaría F2 perpetuamente abierto sin ganancia.
+
+**Update (2026-05-27 correction)**: el banner shipped en Phase 1 NO terminó siendo usado por reservation-form (data model no afford cross-field validators — see §4.3 + Known Deviations). El banner sigue siendo platform code shipped, available for future consumers; el triple-delivery rationale histórico se mantiene pero el outcome real es: 1 platform extension (banner + updateOn + catalog) + 2 consumer migrations donde solo admin-devices ejercita reactive options y reservation-form ejercita chip-select widget + async validator.
 
 Implementación puede splittear en 2-3 commits (Phase 1+2 commit, Phase 3 commit, Phase 4 commit) para git history limpio.
 
@@ -63,15 +65,19 @@ Implementación puede splittear en 2-3 commits (Phase 1+2 commit, Phase 3 commit
 
 ### 2.2 reservation-form (legacy)
 
-[src/app/modules/admin/components/reservations/reservation-form.component.ts](../src/app/modules/admin/components/reservations/reservation-form.component.ts). Estado actual:
+[src/app/modules/admin/components/reservations/reservation-form.component.ts](../src/app/modules/admin/components/reservations/reservation-form.component.ts). Estado actual verificado contra producción:
 
-- **1 form** hand-rolled.
-- **Custom UI patterns no soportados por F1**:
-  - **Chip selector** para tables agrupadas por zona — current usa `<div class="chip">` ad-hoc.
-  - **Customer autocomplete** — usa el existing `CustomerSelectorComponent`.
-- **Availability check** ad-hoc dentro de `saveReservation()` (no como validator).
-- **Cross-field constraints** (date-range, time-window) validadas manualmente.
-- **Signals**: `tables`, `selectedTableId`, `noTableAssigned`, `availabilityWarning`, `zoneGroups`, `selectedCustomer`, `isSaving`.
+- **1 form hand-rolled** con `FormBuilder` (NO NonNullableFormBuilder).
+- **7 form fields**: `guestName`, `guestPhone`, `partySize`, `reservationDate` (Date), `reservationTime` (Date — timeOnly), `durationMinutes`, `notes`.
+- **Signals OUTSIDE form**: `tables`, `selectedTableId`, `noTableAssigned`, `availabilityWarning`, `zoneGroups`, `selectedCustomer`, `isSaving`.
+- **Customer integration**: `CustomerSelectorComponent` is the production-ready search + quick-create surface. `selectedCustomer` is OPTIONAL; when present, `onCustomerChanged` patches `guestName` + `guestPhone` into the form. `customerId` is NOT a form field — it is read from `selectedCustomer()?.id` at save-flow time.
+- **Custom UI patterns NOT supported by F1**:
+  - **Chip selector** for tables grouped by zone — current uses ad-hoc `<button class="rf__chip">` inside `@for (group of zoneGroups()...)` loops in the template.
+  - **PartySize stepper** with custom +/− buttons (lines 66-76 of HTML) — adjusts `form.controls['partySize']` via `adjustPartySize(delta)`.
+  - **Date + time pickers** via `<p-calendar>` (two instances — one date, one timeOnly). No `'datepicker'` widget kind exists in the shared library.
+- **Availability check** ad-hoc via `reservationService.checkAvailability(tableId, dateStr, timeStr, durationMinutes, excludeId?)` (5 args; NOT start/end timestamps). Returns `{ available: boolean }`. Triggered imperatively from `selectTable()`, `(onSelect)` on calendars, and `(onChange)` on duration dropdown.
+- **No cross-field constraints**: the data model uses `reservationDate + reservationTime + durationMinutes` instead of `(startsAt, endsAt)` timestamps, so the FDD-031 `date-range` built-in validator does not apply matematically.
+- **No `findById` on `CustomerService`**: verified via grep — only `tax.service.ts` defines `findById`. Edit-mode hydration of customer state relies on the parent component passing the `Customer` object (or null) via `@Input reservation`.
 
 ### 2.3 Shared library status post FDD-031
 
@@ -101,8 +107,8 @@ Los archivos del shim referencian `FDD-030` como target de deletion, pero esa pr
 - **F-1** `<app-print-form-error>` renderiza errores form-level (cross-field validators) con catalog reutilizado de PrintControlError.
 - **F-2** `FieldDescriptor.updateOn?` field — builder aplica al constructor de FormControl.
 - **F-3** admin-devices: 2 forms migradas a `<app-dynamic-form>` con reactive options para mode + cash register dropdowns.
-- **F-4** reservation-form: 1 form migrado con custom widgets (chip-select, customer-autocomplete), async validator (availability), cross-field validator (date-range).
-- **F-5** Custom widgets registrados via `provideFormWidget` en el reservation-form component's standalone providers.
+- **F-4** reservation-form: 1 form migrado bajo el hybrid pattern (§5.3) — `<app-dynamic-form>` orquesta los kinds soportados + chip-select widget para `tableId`; raw widgets cubren date/time/partySize/customer. Async validator (`ReservationAvailabilityService`) aplicado a `tableId` con `updateOn: 'blur'`. NO incluye customer-autocomplete widget, date-range cross-field, ni banner (ver §4.3 + Known Deviations).
+- **F-5** Custom widget registrado via `provideFormWidget('chip-select', ChipSelectWidget)` en los providers del componente reservation-form (singular — solo chip-select).
 - **F-6** `ReservationAvailabilityService` implementa `AsyncValidatorService` con providedIn: 'root', lee sibling controls vía `control.parent`.
 - **F-7** Banner integration con DynamicForm.submit() focus management: focus el banner cuando hay formValidator errors pero no individual control invalid (ver §10 para priority rule).
 - **F-8** ESLint allow-list reducida en Phase 4 (eliminar admin-devices + reservation-form entries).
@@ -186,6 +192,8 @@ export class PrintFormErrorComponent implements OnInit {
 
 Lives at: [src/app/modules/admin/components/reservations/widgets/chip-select.widget.ts](../src/app/modules/admin/components/reservations/widgets/chip-select.widget.ts).
 
+The widget is a thin renderer. The consumer's existing `zoneGroups` computed signal (which already maps `tables()` + `zones()` to groups) is reshaped to the `ChipGroup` interface and passed as `descriptor.options`. The widget does NOT re-implement grouping logic.
+
 ```ts
 @Component({
   selector: 'app-chip-select',
@@ -210,8 +218,9 @@ export interface ChipGroup {
 ```
 
 **Template structure:**
+
 ```html
-@for (group of resolvedGroups(); track group.groupLabel) {
+@for (group of resolvedGroups; track group.groupLabel) {
   <h4 class="chip-group__label">{{ group.groupLabel }}</h4>
   <div class="chip-group__chips" role="radiogroup" [attr.aria-labelledby]="...">
     @for (chip of group.chips; track chip.value) {
@@ -232,60 +241,45 @@ export interface ChipGroup {
 ```
 
 **Behavior:**
+
 - Single-select: `control.setValue(chip.value)` on click.
 - Active chip highlighted con `aria-pressed="true"` + CSS clase `chip--selected`.
 - Keyboard: arrow keys cyclen entre chips dentro del group; space/enter selecciona el focused chip.
 - Defensive: `setValue(unknown)` con value que no existe en options NO resetea — log warning en dev mode.
-- `chip.value` type matches el control's expected value type. Para reservation-form tableId: `number | null`.
+- `chip.value` type matches el control's expected value type. Para reservation-form `tableId`: `number | null`.
+
+**Consumer wiring** (reservation-form): the existing `zoneGroups` computed (currently shaped as `TableZoneGroup[]` with `{ zoneName, tables: { id, name, capacity }[] }`) is mapped to `ChipGroup` via a new `tableChipGroups` computed:
+
+```ts
+readonly tableChipGroups = computed<readonly ChipGroup[]>(() =>
+  this.zoneGroups().map(g => ({
+    groupLabel: g.zoneName,
+    chips: g.tables.map(t => ({
+      label: t.name,
+      value: t.id,
+      subLabel: t.capacity ? `${t.capacity}` : undefined,
+    })),
+  })),
+);
+```
+
+The schema field for `tableId` receives `options: this.tableChipGroups` (signal reference).
 
 **Estimated LOC:** ~80.
 
-### 4.3 `customer-autocomplete` widget (THIN WRAPPER)
+### 4.3 `customer-autocomplete` widget — **NOT SHIPPED**
 
-Lives at: [src/app/modules/admin/components/reservations/widgets/customer-autocomplete.widget.ts](../src/app/modules/admin/components/reservations/widgets/customer-autocomplete.widget.ts).
+**Original design** (deprecated): a thin `FormWidget` wrapper around `CustomerSelectorComponent` storing `Customer.id` in the form value, with edit-mode hydration via `customerService.findById(id)`.
 
-Wrappea [src/app/shared/components/customer-selector/customer-selector.component.ts](../src/app/shared/components/customer-selector/customer-selector.component.ts) preserved as-is.
+**Why dropped** (discovered during Phase 3 verification against production code):
 
-```ts
-@Component({
-  selector: 'app-customer-autocomplete',
-  standalone: true,
-  imports: [CustomerSelectorComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class CustomerAutocompleteWidget implements FormWidget, OnInit {
-  @Input({ required: true }) descriptor!: FieldDescriptor;
-  @Input({ required: true }) control!: AbstractControl;
-  @Input({ required: true }) formId!: string;
+1. `CustomerService.findById` does NOT exist (verified via grep — only `tax.service.ts` defines it). Edit-mode hydration as designed is impossible.
+2. `CustomerSelectorComponent` is already production-ready with a richer API than the wrapper would expose: built-in autocomplete with `search-as-you-type`, a quick-create dialog for new customers, two-way `model()` binding for `[selectedCustomer]`, plus `(customerChanged)` output. Wrapping it in a `FormWidget` would constrain the API without adding ROI.
+3. Customer is an OPTIONAL helper in reservation-form (it patches `guestName` + `guestPhone` when selected). It is not a primary form field — making it a `customerId` field changes the data model.
 
-  preselected: Customer | null = null;
-  private readonly customerService = inject(CustomerService);
+**Replacement plan**: `selectedCustomer: signal<Customer | null>` stays OUTSIDE the form (same as today). Save flow continues to read `customerId: this.selectedCustomer()?.id ?? null` when assembling the DTO. `CustomerSelectorComponent` is rendered as a raw element in the consumer template, OUTSIDE `<app-dynamic-form>`. No customer state lives in the FormGroup.
 
-  ngOnInit(): void {
-    // Edit-mode hydration: if control.value (Customer.id) is non-null,
-    // fetch the Customer and pass as pre-selected to the inner component.
-    const customerId = this.control.value as number | null;
-    if (customerId !== null) {
-      this.customerService.findById(customerId).subscribe(c => this.preselected = c);
-    }
-  }
-
-  onCustomerSelected(customer: Customer | null): void {
-    // Store ONLY the id in the form value — keeps payload JSON-serializable.
-    this.control.setValue(customer?.id ?? null);
-  }
-}
-```
-
-**Template:**
-```html
-<app-customer-selector
-  [preselected]="preselected"
-  (customerSelected)="onCustomerSelected($event)"
-/>
-```
-
-**Estimated LOC:** ~30.
+See "Known Deviations / Corrections" section for the full record.
 
 ### 4.4 Error catalog extraction (Rule-of-3)
 
@@ -356,19 +350,31 @@ export function resolveErrorMessage(
 
 | Signal actual | Después de migration | Razón |
 |---|---|---|
-| `tables`, `selectedTableId` | **MOVED INTO FORM** | control bound a chip-select widget |
-| `availabilityWarning` | **ELIMINATED** | surfaced vía async validator + banner |
-| `zoneGroups` computed | **PRESERVED** | passes a chip-select options Signal |
-| `selectedCustomer` | **ELIMINATED** | control.value = Customer.id. Save flow: si backend payload necesita el Customer completo, consumer llama `customerService.findById(formGroup.value['customerId'])` antes de ensamblar payload |
+| `tables` | **PRESERVED** | data layer; feeds `zoneGroups` |
+| `selectedTableId` | **MOVED INTO FORM as `tableId` control** | bound to the new chip-select widget. `selectTable(id)` becomes `this.form.controls['tableId'].setValue(id)` — but most callers route through the widget itself |
+| `availabilityWarning` | **ELIMINATED** | replaced by the async validator on `tableId`. `PrintControlError` renders "No disponible" inline below the chip-select when the validator returns `{ availability: true }` |
+| `zoneGroups` computed | **PRESERVED** | feeds a new `tableChipGroups` computed that reshapes to `ChipGroup[]` for the widget |
+| `selectedCustomer` | **PRESERVED OUTSIDE FORM** | CustomerSelectorComponent stays as-is in the consumer template (NOT migrated to a FormWidget — see §4.3). Save flow continues to read `selectedCustomer()?.id` when assembling the DTO |
 | `isSaving` | **PRESERVED** | UI toggle |
-| `noTableAssigned` | **PRESERVED OUTSIDE FORM** | UI checkbox que hides/shows chip-select via @if en template; NO un form-value field |
+| `noTableAssigned` | **PRESERVED OUTSIDE FORM** | UI checkbox that hides/shows the chip-select section via `@if` in template; NOT a form-value field. Toggling it sets `tableId` to `null` so the async validator short-circuits |
 
-### 5.3 FormGroup ownership preserved
+### 5.3 FormGroup ownership — hybrid pattern (Phase 3)
 
-Mismo patrón que F1 / FDD-030:
-- Consumer construye el FormGroup vía `DynamicFormBuilderService.buildFormGroup(schema)` (reservation-form needs cross-field validators + async — buildFormGroup applies them all).
-- admin-devices usa `buildControls()` + manual `fb.group()` (no formValidators, simpler).
-- `<app-dynamic-form>` consume el FormGroup pasado por reference.
+Mismo patrón que F1 / FDD-030 para los consumers simples (admin-users, admin-devices):
+
+- admin-devices uses `buildControls()` + manual `fb.group()` (no formValidators, simpler).
+- `<app-dynamic-form>` consumes the FormGroup passed by reference.
+
+**Phase 3 (reservation-form) introduces a hybrid form pattern** because the consumer has UI elements that don't have matching widget kinds in the shared library (date/time pickers, partySize stepper):
+
+- Consumer builds the FormGroup via `DynamicFormBuilderService.buildFormGroup(schema)` — needed because the schema declares async validators on `tableId`. `buildFormGroup` wires sync + async per descriptor.
+- The FormGroup contains ALL fields including those rendered by raw widgets in the consumer template: `guestName`, `guestPhone`, `partySize`, `reservationDate`, `reservationTime`, `durationMinutes`, `notes`, `tableId`.
+- The consumer template wraps everything in `<form [formGroup]="form">`. Inside it:
+  - `<app-dynamic-form>` renders the fields with kinds supported by the shared library (`guestName`, `guestPhone`, `durationMinutes`, `notes`, `tableId` via chip-select).
+  - Raw widgets (`<p-calendar>` × 2, the partySize stepper, the `CustomerSelectorComponent`, the `noTableAssigned` checkbox) sit alongside, each with `formControlName="..."` pointing at the SAME FormGroup for the fields that need it.
+- This is valid Angular Reactive Forms — a single `[formGroup]` directive can have multiple descendant controls bound by `formControlName`, regardless of whether they live inside the orchestrator or in raw consumer markup.
+
+**Why this pattern**: shipping a `datepicker` / `timepicker` / `number-stepper` widget kind in the shared library is out of scope for FDD-032 (each would be a small but real platform extension). The hybrid pattern preserves the UX without forcing premature platform features. Future FDDs may promote these widgets to shared library if a second consumer needs them (Rule-of-3).
 
 ---
 
@@ -376,26 +382,29 @@ Mismo patrón que F1 / FDD-030:
 
 ### 6.1 Banner visual placement
 
+The `<app-print-form-error>` banner is opt-in (NF-5). Phase 3 reservation-form does NOT use it — there are no cross-field validators applicable to the date+time+duration data model (see §4.3 deviation and §11.1 Section (b) for full rationale).
+
+Generic placement contract (for future consumers that DO declare `formValidators`):
+
 ```html
-<!-- Reservation-form template (illustrative): -->
-<app-print-form-error [formGroup]="reservationForm" [formId]="'reservation-form'" />
+<app-print-form-error [formGroup]="myForm" [formId]="'my-form'" />
 <app-dynamic-form
   [schema]="schema"
-  [formGroup]="reservationForm"
-  [formId]="'reservation-form'"
+  [formGroup]="myForm"
+  [formId]="'my-form'"
   ...
 />
 ```
 
-- Banner ABOVE the form, full-width.
+- Banner ABOVE the form, full-width. Both must share the same `formId` so `DynamicFormComponent.submit()` can `document.getElementById('${formId}-form-error')` for focus.
 - admin-devices: **NO banner** (no formValidators).
-- reservation-form: banner + inline PrintControlError on individual controls. Usuario ve ambos: form-level errors (banner) + field-level errors (inline below field).
+- reservation-form: **NO banner** (no formValidators applicable — data model is date+time+duration, not start/end timestamps). Individual control errors (including async `availability`) render inline via `PrintControlError` below each field as usual.
 
 ### 6.2 Custom widgets visual style
 
 - `chip-select`: PrimeFlex-friendly, chip-style buttons agrupados por section. Active state via `$color-primary` background + white text.
-- `customer-autocomplete`: hereda el visual del existing `CustomerSelectorComponent`.
-- Touch target: `min-height: $touch-target-pos` (48px) en chip + autocomplete input.
+- `CustomerSelectorComponent` (raw, not migrated): keeps its existing visual untouched (§4.3 deviation).
+- Touch target: `min-height: $touch-target-pos` (48px) en chip.
 
 ### 6.3 Tokens
 
@@ -425,44 +434,83 @@ Mismo patrón que F1 / FDD-030:
 
 ### 7.2 reservation-form async validation sequence
 
+`ReservationAvailabilityService` is applied to the `tableId` field. It reads sibling controls (`reservationDate`, `reservationTime`, `durationMinutes`) via `control.parent`. The `currentReservationId` (needed to skip self-collision during edit) is provided by the consumer via a public setter, since the service has no access to component-level @Input state.
+
+```ts
+// Service contract
+@Injectable({ providedIn: 'root' })
+export class ReservationAvailabilityService implements AsyncValidatorService {
+
+  private currentReservationId: number | null = null;
+  private readonly reservationService = inject(ReservationService);
+
+  /**
+   * Consumer-invocable setter — reservation-form calls this in ngOnChanges
+   * when `reservation` Input changes, so the validator can skip
+   * self-collision during edit.
+   */
+  setCurrentReservationId(id: number | null): void {
+    this.currentReservationId = id;
+  }
+
+  check(control: AbstractControl): Observable<ValidationErrors | null> {
+    const tableId = control.value as number | null;
+    const date = control.parent?.get('reservationDate')?.value as Date | null;
+    const time = control.parent?.get('reservationTime')?.value as Date | null;
+    const duration = control.parent?.get('durationMinutes')?.value as number | null;
+
+    // Inactive when any sibling is missing OR tableId is null (the
+    // noTableAssigned UX path).
+    if (!tableId || !date || !time || !duration) return of(null);
+
+    return this.reservationService
+      .checkAvailability(
+        tableId,
+        this.formatDate(date),
+        this.formatTime(time),
+        duration,
+        this.currentReservationId ?? undefined,
+      )
+      .pipe(map(result => result.available ? null : { availability: true }));
+  }
+
+  private formatDate(d: Date): string { /* YYYY-MM-DD */ }
+  private formatTime(d: Date): string { /* HH:MM:00 */ }
+}
 ```
-1. ReservationAvailabilityService.check(control, context):
-   - Read sibling values via control.parent:
-       const start = control.parent?.get('startsAt')?.value;
-       const end = control.parent?.get('endsAt')?.value;
-       const tableId = control.parent?.get('tableId')?.value;
-   - Bail out if any required value missing:
-       if (!start || !end || !tableId) return of(null);  // inactive
-   - Call backend:
-       return reservationService
-         .checkAvailability(start, end, tableId, currentReservationId)
-         .pipe(map(free => free ? null : { availability: true }));
 
-2. FormControl tiene updateOn: 'blur' (vía descriptor.updateOn — D6).
-   → Validator NO corre per keystroke, solo al blur.
+**Sequence**:
 
-3. control.errors === { availability: true } → PrintControlError surfaces "No disponible".
-```
+1. The `tableId` FormControl has `updateOn: 'blur'` (descriptor field shipped in Phase 1). → Validator does NOT run on each chip click — only when the control blurs (chip-select widget calls `markAsTouched()` + triggers blur on selection, OR the validator fires when a sibling control changes through the cascading update pipeline).
+2. The service reads tableId + the three sibling controls. If any is missing → returns `of(null)` (validator inactive).
+3. Calls `reservationService.checkAvailability(tableId, dateStr, timeStr, durationMinutes, excludeId?)` — the existing service signature is preserved (no backend coordination required).
+4. Maps `{ available: false }` → `{ availability: true }` (Angular error key); `{ available: true }` → `null`.
+5. `PrintControlError` surfaces "No disponible" inline below the chip-select when `control.errors?.availability === true`.
 
-### 7.3 reservation-form submit con form-level error sequence
+**Imperative `checkAvailability()` method removed**: the consumer no longer needs the imperative method on the component — the async validator pipeline replaces it. The `availabilityWarning` signal is eliminated alongside.
 
-```
+### 7.3 reservation-form submit sequence
+
+Phase 3 reservation-form has no cross-field validators (the data model is date+time+duration, not start/end timestamps — see §4.3 deviation). The banner focus-priority-2 path defined in Phase 1 §10.4 does NOT activate here. Only Priority 1 (focus first invalid control) applies.
+
+```text
 1. User clicks Save → DynamicForm.submit().
-2. markAllAsTouched() → re-evaluate validators.
-3. Branch based on error type (priority rule — Section 10):
+2. markAllAsTouched() → re-evaluate validators (sync + async pending).
+3. Priority 1 only — Individual control invalid → focus first invalid:
+   - Sync errors on guestName, partySize, reservationDate, reservationTime,
+     durationMinutes (any required field empty).
+   - Async error on tableId → control.errors.availability === true.
+   → DynamicFormComponent.submit() focuses the first invalid input by id
+     (existing FDD-029 §10 behavior).
 
-   Priority 1: Individual control invalid → existing FDD-029 focus-first-invalid logic.
-     - Sync errors on controls AND async errors that already resolved → focus the field.
-
-   Priority 2: ONLY formGroup.errors (cross-field) but every control is valid →
-     focus the BANNER via document.getElementById(`${formId}-form-error`).
-     Banner has tabindex="-1" → focus works programmatically.
-
-   Both paths: (submitted) NOT emitted.
+   (submitted) NOT emitted while any control is invalid.
 
 4. If valid (no errors anywhere): (submitted) emits → consumer's
-   onFormSubmitted handles save.
+   onFormSubmitted handles save (reads selectedCustomer() for the
+   customerId DTO field).
 ```
+
+The Phase 1 banner focus-priority-2 path remains shipped and tested via platform specs; it activates for future consumers that declare `formValidators`.
 
 ---
 
@@ -470,8 +518,8 @@ Mismo patrón que F1 / FDD-030:
 
 - **Banner**: minimal — un solo subscriber a `formGroup.statusChanges` via `takeUntilDestroyed`. OnPush detects on signal change.
 - **chip-select**: O(zones × tables) render. Para reservation-form típico (≤5 zones × ≤10 tables each = ≤50 chips), perf negligible.
-- **customer-autocomplete**: inherits CustomerSelectorComponent perf characteristics (debounced search, virtual scroll si aplica).
-- **Async availability**: rate-limited vía `updateOn: 'blur'` (descriptor field — D6). Sin spam de API on each keystroke.
+- **CustomerSelectorComponent (raw)**: unchanged from current behavior — debounced autocomplete search, quick-create dialog. No new perf surface introduced by FDD-032.
+- **Async availability**: rate-limited vía `updateOn: 'blur'` (descriptor field shipped Phase 1). Sin spam de API on each keystroke.
 
 ---
 
@@ -487,8 +535,8 @@ Mismo patrón que F1 / FDD-030:
 
 - **Banner sin formGroup**: defensive guard — si `formGroup` undefined al inicio (race condition), renderiza empty silently.
 - **chip-select setValue(unknown)** con value que NO existe en options: log warning en dev mode (`console.warn('[chip-select] setValue with unknown value:', value)`), retain the value (don't reset). Permite cases edge (control.value pre-existing antes que options carguen).
-- **customer-autocomplete edit hydration race**: si `findById` falla, el wrapper retains `preselected = null` y el inner component shows empty — user puede re-seleccionar.
 - **Async validator service token missing**: `injector.get` throws (FDD-031 defensive behavior preserved).
+- **Customer edit-mode hydration**: handled by the consumer's existing `ngOnChanges`, which patches `guestName` + `guestPhone` from the `reservation` Input when present. No FormWidget involved.
 
 ### 9.3 Error catalog completeness
 
@@ -513,18 +561,20 @@ Catalog cubre los 11 keys actuales (8 sync + 3 async/cross-field). Banner shows 
   - Space / Enter: select el focused chip.
   - Tab: leaves el chip group.
 
-### 10.3 customer-autocomplete
+### 10.3 Customer selector
 
-Inherits `CustomerSelectorComponent` a11y — unchanged.
+Phase 3 does NOT ship `customer-autocomplete` FormWidget (see §4.3 deviation). `CustomerSelectorComponent` continues to be rendered directly in the consumer template — inherits its existing a11y (autocomplete pattern with ARIA combobox semantics, quick-create dialog).
 
 ### 10.4 Focus management priority on submit invalid
 
-**Locked priority rule** (Phase 1 acceptance criterion):
+**Locked priority rule** (Phase 1 acceptance criterion — platform behavior, applies to ALL consumers):
 
 1. **Individual control invalid wins**: si hay AL MENOS UN control invalid (sync OR async error resolved), focus va al **primer control invalid** (existing FDD-029 §10 behavior preserved).
 2. **Banner solo cuando puro form-level**: si TODOS los controls son valid PERO `formGroup.errors` está presente (cross-field validator failed), focus va al **banner** vía `document.getElementById`.
 
 Rationale: el control-level error es más actionable (user sabe qué arreglar). Form-level errors son contextuales (start/end no encajan) — el banner contextualiza pero requiere ver ambos campos.
+
+**Phase 3 note**: reservation-form exercises only Priority 1 (Priority 2 path requires `formValidators`, which the data model does not afford — see §4.3 + §7.3).
 
 ---
 
@@ -547,14 +597,16 @@ Rationale: el control-level error es más actionable (user sabe qué arreglar). 
 
 **Sección (b) reservation-form smoke (8 steps):**
 
-1. **Happy path create**: seleccionar customer + table + date + time → save → reservation aparece en la lista.
-2. **Customer autocomplete search**: typear en el autocomplete → dropdown shows matches → seleccionar → `formGroup.value.customerId === customer.id`.
-3. **Customer autocomplete edit mode**: open existing reservation → autocomplete prepopulated con el customer (hydration via `findById`).
-4. **Chip-select tables grouped**: tables aparecen agrupadas por zona, click selecciona → `formGroup.value.tableId === table.id`. Active chip highlighted.
-5. **`noTableAssigned` toggle**: marcar checkbox → chip-select desaparece (consumer `@if`), save funciona sin table.
-6. **Async availability validator**: seleccionar table + date + time que conflicta con reservation existente → blur → PrintControlError shows "No disponible" debajo del field. (No spamea backend on each keystroke — verify Network tab.)
-7. **Cross-field date-range**: ingresar startsAt > endsAt → click save → **BANNER muestra** "Fecha de inicio debe ser anterior a la de fin", form NO submits.
-8. **Submit with form-level error focuses banner**: trigger date-range error → click save → banner recibe focus (verify con TAB-into vs document.activeElement).
+1. **Happy path create**: pick a customer (via CustomerSelectorComponent — autocomplete) OR fill guestName/guestPhone manually → set date + time + duration + partySize → pick a table chip → save → reservation appears in the list. Confirms hybrid form pattern (dynamic-form fields + raw-widget fields share the same FormGroup).
+2. **Happy path edit**: open an existing reservation from the list → dialog opens with all fields prepopulated (guestName, guestPhone, date, time, duration, partySize, notes) and the right table chip highlighted as `--selected` → modify notes → save → row updates in place.
+3. **Customer selector unchanged**: type in the CustomerSelectorComponent autocomplete → matches show → click one → `guestName` + `guestPhone` patch in the form. (Customer is OPTIONAL — skipping it and typing guestName/guestPhone manually also works.)
+4. **Chip-select tables grouped**: tables render grouped by zone (zoneName as `<h4>` per group), each chip with `aria-pressed` toggling on click. Selecting a chip sets `form.value.tableId`. Validates the chip-select widget shipped in Phase 3.
+5. **`noTableAssigned` toggle**: tick the "Sin mesa asignada" checkbox → chip-select section hides (consumer `@if`), `tableId` resets to `null` → save works without a table. Async validator stays inactive (returns `of(null)` when tableId is null).
+6. **Async availability validator**: pick a date + time + duration that overlap with an existing reservation, then pick the conflicting table chip → on blur, inline "No disponible" surfaces below the chip-select via PrintControlError. The save button stays enabled but submit focuses the field with the availability error (Priority 1 of §10.4). Verify Network tab: validator does NOT spam on every chip click — fires only on blur thanks to `updateOn: 'blur'` (Phase 1 feature exercised here).
+7. **Edit-mode availability skips self**: open an existing reservation → the validator must NOT flag the reservation's own table+slot as "No disponible" (the consumer wires `availabilityService.setCurrentReservationId(this.reservation.id)` in `ngOnChanges` so the backend's `excludeId` filters out self).
+8. **Required field validation**: leave `guestName` empty → click save → form does NOT submit; focus moves to the guestName input; inline "Campo requerido" shows below it (Priority 1 of §10.4). Same behavior for any other empty required field.
+
+Note: no Phase 3 step exercises the `<app-print-form-error>` banner — it is not used in this consumer (no formValidators, no cross-field date-range). Banner specs in Phase 1 (5 unit + 2 DynamicForm-integration) cover the platform side.
 
 ### 11.2 Unit specs
 
@@ -573,9 +625,7 @@ Rationale: el control-level error es más actionable (user sabe qué arreglar). 
 5. Signal-based options update triggers re-render.
 6. `setValue(unknown)` doesn't reset (defensive).
 
-**customer-autocomplete integration specs (2):**
-1. Init con `control.value` non-null → `findById` called → `preselected` set.
-2. `customerSelected` event → `control.setValue(customer.id)`.
+**customer-autocomplete integration specs**: **DROPPED** (widget not shipped — see §4.3 deviation). 0 specs in this category.
 
 **updateOn extension specs (2):**
 1. `updateOn: 'blur'` applied to FormControl construction.
@@ -592,13 +642,20 @@ Rationale: el control-level error es más actionable (user sabe qué arreglar). 
 1. Submit with formValidator failure (no control errors) → banner.focus() called.
 2. Submit with control errors only → existing focus-first-invalid behavior preserved (banner NOT focused).
 
-**Total new specs**: **20** (5 banner + 6 chip-select + 2 customer-autocomplete + 2 updateOn + 1 async-blur + 2 availability service + 2 banner-DynamicForm integration).
+**Total new specs**: **18** (5 banner + 6 chip-select + 2 updateOn + 1 async-blur + 2 availability service + 2 banner-DynamicForm integration). The 2 customer-autocomplete integration specs from the original plan are dropped — see §4.3 deviation.
+
+**Per-phase distribution**:
+
+- Phase 1: 5 banner unit + 2 updateOn + 2 banner-DynamicForm = **9 specs** (shipped).
+- Phase 2: 0 specs (consumer migration, smoke-only).
+- Phase 3: 6 chip-select + 1 async-blur + 2 availability service = **9 specs**.
+- Phase 4: 0 specs (cleanup).
 
 ### 11.3 F1 + FDD-031 regression gate
 
 **71 specs must continue passing** post-refactor del PrintControlError catalog extraction. Phase 1 acceptance criterion explícito — si alguno falla, el refactor introdujo drift observacional.
 
-**Total combined specs target**: 71 + 20 = **91 specs**.
+**Total combined specs target**: 71 + 18 = **89 specs** (revised from 91 in original plan — customer-autocomplete drop accounts for the -2).
 
 ---
 
@@ -720,70 +777,85 @@ export const CODEGEN_FORM_SCHEMA: DynamicFormSchema<CodegenFormKey> = {
 
 **Estimate**: **1.5 días**.
 
-### Phase 3 — reservation-form migration
+### Phase 3 — reservation-form migration (hybrid form pattern)
 
-**Goal**: replace hand-rolled reservation-form with full extension surface (custom widgets, async, cross-field).
+**Goal**: ship the chip-select widget + async availability validator to a real consumer (reservation-form), exercising the FDD-031 extension surface where it fits the data model. Deliberately HYBRID: dynamic-form orchestrates the kinds it supports; raw widgets cover the rest (date pickers, partySize stepper, customer selector), all bound to the SAME FormGroup.
 
-**Files create:**
-- `src/app/modules/admin/components/reservations/reservation-form.form.ts`
-- `src/app/modules/admin/components/reservations/widgets/chip-select.widget.ts`
-- `src/app/modules/admin/components/reservations/widgets/customer-autocomplete.widget.ts`
-- `src/app/modules/admin/components/reservations/services/reservation-availability.service.ts`
+**Files create (4):**
 
-**Files modify:**
-- `src/app/modules/admin/components/reservations/reservation-form.component.ts` — agregar standalone providers:
+- `src/app/modules/admin/components/reservations/reservation-form.form.ts` — schema declaration (7 fields + 1 chip-select; no formValidators).
+- `src/app/modules/admin/components/reservations/widgets/chip-select.widget.ts` (+ `.spec.ts`) — generic chip-select FormWidget (6 specs per §11.2).
+- `src/app/modules/admin/components/reservations/services/reservation-availability.service.ts` (+ `.spec.ts`) — `AsyncValidatorService` for the `tableId` field (2 specs per §11.2).
+
+**Files NOT created** (deviation from original plan — see §4.3):
+
+- ~~`widgets/customer-autocomplete.widget.ts`~~ — dropped. `CustomerSelectorComponent` stays as-is in the consumer template.
+
+**Files modify (4):**
+
+- `src/app/modules/admin/components/reservations/reservation-form.component.ts` — register chip-select widget, build FormGroup via `buildFormGroup()`, expose `tableChipGroups` computed, wire `setCurrentReservationId()` on the availability service in `ngOnChanges`, replace imperative `checkAvailability()` + `availabilityWarning` with the async validator pipeline. Add @Component providers:
 
 ```ts
 @Component({
   selector: 'app-reservation-form',
   standalone: true,
   imports: [
-    DialogModule,
-    DynamicFormComponent,
-    PrintFormErrorComponent,
-    // ...
+    DialogModule, DynamicFormComponent, CalendarModule,
+    CustomerSelectorComponent, /* kept for raw widget render */
+    // ... existing PrimeNG modules retained
   ],
   providers: [
     provideFormWidget('chip-select', ChipSelectWidget),
-    provideFormWidget('customer-autocomplete', CustomerAutocompleteWidget),
+    // NO customer-autocomplete registration — widget not shipped.
   ],
-  // ...
 })
 ```
 
-- `src/app/modules/admin/components/reservations/reservation-form.component.html` — replace form block con banner + dynamic-form composition.
-- `src/app/modules/admin/components/reservations/reservation-form.component.scss` — cleanup BEM redundancies (mismo patrón que admin-users en FDD-030).
+- `src/app/modules/admin/components/reservations/reservation-form.component.html` — wrap with `<form [formGroup]>`, render `<app-dynamic-form>` for the schema-friendly fields, keep `<p-calendar>` × 2 + partySize stepper + CustomerSelectorComponent + noTableAssigned checkbox as raw children with `formControlName` for the date/time fields.
+- `src/app/modules/admin/components/reservations/reservation-form.component.scss` — cleanup BEM where the dynamic-form widgets replace inline `.rf__field` / `.rf__error` instances (incremental — only remove what's truly dead).
+- `src/app/shared/forms/services/dynamic-form-builder.service.spec.ts` — add 1 spec proving an async validator with `updateOn: 'blur'` doesn't fire on programmatic `setValue` (FDD §11.2).
 
-**Schema highlights:**
+**Schema (revised — Path Y locked per OQ7):**
+
+The schema declares ONLY fields that `<app-dynamic-form>` will render. Raw-rendered controls (`partySize`, `reservationDate`, `reservationTime`) are added to the FormGroup imperatively by the consumer after `buildFormGroup()` returns. No sentinel kind, no orchestrator branching.
 
 ```ts
+export type ReservationFormKey =
+  | 'guestName' | 'guestPhone'
+  | 'durationMinutes' | 'tableId' | 'notes';
+
 export const RESERVATION_FORM_SCHEMA: DynamicFormSchema<ReservationFormKey> = {
   sections: [
     {
-      id: 'customer',
+      id: 'guest',
       title: 'Cliente',
       fields: [
-        { key: 'customerId', kind: 'customer-autocomplete', label: 'Cliente',
-          defaultValue: null, validators: ['required'] },
+        { key: 'guestName',  kind: 'text', label: 'Nombre',
+          defaultValue: '', validators: ['required'] },
+        { key: 'guestPhone', kind: 'text', label: 'Teléfono',
+          defaultValue: '' },
       ],
     },
     {
       id: 'when',
-      title: 'Fecha y hora',
+      title: 'Cuándo',
       fields: [
-        { key: 'startsAt', kind: 'text', label: 'Inicio', defaultValue: '',
-          validators: ['required'] },
-        { key: 'endsAt', kind: 'text', label: 'Fin', defaultValue: '',
-          validators: ['required'] },
+        { key: 'durationMinutes', kind: 'dropdown', label: 'Duración',
+          defaultValue: 90, validators: ['required'] },
       ],
     },
     {
       id: 'table',
       title: 'Mesa',
-      showSection: (s) => /* gated by noTableAssigned consumer-side */,
+      // No showSection — the noTableAssigned checkbox is a consumer-side @if
+      // that hides the chip-select container in template. The schema's
+      // tableId field is always part of the FormGroup; the async validator
+      // returns of(null) when tableId is null, so it stays inert when the
+      // user opts out.
       fields: [
-        { key: 'tableId', kind: 'chip-select', label: 'Mesa', defaultValue: null,
-          updateOn: 'blur',  // critical for async validator
+        { key: 'tableId', kind: 'chip-select', label: 'Mesa',
+          defaultValue: null,
+          updateOn: 'blur',  // CRITICAL — throttles the async API call
           asyncValidators: [
             { key: 'availability', service: ReservationAvailabilityService },
           ],
@@ -798,20 +870,36 @@ export const RESERVATION_FORM_SCHEMA: DynamicFormSchema<ReservationFormKey> = {
       ],
     },
   ],
-  formValidators: [
-    { kind: 'date-range', startKey: 'startsAt', endKey: 'endsAt' },
-  ],
+  // formValidators: ABSENT — data model is date+time+duration, no date-range.
 };
 ```
 
+**Consumer adds raw-field controls after `buildFormGroup()`** (Path Y per OQ7):
+
+```ts
+readonly form: FormGroup = this.builder.buildFormGroup(RESERVATION_FORM_SCHEMA);
+
+constructor() {
+  // Raw-rendered controls — not in the schema, added imperatively so they
+  // share the same FormGroup as the dynamic-form fields.
+  this.form.addControl('partySize',       this.fb.control(2,    [Validators.required, Validators.min(1)]));
+  this.form.addControl('reservationDate', this.fb.control<Date | null>(null, Validators.required));
+  this.form.addControl('reservationTime', this.fb.control<Date | null>(null, Validators.required));
+}
+```
+
 **Acceptance criteria:**
-- Form rendered via `<app-dynamic-form>` + banner above.
-- Custom widgets registered + rendered.
-- Async validator fires on blur (not on each keystroke).
-- Cross-field validator surfaces in banner.
-- Submit with form-level error focuses banner.
-- Smoke checklist (b) passes — zero behavioral regression.
+
+- 6 chip-select unit specs passing.
+- 2 ReservationAvailabilityService unit specs passing.
+- 1 async-blur integration spec passing.
+- Form rendered via `<app-dynamic-form>` for fields with supported kinds; raw widgets render for date/time/partySize/customer with shared FormGroup binding (hybrid pattern §5.3).
+- ChipSelectWidget registered in component providers, NOT shipped as a shared library widget.
+- Async availability validator fires on blur, surfaces "No disponible" inline below the chip-select via PrintControlError.
+- Edit-mode availability skips self-collision (consumer calls `availabilityService.setCurrentReservationId(...)`).
+- Smoke checklist (b) passes — zero behavioral regression on the user-visible flows.
 - `ng build` zero new errors.
+- Platform spec count post-Phase-3: 80 + 1 (async-blur builder spec) = 81. Consumer-side new specs: 6 + 2 = 8 (chip-select + availability). Combined: 89.
 
 **Estimate**: **2-2.5 días**.
 
@@ -876,14 +964,14 @@ Mirror del patrón establecido en FDD-031 §"Complexity / Risk Analysis".
 
 | Dimensión | Detalle |
 |---|---|
-| Custom widget kinds | **CRITICAL** — chip-select + customer-autocomplete. 2 widgets to ship. |
-| Reactive options | Required — chip-select option list (zoneGroups signal). |
-| Async validators | **CRITICAL** — availability check against existing reservations. |
-| Cross-field validators | **CRITICAL** — date-range. |
-| Forms per component | 1, con all 4 extension types active. |
-| `updateOn` requirement | **CRITICAL** — sin `updateOn: 'blur'`, async availability spammea backend per keystroke. |
-| Banner usage | Yes — surfaces cross-field errors. |
-| **Risk** | **MEDIUM-HIGH** — first stress test of widget registry + async validators + banner + updateOn in production. |
+| Custom widget kinds | **CRITICAL** — chip-select only (1 widget). customer-autocomplete dropped per §4.3. |
+| Reactive options | Required — chip-select option list (zoneGroups signal reshaped via `tableChipGroups`). |
+| Async validators | **CRITICAL** — availability check against existing reservations, applied to `tableId`. |
+| Cross-field validators | NOT applicable — data model is date+time+duration (no start/end timestamps). |
+| Forms per component | 1, hybrid pattern (§5.3) mixing dynamic-form fields + raw widgets bound to same FormGroup. |
+| `updateOn` requirement | **CRITICAL** — sin `updateOn: 'blur'`, async availability spammea backend per chip click. |
+| Banner usage | No — no formValidators declared. |
+| **Risk** | **MEDIUM** — production stress test of widget registry + async validators + updateOn. Hybrid pattern is new territory but a single FormGroup with mixed renderers is standard Reactive Forms. |
 
 ### Implication para migration order
 
@@ -901,15 +989,19 @@ Mirror del patrón establecido en FDD-031 §"Complexity / Risk Analysis".
 
 OQ1. **Multi-error banner UX**: cuando `formGroup.errors` tiene multiple keys (e.g., date-range AND matching-fields fail simultaneamente), banner shows solo el primero. Multi-error display deferred a FDD-033+.
 
-OQ2. **`$color-error-bg` token**: banner necesita un background light-red para visibility. Propuesta: agregar `$color-error-bg: #FEE2E2` a `_variables.scss`. **VERIFICAR PRIMERO** si PrimeNG ya expone `--red-50` o `--surface-50` equivalente — si sí, consumirlo en vez de extender el token file.
+OQ2. **`$color-error-bg` token** — **RESOLVED (Phase 1 execution)**: grep of `src/` for `--red-50` / `--red-100` returned zero existing consumers, so the project does not consume PrimeNG light-red CSS vars elsewhere. The `$color-error-bg: #FEE2E2` SCSS token was added to `_variables.scss` directly under `$color-error`.
 
-OQ3. **Time-window vs date-range**: si reservation-form's `startsAt`/`endsAt` son full timestamps (recommended), `date-range` built-in validator suffices. Si fueran fields separados (date + time), usar `custom` kind con validator function. **RECOMMENDATION**: full timestamps + date-range — match con backend representation existente.
+OQ3. **Time-window vs date-range** — **RESOLVED (2026-05-27 correction)**: reservation-form's data model uses `reservationDate` (Date) + `reservationTime` (Date timeOnly) + `durationMinutes` (number), NOT `(startsAt, endsAt)` timestamps. The FDD-031 `date-range` built-in validator does not apply mathematically. `formValidators` is absent from the Phase 3 schema. Decision documented in §Known Deviations.
 
 OQ4. **`updateOn: 'blur'` enforcement**: descriptor field shipped (D6) pero no enforce que consumers usen `'blur'` para descriptors con `asyncValidators`. Lint rule custom podría detectar mismatch — fuera de scope F2. Deferred a FDD-033+.
 
 OQ5. **`provideFormWidget` deduplication scope**: registration component-level (D11) significa que cada consumer registra sus widgets. Si 2+ consumers necesitan el mismo widget (e.g., dos features con chip-select), refactor a shared per Rule of 3. Deferred a evaluation post-F2 deployment.
 
 OQ6. **Catalog extraction Rule-of-3**: shared `error-catalog.ts` entre PrintControlError + PrintFormError (D4) — locked en Phase 1. Si un tercer consumer del catalog surge (e.g., toast service), refactor adicional acceptable.
+
+OQ7. **Raw-field descriptor encoding** (Phase 3 hybrid pattern) — **LOCKED to Path Y**: raw-field controls (`partySize`, `reservationDate`, `reservationTime`) are NOT declared in the schema. Instead, the consumer calls `form.addControl(key, ...)` post-`buildFormGroup()` for each raw field. Rationale: zero platform change (no sentinel kind to add to `FieldKind` union), strict consumer-side boundary, no orchestrator branching for "skip render". Path X (sentinel `kind: '_raw'`) was rejected because it would require platform modification that is out of scope for a consumer migration phase. If a second consumer needs the same hybrid pattern (Rule-of-3), revisit promoting a `RawFieldKind` sentinel to shared library at that time.
+
+OQ8. **`customer-autocomplete` widget revival**: the widget is dropped in Phase 3 (see §4.3). If a future consumer (e.g., POS quick-order entry) needs customer association via a FormControl AND `CustomerService.findById` is added to the backend in a separate FDD, this widget may be promoted to the shared library by Rule-of-3 (POS + reservation + that future consumer = three uses).
 
 ---
 
@@ -918,6 +1010,10 @@ OQ6. **Catalog extraction Rule-of-3**: shared `error-catalog.ts` entre PrintCont
 - **FDD-029 §12 (d) shim deletion target**: prematurely targeted FDD-030. Corregido: shim survives until product-form TEMPLATE migrates (no target FDD set). TODO comments updated en Phase 4 implementation.
 - **FDD-031 OQ1 (cross-field surfacing)** deferred a FDD-032 → RESOLVED vía `<app-print-form-error>` banner shipped en Phase 1.
 - **FDD-031 OQ2 (async debounce)** deferred → RESOLVED vía `FieldDescriptor.updateOn` descriptor field shipped en Phase 1 (small platform extension dentro del scope de FDD-032).
+- **FDD-032 Phase 3 schema mismatch (2026-05-27 correction)**: the original §12 Phase 3 schema (`{customerId, startsAt, endsAt, tableId, notes}` + `date-range` formValidator) was written without verifying the production reservation-form code. The actual form has `{guestName, guestPhone, partySize, reservationDate, reservationTime, durationMinutes, notes}` plus signal-managed customer/table state. The schema, signal mapping (§5.2), async validator signature (§7.2), banner usage (§6.1), submit flow (§7.3), Apéndice file list, and spec counts (§11.2) were rewritten to match production reality. Process lesson: future consumer-migration FDDs must include a "verify against current code" step before finalizing the wiring sections.
+- **`customer-autocomplete` widget dropped from Phase 3**: discovered during the 2026-05-27 correction. Three reasons (full record in §4.3): (a) `CustomerService.findById` does not exist (verified via grep); (b) `CustomerSelectorComponent` already exposes a richer production-ready API than the wrapper would; (c) customer is OPTIONAL in the reservation-form model — patching `guestName`/`guestPhone`, not a primary form field. The 2 customer-autocomplete integration specs are dropped from §11.2 (20 → 18 total). The widget may be revived if a future consumer needs it AND `findById` becomes available (see OQ8).
+- **`date-range` cross-field validator not applied to reservation-form**: data model is date+time+duration, not start/end timestamps. The Phase 1 `date-range` builder is shipped and tested via platform specs; it stays available for future consumers whose data model fits.
+- **`<app-print-form-error>` banner not used in Phase 3**: no `formValidators` declared in reservation-form schema. The Phase 1 banner remains shipped and exercised via platform specs (5 unit + 2 DynamicForm-integration); it activates for future consumers with cross-field errors.
 
 ---
 
@@ -945,14 +1041,21 @@ OQ6. **Catalog extraction Rule-of-3**: shared `error-catalog.ts` entre PrintCont
 - `src/app/modules/admin/components/devices/admin-devices.component.{ts,html,scss}`
 
 ### Phase 3 (reservation-form)
-**Created (4):**
+
+**Created (5):**
+
 - `src/app/modules/admin/components/reservations/reservation-form.form.ts`
 - `src/app/modules/admin/components/reservations/widgets/chip-select.widget.ts`
-- `src/app/modules/admin/components/reservations/widgets/customer-autocomplete.widget.ts`
+- `src/app/modules/admin/components/reservations/widgets/chip-select.widget.spec.ts`
 - `src/app/modules/admin/components/reservations/services/reservation-availability.service.ts`
+- `src/app/modules/admin/components/reservations/services/reservation-availability.service.spec.ts`
 
-**Modified (3):**
+**NOT created** (deviation — see §4.3): ~~`widgets/customer-autocomplete.widget.ts`~~ + spec.
+
+**Modified (4):**
+
 - `src/app/modules/admin/components/reservations/reservation-form.component.{ts,html,scss}`
+- `src/app/shared/forms/services/dynamic-form-builder.service.spec.ts` (+1 async-blur spec)
 
 ### Phase 4 (Cleanup)
 **Modified (4):**
@@ -980,3 +1083,24 @@ OQ6. **Catalog extraction Rule-of-3**: shared `error-catalog.ts` entre PrintCont
 - Phase 1+2 parallelizable per dependency graph.
 - Estimate: 5.5-6 días sequential, 4-4.5 días con parallelization.
 - FDD-029 §12 (d) shim deletion target correction documented.
+
+### 2026-05-27 — Phase 3 correction after production-code verification
+
+After Phase 1 and Phase 2 shipped, a pre-execution audit of the Phase 3 prompt revealed a fundamental schema mismatch between this FDD and the actual `reservation-form.component.ts`. The original §12 Phase 3 schema and surrounding sections were rewritten to match production reality. Specific changes:
+
+- **§2.2** rewritten with the actual 7-field model (`guestName`, `guestPhone`, `partySize`, `reservationDate`, `reservationTime`, `durationMinutes`, `notes`) plus outside-form signals (`selectedCustomer`, `selectedTableId`, `noTableAssigned`, `availabilityWarning`, `zoneGroups`, `isSaving`).
+- **§4.2** clarified that the consumer's existing `zoneGroups` computed is reshaped to `ChipGroup[]` via a new `tableChipGroups` computed; the widget does NOT re-implement grouping.
+- **§4.3** customer-autocomplete widget DROPPED. Three reasons: `CustomerService.findById` does not exist, `CustomerSelectorComponent` already covers the use case with richer API, and customer is OPTIONAL in the form model (patches `guestName`/`guestPhone`, not a primary field).
+- **§5.2** signal mapping table corrected: `selectedCustomer` stays OUTSIDE the form; `tables` is preserved; `availabilityWarning` is replaced by the async validator's inline `PrintControlError`.
+- **§5.3** documents the new hybrid form pattern: a single FormGroup with `<app-dynamic-form>` rendering the schema-friendly fields alongside raw widgets (`<p-calendar>`, partySize stepper, `CustomerSelectorComponent`) bound via `formControlName` to the same group.
+- **§6.1** banner illustrative example for reservation-form removed — the data model has no cross-field validators applicable, so the banner is not used in this consumer.
+- **§7.2** async validation sequence rewritten with the real `reservationService.checkAvailability(tableId, dateStr, timeStr, durationMinutes, excludeId?)` signature (5 args, not start/end timestamps). `currentReservationId` is provided to the service via a public setter that the consumer invokes in `ngOnChanges`.
+- **§7.3** submit flow scoped to Priority 1 only for Phase 3 (Priority 2 / banner-focus path is platform-shipped but does not activate without `formValidators`).
+- **§10.3** customer-autocomplete a11y section removed; replaced with a note that `CustomerSelectorComponent` is used directly.
+- **§10.4** focus-priority note clarifies Phase 3 exercises Priority 1 only.
+- **§11.1 Section (b)** smoke checklist (8 steps) rewritten to match the migrated UX: customer optional path, chip-select grouped by zone with `aria-pressed`, async availability on blur, edit-mode self-collision skip, required-field validation. No step exercises the banner.
+- **§11.2** spec totals revised: 18 new (was 20) → combined 89 (was 91). Customer-autocomplete integration specs (2) dropped.
+- **§12 Phase 3** sub-phase rewritten with the revised schema (8 keys including `tableId`), the hybrid pattern, the `setCurrentReservationId` setter on the availability service, the missing `formValidators` documentation, and acceptance criteria scoped to what actually ships.
+- **§Apéndice** Phase 3 file list updated: 5 created (was 4 + the dropped customer-autocomplete file) including the new spec files; 4 modified (added the builder spec for the async-blur integration test).
+- **§Open Questions** added OQ7 (raw-field descriptor encoding decision) and OQ8 (customer-autocomplete widget revival path).
+- **Process lesson recorded** in §Known Deviations: consumer-migration FDDs must verify against production code before finalizing wiring sections. This FDD passed multiple audits referencing only the FDD itself; the mismatch was invisible until the Phase 3 prompt's PREP step read the actual reservation-form code.
