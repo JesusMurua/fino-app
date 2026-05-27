@@ -262,35 +262,20 @@
 }
 
 // -----------------------------------------------------------------------
-// Form
+// Branch assignment (consumer-owned, lives outside <app-dynamic-form>)
 // -----------------------------------------------------------------------
-.user-form {
-  display: flex;
-  flex-direction: column;
-  gap: $space-4;
-  padding: $space-2 0;
-}
-
-.form-field {
+.branch-assignment {
   display: flex;
   flex-direction: column;
   gap: $space-2;
+  margin-top: $space-4;
+}
 
-  &--row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__label {
-    font-size: $font-size-base;
-    font-weight: 600;
-    color: $color-text-title;
-  }
-
-  &__input {
-    width: 100%;
-  }
+.branch-assignment__label {
+  margin: 0;  // override default heading margin
+  font-size: $font-size-base;
+  font-weight: 600;
+  color: $color-text-title;
 }
 
 // -----------------------------------------------------------------------

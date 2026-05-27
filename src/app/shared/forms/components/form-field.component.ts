@@ -23,7 +23,6 @@ import {
   AbstractControl,
   FormControl,
   ReactiveFormsModule,
-  Validators,
 } from '@angular/forms';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';

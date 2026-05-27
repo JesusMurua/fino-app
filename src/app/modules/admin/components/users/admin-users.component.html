@@ -122,154 +122,72 @@
   [style]="{ width: '480px' }"
   [draggable]="false"
 >
-  <form [formGroup]="userForm" class="user-form">
+  <app-dynamic-form
+    [schema]="schema"
+    [formGroup]="userForm"
+    [formId]="'admin-users-form'"
+    [valueSnapshot]="formSnapshot"
+    (submitted)="onFormSubmitted($event)"
+  />
 
-    <!-- Name -->
-    <div class="form-field">
-      <label class="form-field__label" for="uf-name">Nombre</label>
-      <input
-        id="uf-name"
-        type="text"
-        pInputText
-        formControlName="name"
-        placeholder="Nombre completo"
-        class="form-field__input"
-      />
-    </div>
-
-    <!-- Role -->
-    <div class="form-field">
-      <label class="form-field__label" for="uf-role">Rol</label>
-      <p-dropdown
-        inputId="uf-role"
-        [options]="roleOptions"
-        optionLabel="label"
-        optionValue="value"
-        formControlName="roleId"
-        placeholder="Seleccionar rol"
-        styleClass="form-field__input"
-        [appendTo]="'body'"
+  <!-- Branch assignment (Owner only, edit mode) — consumer-owned, lives
+       OUTSIDE the dynamic form per FDD-030 §5.3. Local <p-table> with
+       row-level state (checkbox + radio per row) does not fit a generic
+       kind:'array' slot cleanly. -->
+  @if (isOwner() && editingUser() && availableBranches().length > 0) {
+    <div class="branch-assignment">
+      <h3 class="branch-assignment__label">Sucursales asignadas</h3>
+      <p-table
+        [value]="availableBranches()"
+        dataKey="id"
+        styleClass="branch-table"
       >
-        <ng-template pTemplate="selectedItem" let-item>
-          <span>{{ item.icon }} {{ item.label }}</span>
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width: 3rem"></th>
+            <th>Sucursal</th>
+            <th style="width: 5rem; text-align: center">Principal</th>
+          </tr>
         </ng-template>
-        <ng-template pTemplate="item" let-item>
-          <span>{{ item.icon }} {{ item.label }}</span>
+        <ng-template pTemplate="body" let-branch>
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                [checked]="selectedBranchIds().includes(branch.id)"
+                (change)="toggleBranch(branch.id)"
+                class="branch-check"
+              />
+            </td>
+            <td>
+              {{ branch.name }}
+              @if (branch.isMatrix) {
+                <span class="branch-matrix-badge">Matriz</span>
+              }
+            </td>
+            <td style="text-align: center">
+              <input
+                type="radio"
+                name="defaultBranch"
+                [checked]="defaultBranchId() === branch.id"
+                [disabled]="!selectedBranchIds().includes(branch.id)"
+                (change)="setDefaultBranch(branch.id)"
+                class="branch-radio"
+              />
+            </td>
+          </tr>
         </ng-template>
-      </p-dropdown>
+      </p-table>
     </div>
-
-    <!-- Branch assignment (Owner only, edit mode) -->
-    @if (isOwner() && editingUser() && availableBranches().length > 0) {
-      <div class="form-field">
-        <label class="form-field__label">Sucursales asignadas</label>
-        <p-table
-          [value]="availableBranches()"
-          dataKey="id"
-          styleClass="branch-table"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              <th style="width: 3rem"></th>
-              <th>Sucursal</th>
-              <th style="width: 5rem; text-align: center">Principal</th>
-            </tr>
-          </ng-template>
-          <ng-template pTemplate="body" let-branch>
-            <tr>
-              <td>
-                <input
-                  type="checkbox"
-                  [checked]="selectedBranchIds().includes(branch.id)"
-                  (change)="toggleBranch(branch.id)"
-                  class="branch-check"
-                />
-              </td>
-              <td>
-                {{ branch.name }}
-                @if (branch.isMatrix) {
-                  <span class="branch-matrix-badge">Matriz</span>
-                }
-              </td>
-              <td style="text-align: center">
-                <input
-                  type="radio"
-                  name="defaultBranch"
-                  [checked]="defaultBranchId() === branch.id"
-                  [disabled]="!selectedBranchIds().includes(branch.id)"
-                  (change)="setDefaultBranch(branch.id)"
-                  class="branch-radio"
-                />
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      </div>
-    }
-
-    <!-- PIN (for Cashier, Kitchen, Waiter) -->
-    @if (usesPin()) {
-      <div class="form-field">
-        <label class="form-field__label" for="uf-pin">PIN (4 dígitos)</label>
-        <input
-          id="uf-pin"
-          type="password"
-          pInputText
-          formControlName="pin"
-          [placeholder]="editingUser() ? 'Vacío = no cambiar' : '4 dígitos'"
-          maxlength="4"
-          class="form-field__input"
-        />
-      </div>
-    }
-
-    <!-- Email + Password (for Owner, Manager) -->
-    @if (usesEmail()) {
-      <div class="form-field">
-        <label class="form-field__label" for="uf-email">Email</label>
-        <input
-          id="uf-email"
-          type="email"
-          pInputText
-          formControlName="email"
-          placeholder="correo@ejemplo.com"
-          class="form-field__input"
-        />
-      </div>
-
-      <div class="form-field">
-        <label class="form-field__label" for="uf-password">Contraseña</label>
-        <input
-          id="uf-password"
-          type="password"
-          pInputText
-          formControlName="password"
-          [placeholder]="editingUser() ? 'Vacío = no cambiar' : 'Mínimo 6 caracteres'"
-          class="form-field__input"
-        />
-      </div>
-    }
-
-    <!-- Active toggle (edit only) -->
-    @if (editingUser()) {
-      <div class="form-field form-field--row">
-        <label class="form-field__label">Activo</label>
-        <label class="toggle-wrap">
-          <input type="checkbox" formControlName="isActive" class="toggle-input" />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    }
-
-  </form>
+  }
 
   <ng-template pTemplate="footer">
     <button type="button" class="btn-ghost" (click)="showDialog.set(false)">Cancelar</button>
     <button
       type="button"
       class="btn-primary"
-      [disabled]="userForm.invalid || savingUser()"
-      (click)="saveUser()"
+      [disabled]="savingUser()"
+      (click)="onSaveClick()"
     >
       @if (savingUser()) { <i class="pi pi-spin pi-spinner"></i> }
       Guardar

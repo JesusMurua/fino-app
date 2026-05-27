@@ -79,7 +79,7 @@ export class FormSectionComponent<TKey extends string = string> {
       throw new Error(
         `FormSectionComponent: FormGroup is missing control "${String(key)}" ` +
           `declared in section "${this.section.id}". Ensure the FormGroup ` +
-          `was built from a schema that includes this field.`,
+          'was built from a schema that includes this field.',
       );
     }
     return ctrl;

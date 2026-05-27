@@ -1,4 +1,4 @@
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 
 import { DynamicFormBuilderService } from './dynamic-form-builder.service';
@@ -51,7 +51,7 @@ describe('DynamicFormBuilderService', () => {
     expect(Object.keys(controls).sort()).toEqual(['name', 'price']);
   });
 
-  it("buildControls skips kind: 'array' fields", () => {
+  it('buildControls skips kind: array fields', () => {
     const controls = service.buildControls(TEST_SCHEMA);
     expect((controls as Record<string, unknown>)['sizes']).toBeUndefined();
   });
