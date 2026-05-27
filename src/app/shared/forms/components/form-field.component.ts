@@ -7,16 +7,25 @@
  * Generic over `<TKey extends string>` so consumers retain literal-key
  * inference on `descriptor.key`.
  *
- * Slot pattern for `kind: 'array'` — the consumer projects its own
- * FormArray sub-form via `<ng-content>` (used when consuming this
- * component directly; the orchestrator path leaves array slots empty
- * pending FDD-030 extension API).
+ * Built-in kinds are handled by the `@switch` in the template. Custom
+ * kinds (FDD-031 §4.1) registered via `provideFormWidget` are resolved
+ * via `resolveCustomWidget` and rendered through `*ngComponentOutlet`
+ * in the `@default` branch. When neither built-in nor registered, the
+ * `array` kind / unknown kind falls through to `<ng-content>` so the
+ * consumer can project a sub-form directly.
+ *
+ * Reactive options (FDD-031 §4.2): `descriptor.options` may be either
+ * a static array or a `Signal<readonly Option[]>`. The `resolvedOptions`
+ * getter unifies both at render time; OnPush + signal reactivity keeps
+ * the view fresh without manual subscriptions.
  */
 
 import {
   ChangeDetectionStrategy,
   Component,
+  Inject,
   Input,
+  Type,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -31,6 +40,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 
 import { FieldDescriptor } from '../schemas/dynamic-form.schema';
+import {
+  FORM_WIDGETS,
+  FormWidgetRegistration,
+} from '../widgets/form-widget.tokens';
+import { FormWidget } from '../widgets/form-widget.interface';
 import { PrintControlErrorComponent } from './print-control-error.component';
 
 @Component({
@@ -66,6 +80,34 @@ export class FormFieldComponent<TKey extends string = string> {
 
   //#endregion
 
+  //#region Constructor
+
+  constructor(
+    @Inject(FORM_WIDGETS) private readonly widgets: readonly FormWidgetRegistration[],
+  ) {
+    this.assertNoDuplicateWidgetNames();
+  }
+
+  /**
+   * Defensive O(N) scan over the registered widgets for duplicate names.
+   * Per FDD-031 OQ3 lockdown: throw at construction so conflicts surface
+   * loudly rather than silently last-write-wins. The check runs per
+   * FormFieldComponent instance — acceptable for F2 (N typically ≤ 10).
+   * Future optimization could move this to APP_INITIALIZER in a single
+   * pass, but per-instance cost is negligible.
+   */
+  private assertNoDuplicateWidgetNames(): void {
+    const seen = new Set<string>();
+    for (const reg of this.widgets) {
+      if (seen.has(reg.name)) {
+        throw new Error(`Duplicate FORM_WIDGETS registration: "${reg.name}"`);
+      }
+      seen.add(reg.name);
+    }
+  }
+
+  //#endregion
+
   //#region Computed view state
 
   /** DOM id paired with `<label htmlFor>` on the input element. */
@@ -93,6 +135,28 @@ export class FormFieldComponent<TKey extends string = string> {
     return (this.descriptor.validators ?? []).some(
       (v) => v === 'required',
     );
+  }
+
+  /**
+   * Resolves dropdown options from either a static array or a Signal.
+   * Per FDD-031 §4.2: unified at render time via type guard
+   * `typeof opts === 'function'`. With OnPush + signal reactivity the
+   * template re-renders automatically when the source signal emits.
+   */
+  get resolvedOptions(): readonly { label: string; value: unknown }[] {
+    const opts = this.descriptor.options;
+    if (!opts) return [];
+    return typeof opts === 'function' ? opts() : opts;
+  }
+
+  /**
+   * Returns the registered Type<FormWidget> matching the given kind,
+   * or undefined if no consumer registered that kind. Used by the
+   * template's `@default` branch to dynamically render custom widgets
+   * via `*ngComponentOutlet`.
+   */
+  resolveCustomWidget(kind: string): Type<FormWidget> | undefined {
+    return this.widgets.find((w) => w.name === kind)?.component;
   }
 
   //#endregion

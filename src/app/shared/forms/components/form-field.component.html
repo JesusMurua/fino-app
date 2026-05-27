@@ -35,7 +35,7 @@
   @case ('dropdown') {
     <p-dropdown
       [inputId]="inputId"
-      [options]="descriptor.options ?? []"
+      [options]="resolvedOptions"
       [formControl]="formControl"
       [placeholder]="descriptor.placeholder ?? ''"
       optionLabel="label"
@@ -71,7 +71,25 @@
     />
   }
   @case ('array') {
-    <ng-content />
+    <!-- Named slot to disambiguate from the @default fallback ng-content.
+         Angular assigns projection at compile time across all ng-content
+         tags in the template; with two unselected slots the @default
+         tag (last in source order) captures projection. Naming this
+         one explicitly forces consumers to opt-in to array projection
+         via [slot="array"] on the projected element. -->
+    <ng-content select="[slot=array]" />
+  }
+  @default {
+    @if (resolveCustomWidget(descriptor.kind); as customType) {
+      <ng-container
+        *ngComponentOutlet="customType; inputs: { descriptor: descriptor, control: control, formId: formId }"
+      />
+    } @else {
+      <!-- Unselected — catches any projected content not bound to a
+           named slot. Used by consumers projecting custom widgets via
+           direct ng-content rather than the registry. -->
+      <ng-content />
+    }
   }
 }
 

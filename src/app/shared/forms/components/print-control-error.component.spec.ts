@@ -86,4 +86,45 @@ describe('PrintControlErrorComponent', () => {
     expect(errorText()).toBe('');
   });
 
+  // ------------------------------------------------------------------
+  // FDD-031 §4.3 — Catalog extension (availability, dateRange, matchingFields)
+  // ------------------------------------------------------------------
+
+  it("renders 'No disponible' for the availability error key", () => {
+    const control = new FormControl('foo');
+    control.setErrors({ availability: true });
+    control.markAsTouched();
+    component.control = control;
+    fixture.detectChanges();
+
+    expect(errorText()).toBe('No disponible');
+  });
+
+  it("renders 'Fecha de inicio debe ser anterior a la de fin' for dateRange", () => {
+    const control = new FormControl(null);
+    control.setErrors({
+      dateRange: {
+        start: new Date('2024-12-31'),
+        end: new Date('2024-01-01'),
+      },
+    });
+    control.markAsTouched();
+    component.control = control;
+    fixture.detectChanges();
+
+    expect(errorText()).toBe('Fecha de inicio debe ser anterior a la de fin');
+  });
+
+  it("renders 'Los valores no coinciden' for matchingFields", () => {
+    const control = new FormControl(null);
+    control.setErrors({
+      matchingFields: { keys: ['a', 'b'], values: ['foo', 'bar'] },
+    });
+    control.markAsTouched();
+    component.control = control;
+    fixture.detectChanges();
+
+    expect(errorText()).toBe('Los valores no coinciden');
+  });
+
 });

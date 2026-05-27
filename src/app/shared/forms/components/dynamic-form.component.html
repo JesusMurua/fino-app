@@ -1,10 +1,6 @@
 <div class="dynamic-form">
-  @for (section of schema.sections; track section.id) {
-    <app-form-section
-      [section]="section"
-      [formGroup]="formGroup"
-      [formId]="effectiveFormId"
-      [valueSnapshot]="effectiveSnapshot"
-    />
-  }
+	@for (section of schema.sections; track section.id) {
+	<app-form-section [section]="section" [formGroup]="formGroup" [formId]="effectiveFormId"
+		[valueSnapshot]="effectiveSnapshot" />
+	}
 </div>

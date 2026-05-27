@@ -15,3 +15,5 @@ export { minLengthValidator } from './min-length.validator';
 export { minValidator } from './min.validator';
 export { maxValidator } from './max.validator';
 export { resolveValidators } from './resolve-validators';
+export { resolveAsyncValidators } from './resolve-async-validators';
+export { resolveCrossFieldValidators } from './resolve-cross-field-validators';

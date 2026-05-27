@@ -16,6 +16,15 @@ export type {
 } from './schemas/dynamic-form.schema';
 export type { FieldKind, ValidatorRef } from './schemas/dynamic-form.types';
 
+// Async + cross-field validator types (FDD-031 §4.3)
+export type { AsyncValidatorService, AsyncValidatorRef } from './validators/async-validator.types';
+export type { CrossFieldValidatorRef } from './validators/cross-field-validator.types';
+
+// Widget registry (FDD-031 §4.1)
+export type { FormWidget } from './widgets/form-widget.interface';
+export type { FormWidgetRegistration } from './widgets/form-widget.tokens';
+export { FORM_WIDGETS, provideFormWidget } from './widgets/form-widget.tokens';
+
 // Service
 export { DynamicFormBuilderService } from './services/dynamic-form-builder.service';
 
@@ -35,4 +44,6 @@ export {
   minValidator,
   maxValidator,
   resolveValidators,
+  resolveAsyncValidators,
+  resolveCrossFieldValidators,
 } from './validators';

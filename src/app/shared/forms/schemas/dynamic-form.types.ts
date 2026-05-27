@@ -18,10 +18,21 @@
  * `arrayKind` discriminator on `FieldDescriptor` lets one schema declare
  * multiple distinct array slots in a single form.
  *
- * Adding a new kind here forces the renderer's switch to handle it
- * (TypeScript exhaustivity). Domain-specific kinds (e.g. category-picker)
- * stay in the consumer's local union — see `product-form.schema.ts` shim
- * for the extension pattern.
+ * Adding a built-in kind here forces the renderer's switch to handle it
+ * (TypeScript exhaustivity).
+ *
+ * The `(string & {})` tail is INTENTIONAL. The intersection with the
+ * empty object preserves IDE auto-complete for the listed kinds while
+ * also accepting arbitrary strings — this is what allows custom widget
+ * kinds registered via `provideFormWidget(name, component)` to type
+ * cleanly in field descriptors without extending this union. DO NOT
+ * "simplify" to bare `string`: that drops the auto-complete on the
+ * known kinds.
+ *
+ * Consumers with their own extended union (e.g. product-form's local
+ * `FieldKind = SharedFieldKind | 'array-sizes' | ...`) continue to
+ * type-check correctly because `(string & {})` accepts any string,
+ * including literal union members.
  */
 export type FieldKind =
   | 'text'
@@ -31,7 +42,8 @@ export type FieldKind =
   | 'integer'
   | 'switch'
   | 'dropdown'
-  | 'array';
+  | 'array'
+  | (string & {});
 
 /**
  * Declarative reference to a validator. Mix of string keys (for no-arg

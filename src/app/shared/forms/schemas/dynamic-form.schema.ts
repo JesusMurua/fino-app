@@ -15,6 +15,10 @@
  * the shared surface minimal.
  */
 
+import { Signal } from '@angular/core';
+
+import { AsyncValidatorRef } from '../validators/async-validator.types';
+import { CrossFieldValidatorRef } from '../validators/cross-field-validator.types';
 import { FieldKind, ValidatorRef } from './dynamic-form.types';
 
 /**
@@ -98,8 +102,28 @@ export interface FieldDescriptor<TKey extends string = string> {
    */
   arrayKind?: string;
 
-  /** Optional options for dropdown-style widgets. */
-  options?: readonly { label: string; value: unknown }[];
+  /**
+   * Optional options for dropdown-style widgets. Accepts either a
+   * static array OR a `Signal<readonly Option[]>` for reactive
+   * dropdown sources (e.g. tenant-feature filtering, service-driven
+   * lists). FormFieldComponent resolves via `typeof opts === 'function'`
+   * type guard and updates via Angular 18 signal reactivity (OnPush
+   * native — no manual subscription needed).
+   */
+  options?:
+    | readonly { label: string; value: unknown }[]
+    | Signal<readonly { label: string; value: unknown }[]>;
+
+  /**
+   * Optional async validators applied to the control. Resolved at
+   * build time by `DynamicFormBuilderService.buildFormGroup()` via
+   * DI. NOT applied by `buildControls()` — consumers using that API
+   * surface must call `ctrl.setAsyncValidators(...)` manually.
+   *
+   * See `async-validator.types.ts` for the `AsyncValidatorRef`
+   * contract and FDD-031 §4.3 for the integration design.
+   */
+  asyncValidators?: readonly AsyncValidatorRef[];
 }
 
 /**
@@ -143,4 +167,17 @@ export interface SectionDescriptor<TKey extends string = string> {
  */
 export interface DynamicFormSchema<TKey extends string = string> {
   sections: readonly SectionDescriptor<TKey>[];
+
+  /**
+   * Optional cross-field (form-level) validators per FDD-031 §4.3.
+   * Applied to the FormGroup as a whole — useful for date-range,
+   * matching-fields, or any consumer-defined relationship between
+   * multiple controls.
+   *
+   * NOTE: Only `DynamicFormBuilderService.buildFormGroup()` applies
+   * these. Consumers using `buildControls()` + manual `fb.group()`
+   * must call `group.setValidators(resolveCrossFieldValidators(...))`
+   * themselves. See FDD-031 §4.3 for the API distinction.
+   */
+  formValidators?: readonly CrossFieldValidatorRef<TKey>[];
 }

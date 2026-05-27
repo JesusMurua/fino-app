@@ -133,6 +133,16 @@ export class PrintControlErrorComponent implements OnInit {
         return n !== undefined ? `Valor máximo: ${n}` : 'Valor inválido';
       }
 
+      // FDD-031 §4.3 — async + cross-field validator error keys.
+      case 'availability':
+        return 'No disponible';
+
+      case 'dateRange':
+        return 'Fecha de inicio debe ser anterior a la de fin';
+
+      case 'matchingFields':
+        return 'Los valores no coinciden';
+
       // Priority 3 — fallback for keys not in the catalog.
       default:
         return 'Valor inválido';

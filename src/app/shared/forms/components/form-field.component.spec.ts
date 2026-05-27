@@ -1,13 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, Input, WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, Validators } from '@angular/forms';
+import { AbstractControl, FormControl, Validators } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { FormFieldComponent } from './form-field.component';
 import { FieldDescriptor } from '../schemas/dynamic-form.schema';
+import { FormWidget } from '../widgets/form-widget.interface';
+import { provideFormWidget } from '../widgets/form-widget.tokens';
 
-/** Test host that projects a marker into the `array` slot. */
+/** Test host that projects a marker into the named `array` slot. */
 @Component({
   standalone: true,
   imports: [FormFieldComponent],
@@ -17,7 +19,7 @@ import { FieldDescriptor } from '../schemas/dynamic-form.schema';
       [control]="control"
       [formId]="formId"
     >
-      <div data-test="projected-array-content">array slot content</div>
+      <div data-test="projected-array-content" slot="array">array slot content</div>
     </app-form-field>
   `,
 })
@@ -127,6 +129,126 @@ describe('FormFieldComponent', () => {
     expect(inputEl.attributes['aria-describedby']).toBe('form-abc-name-error');
     expect(inputEl.attributes['aria-required']).toBe('true');
     expect(errorEl.attributes['id']).toBe('form-abc-name-error');
+  });
+
+  // --------------------------------------------------------------------
+  // FDD-031 §4.2 — Reactive options
+  // --------------------------------------------------------------------
+
+  it('reactive options: static array resolves directly (typeof !== function branch)', () => {
+    const opts = [{ label: 'A', value: 1 }, { label: 'B', value: 2 }];
+    build({
+      key: 'cat',
+      kind: 'dropdown',
+      label: 'Categoría',
+      defaultValue: null,
+      options: opts,
+    });
+    expect(fixture.componentInstance).toBeTruthy();
+    const ff = fixture.debugElement.query(By.directive(FormFieldComponent))
+      .componentInstance as FormFieldComponent;
+    expect(ff.resolvedOptions).toBe(opts);
+  });
+
+  it('reactive options: signal resolves via call (typeof === function branch)', () => {
+    const optsSignal = signal<readonly { label: string; value: unknown }[]>([
+      { label: 'A', value: 1 },
+    ]);
+    build({
+      key: 'cat',
+      kind: 'dropdown',
+      label: 'Categoría',
+      defaultValue: null,
+      options: optsSignal,
+    });
+    const ff = fixture.debugElement.query(By.directive(FormFieldComponent))
+      .componentInstance as FormFieldComponent;
+    expect(ff.resolvedOptions.length).toBe(1);
+    expect(ff.resolvedOptions[0]).toEqual({ label: 'A', value: 1 });
+  });
+
+  it('reactive options: signal updates trigger FormFieldComponent re-render', () => {
+    const optsSignal: WritableSignal<readonly { label: string; value: unknown }[]> = signal([
+      { label: 'A', value: 1 },
+    ]);
+    build({
+      key: 'cat',
+      kind: 'dropdown',
+      label: 'Categoría',
+      defaultValue: null,
+      options: optsSignal,
+    });
+    const ff = fixture.debugElement.query(By.directive(FormFieldComponent))
+      .componentInstance as FormFieldComponent;
+    expect(ff.resolvedOptions.length).toBe(1);
+
+    optsSignal.set([
+      { label: 'A', value: 1 },
+      { label: 'B', value: 2 },
+      { label: 'C', value: 3 },
+    ]);
+    fixture.detectChanges();
+    expect(ff.resolvedOptions.length).toBe(3);
+    expect(ff.resolvedOptions[2]).toEqual({ label: 'C', value: 3 });
+  });
+
+  it('reactive options: undefined resolves to empty array (defensive)', () => {
+    build({
+      key: 'cat',
+      kind: 'dropdown',
+      label: 'Categoría',
+      defaultValue: null,
+      // no `options` field
+    });
+    const ff = fixture.debugElement.query(By.directive(FormFieldComponent))
+      .componentInstance as FormFieldComponent;
+    expect(ff.resolvedOptions).toEqual([]);
+  });
+
+});
+
+// --------------------------------------------------------------------
+// FDD-031 §4.1 — Widget Registry duplicate detection (OQ3)
+// --------------------------------------------------------------------
+// Lives in a separate describe block because it requires distinct
+// TestBed providers (duplicate provideFormWidget calls) — the main
+// describe above has no widget providers and tests built-in kinds.
+
+@Component({
+  selector: 'app-test-widget-x',
+  standalone: true,
+  template: '',
+})
+class TestWidgetX implements FormWidget {
+  @Input({ required: true }) descriptor!: FieldDescriptor;
+  @Input({ required: true }) control!: AbstractControl;
+  @Input({ required: true }) formId!: string;
+}
+
+@Component({
+  selector: 'app-test-widget-y',
+  standalone: true,
+  template: '',
+})
+class TestWidgetY implements FormWidget {
+  @Input({ required: true }) descriptor!: FieldDescriptor;
+  @Input({ required: true }) control!: AbstractControl;
+  @Input({ required: true }) formId!: string;
+}
+
+describe('FormFieldComponent — duplicate widget registration (OQ3)', () => {
+
+  it('throws on construction when FORM_WIDGETS contains duplicate names', async () => {
+    await TestBed.configureTestingModule({
+      imports: [FormFieldComponent, NoopAnimationsModule],
+      providers: [
+        provideFormWidget('dup-kind', TestWidgetX),
+        provideFormWidget('dup-kind', TestWidgetY),
+      ],
+    }).compileComponents();
+
+    expect(() => TestBed.createComponent(FormFieldComponent))
+      .toThrowError(/Duplicate FORM_WIDGETS registration: "dup-kind"/);
   });
 
 });
