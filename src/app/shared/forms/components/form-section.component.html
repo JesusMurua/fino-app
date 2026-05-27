@@ -1,0 +1,22 @@
+@if (isSectionVisible()) {
+  <details [open]="section.defaultOpen ?? true" class="form-section">
+    <summary class="form-section__header">
+      @if (section.icon) {
+        <i [class]="section.icon" class="form-section__icon" aria-hidden="true"></i>
+      }
+      <span class="form-section__title">{{ section.title }}</span>
+    </summary>
+
+    <div class="p-fluid p-formgrid grid form-section__body">
+      @for (field of visibleFields(); track field.key) {
+        <div [class]="fieldWrapperClass(field)">
+          <app-form-field
+            [descriptor]="field"
+            [control]="getControl(field.key)"
+            [formId]="formId"
+          />
+        </div>
+      }
+    </div>
+  </details>
+}

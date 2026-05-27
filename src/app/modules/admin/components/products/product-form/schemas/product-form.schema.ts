@@ -1,3 +1,12 @@
+// LEGACY SHIM — delete in FDD-030 once admin-users + admin-devices migrate.
+// This file's local type definitions (FieldKind, FieldDescriptor, etc.)
+// preserve POC-specific kinds (`category-picker`, `array-sizes`, etc.) and
+// SectionDescriptor.badge that the shared library does not (and should not)
+// expose. The POC's local renderer components continue to consume these.
+// In FDD-030, when the POC's template migrates to `<app-dynamic-form>`,
+// product-specific kinds either move to the shared FieldKind union (if
+// generic enough) or are handled via the widget extension API (FDD-030).
+
 /**
  * Type-safe declarative schema for the product creation/edit form.
  *

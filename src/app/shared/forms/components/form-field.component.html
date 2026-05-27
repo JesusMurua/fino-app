@@ -1,0 +1,85 @@
+<label [htmlFor]="inputId" class="form-field__label">{{ descriptor.label }}</label>
+
+@switch (descriptor.kind) {
+  @case ('text') {
+    <input
+      [id]="inputId"
+      type="text"
+      pInputText
+      [formControl]="formControl"
+      [placeholder]="descriptor.placeholder ?? ''"
+      [attr.aria-invalid]="isInvalid"
+      [attr.aria-required]="isRequired || null"
+      [attr.aria-describedby]="errorId"
+    />
+  }
+  @case ('textarea') {
+    <textarea
+      [id]="inputId"
+      pInputTextarea
+      [formControl]="formControl"
+      [placeholder]="descriptor.placeholder ?? ''"
+      [attr.aria-invalid]="isInvalid"
+      [attr.aria-required]="isRequired || null"
+      [attr.aria-describedby]="errorId"
+      rows="3"
+    ></textarea>
+  }
+  @case ('switch') {
+    <p-inputSwitch
+      [inputId]="inputId"
+      [formControl]="formControl"
+      [ariaLabel]="descriptor.label"
+    />
+  }
+  @case ('dropdown') {
+    <p-dropdown
+      [inputId]="inputId"
+      [options]="descriptor.options ?? []"
+      [formControl]="formControl"
+      [placeholder]="descriptor.placeholder ?? ''"
+      optionLabel="label"
+      optionValue="value"
+    />
+  }
+  @case ('currency') {
+    <p-inputNumber
+      [inputId]="inputId"
+      mode="currency"
+      currency="MXN"
+      [formControl]="formControl"
+      [min]="descriptor.min ?? null"
+      [max]="descriptor.max ?? null"
+    />
+  }
+  @case ('number') {
+    <p-inputNumber
+      [inputId]="inputId"
+      [formControl]="formControl"
+      [min]="descriptor.min ?? null"
+      [max]="descriptor.max ?? null"
+    />
+  }
+  @case ('integer') {
+    <p-inputNumber
+      [inputId]="inputId"
+      [formControl]="formControl"
+      [min]="descriptor.min ?? null"
+      [max]="descriptor.max ?? null"
+      [showButtons]="true"
+      [suffix]="descriptor.suffix ?? ''"
+    />
+  }
+  @case ('array') {
+    <ng-content />
+  }
+}
+
+@if (descriptor.hint) {
+  <small class="form-field__hint">{{ descriptor.hint }}</small>
+}
+
+<app-print-control-error
+  [id]="errorId"
+  [control]="control"
+/>

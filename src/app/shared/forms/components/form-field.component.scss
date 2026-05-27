@@ -1,0 +1,29 @@
+@use '../../../../styles/variables' as *;
+
+:host {
+  display: block;
+}
+
+.form-field__label {
+  display: block;
+  margin-bottom: $space-1;
+  font-size: $font-size-label;
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.form-field__hint {
+  display: block;
+  margin-top: $space-1;
+  font-size: $font-size-label;
+  color: $color-text-sub;
+}
+
+// Touch-target floor — every input must hit the POS touch minimum,
+// even when consumer styles override individual widget paddings.
+:host ::ng-deep input.p-inputtext,
+:host ::ng-deep textarea.p-inputtextarea,
+:host ::ng-deep .p-dropdown,
+:host ::ng-deep .p-inputnumber-input {
+  min-height: $touch-target-pos;
+}

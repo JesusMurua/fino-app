@@ -1,3 +1,10 @@
+// LEGACY SHIM — delete in FDD-030 once admin-users + admin-devices migrate.
+// This service keeps its existing iteration over `allFieldDescriptors()`
+// (flat list from the POC registry, shape incompatible with the shared
+// service's section-based API). It transparently delegates the validator
+// resolution layer to `product-form-validators.ts`, which now rebinds to
+// shared validator implementations per FDD-029 §12 (d).
+
 import { Injectable, inject } from '@angular/core';
 import { FormControl, FormGroup, NonNullableFormBuilder } from '@angular/forms';
 
