@@ -1,14 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { FormsModule, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors, NonNullableFormBuilder } from '@angular/forms';
+import { Component, Injector, OnDestroy, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormGroup, FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
-import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -27,6 +27,15 @@ import { Branch, BranchService } from '../../../../core/services/branch.service'
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { DeviceService } from '../../../../core/services/device.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
+import {
+  DynamicFormBuilderService,
+  DynamicFormComponent,
+  DynamicFormSchema,
+  FieldDescriptor,
+  SectionDescriptor,
+} from 'src/app/shared/forms';
+import { ADMIN_DEVICES_CODEGEN_SCHEMA, CodegenFormKey } from './admin-devices-codegen.form';
+import { ADMIN_DEVICES_EDIT_SCHEMA, EditFormKey } from './admin-devices-edit.form';
 
 /** Mode option for the activation-code dropdown */
 interface ModeOption {
@@ -77,12 +86,11 @@ const MODE_LABELS: Record<DeviceConfig['mode'] | 'bridge', string> = {
   imports: [
     DatePipe,
     FormsModule,
-    ReactiveFormsModule,
     ButtonModule,
     ConfirmDialogModule,
     DialogModule,
     DropdownModule,
-    InputTextModule,
+    DynamicFormComponent,
     TableModule,
     TagModule,
     TooltipModule,
@@ -99,9 +107,19 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   private readonly cashRegisterService = inject(CashRegisterService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly deviceService = inject(DeviceService);
-  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly fb = inject(FormBuilder);
+  private readonly builder = inject(DynamicFormBuilderService);
+  private readonly injector = inject(Injector);
   private readonly messageService = inject(MessageService);
   private readonly tenantContext = inject(TenantContextService);
+
+  /** Template ref to the codegen <app-dynamic-form> — used to trigger
+   *  validation + focus from the external "Generar código" button. */
+  @ViewChild('codegenFormRef') private codegenDynamicForm!: DynamicFormComponent<CodegenFormKey>;
+
+  /** Template ref to the edit-dialog <app-dynamic-form> — used to trigger
+   *  validation + focus from the dialog footer's "Guardar" button. */
+  @ViewChild('editFormRef') private editDynamicForm!: DynamicFormComponent<EditFormKey>;
 
   //#endregion
 
@@ -145,45 +163,25 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   readonly cashRegisters = signal<CashRegister[]>([]);
 
   /**
-   * Mirror of `generateForm.controls.branchId.value` as a signal.
-   * Reactive Forms expose `valueChanges` (rxjs) but not a signal, so we
-   * subscribe in `ngOnInit` and feed the value here. Allows the
-   * `availableCashRegistersForBranch` computed to react when the admin
-   * switches branches.
-   */
-  private readonly selectedBranchSignal = signal(0);
-
-  /**
-   * Mirror of `generateForm.controls.mode.value` as a signal — drives
-   * the visibility of the cash-register dropdown so it appears only
-   * for the `cashier` mode (the only one that uses a register).
-   */
-  private readonly selectedModeSignal = signal<DeviceConfig['mode'] | 'bridge'>('cashier');
-
-  /**
    * Cash registers the admin can pick from when generating a `cashier`
    * activation code. Filtered to:
    *   - the form's currently-selected branch (a code is always scoped
    *     to one branch, so cross-branch links do not make sense),
    *   - not yet linked to any device (no silent steals).
+   *
+   * Reads `branchId` from `rawCodegenSnapshot` (the reactive form value
+   * signal) — NOT from the composed `codegenSnapshot`, to break the
+   * circular dep `codegenSnapshot → availableCashRegistersForBranch
+   * → codegenSnapshot`. See `rawCodegenSnapshot` declaration below for
+   * the rationale.
    */
   readonly availableCashRegistersForBranch = computed<CashRegister[]>(() => {
-    const branchId = this.selectedBranchSignal();
+    const branchId = (this.rawCodegenSnapshot() as Record<string, unknown>)['branchId'] as number;
     if (!branchId) return [];
     return this.cashRegisters().filter(r =>
       r.branchId === branchId && !r.deviceUuid && r.isActive,
     );
   });
-
-  /**
-   * True when the cash-register dropdown should render. Hidden for any
-   * non-cashier mode and when no unlinked registers are available so
-   * the form does not surface a useless empty dropdown.
-   */
-  readonly showCashRegisterPicker = computed(() =>
-    this.selectedModeSignal() === 'cashier'
-      && this.availableCashRegistersForBranch().length > 0,
-  );
 
   /** Dropdown options for the cash register picker (label + value pair) */
   readonly cashRegisterOptions = computed(() => [
@@ -219,7 +217,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   readonly currentModeQuota = computed<DeviceModeQuotaDto | null>(() => {
     const limits = this.deviceLimits();
     if (!limits) return null;
-    const mode = this.selectedModeSignal();
+    const mode = (this.rawCodegenSnapshot() as Record<string, unknown>)['mode'] as DeviceConfig['mode'] | 'bridge';
     return limits.modes.find(m => m.mode === mode) ?? null;
   });
 
@@ -242,29 +240,51 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   //#endregion
 
   /**
-   * Reactive form for the activation-code generator.
+   * Reactive form for the activation-code generator. Schema-driven via
+   * `DynamicFormBuilderService.buildControls()` + manual `fb.group()`
+   * (FDD-032 §5.3 — no formValidators / no async, so buildControls
+   * suffices over buildFormGroup).
    *
-   * Validators mirror the backend constraints: a positive `branchId`
-   * (defaulting to `0` would slip past `Validators.required`), one of the
-   * known device modes, and a non-blank human-readable name capped at the
-   * column length used by the backend.
+   * Validators live in the schema (FDD-031 string + ref keys): required,
+   * min(1) on branchId; required on mode; required + maxLength(60) +
+   * nonBlank on name; no validators on cashRegisterId (visibility gated
+   * by the schema's `showWhen` predicate).
    */
-  readonly generateForm = this.fb.group({
-    branchId: this.fb.control(0, [Validators.required, Validators.min(1)]),
-    mode: this.fb.control<DeviceConfig['mode'] | 'bridge'>('cashier', [Validators.required]),
-    name: this.fb.control('', [
-      Validators.required,
-      Validators.maxLength(60),
-      AdminDevicesComponent.nonBlankValidator,
-    ]),
-    /**
-     * Optional cash register pre-binding. `null` = "do not link a
-     * register now"; the field is hidden by `showCashRegisterPicker`
-     * for non-cashier modes so it never reaches the backend with an
-     * inapplicable value.
-     */
-    cashRegisterId: this.fb.control<number | null>(null),
+  readonly codegenForm: FormGroup = this.fb.group(
+    this.builder.buildControls<CodegenFormKey>(ADMIN_DEVICES_CODEGEN_SCHEMA),
+  );
+
+  /**
+   * Reactive raw snapshot of codegenForm values. toSignal subscribes to
+   * valueChanges so any field mutation re-evaluates dependent computeds
+   * (availableCashRegistersForBranch, currentModeQuota, codegenSnapshot).
+   * Replaces the eliminated selectedBranchSignal / selectedModeSignal
+   * mirror pair (FDD-032 §5.1).
+   *
+   * A plain `computed(() => this.codegenForm.value)` would NOT be
+   * reactive — the form value getter isn't tracked by the signal
+   * dependency graph. toSignal of valueChanges is the technically
+   * correct path.
+   */
+  private readonly rawCodegenSnapshot = toSignal(this.codegenForm.valueChanges, {
+    initialValue: this.codegenForm.value,
+    injector: this.injector,
   });
+
+  /**
+   * Consumer-provided snapshot for `<app-dynamic-form>`'s [valueSnapshot]
+   * input. Composes the raw form snapshot with the `_hasCashRegisters`
+   * reserved key the cashRegisterId showWhen predicate consults
+   * (FDD-030 OQ1 reserved-key pattern, same shape as admin-users `_edit`).
+   *
+   * Reading from `rawCodegenSnapshot` (NOT this composed signal) inside
+   * `availableCashRegistersForBranch` breaks the otherwise-circular
+   * dependency.
+   */
+  readonly codegenSnapshot = computed<Record<string, unknown>>(() => ({
+    ...this.rawCodegenSnapshot(),
+    _hasCashRegisters: this.availableCashRegistersForBranch().length > 0,
+  }));
 
   /**
    * Device mode options, filtered dynamically by the tenant's active
@@ -362,21 +382,14 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
   readonly savingEdit = signal(false);
 
   /**
-   * Reactive form for the Edit dialog.
-   * Whitespace-only names are rejected via the `nonBlank` validator so an
-   * accidental space-bar commit does not wipe the device label server-side.
+   * Reactive form for the Edit dialog. Schema-driven via the shared
+   * dynamic-form library (FDD-032 §5.3). No showWhen predicates in this
+   * schema → no [valueSnapshot] needed on the orchestrator.
+   * Whitespace-only names are rejected via the shared 'nonBlank' validator.
    */
-  readonly editForm = this.fb.group({
-    name: this.fb.control('', [
-      Validators.required,
-      Validators.maxLength(60),
-      AdminDevicesComponent.nonBlankValidator,
-    ]),
-    branchId: this.fb.control(0, [
-      Validators.required,
-      Validators.min(1),
-    ]),
-  });
+  readonly editForm: FormGroup = this.fb.group(
+    this.builder.buildControls<EditFormKey>(ADMIN_DEVICES_EDIT_SCHEMA),
+  );
 
   //#endregion
 
@@ -399,16 +412,92 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   //#endregion
 
+  //#region Dynamic-form option signals + schemas (FDD-032 Phase 2)
+
+  /** Branches signal mapped to `{label, value}` dropdown options. */
+  readonly branchOptions = computed(() =>
+    this.branches().map(b => ({ label: b.name, value: b.id })),
+  );
+
+  /**
+   * Modes signal mapped to `{label, value}` dropdown options. Drops the
+   * unused `icon` field — the legacy template referenced `optionLabel="label"`
+   * / `optionValue="value"` only, so icons were never rendered. Same UX
+   * post-migration.
+   */
+  readonly modeFormOptions = computed(() =>
+    this.modes().map(m => ({ label: m.label, value: m.value })),
+  );
+
+  /** Schema for the codegen form with runtime options injected. */
+  readonly codegenSchema: DynamicFormSchema<CodegenFormKey> =
+    this.injectCodegenOptions(ADMIN_DEVICES_CODEGEN_SCHEMA);
+
+  /** Schema for the edit-dialog form with runtime options injected. */
+  readonly editSchema: DynamicFormSchema<EditFormKey> =
+    this.injectEditOptions(ADMIN_DEVICES_EDIT_SCHEMA);
+
+  /**
+   * Deep-clones the codegen schema with `branchId` / `mode` / `cashRegisterId`
+   * dropdowns wired to the consumer's option Signals. `options` accepts a
+   * `Signal<readonly Option[]>` (FDD-031 §4.2) — passing the signal
+   * REFERENCE (not calling it) lets FormFieldComponent re-render
+   * reactively when the underlying data changes.
+   */
+  private injectCodegenOptions(
+    base: DynamicFormSchema<CodegenFormKey>,
+  ): DynamicFormSchema<CodegenFormKey> {
+    return {
+      sections: base.sections.map((section: SectionDescriptor<CodegenFormKey>) => ({
+        ...section,
+        fields: section.fields.map((field: FieldDescriptor<CodegenFormKey>) => {
+          switch (field.key) {
+            case 'branchId':       return { ...field, options: this.branchOptions };
+            case 'mode':           return { ...field, options: this.modeFormOptions };
+            case 'cashRegisterId': return { ...field, options: this.cashRegisterOptions };
+            default:               return field;
+          }
+        }),
+      })),
+    };
+  }
+
+  /** Deep-clones the edit schema with `branchId` wired to branchOptions. */
+  private injectEditOptions(
+    base: DynamicFormSchema<EditFormKey>,
+  ): DynamicFormSchema<EditFormKey> {
+    return {
+      sections: base.sections.map((section: SectionDescriptor<EditFormKey>) => ({
+        ...section,
+        fields: section.fields.map((field: FieldDescriptor<EditFormKey>) =>
+          field.key === 'branchId'
+            ? { ...field, options: this.branchOptions }
+            : field,
+        ),
+      })),
+    };
+  }
+
+  //#endregion
+
   //#region Lifecycle
 
   constructor() {
-    // Auto-naming logic that reacts to both async quota updates and form selections
+    // Auto-naming logic that reacts to async quota updates + form selections.
+    // Reads from `codegenSnapshot()` (composed reactive snapshot driven by
+    // toSignal of valueChanges) — replaces the eliminated mirror signals.
+    // `setValue({ emitEvent: false })` avoids re-triggering valueChanges →
+    // rawCodegenSnapshot → this effect, which would loop. Trade-off:
+    // rawCodegenSnapshot stays stale for `name` until the user types or
+    // another mutation fires valueChanges. Harmless because no consumer
+    // reads `snapshot['name']`.
     effect(() => {
-      const mode = this.selectedModeSignal();
-      const branchId = this.generateForm.controls.branchId.value;
-      const quota = this.currentModeQuota(); // Reacts when async loadDeviceLimits finishes
+      const snapshot = this.codegenSnapshot();
+      const mode = snapshot['mode'] as DeviceConfig['mode'] | 'bridge' | undefined;
+      const branchId = snapshot['branchId'] as number | undefined;
+      const quota = this.currentModeQuota();
 
-      if (this.generateForm.controls.name.dirty || !branchId || !mode) return;
+      if (this.codegenForm.controls['name'].dirty || !branchId || !mode) return;
 
       const branch = this.branches().find(b => b.id === branchId);
       const branchName = branch?.name || '';
@@ -422,23 +511,21 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
       // Clean double spaces and truncate to avoid validation errors
       autoName = autoName.replace(/\s+/g, ' ').trim().substring(0, 60);
 
-      // Use emitEvent: false to prevent form loops
-      if (this.generateForm.controls.name.value !== autoName) {
-        this.generateForm.controls.name.setValue(autoName, { emitEvent: false });
+      if (this.codegenForm.controls['name'].value !== autoName) {
+        this.codegenForm.controls['name'].setValue(autoName, { emitEvent: false });
       }
     });
   }
 
   async ngOnInit(): Promise<void> {
-    // Wire form-value mirrors for the dropdown reactivity. Subscribed
-    // here (not in field initializers) so we can use the branch /
-    // mode signals from a `computed` without dragging in `toSignal`'s
-    // injection-context plumbing.
-    this.generateForm.controls.branchId.valueChanges.subscribe(value => {
-      this.selectedBranchSignal.set(value ?? 0);
+    // Imperative side-effect subscriptions on valueChanges. These STAY
+    // (FDD-032 §5.3 boundary): rawCodegenSnapshot replaces mirror signals
+    // for reactive computeds, but API calls + control mutations don't
+    // fit a computed pattern and remain explicit subscriptions.
+    this.codegenForm.controls['branchId'].valueChanges.subscribe(value => {
       // Reset the cash-register pick whenever the branch changes — the
       // previously-selected register may belong to the old branch.
-      this.generateForm.controls.cashRegisterId.setValue(null);
+      this.codegenForm.controls['cashRegisterId'].setValue(null);
       // Quotas are per-branch — re-fetch so the counter card reflects
       // the new context. Skipped when the branch is reset to 0 during
       // form clears.
@@ -446,12 +533,11 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
         void this.loadDeviceLimits(value);
       }
     });
-    this.generateForm.controls.mode.valueChanges.subscribe(value => {
-      this.selectedModeSignal.set(value ?? 'cashier');
+    this.codegenForm.controls['mode'].valueChanges.subscribe(value => {
       // Non-cashier modes do not use a register; clear any stale pick
       // so we never POST `cashRegisterId` for a kitchen / kiosk code.
       if (value !== 'cashier') {
-        this.generateForm.controls.cashRegisterId.setValue(null);
+        this.codegenForm.controls['cashRegisterId'].setValue(null);
       }
     });
 
@@ -466,7 +552,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     ]);
 
     const first = this.branches()[0];
-    if (first) this.generateForm.controls.branchId.setValue(first.id);
+    if (first) this.codegenForm.controls['branchId'].setValue(first.id);
 
     // Tick every minute so status badges / relative-time labels
     // refresh without re-fetching over the network.
@@ -561,18 +647,29 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
    * verbatim — the interceptor only handles 401/402 globally, so this
    * 403 path stays scoped to the device-limit semantics for this screen.
    */
-  async generateActivationCode(): Promise<void> {
-    if (this.generatingCode()) return;
-    if (this.generateForm.invalid) {
-      this.generateForm.markAllAsTouched();
-      return;
-    }
+  /** Footer-button click — delegates validation + focus to the orchestrator. */
+  onGenerateClick(): void {
+    this.codegenDynamicForm.submit();
+  }
 
-    const { branchId, mode, name, cashRegisterId } = this.generateForm.getRawValue();
+  /**
+   * Triggered by `<app-dynamic-form>` (submitted) when the codegen form
+   * is valid. The orchestrator already enforced validity, so the
+   * `if (form.invalid) markAllAsTouched + return` guards from the legacy
+   * imperative flow are gone.
+   */
+  async onCodegenSubmitted(value: Record<CodegenFormKey, unknown>): Promise<void> {
+    if (this.generatingCode()) return;
+
+    const branchId = value['branchId'] as number;
+    const mode = value['mode'] as DeviceConfig['mode'] | 'bridge';
+    const name = value['name'] as string;
+    const cashRegisterId = value['cashRegisterId'] as number | null;
+
     // Only forward `cashRegisterId` to the backend for cashier-mode codes.
     // Other modes never have a meaningful register selection (the field
-    // is hidden in the UI for them), so omitting the property keeps the
-    // payload tight and unambiguous.
+    // is hidden in the UI for them via showWhen), so omitting the property
+    // keeps the payload tight and unambiguous.
     const payload = mode === 'cashier' && cashRegisterId !== null
       ? { branchId, mode, name: name.trim(), cashRegisterId }
       : { branchId, mode, name: name.trim() };
@@ -586,14 +683,14 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
       );
       this.lastGeneratedCode.set(response);
       this.codePulseKey.update(v => v + 1);
-      this.generateForm.reset({
+      this.codegenForm.reset({
         branchId: 0,
         mode: 'cashier',
         name: '',
         cashRegisterId: null,
       });
       const first = this.branches()[0];
-      if (first) this.generateForm.controls.branchId.setValue(first.id);
+      if (first) this.codegenForm.controls['branchId'].setValue(first.id);
       await this.loadPendingCodes();
       // Pull the freshest quota — the new pending code counts toward
       // `usage` per the backend so the counter must reflect it before
@@ -807,7 +904,7 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
       // Revoking frees a quota seat, restoring consumes one — re-fetch
       // so the counter card and submit lockout reflect reality before
       // the admin tries to issue the next code.
-      const branchId = this.selectedBranchSignal();
+      const branchId = (this.rawCodegenSnapshot() as Record<string, unknown>)['branchId'] as number;
       if (branchId > 0) {
         await this.loadDeviceLimits(branchId);
       }
@@ -851,17 +948,22 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
     if (!visible) this.editingDevice.set(null);
   }
 
-  /** Persists the form via PATCH and replaces the row in place on success */
-  async saveEdit(): Promise<void> {
+  /** Dialog footer "Guardar" click — delegates to the edit orchestrator. */
+  onEditSaveClick(): void {
+    this.editDynamicForm.submit();
+  }
+
+  /**
+   * Triggered by the edit-dialog `<app-dynamic-form>` (submitted) when
+   * the form is valid. Persists the form via PATCH and replaces the row
+   * in place on success.
+   */
+  async onEditSubmitted(value: Record<EditFormKey, unknown>): Promise<void> {
     const device = this.editingDevice();
     if (!device || this.savingEdit()) return;
 
-    if (this.editForm.invalid) {
-      this.editForm.markAllAsTouched();
-      return;
-    }
-
-    const { name, branchId } = this.editForm.getRawValue();
+    const name = value['name'] as string;
+    const branchId = value['branchId'] as number;
     const payload = { name: name.trim(), branchId };
 
     this.savingEdit.set(true);
@@ -959,17 +1061,6 @@ export class AdminDevicesComponent implements OnInit, OnDestroy {
 
   /** TrackBy for the pending-codes table — the 6-digit code is unique */
   trackByPendingCode = (_: number, row: PendingDeviceCodeDto): string => row.code;
-
-  //#endregion
-
-  //#region Validators
-
-  /** Rejects whitespace-only strings so a literal "   " does not pass `required` */
-  private static nonBlankValidator(control: AbstractControl): ValidationErrors | null {
-    const value = control.value;
-    if (typeof value !== 'string') return null;
-    return value.trim().length === 0 ? { required: true } : null;
-  }
 
   //#endregion
 

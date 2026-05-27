@@ -82,71 +82,14 @@
         }
       }
 
-      <form [formGroup]="generateForm" class="settings-form" (ngSubmit)="generateActivationCode()">
-        <div class="form-field">
-          <label class="form-field__label" for="device-branch">Sucursal</label>
-          <p-dropdown
-            inputId="device-branch"
-            [options]="branches()"
-            optionLabel="name"
-            optionValue="id"
-            formControlName="branchId"
-            placeholder="Seleccionar sucursal"
-            styleClass="w-full"
-            [disabled]="loadingBranches()"
-          />
-        </div>
-
-        <div class="form-field">
-          <label class="form-field__label" for="device-mode">Modo del dispositivo</label>
-          <p-dropdown
-            inputId="device-mode"
-            [options]="modes()"
-            optionLabel="label"
-            optionValue="value"
-            formControlName="mode"
-            styleClass="w-full"
-          />
-        </div>
-
-        <div class="form-field">
-          <label class="form-field__label" for="device-name">Nombre del dispositivo</label>
-          <input
-            id="device-name"
-            type="text"
-            pInputText
-            formControlName="name"
-            placeholder="Ej. Caja Principal, Recepción"
-            maxlength="60"
-            class="w-full"
-          />
-          <small class="form-field__hint">
-            El terminal adoptará este nombre automáticamente al activar el código.
-          </small>
-        </div>
-
-        @if (showCashRegisterPicker()) {
-          <div class="form-field">
-            <label class="form-field__label" for="device-cashregister">
-              Vincular a caja (opcional)
-            </label>
-            <p-dropdown
-              inputId="device-cashregister"
-              [options]="cashRegisterOptions()"
-              optionLabel="label"
-              optionValue="value"
-              formControlName="cashRegisterId"
-              styleClass="w-full"
-              placeholder="— No vincular caja por ahora —"
-            />
-            <small class="form-field__hint">
-              Solo se muestran cajas sin vincular de la sucursal seleccionada.
-              Al activar el código, el dispositivo quedará automáticamente
-              asignado a la caja elegida.
-            </small>
-          </div>
-        }
-      </form>
+      <app-dynamic-form
+        #codegenFormRef
+        [schema]="codegenSchema"
+        [formGroup]="codegenForm"
+        [formId]="'admin-devices-codegen'"
+        [valueSnapshot]="codegenSnapshot"
+        (submitted)="onCodegenSubmitted($event)"
+      />
 
       @if (lastGeneratedCode(); as last) {
         <div class="activation-code" [attr.data-pulse]="codePulseKey()">
@@ -191,9 +134,9 @@
         <p-button
           label="Generar código"
           icon="pi pi-qrcode"
-          [disabled]="generatingCode() || generateForm.invalid || isQuotaLocked()"
+          [disabled]="generatingCode() || codegenForm.invalid || isQuotaLocked()"
           [loading]="generatingCode()"
-          (onClick)="generateActivationCode()"
+          (onClick)="onGenerateClick()"
         />
       </div>
     </section>
@@ -449,40 +392,13 @@
     [style]="{ width: '32rem', 'max-width': '90vw' }"
     styleClass="edit-device-dialog"
   >
-    <form [formGroup]="editForm" class="edit-form" (ngSubmit)="saveEdit()">
-      <div class="form-field">
-        <label class="form-field__label" for="edit-device-name">Nombre</label>
-        <input
-          id="edit-device-name"
-          type="text"
-          pInputText
-          formControlName="name"
-          maxlength="60"
-          class="w-full"
-        />
-        @if (editForm.controls.name.touched && editForm.controls.name.invalid) {
-          <small class="form-error">
-            Ingresa un nombre válido (máx 60 caracteres, sin espacios vacíos).
-          </small>
-        }
-      </div>
-
-      <div class="form-field">
-        <label class="form-field__label" for="edit-device-branch">Sucursal</label>
-        <p-dropdown
-          inputId="edit-device-branch"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          formControlName="branchId"
-          placeholder="Selecciona una sucursal"
-          styleClass="w-full"
-        />
-        @if (editForm.controls.branchId.touched && editForm.controls.branchId.invalid) {
-          <small class="form-error">Selecciona una sucursal.</small>
-        }
-      </div>
-    </form>
+    <app-dynamic-form
+      #editFormRef
+      [schema]="editSchema"
+      [formGroup]="editForm"
+      [formId]="'admin-devices-edit'"
+      (submitted)="onEditSubmitted($event)"
+    />
 
     <ng-template pTemplate="footer">
       <div class="edit-form__footer">
@@ -498,7 +414,7 @@
           icon="pi pi-check"
           [loading]="savingEdit()"
           [disabled]="editForm.invalid"
-          (onClick)="saveEdit()"
+          (onClick)="onEditSaveClick()"
         />
       </div>
     </ng-template>
