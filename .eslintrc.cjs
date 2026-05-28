@@ -72,14 +72,6 @@ module.exports = {
               // (iii) Legacy POC — survives until template migrates
               '**/product-form/**/*.component.html',
 
-              // (ii) Pending FDD-031 migration (admin-devices needs reactive options).
-              //      Folder is `devices/`, not `admin-devices/` — use file-name pattern.
-              '**/admin-devices.component.html',
-
-              // (ii) Pending FDD-031+ migration (reservation-form needs custom widget kinds).
-              //      Folder is `reservations/`, file is `reservation-form.component.html`.
-              '**/reservation-form.component.html',
-
               // (ii) Pending future migration (smaller form, low priority).
               //      Folder is `promotions/`, file is `admin-promotions.component.html`.
               '**/admin-promotions.component.html',

@@ -1,4 +1,5 @@
-// LEGACY SHIM — delete in FDD-030 once admin-users + admin-devices migrate.
+// LEGACY SHIM — survives until the product-form template migrates
+// to <app-dynamic-form>. No target FDD yet — see FDD-031 §3.3 for context.
 // This file rebinds the POC's string-keyed FIELD_VALIDATORS to the shared
 // validator implementations from `src/app/shared/forms`. The string-key
 // layer (`'required' | 'maxLength60' | ...`) is preserved so the POC

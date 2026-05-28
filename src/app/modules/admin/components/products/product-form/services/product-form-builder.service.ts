@@ -1,4 +1,5 @@
-// LEGACY SHIM — delete in FDD-030 once admin-users + admin-devices migrate.
+// LEGACY SHIM — survives until the product-form template migrates
+// to <app-dynamic-form>. No target FDD yet — see FDD-031 §3.3 for context.
 // This service keeps its existing iteration over `allFieldDescriptors()`
 // (flat list from the POC registry, shape incompatible with the shared
 // service's section-based API). It transparently delegates the validator
