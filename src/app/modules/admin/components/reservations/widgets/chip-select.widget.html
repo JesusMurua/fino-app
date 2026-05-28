@@ -1,0 +1,32 @@
+@if (descriptor.label) {
+  <span class="chip-select__label">
+    {{ descriptor.label }}
+  </span>
+}
+@for (group of resolvedGroups; track group.groupLabel) {
+  <div class="chip-group">
+    <h4 class="chip-group__label">{{ group.groupLabel }}</h4>
+    <div
+      class="chip-group__chips"
+      role="radiogroup"
+      [attr.aria-label]="group.groupLabel"
+    >
+      @for (chip of group.chips; track chip.value) {
+        <button
+          type="button"
+          class="chip"
+          [class.chip--selected]="control.value === chip.value"
+          [attr.aria-pressed]="control.value === chip.value"
+          (click)="select(chip.value)"
+          (keydown)="onKeydown($event, chip.value)"
+        >
+          <span class="chip__label">{{ chip.label }}</span>
+          @if (chip.subLabel) {
+            <span class="chip__sub">{{ chip.subLabel }}</span>
+          }
+        </button>
+      }
+    </div>
+  </div>
+}
+<app-print-control-error [control]="control" />

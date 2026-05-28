@@ -1,0 +1,72 @@
+@use '../../../../../../styles/variables' as *;
+
+:host {
+  display: block;
+  outline: none;
+
+  &:focus-visible {
+    // Subtle outline when the consumer's focusFirstInvalid lands focus
+    // on the widget host (e.g., availability validation failure on save).
+    box-shadow: 0 0 0 2px $color-primary;
+    border-radius: $radius-card;
+  }
+}
+
+.chip-select__label {
+  display: block;
+  font-size: $font-size-label;
+  font-weight: 500;
+  color: $color-text-sub;
+  margin-bottom: $space-2;
+}
+
+.chip-group {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin-bottom: $space-3;
+}
+
+.chip-group__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.chip-group__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.chip {
+  min-height: $touch-target-pos;
+  padding: $space-2 $space-3;
+  border-radius: $radius-button;
+  border: 1px solid $color-border-soft;
+  background: white;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+
+  &--selected {
+    background: $color-primary;
+    color: white;
+    border-color: $color-primary;
+  }
+}
+
+.chip__sub {
+  opacity: 0.75;
+  font-size: 12px;
+  font-weight: 500;
+}

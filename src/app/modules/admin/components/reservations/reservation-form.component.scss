@@ -162,11 +162,6 @@
   }
 }
 
-.rf__error {
-  font-size: 11px;
-  color: #DC2626;
-}
-
 // -----------------------------------------------------------------------
 // Custom party-size stepper (replaces PrimeNG InputNumber)
 // -----------------------------------------------------------------------
@@ -207,81 +202,8 @@
 }
 
 // -----------------------------------------------------------------------
-// Table chip selector
+// Table section helpers — chip rendering now owned by chip-select widget.
 // -----------------------------------------------------------------------
-.rf__zones {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-}
-
-.rf__zone {
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
-}
-
-.rf__zone-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: $color-text-sub;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.rf__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $space-2;
-}
-
-.rf__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 $space-3;
-  border: 1.5px solid #E5E7EB;
-  border-radius: 8px;
-  background: white;
-  color: $color-text-title;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: $color-primary;
-    background: #F0FDF4;
-  }
-
-  &--selected {
-    border-color: $color-primary;
-    background: #F0FDF4;
-    color: $color-primary;
-    box-shadow: 0 0 0 1px $color-primary;
-  }
-}
-
-.rf__chip-name {
-  font-weight: 500;
-}
-
-.rf__chip-cap {
-  font-size: 11px;
-  color: $color-text-sub;
-  background: #F3F4F6;
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-weight: 600;
-
-  .rf__chip--selected & {
-    background: #DCFCE7;
-    color: #15803D;
-  }
-}
-
 .rf__no-table {
   display: flex;
   align-items: center;
@@ -304,21 +226,6 @@
   font-size: 13px;
   color: $color-text-sub;
   font-style: italic;
-}
-
-.rf__warn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: $space-3;
-  padding: $space-2 $space-3;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #92400E;
-
-  i { font-size: 12px; color: #D97706; }
 }
 
 // -----------------------------------------------------------------------

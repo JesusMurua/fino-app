@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, Signal, SimpleChanges, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { filter, take } from 'rxjs/operators';
 import { MessageService } from 'primeng/api';
 import { CalendarModule } from 'primeng/calendar';
 import { DialogModule } from 'primeng/dialog';
@@ -15,6 +16,19 @@ import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe'
 import { ReservationService } from '../../../../core/services/reservation.service';
 import { TableService } from '../../../../core/services/table.service';
 import { ZoneService } from '../../../../core/services/zone.service';
+import {
+  DynamicFormBuilderService,
+  DynamicFormSchema,
+  FieldDescriptor,
+  FORM_WIDGETS,
+  FormFieldComponent,
+  FormWidgetRegistration,
+  SectionDescriptor,
+} from 'src/app/shared/forms';
+
+import { ChipGroup, ChipSelectComponent } from './widgets/chip-select.widget';
+import { ReservationAvailabilityService } from './services/reservation-availability.service';
+import { RESERVATION_FORM_SCHEMA, ReservationFormKey } from './reservation-form.form';
 
 /** A zone group with its tables for the chip selector */
 interface TableZoneGroup {
@@ -33,6 +47,20 @@ interface TableZoneGroup {
     InputTextModule,
     InputTextareaModule,
     CustomerSelectorComponent,
+    FormFieldComponent,
+  ],
+  providers: [
+    // Register ChipSelectWidget as a component-level FORM_WIDGETS multi-provider.
+    // NOTE: cannot use `provideFormWidget('chip-select', ChipSelectWidget)` here
+    // because that factory returns `EnvironmentProviders` (for app/route-level
+    // configuration). Component-level `providers: []` requires `Provider[]`
+    // shape. Both forms register the same FORM_WIDGETS multi-token; consumers
+    // pick the scope that matches their registration point.
+    {
+      provide: FORM_WIDGETS,
+      useValue: { name: 'chip-select', component: ChipSelectComponent } satisfies FormWidgetRegistration,
+      multi: true,
+    },
   ],
   templateUrl: './reservation-form.component.html',
   styleUrl: './reservation-form.component.scss',
@@ -51,19 +79,27 @@ export class ReservationFormComponent implements OnChanges {
   //#region Properties
 
   private readonly fb = inject(FormBuilder);
+  private readonly builder = inject(DynamicFormBuilderService);
+  private readonly availabilityService = inject(ReservationAvailabilityService);
   private readonly reservationService = inject(ReservationService);
   private readonly tableService = inject(TableService);
   private readonly zoneService = inject(ZoneService);
   private readonly authService = inject(AuthService);
   private readonly messageService = inject(MessageService);
 
-  /** Customer linked to this reservation (optional CRM integration) */
+  /** Constant id used to namespace input ids across this form. */
+  readonly formId = 'reservation-form';
+
+  /**
+   * Customer linked to this reservation (optional CRM integration).
+   * Stays OUTSIDE the FormGroup per FDD-032 §4.3 deviation —
+   * `CustomerSelectorComponent` is used directly, not wrapped in a FormWidget.
+   * Save flow reads `selectedCustomer()?.id` when assembling the DTO.
+   */
   readonly selectedCustomer = signal<Customer | null>(null);
 
   readonly tables = signal<RestaurantTable[]>([]);
-  readonly selectedTableId = signal<number | null>(null);
   readonly noTableAssigned = signal(false);
-  readonly availabilityWarning = signal('');
   readonly isSaving = signal(false);
 
   /** Tables grouped by zone for the chip selector */
@@ -105,28 +141,102 @@ export class ReservationFormComponent implements OnChanges {
     { label: '3 horas', value: 180 },
   ];
 
-  form!: FormGroup;
+  /**
+   * Reservation form (FDD-032 Phase 3 — hybrid pattern). Schema-driven
+   * fields built via `buildFormGroup()`; raw-rendered controls added
+   * imperatively below (Path Y per OQ7).
+   */
+  readonly form: FormGroup = this.builder.buildFormGroup(RESERVATION_FORM_SCHEMA);
+
+  /**
+   * Maps the existing `zoneGroups` computed (`TableZoneGroup[]`) → readonly
+   * `ChipGroup[]` for the chip-select widget. Pure shape transform.
+   */
+  readonly tableChipGroups = computed<readonly ChipGroup[]>(() =>
+    this.zoneGroups().map(g => ({
+      groupLabel: g.zoneName,
+      chips: g.tables.map(t => ({
+        label: t.name,
+        value: t.id,
+        subLabel: t.capacity ? `${t.capacity}` : undefined,
+      })),
+    })),
+  );
+
+  /** Schema with runtime options injected into tableId + durationMinutes. */
+  readonly schemaWithOptions: DynamicFormSchema<ReservationFormKey> =
+    this.injectReservationOptions(RESERVATION_FORM_SCHEMA);
+
+  /**
+   * Map (field-key → descriptor) used by the template to bind
+   * `<app-form-field>` inputs without re-traversing the schema.
+   */
+  readonly fieldByKey = computed(() => {
+    const map = new Map<ReservationFormKey, FieldDescriptor<ReservationFormKey>>();
+    for (const section of this.schemaWithOptions.sections) {
+      for (const field of section.fields) {
+        map.set(field.key as ReservationFormKey, field);
+      }
+    }
+    return map;
+  });
 
   //#endregion
 
   //#region Lifecycle
 
   constructor() {
-    this.form = this.fb.group({
-      guestName: ['', Validators.required],
-      guestPhone: [''],
-      partySize: [2, [Validators.required, Validators.min(1)]],
-      reservationDate: [null as Date | null, Validators.required],
-      reservationTime: [null as Date | null, Validators.required],
-      durationMinutes: [90, Validators.required],
-      notes: [''],
-    });
+    // Path Y per FDD-032 OQ7: raw-rendered controls are NOT in the schema;
+    // consumer adds them imperatively post-buildFormGroup so they share the
+    // same FormGroup as the schema-driven fields. Validators here come
+    // directly from @angular/forms (NOT schema refs) since these fields
+    // have no descriptor.
+    this.form.addControl('partySize',
+      this.fb.control(2, [Validators.required, Validators.min(1)]));
+    this.form.addControl('reservationDate',
+      this.fb.control<Date | null>(null, Validators.required));
+    this.form.addControl('reservationTime',
+      this.fb.control<Date | null>(null, Validators.required));
+  }
+
+  /**
+   * Injects runtime options into the schema. The cast at `tableId`
+   * preserves the `Signal<...>` discriminator that `FormFieldComponent.resolvedOptions`
+   * uses to detect reactive vs static options. Platform widening of
+   * `FieldDescriptor.options` is out of scope for FDD-032 Phase 3.
+   */
+  private injectReservationOptions(
+    base: DynamicFormSchema<ReservationFormKey>,
+  ): DynamicFormSchema<ReservationFormKey> {
+    return {
+      ...base,
+      sections: base.sections.map((section: SectionDescriptor<ReservationFormKey>) => ({
+        ...section,
+        fields: section.fields.map((field: FieldDescriptor<ReservationFormKey>) => {
+          switch (field.key) {
+            case 'tableId':
+              return {
+                ...field,
+                options: this.tableChipGroups as unknown as
+                  Signal<readonly { label: string; value: unknown }[]>,
+              };
+            case 'durationMinutes':
+              return { ...field, options: this.durationOptions };
+            default:
+              return field;
+          }
+        }),
+      })),
+    };
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible) {
       this.loadTables();
-      this.availabilityWarning.set('');
+
+      // Wire async validator's edit-mode self-collision skip BEFORE
+      // patchValue, so the initial validator run sees the right id.
+      this.availabilityService.setCurrentReservationId(this.reservation?.id ?? null);
 
       if (this.reservation) {
         const [h, m] = this.reservation.reservationTime.split(':').map(Number);
@@ -141,8 +251,8 @@ export class ReservationFormComponent implements OnChanges {
           reservationTime: timeDate,
           durationMinutes: this.reservation.durationMinutes,
           notes: this.reservation.notes ?? '',
+          tableId: this.reservation.tableId,
         });
-        this.selectedTableId.set(this.reservation.tableId);
         this.noTableAssigned.set(!this.reservation.tableId);
       } else {
         this.form.reset({
@@ -153,8 +263,8 @@ export class ReservationFormComponent implements OnChanges {
           reservationTime: null,
           durationMinutes: 90,
           notes: '',
+          tableId: null,
         });
-        this.selectedTableId.set(null);
         this.noTableAssigned.set(true);
       }
     }
@@ -186,18 +296,14 @@ export class ReservationFormComponent implements OnChanges {
 
   //#region Table Selection
 
-  /** Selects a table chip */
-  selectTable(tableId: number): void {
-    this.selectedTableId.set(tableId);
-    this.noTableAssigned.set(false);
-    this.checkAvailability();
-  }
-
-  /** Toggles "sin mesa asignada" */
+  /**
+   * Toggles "sin mesa asignada". Sets the form's `tableId` to null so the
+   * async availability validator stays inactive (it returns `of(null)`
+   * when tableId is null).
+   */
   toggleNoTable(): void {
     this.noTableAssigned.set(true);
-    this.selectedTableId.set(null);
-    this.availabilityWarning.set('');
+    this.form.controls['tableId'].setValue(null);
   }
 
   /** Custom party size increment/decrement */
@@ -205,36 +311,6 @@ export class ReservationFormComponent implements OnChanges {
     const current = this.form.get('partySize')!.value ?? 2;
     const next = Math.max(1, Math.min(50, current + delta));
     this.form.get('partySize')!.setValue(next);
-  }
-
-  //#endregion
-
-  //#region Availability Check
-
-  async checkAvailability(): Promise<void> {
-    const tableId = this.selectedTableId();
-    const { reservationDate, reservationTime, durationMinutes } = this.form.value;
-    if (!tableId || !reservationDate || !reservationTime) {
-      this.availabilityWarning.set('');
-      return;
-    }
-
-    const dateStr = this.formatDate(reservationDate);
-    const timeStr = this.formatTime(reservationTime);
-    const excludeId = this.reservation?.id;
-
-    try {
-      const result = await firstValueFrom(
-        this.reservationService.checkAvailability(
-          tableId, dateStr, timeStr, durationMinutes, excludeId,
-        ),
-      );
-      this.availabilityWarning.set(
-        result.available ? '' : 'Esta mesa no está disponible en ese horario',
-      );
-    } catch {
-      this.availabilityWarning.set('');
-    }
   }
 
   //#endregion
@@ -257,8 +333,19 @@ export class ReservationFormComponent implements OnChanges {
   //#region Save
 
   async onSave(): Promise<void> {
+    this.form.markAllAsTouched();
+
+    // Wait for any pending async validators (availability check) before
+    // deciding valid/invalid. Multiple controls can be PENDING in parallel —
+    // wait until the FormGroup's status leaves PENDING.
+    if (this.form.pending) {
+      await firstValueFrom(
+        this.form.statusChanges.pipe(filter(s => s !== 'PENDING'), take(1)),
+      );
+    }
+
     if (this.form.invalid) {
-      this.form.markAllAsTouched();
+      this.focusFirstInvalid();
       return;
     }
 
@@ -266,7 +353,7 @@ export class ReservationFormComponent implements OnChanges {
     const v = this.form.value;
 
     const dto = {
-      tableId: this.noTableAssigned() ? null : (this.selectedTableId() ?? null),
+      tableId: this.noTableAssigned() ? null : (v.tableId ?? null),
       customerId: this.selectedCustomer()?.id ?? null,
       guestName: v.guestName,
       guestPhone: v.guestPhone || null,
@@ -290,6 +377,31 @@ export class ReservationFormComponent implements OnChanges {
       this.messageService.add({ severity: 'error', summary: 'Error al guardar', life: 3000 });
     } finally {
       this.isSaving.set(false);
+    }
+  }
+
+  /**
+   * Focuses the first invalid input. Schema fields use `${formId}-${key}`
+   * ids (set by FormFieldComponent OR the chip-select widget's host binding).
+   * Raw fields use `rf-${rawKey}` ids set explicitly in the template.
+   */
+  private focusFirstInvalid(): void {
+    for (const section of this.schemaWithOptions.sections) {
+      for (const field of section.fields) {
+        const ctrl = this.form.get(field.key as string);
+        if (ctrl?.invalid) {
+          const el = document.getElementById(`${this.formId}-${field.key}`);
+          if (el instanceof HTMLElement) el.focus();
+          return;
+        }
+      }
+    }
+    for (const rawKey of ['partySize', 'reservationDate', 'reservationTime']) {
+      if (this.form.get(rawKey)?.invalid) {
+        const el = document.getElementById(`rf-${rawKey}`);
+        if (el instanceof HTMLElement) el.focus();
+        return;
+      }
     }
   }
 

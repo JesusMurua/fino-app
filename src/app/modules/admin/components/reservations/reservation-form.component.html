@@ -41,36 +41,33 @@
 
       <div class="rf__row">
         <div class="rf__field rf__field--grow">
-          <label class="rf__label">Nombre</label>
-          <input
-            formControlName="guestName"
-            type="text"
-            pInputText
-            placeholder="Juan Pérez"
-            class="rf__input"
+          <app-form-field
+            [descriptor]="fieldByKey().get('guestName')!"
+            [control]="form.controls['guestName']"
+            [formId]="formId"
           />
-          @if (form.get('guestName')?.touched && form.get('guestName')?.hasError('required')) {
-            <small class="rf__error">Obligatorio</small>
-          }
         </div>
         <div class="rf__field">
-          <label class="rf__label">Teléfono</label>
-          <input
-            formControlName="guestPhone"
-            type="tel"
-            pInputText
-            placeholder="55 1234 5678"
-            class="rf__input"
+          <app-form-field
+            [descriptor]="fieldByKey().get('guestPhone')!"
+            [control]="form.controls['guestPhone']"
+            [formId]="formId"
           />
         </div>
         <div class="rf__field rf__field--party">
-          <label class="rf__label">Personas</label>
+          <label class="rf__label" for="rf-partySize">Personas</label>
           <div class="rf__stepper">
-            <button type="button" class="rf__stepper-btn" (click)="adjustPartySize(-1)" [disabled]="form.get('partySize')!.value <= 1">
+            <button type="button" class="rf__stepper-btn"
+              (click)="adjustPartySize(-1)"
+              [disabled]="form.controls['partySize'].value <= 1">
               <i class="pi pi-minus"></i>
             </button>
-            <span class="rf__stepper-val">{{ form.get('partySize')!.value }}</span>
-            <button type="button" class="rf__stepper-btn" (click)="adjustPartySize(1)" [disabled]="form.get('partySize')!.value >= 50">
+            <span class="rf__stepper-val" id="rf-partySize">
+              {{ form.controls['partySize'].value }}
+            </span>
+            <button type="button" class="rf__stepper-btn"
+              (click)="adjustPartySize(1)"
+              [disabled]="form.controls['partySize'].value >= 50">
               <i class="pi pi-plus"></i>
             </button>
           </div>
@@ -85,74 +82,55 @@
       <span class="rf__section-tag">Cuándo</span>
       <div class="rf__row">
         <div class="rf__field">
-          <label class="rf__label">Fecha</label>
+          <label class="rf__label" for="rf-reservationDate">Fecha</label>
           <p-calendar
+            inputId="rf-reservationDate"
             formControlName="reservationDate"
             dateFormat="dd/mm/yy"
             [showIcon]="true"
             styleClass="rf__input"
             [appendTo]="'body'"
-            (onSelect)="checkAvailability()"
           />
         </div>
         <div class="rf__field">
-          <label class="rf__label">Hora</label>
+          <label class="rf__label" for="rf-reservationTime">Hora</label>
           <p-calendar
+            inputId="rf-reservationTime"
             formControlName="reservationTime"
             [timeOnly]="true"
             [hourFormat]="'24'"
             [showIcon]="true"
             styleClass="rf__input"
             [appendTo]="'body'"
-            (onSelect)="checkAvailability()"
           />
         </div>
         <div class="rf__field">
-          <label class="rf__label">Duración</label>
-          <p-dropdown
-            formControlName="durationMinutes"
-            [options]="durationOptions"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="rf__input"
-            (onChange)="checkAvailability()"
+          <app-form-field
+            [descriptor]="fieldByKey().get('durationMinutes')!"
+            [control]="form.controls['durationMinutes']"
+            [formId]="formId"
           />
         </div>
       </div>
     </div>
 
     <!-- ============================================================ -->
-    <!-- Section: Mesa (chip selector)                                 -->
+    <!-- Section: Mesa (chip selector via FormWidget)                  -->
     <!-- ============================================================ -->
     <div class="rf__section">
       <span class="rf__section-tag">Mesa</span>
 
       @if (zoneGroups().length === 0) {
         <p class="rf__empty-tables">No hay mesas configuradas</p>
-      } @else {
-        <div class="rf__zones">
-          @for (group of zoneGroups(); track group.zoneName) {
-            <div class="rf__zone">
-              <span class="rf__zone-name">{{ group.zoneName }}</span>
-              <div class="rf__chips">
-                @for (table of group.tables; track table.id) {
-                  <button
-                    type="button"
-                    class="rf__chip"
-                    [class.rf__chip--selected]="selectedTableId() === table.id && !noTableAssigned()"
-                    (click)="selectTable(table.id)"
-                  >
-                    <span class="rf__chip-name">{{ table.name }}</span>
-                    @if (table.capacity) {
-                      <span class="rf__chip-cap">{{ table.capacity }}</span>
-                    }
-                  </button>
-                }
-              </div>
-            </div>
-          }
-        </div>
+      } @else if (!noTableAssigned()) {
+        <app-form-field
+          [descriptor]="fieldByKey().get('tableId')!"
+          [control]="form.controls['tableId']"
+          [formId]="formId"
+        />
+      }
 
+      @if (zoneGroups().length > 0) {
         <label class="rf__no-table">
           <input
             type="checkbox"
@@ -162,27 +140,17 @@
           <span>Sin mesa asignada</span>
         </label>
       }
-
-      @if (availabilityWarning()) {
-        <div class="rf__warn">
-          <i class="pi pi-exclamation-triangle"></i>
-          {{ availabilityWarning() }}
-        </div>
-      }
     </div>
 
     <!-- ============================================================ -->
     <!-- Section: Notas                                                -->
     <!-- ============================================================ -->
     <div class="rf__section rf__section--last">
-      <label class="rf__label">Notas</label>
-      <textarea
-        formControlName="notes"
-        pInputTextarea
-        rows="2"
-        placeholder="Cumpleaños, alergias, silla alta..."
-        class="rf__input rf__textarea"
-      ></textarea>
+      <app-form-field
+        [descriptor]="fieldByKey().get('notes')!"
+        [control]="form.controls['notes']"
+        [formId]="formId"
+      />
     </div>
 
   </form>
