@@ -119,7 +119,7 @@ Los archivos del shim referencian `FDD-030` como target de deletion, pero esa pr
 - **NF-1** Zero behavioral regression en admin-devices + reservation-form (smoke gate manual).
 - **NF-2** F1 + FDD-031 specs (71 total) deben seguir pasando post-refactor del PrintControlError catalog extraction. Phase 1 acceptance criterion explícito.
 - **NF-3** Custom widgets siguen el touch-target floor (`$touch-target-pos` = 48px) y consumen tokens del `_variables.scss`.
-- **NF-4** Async validators usan `updateOn: 'blur'` para evitar API spam — enforced vía descriptor field, no manual.
+- **NF-4** Async validators may declare `updateOn: 'blur'` in the descriptor. **Caveat discovered during Phase 3 execution (2026-05-27)**: `updateOn:'blur'` only suppresses Angular's `valueChanges` emissions from UI binding (when the user types into an input bound by `FormControlDirective`). It does NOT throttle programmatic `setValue()` calls — those always invoke `updateValueAndValidity()`, which runs async validators regardless of `updateOn`. Consequence: for widgets that set the control value imperatively (e.g., chip-select on click), `updateOn:'blur'` provides zero backend throttling. Pre-Phase-3 the FDD claimed it provided universal throttling — that claim was wrong. The descriptor field remains useful for text inputs bound via `FormControlDirective`, but reservation-form's chip-select widget does NOT benefit from it.
 - **NF-5** Banner es opt-in: NO auto-renderizado dentro de `<app-dynamic-form>`. Consumer lo coloca explícitamente en su template.
 - **NF-6** OnPush change detection en todos los componentes nuevos.
 
@@ -481,8 +481,8 @@ export class ReservationAvailabilityService implements AsyncValidatorService {
 
 **Sequence**:
 
-1. The `tableId` FormControl has `updateOn: 'blur'` (descriptor field shipped in Phase 1). → Validator does NOT run on each chip click — only when the control blurs (chip-select widget calls `markAsTouched()` + triggers blur on selection, OR the validator fires when a sibling control changes through the cascading update pipeline).
-2. The service reads tableId + the three sibling controls. If any is missing → returns `of(null)` (validator inactive).
+1. The `tableId` FormControl has `updateOn: 'blur'` declared in the descriptor (Phase 1 platform feature). **NOTE corrected during Phase 3 execution**: this throttles ONLY UI-binding events; the chip-select widget calls `setValue()` programmatically on each click, which always fires the async validator regardless of `updateOn`. See §NF-4 for the full caveat. Each chip click triggers a backend `/reservations/availability` call — acceptable cost vs the legacy imperative `checkAvailability()` which fired on every calendar/duration change anyway.
+2. The service reads tableId + the three sibling controls. If any is missing → returns `of(null)` (validator inactive — the noTableAssigned UX path explicitly nulls `tableId`, suppressing all backend calls).
 3. Calls `reservationService.checkAvailability(tableId, dateStr, timeStr, durationMinutes, excludeId?)` — the existing service signature is preserved (no backend coordination required).
 4. Maps `{ available: false }` → `{ availability: true }` (Angular error key); `{ available: true }` → `null`.
 5. `PrintControlError` surfaces "No disponible" inline below the chip-select when `control.errors?.availability === true`.
@@ -631,8 +631,7 @@ Note: no Phase 3 step exercises the `<app-print-form-error>` banner — it is no
 1. `updateOn: 'blur'` applied to FormControl construction.
 2. Default 'change' when descriptor.updateOn omitted.
 
-**Async validator integration specs** (in existing builder spec file, 1):
-1. Async validator on a descriptor with `updateOn: 'blur'` doesn't fire on `setValue` programmatically — only on actual blur event (or via `markAsTouched` + `updateValueAndValidity({ emitEvent })`).
+**Async validator integration spec** — **DROPPED during Phase 3 execution**. The original spec expected `updateOn: 'blur'` to suppress async validator on programmatic `setValue` — investigation revealed this is INCORRECT. Angular's `setValue()` internally calls `updateValueAndValidity()` which always runs async validators regardless of `updateOn`. The `updateOn:'blur'` option ONLY affects UI binding events (when user types into an input bound by `FormControlDirective`) — it does NOT throttle programmatic API calls. See §NF-4 + §7.2 + Known Deviations for full record.
 
 **ReservationAvailabilityService specs (2):**
 1. Returns null when any sibling value missing (inactive).
@@ -642,20 +641,20 @@ Note: no Phase 3 step exercises the `<app-print-form-error>` banner — it is no
 1. Submit with formValidator failure (no control errors) → banner.focus() called.
 2. Submit with control errors only → existing focus-first-invalid behavior preserved (banner NOT focused).
 
-**Total new specs**: **18** (5 banner + 6 chip-select + 2 updateOn + 1 async-blur + 2 availability service + 2 banner-DynamicForm integration). The 2 customer-autocomplete integration specs from the original plan are dropped — see §4.3 deviation.
+**Total new specs**: **17** (5 banner + 6 chip-select + 2 updateOn + 2 availability service + 2 banner-DynamicForm integration). Two specs dropped from the original plan of 20: (a) the 2 customer-autocomplete integration specs — widget not shipped (see §4.3 deviation); (b) the 1 async-blur integration spec — Angular behavior contradicts the original FDD claim (see §NF-4 + §7.2 + Known Deviations).
 
 **Per-phase distribution**:
 
 - Phase 1: 5 banner unit + 2 updateOn + 2 banner-DynamicForm = **9 specs** (shipped).
 - Phase 2: 0 specs (consumer migration, smoke-only).
-- Phase 3: 6 chip-select + 1 async-blur + 2 availability service = **9 specs**.
+- Phase 3: 6 chip-select + 2 availability service = **8 specs**.
 - Phase 4: 0 specs (cleanup).
 
 ### 11.3 F1 + FDD-031 regression gate
 
 **71 specs must continue passing** post-refactor del PrintControlError catalog extraction. Phase 1 acceptance criterion explícito — si alguno falla, el refactor introdujo drift observacional.
 
-**Total combined specs target**: 71 + 18 = **89 specs** (revised from 91 in original plan — customer-autocomplete drop accounts for the -2).
+**Total combined specs target**: 71 + 17 = **88 specs** (revised from 91 in original plan — customer-autocomplete drop accounts for -2, async-blur drop for -1).
 
 ---
 
@@ -800,13 +799,22 @@ export const CODEGEN_FORM_SCHEMA: DynamicFormSchema<CodegenFormKey> = {
   selector: 'app-reservation-form',
   standalone: true,
   imports: [
-    DialogModule, DynamicFormComponent, CalendarModule,
+    DialogModule, FormFieldComponent, CalendarModule,
     CustomerSelectorComponent, /* kept for raw widget render */
     // ... existing PrimeNG modules retained
   ],
   providers: [
-    provideFormWidget('chip-select', ChipSelectWidget),
-    // NO customer-autocomplete registration — widget not shipped.
+    // NOTE (corrected 2026-05-27 during Phase 3 execution):
+    // `provideFormWidget('chip-select', ChipSelectComponent)` returns
+    // `EnvironmentProviders` (for app/route-level configuration only) and
+    // is REJECTED by component-level `providers: []` which requires
+    // `Provider[]`. Use the raw multi-provider shape instead:
+    {
+      provide: FORM_WIDGETS,
+      useValue: { name: 'chip-select', component: ChipSelectComponent } satisfies FormWidgetRegistration,
+      multi: true,
+    },
+    // NO customer-autocomplete registration — widget not shipped (§4.3).
   ],
 })
 ```
@@ -888,18 +896,18 @@ constructor() {
 }
 ```
 
-**Acceptance criteria:**
+**Acceptance criteria** (revised during Phase 3 execution — Path C):
 
 - 6 chip-select unit specs passing.
 - 2 ReservationAvailabilityService unit specs passing.
-- 1 async-blur integration spec passing.
-- Form rendered via `<app-dynamic-form>` for fields with supported kinds; raw widgets render for date/time/partySize/customer with shared FormGroup binding (hybrid pattern §5.3).
-- ChipSelectWidget registered in component providers, NOT shipped as a shared library widget.
-- Async availability validator fires on blur, surfaces "No disponible" inline below the chip-select via PrintControlError.
-- Edit-mode availability skips self-collision (consumer calls `availabilityService.setCurrentReservationId(...)`).
+- ~~1 async-blur integration spec~~ — DROPPED per Path C. See §NF-4 + §7.2 + Known Deviations.
+- Form rendered via per-field `<app-form-field>` for fields with supported kinds (NOT `<app-dynamic-form>` orchestrator — see Known Deviations); raw widgets render for date/time/partySize/customer with shared FormGroup binding (hybrid pattern §5.3).
+- `ChipSelectComponent` registered in component providers via raw `{ provide: FORM_WIDGETS, useValue: ..., multi: true }` shape (NOT `provideFormWidget()` factory which returns `EnvironmentProviders`). Class name uses `Component` suffix per Angular ESLint convention; file naming `.widget.ts` preserves FDD-031 convention.
+- Async availability validator fires on each `setValue()` from the chip-select widget (NOT throttled by `updateOn:'blur'` — see §NF-4); surfaces "No disponible" inline below the chip-select via PrintControlError when the backend reports a conflict.
+- Edit-mode availability skips self-collision (consumer calls `availabilityService.setCurrentReservationId(...)` in `ngOnChanges`).
 - Smoke checklist (b) passes — zero behavioral regression on the user-visible flows.
 - `ng build` zero new errors.
-- Platform spec count post-Phase-3: 80 + 1 (async-blur builder spec) = 81. Consumer-side new specs: 6 + 2 = 8 (chip-select + availability). Combined: 89.
+- Platform spec count post-Phase-3: 80 (baseline preserved; Path C drops the would-be async-blur spec). Consumer-side new specs: 6 + 2 = 8 (chip-select + availability). Combined: **88**.
 
 **Estimate**: **2-2.5 días**.
 
@@ -1014,6 +1022,9 @@ OQ8. **`customer-autocomplete` widget revival**: the widget is dropped in Phase 
 - **`customer-autocomplete` widget dropped from Phase 3**: discovered during the 2026-05-27 correction. Three reasons (full record in §4.3): (a) `CustomerService.findById` does not exist (verified via grep); (b) `CustomerSelectorComponent` already exposes a richer production-ready API than the wrapper would; (c) customer is OPTIONAL in the reservation-form model — patching `guestName`/`guestPhone`, not a primary form field. The 2 customer-autocomplete integration specs are dropped from §11.2 (20 → 18 total). The widget may be revived if a future consumer needs it AND `findById` becomes available (see OQ8).
 - **`date-range` cross-field validator not applied to reservation-form**: data model is date+time+duration, not start/end timestamps. The Phase 1 `date-range` builder is shipped and tested via platform specs; it stays available for future consumers whose data model fits.
 - **`<app-print-form-error>` banner not used in Phase 3**: no `formValidators` declared in reservation-form schema. The Phase 1 banner remains shipped and exercised via platform specs (5 unit + 2 DynamicForm-integration); it activates for future consumers with cross-field errors.
+- **`updateOn: 'blur'` does NOT throttle programmatic `setValue()` calls (Phase 3 execution finding — 2026-05-27)**: the FDD originally claimed `updateOn:'blur'` would suppress async validator runs universally. Investigation during Phase 3 spec execution proved otherwise — Angular's `setValue()` always invokes `updateValueAndValidity()` internally, which always runs async validators regardless of `updateOn`. The option only suppresses `valueChanges` emissions from UI-bound `FormControlDirective` events. Implication: chip-select widget triggers an availability call on each chip click. Acceptable cost (UX latency-of-noise) vs the legacy imperative `checkAvailability()` which already fired on every calendar/duration change. The associated `dynamic-form-builder.service.spec.ts` async-blur integration spec from the original FDD §11.2 plan was DROPPED — verifying the false claim was meaningless.
+- **`provideFormWidget()` factory returns `EnvironmentProviders` — incompatible with component-level `providers: []` (Phase 3 execution finding — 2026-05-27)**: the FDD-031 `provideFormWidget()` factory wraps registrations in `makeEnvironmentProviders()` for application / route-level configuration. Component-level `@Component({ providers: [...] })` requires `Provider[]` and rejects `EnvironmentProviders`. Reservation-form (the first consumer to register a widget at component scope) uses the raw `{ provide: FORM_WIDGETS, useValue: { name, component }, multi: true }` shape directly. The factory remains useful for app/route registration; no platform change required. Future FDD could split the factory into `provideFormWidgetAtComponent()` vs the existing environment variant if more consumers need both shapes (Rule-of-3).
+- **Custom widget class naming uses `Component` suffix, file uses `.widget.ts` (Phase 3 execution finding — 2026-05-27)**: Angular ESLint's `component-class-suffix` rule rejects class names ending in `Widget`. Resolution: class is `ChipSelectComponent` (Angular convention); file is `chip-select.widget.ts` (FDD-031 convention for FormWidget implementations). The interface `FormWidget` keeps its name. The mismatch is documented; future FDDs may either (a) loosen the ESLint rule to accept `Widget` suffix or (b) standardize on `.component.ts` file names. Chose the documented mismatch for FDD-032 scope to avoid platform / lint configuration changes.
 
 ---
 
@@ -1052,10 +1063,12 @@ OQ8. **`customer-autocomplete` widget revival**: the widget is dropped in Phase 
 
 **NOT created** (deviation — see §4.3): ~~`widgets/customer-autocomplete.widget.ts`~~ + spec.
 
-**Modified (4):**
+**Class naming note**: the widget class is `ChipSelectComponent` (Angular `Component` suffix convention); the file is named `chip-select.widget.ts` to preserve the FDD-031 convention for FormWidget implementations.
+
+**Modified (3):**
 
 - `src/app/modules/admin/components/reservations/reservation-form.component.{ts,html,scss}`
-- `src/app/shared/forms/services/dynamic-form-builder.service.spec.ts` (+1 async-blur spec)
+- ~~`src/app/shared/forms/services/dynamic-form-builder.service.spec.ts` (+1 async-blur spec)~~ — DROPPED per Path C (Phase 3 execution finding).
 
 ### Phase 4 (Cleanup)
 **Modified (4):**
@@ -1104,3 +1117,15 @@ After Phase 1 and Phase 2 shipped, a pre-execution audit of the Phase 3 prompt r
 - **§Apéndice** Phase 3 file list updated: 5 created (was 4 + the dropped customer-autocomplete file) including the new spec files; 4 modified (added the builder spec for the async-blur integration test).
 - **§Open Questions** added OQ7 (raw-field descriptor encoding decision) and OQ8 (customer-autocomplete widget revival path).
 - **Process lesson recorded** in §Known Deviations: consumer-migration FDDs must verify against production code before finalizing wiring sections. This FDD passed multiple audits referencing only the FDD itself; the mismatch was invisible until the Phase 3 prompt's PREP step read the actual reservation-form code.
+
+### 2026-05-27 — Phase 3 execution corrections (Path C)
+
+Phase 3 implementation surfaced three additional findings that required FDD updates separate from the pre-execution design corrections:
+
+- **§NF-4 + §7.2**: corrected the `updateOn:'blur'` semantics. The option only throttles UI-binding `valueChanges` events from `FormControlDirective`; it does NOT suppress async validators on programmatic `setValue()`. The chip-select widget calls `setValue()` on each click → each click triggers a backend availability call. Documented as a known caveat; consequence accepted (cost matches the legacy imperative `checkAvailability()` cadence).
+- **§11.2 + §12 Phase 3 acceptance**: dropped the "Async validator integration spec (1)" from the platform builder spec file. The original spec verified the false `updateOn:'blur'` claim — removing it preserves spec accuracy. Spec totals revised: 17 new (was 18) → combined 88 (was 89). Phase 3 specs: 8 (was 9).
+- **§12 Phase 3 providers example**: replaced the `provideFormWidget('chip-select', ChipSelectWidget)` invocation with the raw `{ provide: FORM_WIDGETS, useValue: ..., multi: true }` shape. The factory returns `EnvironmentProviders` for app/route scope; component-level `providers: []` requires `Provider[]`. The factory remains useful for app/route registration.
+- **§Apéndice + acceptance**: class name uses `Component` suffix (Angular ESLint convention), file naming uses `.widget.ts` (FDD-031 convention). Documented mismatch.
+- **§Known Deviations**: 3 new entries documenting the findings, the workarounds, and future paths for revisiting if Rule-of-3 emerges.
+
+All findings are documented surfaces of pre-existing platform behavior — no platform code was changed during Phase 3 execution. Phase 3 ships 7 created + 3 modified files (was 7+4 in the original plan).
