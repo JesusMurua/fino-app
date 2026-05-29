@@ -64,26 +64,6 @@
 // -----------------------------------------------------------------------
 // Buttons (same pattern as inventory)
 // -----------------------------------------------------------------------
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-2 $space-4;
-  min-height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: $color-primary;
-  color: white;
-  font-size: $font-size-base;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover { background: #15803D; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-}
-
 .btn-ghost {
   display: inline-flex;
   align-items: center;

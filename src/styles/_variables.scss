@@ -80,6 +80,18 @@ $color-text-sub:       #6B7280;  // Grey — secondary labels
 $color-bg-page:        #F8FAFC;  // Premium off-white — page background
 $color-border-soft:    #F1F5F9;  // Very light slate — separators
 
+// Neutral grays — promoted from repeated hex literals (FDD-033 §2.2)
+$color-border:          #E5E7EB;  // standard border (140 raw occurrences)
+$color-border-strong:   #D1D5DB;  // input / control border (62)
+$color-surface-hover:   #F3F4F6;  // hover + subtle surface (76)
+$color-surface-muted:   #F9FAFB;  // lightest gray surface (38)
+$color-text-body:       #374151;  // body text — CLAUDE.md (22)
+$color-text-muted:      #9CA3AF;  // muted / placeholder text (35)
+
+// Semantic accents
+$color-warning:         #D97706;  // warning / caution — CLAUDE.md (62)
+$color-info:            #2563EB;  // info / link — recurring literal, NOT in CLAUDE.md palette (21)
+
 // Premium UI tokens
 $shadow-card:          0 4px 20px rgba(0, 0, 0, 0.04);   // Extremely soft
 $shadow-card-hover:    0 8px 30px rgba(0, 0, 0, 0.08);   // Lift on hover
