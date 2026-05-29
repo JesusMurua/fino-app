@@ -34,14 +34,14 @@
   &__name {
     font-size: $font-size-label;
     font-weight: 600;
-    color: #15803D;
+    color: var(--primary-700);
   }
 
   &__badge {
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    padding: 1px 6px;
+    padding: 1px $space-2;
     border-radius: 9999px;
     font-size: 11px;
     font-weight: 600;
@@ -50,12 +50,12 @@
 
     &--points {
       background: #FFF7ED;
-      color: #D97706;
+      color: $color-warning;
     }
 
     &--credit {
-      background: #EFF6FF;
-      color: #3B82F6;
+      background: $color-info-50;
+      color: $color-info-500;
     }
   }
 
@@ -69,7 +69,7 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #15803D;
+    color: var(--primary-700);
     cursor: pointer;
     font-family: inherit;
 
@@ -95,7 +95,7 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: $radius-button;
     background: white;
     color: $color-text-sub;
@@ -104,7 +104,7 @@
     font-family: inherit;
     transition: all 0.15s;
 
-    i { font-size: 14px; }
+    i { font-size: $font-size-label; }
 
     &:hover {
       border-color: $color-primary;
@@ -148,7 +148,7 @@
 :host ::ng-deep .cs-create-dialog {
   .p-dialog-header {
     padding: $space-4;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 700;
     color: $color-text-title;
     border-bottom: 1px solid $color-border-soft;
@@ -207,14 +207,14 @@
     background: $color-primary;
     color: white;
     border: none;
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
   &--ghost {
     background: transparent;
     color: $color-text-sub;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     &:hover { border-color: $color-text-sub; color: $color-text-title; }
   }
 }

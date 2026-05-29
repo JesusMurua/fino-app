@@ -1,13 +1,15 @@
+@use '../../../../../styles/variables' as *;
+
 .weight-capture {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 8px 0;
+  gap: $space-4;
+  padding: $space-2 0;
 
   &__label {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 500;
-    color: #374151;
+    color: $color-text-body;
   }
 
   &__input {

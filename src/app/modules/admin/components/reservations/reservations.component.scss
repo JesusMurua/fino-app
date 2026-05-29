@@ -8,7 +8,7 @@
   &__tabs {
     display: flex;
     gap: 0;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 1px solid $color-border;
   }
 }
 
@@ -29,7 +29,7 @@
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
   &:hover { color: $color-text-title; }
 
   &--active {
@@ -44,7 +44,7 @@
   background: white;
   border-radius: 12px;
   padding: $space-4;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
 }
 
 // Day navigation
@@ -68,14 +68,14 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 8px;
     background: white;
     cursor: pointer;
     color: $color-text-sub;
     font-family: inherit;
 
-    &:hover { background: #F3F4F6; }
+    &:hover { background: $color-surface-hover; }
   }
 }
 
@@ -97,7 +97,7 @@
   flex-direction: column;
   align-items: center;
   gap: $space-3;
-  padding: 60px $space-5;
+  padding: $space-8 $space-5;
   text-align: center;
   color: $color-text-sub;
 
@@ -112,7 +112,7 @@
   gap: $space-4;
   padding: $space-4;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 12px;
 
   &--faded { opacity: 0.5; }
@@ -160,7 +160,7 @@
 
   &__badge {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 3px $space-2;
     border-radius: 99px;
     font-size: 11px;
     font-weight: 600;
@@ -178,7 +178,7 @@
 .btn-action {
   display: inline-flex;
   align-items: center;
-  padding: 4px $space-3;
+  padding: $space-1 $space-3;
   min-height: 28px;
   border: none;
   border-radius: 6px;
@@ -188,14 +188,15 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &--edit { background: transparent; color: $color-text-sub; gap: 4px; &:hover { background: #F3F4F6; color: $color-text-title; } i { font-size: 11px; } }
+  &--edit { background: transparent; color: $color-text-sub; gap: $space-1; &:hover { background: $color-surface-hover; color: $color-text-title; } i { font-size: 11px; } }
   &--teal { background: #CCFBF1; color: #0F766E; &:hover { background: #99F6E4; } }
-  &--blue { background: #DBEAFE; color: #1E40AF; &:hover { background: #BFDBFE; } }
-  &--gray { background: #F3F4F6; color: #6B7280; &:hover { background: #E5E7EB; } }
-  &--red  { background: #FEE2E2; color: #DC2626; &:hover { background: #FECACA; } }
+  &--blue { background: $color-info-100; color: $color-info-800; &:hover { background: $color-info-200; } }
+  &--gray { background: $color-surface-hover; color: $color-text-sub; &:hover { background: $color-border; } }
+  &--red  { background: $color-error-bg; color: $color-error; &:hover { background: $color-error-200; } }
 }
 
 // Primary button (header)
+// local override: missing transition and disabled state
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -211,5 +212,5 @@
   font-family: inherit;
   cursor: pointer;
 
-  &:hover { background: #15803D; }
+  &:hover { background: var(--primary-700); }
 }

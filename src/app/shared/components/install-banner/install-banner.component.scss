@@ -1,11 +1,13 @@
+@use '../../../../styles/variables' as *;
+
 .install-banner {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 16px;
-  background: #16A34A;
+  padding: $space-4;
+  background: $color-primary;
   color: #fff;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
   border-radius: 12px 12px 0 0;
@@ -13,14 +15,14 @@
   &__content {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: $space-4;
     max-width: 600px;
     margin: 0 auto;
   }
 
   &__text {
     flex: 1;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 500;
     line-height: 1.4;
   }
@@ -28,17 +30,17 @@
   &__btn {
     min-height: 48px;
     min-width: 48px;
-    padding: 8px 16px;
+    padding: $space-2 $space-4;
     border: none;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
 
     &--install {
       background: #fff;
-      color: #16A34A;
+      color: $color-primary;
     }
 
     &--dismiss {

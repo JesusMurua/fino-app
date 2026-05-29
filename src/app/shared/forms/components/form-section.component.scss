@@ -1,0 +1,36 @@
+@use '../../../../styles/variables' as *;
+
+:host {
+  display: block;
+}
+
+.form-section {
+  margin-bottom: $section-gap;
+  border: 1px solid $color-border-soft;
+  border-radius: $radius-card;
+  background: white;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-4 $card-padding;
+    font-size: $font-size-label;
+    font-weight: 600;
+    color: $color-text-title;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  &__icon {
+    color: $color-primary;
+  }
+
+  &__title {
+    flex: 1;
+  }
+
+  &__body {
+    padding: $space-2 $card-padding $card-padding;
+  }
+}

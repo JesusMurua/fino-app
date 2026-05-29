@@ -24,13 +24,13 @@
 
   &__empty-icon {
     font-size: 64px;
-    color: #D1D5DB;
+    color: $color-border-strong;
     margin-bottom: $space-4;
   }
 
   &__empty-title {
     margin: 0 0 $space-4;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -49,7 +49,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: $space-1;
   padding: $space-4;
   background: white;
   border-radius: 12px;
@@ -61,7 +61,7 @@
     color: $color-text-title;
 
     &--green { color: $color-primary; }
-    &--grey { color: #9CA3AF; }
+    &--grey { color: $color-text-muted; }
   }
 
   &__label {
@@ -140,7 +140,7 @@
 // -----------------------------------------------------------------------
 .role-badge {
   display: inline-block;
-  padding: 4px 10px;
+  padding: $space-1 $space-2;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
@@ -148,25 +148,26 @@
 
 .status-badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 3px $space-2;
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
 
   &--active {
-    background: #DCFCE7;
-    color: #15803D;
+    background: var(--primary-100);
+    color: var(--primary-700);
   }
 
   &--inactive {
-    background: #F3F4F6;
-    color: #6B7280;
+    background: $color-surface-hover;
+    color: $color-text-sub;
   }
 }
 
 // -----------------------------------------------------------------------
 // Buttons
 // -----------------------------------------------------------------------
+// local override: min-height 44px
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -183,7 +184,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #15803D; }
+  &:hover { background: var(--primary-700); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
@@ -192,7 +193,7 @@
   align-items: center;
   padding: $space-2 $space-4;
   min-height: 44px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
@@ -200,7 +201,7 @@
   font-family: inherit;
   cursor: pointer;
 
-  &:hover { background: #F3F4F6; }
+  &:hover { background: $color-surface-hover; }
 }
 
 .btn-icon {
@@ -215,7 +216,7 @@
   color: $color-text-sub;
   cursor: pointer;
 
-  &:hover { background: #F3F4F6; color: $color-text-title; }
+  &:hover { background: $color-surface-hover; color: $color-text-title; }
 }
 
 // -----------------------------------------------------------------------
@@ -244,7 +245,7 @@
 .toggle-slider {
   position: absolute;
   inset: 0;
-  background: #D1D5DB;
+  background: $color-border-strong;
   border-radius: 12px;
   transition: background 0.2s;
 
@@ -262,35 +263,20 @@
 }
 
 // -----------------------------------------------------------------------
-// Form
+// Branch assignment (consumer-owned, lives outside <app-dynamic-form>)
 // -----------------------------------------------------------------------
-.user-form {
-  display: flex;
-  flex-direction: column;
-  gap: $space-4;
-  padding: $space-2 0;
-}
-
-.form-field {
+.branch-assignment {
   display: flex;
   flex-direction: column;
   gap: $space-2;
+  margin-top: $space-4;
+}
 
-  &--row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  &__label {
-    font-size: $font-size-base;
-    font-weight: 600;
-    color: $color-text-title;
-  }
-
-  &__input {
-    width: 100%;
-  }
+.branch-assignment__label {
+  margin: 0;  // override default heading margin
+  font-size: $font-size-base;
+  font-weight: 600;
+  color: $color-text-title;
 }
 
 // -----------------------------------------------------------------------
@@ -316,11 +302,11 @@
 .branch-matrix-badge {
   display: inline-block;
   margin-left: $space-2;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
   color: $color-primary;
-  background: #F0FDF4;
+  background: $color-primary-light;
   vertical-align: middle;
 }

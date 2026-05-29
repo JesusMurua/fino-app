@@ -1,0 +1,17 @@
+@use '../../../../styles/variables' as *;
+
+:host {
+  display: block;
+  color: $color-error;
+  background: $color-error-bg;
+  padding: $space-3 $card-padding;
+  border: 1px solid $color-error;
+  border-radius: $radius-card;
+  font-size: $font-size-label;
+  min-height: 2.5em;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px $color-error;
+  }
+}

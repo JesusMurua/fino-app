@@ -51,8 +51,8 @@
   i { font-size: 28px; }
 
   &--processing {
-    background: #EFF6FF;
-    color: #3B82F6;
+    background: $color-info-50;
+    color: $color-info-500;
   }
 
   &--success {
@@ -61,13 +61,13 @@
   }
 
   &--error {
-    background: #FEF2F2;
-    color: #DC2626;
+    background: $color-error-50;
+    color: $color-error;
   }
 
   &--warning {
     background: #FFF7ED;
-    color: #D97706;
+    color: $color-warning;
   }
 }
 
@@ -99,7 +99,7 @@
 }
 
 .ppd__hint-spinner {
-  font-size: 14px;
+  font-size: $font-size-label;
 }
 
 .ppd__detail {
@@ -135,7 +135,7 @@
 
 .ppd__input {
   height: $touch-target-pos;
-  font-size: 20px;
+  font-size: $font-size-price;
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.1em;
@@ -167,7 +167,7 @@
   border-radius: 4px;
 
   .p-progressbar-value {
-    background: #3B82F6;
+    background: $color-info-500;
   }
 }
 
@@ -203,14 +203,14 @@
     color: white;
     border: none;
 
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
   &--ghost {
     background: transparent;
     color: $color-text-sub;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
 
     &:hover {
       border-color: $color-text-sub;

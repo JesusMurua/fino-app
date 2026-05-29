@@ -5,6 +5,7 @@
 // Only project-specific globals belong here.
 
 @use 'styles/variables' as *;
+@use 'styles/components';
 @use 'styles/touch';
 @use 'styles/layout';
 
@@ -48,16 +49,16 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #707070;
+  background: #707070; // intentional literal: scrollbar chrome, no semantic token
   border-radius: 4px;
 
   &:hover {
-    background: #b3b3b3;
+    background: #b3b3b3; // intentional literal: scrollbar chrome, no semantic token
   }
 }
 
 *::-webkit-scrollbar-track {
-  background: #e1e1e1;
+  background: #e1e1e1; // intentional literal: scrollbar chrome, no semantic token
   border-radius: 4px;
 }
 
@@ -69,23 +70,23 @@ body {
 
 // Buttons — primary (default severity)
 .p-button:not(.p-button-text):not(.p-button-outlined):not(.p-button-link):not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-help):not(.p-button-danger) {
-  background: #16A34A;
-  border-color: #16A34A;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
 
   &:not(:disabled):hover {
-    background: #15803D;
-    border-color: #15803D;
+    background: var(--primary-700);
+    border-color: var(--primary-700);
   }
 
   &:not(:disabled):active {
-    background: #166534;
-    border-color: #166534;
+    background: var(--primary-800);
+    border-color: var(--primary-800);
   }
 }
 
 // Focus ring on primary buttons
 .p-button:focus {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(22, 163, 74, 0.4), 0 0 0 8px transparent;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(22, 163, 74, 0.4), 0 0 0 8px transparent; // intentional literals: white primitive + brand-green alpha
 }
 
 // Text / outlined buttons — primary color for icon and label
@@ -93,56 +94,56 @@ body {
 .p-button.p-button-text,
 .p-button.p-button-outlined {
   &:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-help):not(.p-button-danger) {
-    color: #16A34A;
+    color: var(--primary-color);
 
     &:not(:disabled):hover {
       background: rgba(22, 163, 74, 0.04);
-      color: #16A34A;
+      color: var(--primary-color);
     }
 
     &:not(:disabled):active {
       background: rgba(22, 163, 74, 0.16);
-      color: #16A34A;
+      color: var(--primary-color);
     }
   }
 }
 
 // RadioButton — selected state
 .p-radiobutton .p-radiobutton-box.p-highlight {
-  border-color: #16A34A;
-  background: #16A34A;
+  border-color: var(--primary-color);
+  background: var(--primary-color);
 
   &:hover {
-    border-color: #15803D;
-    background: #15803D;
+    border-color: var(--primary-700);
+    background: var(--primary-700);
   }
 }
 
 .p-radiobutton .p-radiobutton-box:not(.p-disabled).p-focus {
   box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.2);
-  border-color: #16A34A;
+  border-color: var(--primary-color);
 }
 
 // Checkbox — selected state
 .p-checkbox .p-checkbox-box.p-highlight {
-  border-color: #16A34A;
-  background: #16A34A;
+  border-color: var(--primary-color);
+  background: var(--primary-color);
 
   &:hover {
-    border-color: #15803D;
-    background: #15803D;
+    border-color: var(--primary-700);
+    background: var(--primary-700);
   }
 }
 
 .p-checkbox .p-checkbox-box:not(.p-disabled).p-focus {
   box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.2);
-  border-color: #16A34A;
+  border-color: var(--primary-color);
 }
 
 // InputText / Textarea — focus border
 .p-inputtext:enabled:focus,
 textarea.p-inputtextarea:enabled:focus {
-  border-color: #16A34A;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.2);
 }
 
@@ -150,8 +151,8 @@ textarea.p-inputtextarea:enabled:focus {
 // purple; align with the brand green so the underline matches the rest
 // of the UI). Covers both the active link color and the bottom border.
 .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
-  color: #16A34A;
-  border-color: #16A34A;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
 .p-tabview .p-tabview-nav li .p-tabview-nav-link:not(.p-disabled):focus {
@@ -193,7 +194,7 @@ textarea.p-inputtextarea:enabled:focus {
     width: 72mm;
     font-family: 'Courier New', Courier, monospace;
     font-size: 14px;
-    color: #000;
+    color: #000; // intentional literal: pure black for 80mm thermal printer (print-only, exempt from #111827 UI floor)
     line-height: 1.4;
 
     &__separator {
@@ -251,7 +252,7 @@ textarea.p-inputtextarea:enabled:focus {
   flex: 1;
   min-width: 80px;
   min-height: 48px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 10px;
   background: white;
   cursor: pointer;
@@ -263,7 +264,7 @@ textarea.p-inputtextarea:enabled:focus {
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
-  color: #374151;
+  color: $color-text-body;
   transition: all 0.15s;
 
   i { font-size: 18px; color: $color-text-sub; }
@@ -283,7 +284,7 @@ textarea.p-inputtextarea:enabled:focus {
   // Provider-backed method (Clip, MercadoPago) — accent left border
   &--provider {
     position: relative;
-    border-left: 3px solid #3B82F6;
+    border-left: 3px solid #3B82F6; // intentional literal: provider accent blue (≠ $color-info #2563EB), no token
   }
 
   &__badge {
@@ -294,8 +295,8 @@ textarea.p-inputtextarea:enabled:focus {
     border-radius: 9999px;
     font-size: 9px;
     font-weight: 600;
-    background: #EFF6FF;
-    color: #3B82F6;
+    background: #EFF6FF; // intentional literal: provider badge tint, no token
+    color: #3B82F6;      // intentional literal: provider accent blue (≠ $color-info #2563EB), no token
     line-height: 1.4;
   }
 }
@@ -306,11 +307,11 @@ textarea.p-inputtextarea:enabled:focus {
 .p-dialog-header-close {
   background: transparent !important;
   border: none !important;
-  color: #6B7280 !important;
+  color: $color-text-sub !important;
 
   &:hover {
-    background: #F3F4F6 !important;
-    color: #374151 !important;
+    background: $color-surface-hover !important;
+    color: $color-text-body !important;
   }
 }
 
@@ -373,8 +374,8 @@ textarea.p-inputtextarea:enabled:focus {
     gap: 2px;
     padding: 1px 6px;
     border-radius: 9999px;
-    background: #FFF7ED;
-    color: #D97706;
+    background: #FFF7ED; // intentional literal: points-badge tint, no semantic token
+    color: $color-warning;
     font-size: 11px;
     font-weight: 600;
     flex-shrink: 0;
@@ -405,12 +406,12 @@ textarea.p-inputtextarea:enabled:focus {
   &__name {
     font-size: 1.125rem;
     font-weight: 600;
-    color: #111827;
+    color: $color-text-title;
   }
 
   &__phone {
     font-size: 1rem;
-    color: #6b7280;
+    color: $color-text-sub;
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
   }

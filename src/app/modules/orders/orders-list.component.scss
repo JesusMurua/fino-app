@@ -39,15 +39,15 @@
     border-radius: 10px;
     background: $color-bg-page;
     color: $color-text-sub;
-    font-size: 16px;
+    font-size: $font-size-base;
     cursor: pointer;
 
-    &:hover { background: #E5E7EB; }
+    &:hover { background: $color-border; }
   }
 
   &__title {
     margin: 0;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -58,11 +58,11 @@
     gap: $space-2;
     padding: 0 $space-3;
     height: 40px;
-    border: 1px solid #D1D5DB;
+    border: 1px solid $color-border-strong;
     border-radius: 10px;
     background: white;
 
-    i { color: #9CA3AF; font-size: 14px; }
+    i { color: $color-text-muted; font-size: $font-size-label; }
 
     input {
       border: none;
@@ -72,7 +72,7 @@
       width: 140px;
       background: transparent;
 
-      &::placeholder { color: #9CA3AF; }
+      &::placeholder { color: $color-text-muted; }
     }
   }
 }
@@ -91,7 +91,7 @@
 
 .orders-filter {
   padding: $space-2 $space-4;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 20px;
   background: white;
   color: $color-text-sub;
@@ -102,7 +102,7 @@
   white-space: nowrap;
   transition: all 0.15s;
 
-  &:hover { border-color: #D1D5DB; background: $color-bg-page; }
+  &:hover { border-color: $color-border-strong; background: $color-bg-page; }
 
   &--active {
     background: $color-text-title;
@@ -137,7 +137,7 @@
 
   i {
     font-size: 40px;
-    color: #D1D5DB;
+    color: $color-border-strong;
   }
 
   p {
@@ -212,22 +212,22 @@
     &--secondary {
       background: $color-bg-page;
       color: $color-text-sub;
-      &:hover { background: #E5E7EB; }
+      &:hover { background: $color-border; }
     }
 
     &--danger {
-      background: #DC2626;
+      background: $color-error;
       color: white;
-      &:hover { background: #B91C1C; }
-      &:disabled { background: #D1D5DB; cursor: not-allowed; }
+      &:hover { background: $color-error-700; }
+      &:disabled { background: $color-border-strong; cursor: not-allowed; }
     }
 
     &--print {
-      background: #16A34A;
+      background: $color-primary;
       color: white;
       gap: $space-2;
-      i { font-size: 14px; }
-      &:hover { background: #15803D; }
+      i { font-size: $font-size-label; }
+      &:hover { background: var(--primary-700); }
     }
   }
 }

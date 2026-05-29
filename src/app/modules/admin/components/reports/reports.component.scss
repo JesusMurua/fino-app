@@ -30,21 +30,21 @@
   &:disabled { opacity: 0.6; cursor: not-allowed; }
 
   &--excel {
-    background: #DCFCE7;
-    color: #16A34A;
-    &:hover:not(:disabled) { background: #BBF7D0; }
+    background: var(--primary-100);
+    color: $color-primary;
+    &:hover:not(:disabled) { background: var(--primary-200); }
   }
 
   &--pdf {
-    background: #FEF2F2;
-    color: #DC2626;
-    &:hover:not(:disabled) { background: #FECACA; }
+    background: $color-error-50;
+    color: $color-error;
+    &:hover:not(:disabled) { background: $color-error-200; }
   }
 
   &--fiscal {
-    background: #EFF6FF;
-    color: #2563EB;
-    &:hover:not(:disabled) { background: #DBEAFE; }
+    background: $color-info-50;
+    color: $color-info;
+    &:hover:not(:disabled) { background: $color-info-100; }
   }
 }
 
@@ -66,7 +66,7 @@
 .period-btn {
   padding: $space-2 $space-4;
   border-radius: 20px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   background: white;
   color: $color-text-title;
   font-size: $font-size-label;
@@ -107,6 +107,7 @@
   }
 }
 
+// local override: solid disabled
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -123,8 +124,8 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #15803D; }
-  &:disabled { background: #D1D5DB; cursor: not-allowed; }
+  &:hover { background: var(--primary-700); }
+  &:disabled { background: $color-border-strong; cursor: not-allowed; }
 }
 
 // -----------------------------------------------------------------------
@@ -148,12 +149,12 @@
 
   &__icon {
     font-size: 64px;
-    color: #D1D5DB;
+    color: $color-border-strong;
   }
 
   &__title {
     margin: 0;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -208,14 +209,14 @@
   color: $color-text-title;
 
   &.green  { color: $color-primary; }
-  &.red    { color: #DC2626; }
-  &.orange { color: #D97706; }
-  &.blue   { color: #2563EB; }
+  &.red    { color: $color-error; }
+  &.orange { color: $color-warning; }
+  &.blue   { color: $color-info; }
 }
 
 .metric-sub {
   font-size: 12px;
-  color: #9CA3AF;
+  color: $color-text-muted;
 }
 
 // -----------------------------------------------------------------------
@@ -281,7 +282,7 @@
 }
 
 .row-cancelled {
-  background: #FEF2F2;
+  background: $color-error-50;
 }
 
 // -----------------------------------------------------------------------
@@ -294,8 +295,8 @@
   font-size: 12px;
   font-weight: 700;
 
-  &--cash      { background: #F0FDF4; color: #16A34A; }
-  &--card      { background: #EFF6FF; color: #2563EB; }
-  &--completed { background: #DBEAFE; color: #1D4ED8; }
-  &--cancelled { background: rgba(107, 114, 128, 0.1); color: #6B7280; }
+  &--cash      { background: $color-primary-light; color: $color-primary; }
+  &--card      { background: $color-info-50; color: $color-info; }
+  &--completed { background: $color-info-100; color: $color-info-700; }
+  &--cancelled { background: rgba(107, 114, 128, 0.1); color: $color-text-sub; }
 }

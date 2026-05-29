@@ -16,7 +16,7 @@
 | **A — SubGiro** | 🟠 Alto | `Yoga` y `Crossfit` declarados en enum pero **nunca usados**; solo `Gym` está cableado. Adding subgiros requiere modificar ≥4 archivos |
 | **B — Frontend forms** | 🟠 Alto | 153 referencias a `FormBuilder/FormGroup/FormControl` en 10 components — ningún form metadata-driven |
 | **B — Backend Global Filters** | 🟢 **RESOLVED** | `ApplyTenantFilters` en `POS.Repository/ApplicationDbContext.cs` + `IBranchScoped` / `IBusinessScoped` markers + `BranchInjectionInterceptor`. Suspicion falsified by cross-repo evidence; URL-level `branchId` params are independent of DbContext-level filters. |
-| **B — Bridge supervisors** | `[NO VERIFICADO]` | No puedo confirmar si supervisors del Fino Bridge consultan `features` claim antes de inicializar. Audit separado requerido. |
+| **B — Bridge supervisors** | 🟢 **RESOLVED** | Bridge parses JWT and gates 5 of 7 supervisors via `FeatureGating.IsEnabled` with fail-open pre-pairing semantics. |
 | **C — WebApplicationFactory** | 🟢 **RESOLVED** | `POS.IntegrationTests/Infrastructure/CustomWebApplicationFactory.cs` + `JwtTestFactory.cs` + `FakeTenantContext.cs` + `TenantIsolationTests.cs` + `CatalogApiTests.cs` (35/35 facts). Real-JWT-signed, no auth bypass. |
 | **C — SignalR loopback** | 🔴 **CONFIRMED MISSING** | Backend audit: `grep` on `POS.IntegrationTests` for `HubConnection`/`HubConnectionBuilder`/`Microsoft.AspNetCore.SignalR.Client` returns zero matches. Production hubs `/hubs/kds` + `/hubs/bridge` have no loopback tests. |
 | **C — Unit tests** | 🔴 Crítico | **1 archivo `.spec.ts`** en `src/` (`cash-register.service.spec.ts`) vs ~150+ archivos productivos |
@@ -241,14 +241,24 @@ Sin acceso al repo `pos-api` al momento del audit original. Inferencias desde el
 
 ~~**Recomendación urgente**: auditar `pos-api` para confirmar si existen `modelBuilder.Entity<T>().HasQueryFilter(e => e.BranchId == _tenantContext.BranchId)` para entidades scopeables.~~ **HECHO** — confirmado presente.
 
-### 2.7 `[NO VERIFICADO]` Bridge supervisors no inspeccionados
+### 2.7 Bridge supervisors [RESOLVED — cross-repo evidence delivered]
 
-Sin acceso a `pos-local-bridge`. Inferencias desde frontend + audit anterior del backend:
-- El device JWT del bridge incluye `features` claim.
+> **Resolution (cross-repo audit 2026-05-25)**: la sospecha está **cerrada**. El `pos-local-bridge` (Windows Worker Service, .NET 8) es SMART y multi-tenant ready. Evidence:
+> - **JWT parsing**: `PosLocalBridge.Security/JwtDeviceClaimsReader.cs` (registered singleton vía `IDeviceClaimsReader`) extrae `branchId`, `businessId`, `mode`, `features` del device JWT. Signature validation NO se realiza localmente — el cloud es single source of truth post-pairing (consume vía `JwtSecurityTokenHandler.ReadJwtToken`, no `ValidateToken`). Claims **NO extraídos** (known one-line extension point en `ParseClaims`): `macroCategory`, `planType`, `type`, `deviceId`. El claim `features` ship como nested JSON string (`"features": "[\"RealtimeAccessControl\",\"CoreHardware\"]"`) y se parsea en 2 pasos vía `ReadFeaturesClaim`. Cache thread-safe (SemaphoreSlim-gated), lifetime-of-process; null results NOT cached.
+> - **Feature gating**: single source of truth `PosLocalBridge.Security/FeatureGating.cs::IsEnabled(claims, requiredFeature)` con **fail-open semantics** (returns `true` si `claims is null` o `requiredFeature` está vacío). Fail-open es **deliberate by design** para preservar pre-pairing compatibility — first-boot antes de que se emita cualquier token debe permitir que los supervisors arranquen.
+> - **Gateable supervisors (5/7)** evalúan claims en su `StartAsync` y skip subscription/port-open/timer-start si el feature requerido está ausente: `TurnstileSupervisor`, `PrinterSupervisor`, `BiometricSupervisor`, `SerialInputSupervisor` (per-device gating en el event handler — Scale role fail-open, Access role gated), `AccessSyncSupervisor`. Required features son config-driven (`Hardware:*:RequiredFeature` en appsettings.json) — backend renames no fuerzan code changes.
+> - **Unconditional services (3/7) by design**: `ResetBootstrapService` (consume `%ProgramData%\Fino\reset.txt` pre-token), `HealthMonitor` (telemetry must report regardless of feature set), `Worker` (orchestrator drives pairing + SignalR connect loop). DI registration order en `BridgeHostBuilder.cs:67-77` es intencional — bootstrap first, supervisors next, Worker last.
+> - **Architectural debt remaining**: AD-3 (OCP-mini en `PrinterConnectionFactory` y `SerialInputSupervisor` role dispatch) y AD-5 (`PairingResponse` non-token fields logged but not propagated to runtime). Ambos classified Low severity en bridge repo audit.
+>
+> **Implication**: el bridge **no** es un passive consumer que inicializa hardware blindly. Honora el contrato multi-tenant end-to-end. Si se requiere gating por macro/plan en el futuro, agregar extracción en `JwtDeviceClaimsReader.ParseClaims` + nuevo field en `DeviceClaims` record + consumer en el supervisor afectado (one-line change documentado).
+
+Sin acceso a `pos-local-bridge` al momento del audit original. Inferencias desde frontend + audit anterior del backend (legacy — superseded by cross-repo evidence above):
+
+- El device JWT del bridge incluye `features` claim. ✅ Confirmed.
 - `BridgeHub.OnConnectedAsync` agrupa por `mode === 'bridge'` vs otros.
-- **No puedo verificar** si los supervisors del Bridge (impresora, scanner, scale, biometric) consultan `features` antes de inicializarse o si arrancan todos ciegamente.
+- ~~**No puedo verificar** si los supervisors del Bridge (impresora, scanner, scale, biometric) consultan `features` antes de inicializarse o si arrancan todos ciegamente.~~ **FALSEADA** — los 5 supervisors gateables consultan `features` vía `FeatureGating.IsEnabled` (ver resolución arriba).
 
-**Recomendación**: pedir audit explícito del bridge enfocado en supervisor lifecycle vs feature claims.
+~~**Recomendación**: pedir audit explícito del bridge enfocado en supervisor lifecycle vs feature claims.~~ **HECHO** — Bridge Architectural Audit completed 2026-05-25.
 
 ---
 
@@ -342,6 +352,8 @@ Si no existe en pos-api → cada integration test arranca host real con DB real 
 > - Las únicas referencias a "SignalR" en el repo son design docs (`docs/AUDIT-026`, `docs/BDD-010`) — no test code.
 >
 > **Status remains OPEN as a backend testing gap.** FDD-028 no toca esta surface; tracking aparte.
+>
+> **Bridge audit note (2026-05-25)**: production SignalR usage in `pos-local-bridge` verified cross-repo. `FinoCloudClient` (`PosLocalBridge.Transport/Cloud/FinoCloudClient.cs`) subscribes to **3 inbound hub methods** post-feature-gating (`OpenTurnstile` → `TurnstileSupervisor`, `SendEscPosCommand` → `PrinterSupervisor`, `SyncAccessData` → `AccessSyncSupervisor`) and emits **3 outbound methods** (`ProcessScan` from `AccessGate.TryGrantAccessAsync`, `ProcessWeightRead` from `SerialInputSupervisor` Scale role, `ReportHealth` from `HealthMonitor`) plus 2 declared-but-currently-unused (`ProcessFingerprint`, `ProcessSerialInput`). Hub URL: `{ApiBaseUrl}/hubs/bridge`; JWT vía lazy `AccessTokenProvider` reading `ITokenStore` on every (re)negotiation. Method dispatch goes through `ICloudClient.On<T>` indirection (not direct `HubConnection.On<T>`) which enabled the `InMemoryCloudClient` testing harness. Caveat: only HTTP 401 during SignalR negotiate is detected as auth-rejection — established-WebSocket auth failures surface as different exception types and are not currently caught. **The remaining gap in §3.5 is strictly backend loopback test infrastructure** (`POS.IntegrationTests` SignalR client coverage on `/hubs/kds` + `/hubs/bridge`) — not the production contract on either side.
 
 El frontend tiene 3 clientes SignalR ([ScaleSignalrService](../src/app/core/services/scale.signalr.service.ts), [KitchenService](../src/app/core/services/kitchen.service.ts), [AccessDashboardSignalrService](../src/app/core/services/access-dashboard.signalr.service.ts)). Para testear "el bridge recibe `OpenTurnstile` y abre el torniquete":
 - Necesitas **virtual SignalR server** en tests del bridge (.NET) que emita eventos al hub local del bridge.
@@ -490,3 +502,11 @@ Applied via [FDD-028 Appendix A](FDD-028-catalog-api-integration.md).
 - F5 enum migration (5 buckets B0-B4): `MacroCategoryType` deleted; `MacroCategoryCode` canonical. Production-validation gate waived per user (single-dev startup context).
 - TL;DR table updated: `A — ID-range mapping` row → 🟢 RESOLVED.
 - §2.7 (Bridge supervisors) and §3.5 (SignalR loopback) remain STILL OPEN — cross-repo, not actionable from this repo.
+
+### 2026-05-25 — Cross-repo audit: pos-local-bridge
+
+Applied via Bridge Architectural Audit (AUDIT-058 §2.7 scope).
+
+- §2.7 (Bridge supervisors): 🔴 `[NO VERIFICADO]` → 🟢 **RESOLVED**. Bridge audited and confirmed SMART. `JwtDeviceClaimsReader` extracts `branchId`, `businessId`, `mode`, `features` (NOT `macroCategory` / `planType` / `type` / `deviceId` — known extension point: one-line addition in `ParseClaims` + `DeviceClaims` record field). 5 of 7 hosted services (`TurnstileSupervisor`, `PrinterSupervisor`, `BiometricSupervisor`, `SerialInputSupervisor`, `AccessSyncSupervisor`) gated via `FeatureGating.IsEnabled` with fail-open semantics for pre-pairing compatibility. 3 unconditional services by design (`ResetBootstrapService`, `HealthMonitor`, `Worker`). DI registration order intentional in `BridgeHostBuilder.cs:67-77`. Architectural debt AD-3 / AD-5 remain Low severity in bridge repo.
+- §3.5 (SignalR loopback): no status change — remains 🔴 **CONFIRMED MISSING**. Added 2026-05-25 cross-repo note clarifying that bridge production SignalR usage is verified (3 inbound + 3 outbound methods on `/hubs/bridge`, JWT vía lazy `AccessTokenProvider`, `ICloudClient.On<T>` indirection that enabled `InMemoryCloudClient` test harness). Remaining gap is strictly backend `POS.IntegrationTests` SignalR client coverage — not production contract on either side.
+- TL;DR `B — Bridge supervisors` row → 🟢 RESOLVED with cell rewritten to "Bridge parses JWT and gates 5 of 7 supervisors via `FeatureGating.IsEnabled` with fail-open pre-pairing semantics."

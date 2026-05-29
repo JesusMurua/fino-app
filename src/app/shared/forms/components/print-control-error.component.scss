@@ -1,0 +1,12 @@
+@use '../../../../styles/variables' as *;
+
+.control-error {
+  display: block;
+  color: $color-error;
+  margin-top: $space-1;
+  font-size: $font-size-label;
+  font-weight: 400;
+  // Reserves vertical space even when no error renders, so the layout
+  // does not shift when an error appears or disappears.
+  min-height: 1.2em;
+}

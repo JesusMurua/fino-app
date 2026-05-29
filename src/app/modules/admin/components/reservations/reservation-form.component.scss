@@ -59,11 +59,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: $font-size-label;
   transition: background 0.15s;
   flex-shrink: 0;
 
-  &:hover { background: #F3F4F6; }
+  &:hover { background: $color-surface-hover; }
 }
 
 // -----------------------------------------------------------------------
@@ -71,10 +71,10 @@
 // -----------------------------------------------------------------------
 .rf__section {
   padding: $space-4 $space-5;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid $color-surface-hover;
 
   &--last {
-    border-top: 1px solid #F3F4F6;
+    border-top: 1px solid $color-surface-hover;
   }
 }
 
@@ -103,7 +103,7 @@
 .rf__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: $space-1;
   flex: 1;
   min-width: 0;
 
@@ -137,13 +137,13 @@
       width: 36px;
       height: 36px;
       background: white;
-      border-color: #D1D5DB;
+      border-color: $color-border-strong;
       color: $color-text-title;
       padding: 0;
 
-      &:hover { background: #F3F4F6; color: $color-primary; }
+      &:hover { background: $color-surface-hover; color: $color-primary; }
 
-      .pi { font-size: 14px; }
+      .pi { font-size: $font-size-label; }
     }
 
     .p-inputtext { height: 36px; }
@@ -151,20 +151,15 @@
 
   // Consistent input sizing
   .p-inputtext {
-    font-size: 14px;
-    padding: 8px 12px;
+    font-size: $font-size-label;
+    padding: $space-2 $space-3;
     height: 36px;
   }
 
   .p-dropdown {
     height: 36px;
-    .p-dropdown-label { font-size: 14px; padding: 8px 12px; }
+    .p-dropdown-label { font-size: $font-size-label; padding: $space-2 $space-3; }
   }
-}
-
-.rf__error {
-  font-size: 11px;
-  color: #DC2626;
 }
 
 // -----------------------------------------------------------------------
@@ -173,7 +168,7 @@
 .rf__stepper {
   display: flex;
   align-items: center;
-  border: 1px solid #D1D5DB;
+  border: 1px solid $color-border-strong;
   border-radius: 8px;
   overflow: hidden;
   height: 38px;
@@ -183,7 +178,7 @@
   width: 38px;
   height: 100%;
   border: none;
-  background: #F9FAFB;
+  background: $color-surface-muted;
   color: $color-text-sub;
   cursor: pointer;
   display: flex;
@@ -192,8 +187,8 @@
   font-size: 12px;
   transition: background 0.12s;
 
-  &:hover:not(:disabled) { background: #F3F4F6; }
-  &:active:not(:disabled) { background: #E5E7EB; }
+  &:hover:not(:disabled) { background: $color-surface-hover; }
+  &:active:not(:disabled) { background: $color-border; }
   &:disabled { opacity: 0.35; cursor: default; }
 }
 
@@ -207,81 +202,8 @@
 }
 
 // -----------------------------------------------------------------------
-// Table chip selector
+// Table section helpers — chip rendering now owned by chip-select widget.
 // -----------------------------------------------------------------------
-.rf__zones {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-}
-
-.rf__zone {
-  display: flex;
-  flex-direction: column;
-  gap: $space-2;
-}
-
-.rf__zone-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: $color-text-sub;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.rf__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $space-2;
-}
-
-.rf__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 34px;
-  padding: 0 $space-3;
-  border: 1.5px solid #E5E7EB;
-  border-radius: 8px;
-  background: white;
-  color: $color-text-title;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: $color-primary;
-    background: #F0FDF4;
-  }
-
-  &--selected {
-    border-color: $color-primary;
-    background: #F0FDF4;
-    color: $color-primary;
-    box-shadow: 0 0 0 1px $color-primary;
-  }
-}
-
-.rf__chip-name {
-  font-weight: 500;
-}
-
-.rf__chip-cap {
-  font-size: 11px;
-  color: $color-text-sub;
-  background: #F3F4F6;
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-weight: 600;
-
-  .rf__chip--selected & {
-    background: #DCFCE7;
-    color: #15803D;
-  }
-}
-
 .rf__no-table {
   display: flex;
   align-items: center;
@@ -306,21 +228,6 @@
   font-style: italic;
 }
 
-.rf__warn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: $space-3;
-  padding: $space-2 $space-3;
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #92400E;
-
-  i { font-size: 12px; color: #D97706; }
-}
-
 // -----------------------------------------------------------------------
 // Footer (inside PrimeNG footer template — sticky at bottom)
 // -----------------------------------------------------------------------
@@ -334,7 +241,7 @@
   justify-content: flex-end;
   gap: $space-3;
   padding: $space-3 $space-5;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid $color-surface-hover;
   background: #FAFAFA;
 }
 
@@ -356,15 +263,15 @@
     background: $color-primary;
     color: white;
 
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
   &--ghost {
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     background: white;
     color: $color-text-sub;
 
-    &:hover { background: #F9FAFB; }
+    &:hover { background: $color-surface-muted; }
   }
 }

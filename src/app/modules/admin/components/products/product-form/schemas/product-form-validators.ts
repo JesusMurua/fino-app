@@ -1,40 +1,37 @@
-import { AbstractControl, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+// LEGACY SHIM — survives until the product-form template migrates
+// to <app-dynamic-form>. No target FDD yet — see FDD-031 §3.3 for context.
+// This file rebinds the POC's string-keyed FIELD_VALIDATORS to the shared
+// validator implementations from `src/app/shared/forms`. The string-key
+// layer (`'required' | 'maxLength60' | ...`) is preserved so the POC
+// registry literals keep working without rewrite. Consumers that adopt
+// `<app-dynamic-form>` use the shared `ValidatorRef` union directly.
 
+import { ValidatorFn } from '@angular/forms';
+
+import {
+  maxLengthValidator,
+  maxValidator,
+  minValidator,
+  nonBlankValidator,
+  positiveNumberValidator,
+  requiredValidator,
+} from '../../../../../../shared/forms';
 import { FieldValidatorKey } from './product-form.schema';
 
 /**
- * Trims the value and fails when the result is empty — guards against
- * users typing only whitespace and bypassing `Validators.required`.
- * Mirrors `AdminDevicesComponent.nonBlankValidator` pattern.
- */
-const nonBlankValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  const value = control.value;
-  if (typeof value !== 'string') return null;
-  return value.trim().length === 0 ? { nonBlank: true } : null;
-};
-
-/**
- * Positive-number validator — accepts 0 only when `min` allows it.
- * Used by price / quantity fields that must not be negative.
- */
-const positiveNumberValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
-  const value = control.value;
-  if (value === null || value === undefined || value === '') return null;
-  return typeof value === 'number' && value >= 0 ? null : { positiveNumber: true };
-};
-
-/**
  * Central registry mapping `FieldValidatorKey` strings to real
- * `ValidatorFn` instances. Keeping validators registered here (and
- * referenced by name in the schema) lets the schema stay serializable
- * and free of `@angular/forms` imports.
+ * `ValidatorFn` instances. Values now resolve from the shared library
+ * (FDD-029 §12 (d) sub-phase d migration). Behavior is observationally
+ * equivalent to the prior POC implementation — `positiveNumber` and
+ * `nonBlank` are the same custom functions, now shared; `required`,
+ * `maxLength60`, `min1`, `max3650` delegate to factories.
  */
 export const FIELD_VALIDATORS: Record<FieldValidatorKey, ValidatorFn> = {
-  required:       Validators.required,
-  maxLength60:    Validators.maxLength(60),
+  required:       requiredValidator,
+  maxLength60:    maxLengthValidator(60),
   positiveNumber: positiveNumberValidator,
-  min1:           Validators.min(1),
-  max3650:        Validators.max(3650),
+  min1:           minValidator(1),
+  max3650:        maxValidator(3650),
   nonBlank:       nonBlankValidator,
 };
 

@@ -9,7 +9,7 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #F9FAFB;
+  background: $color-surface-muted;
   font-family: inherit;
   overflow: hidden;
 
@@ -25,7 +25,7 @@
     gap: $space-3;
     padding: $space-3 $space-4;
     background: #FFFFFF;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 1px solid $color-border;
 
     &--order {
       justify-content: flex-start;
@@ -33,15 +33,15 @@
   }
 
   &__title {
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
     margin: 0;
   }
 
   &__subtitle {
-    font-size: 14px;
-    color: #6B7280;
+    font-size: $font-size-label;
+    color: $color-text-sub;
     margin: 0;
   }
 
@@ -53,15 +53,15 @@
     min-width: 96px;
     padding: 0 $space-3;
     background: transparent;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 500;
-    color: #111827;
+    color: $color-text-title;
     cursor: pointer;
 
     i {
-      font-size: 16px;
+      font-size: $font-size-base;
     }
   }
 
@@ -70,15 +70,15 @@
     align-items: center;
     gap: $space-1;
     padding: $space-1 $space-3;
-    background: #16A34A;
+    background: $color-primary;
     color: #FFFFFF;
     border-radius: 999px;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 700;
     min-height: 40px;
 
     i {
-      font-size: 14px;
+      font-size: $font-size-label;
     }
   }
 
@@ -106,10 +106,10 @@
     padding: $space-2 $space-3;
     margin: $space-3 $space-3 0;
     background: #FFFFFF;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 12px;
 
-    i { color: #6B7280; font-size: 16px; }
+    i { color: $color-text-sub; font-size: $font-size-base; }
 
     input {
       flex: 1;
@@ -117,8 +117,8 @@
       border: none;
       outline: none;
       background: transparent;
-      font-size: 16px;
-      color: #111827;
+      font-size: $font-size-base;
+      color: $color-text-title;
     }
   }
 
@@ -127,7 +127,7 @@
     min-height: 48px;
     border: none;
     background: transparent;
-    color: #6B7280;
+    color: $color-text-sub;
     cursor: pointer;
   }
 
@@ -157,8 +157,8 @@
     align-items: center;
     gap: $space-2;
     padding: $space-6;
-    color: #6B7280;
-    font-size: 16px;
+    color: $color-text-sub;
+    font-size: $font-size-base;
 
     i { font-size: 28px; }
   }
@@ -170,7 +170,7 @@
     align-items: center;
     gap: $space-2;
     padding: $space-6;
-    color: #6B7280;
+    color: $color-text-sub;
     text-align: center;
 
     i { font-size: 36px; }
@@ -184,7 +184,7 @@
     bottom: $space-3;
     min-height: 64px;
     padding: 0 $space-4;
-    background: #16A34A;
+    background: $color-primary;
     color: #FFFFFF;
     border: none;
     border-radius: 16px;
@@ -205,9 +205,9 @@
     justify-content: center;
     min-width: 32px;
     height: 32px;
-    padding: 0 10px;
+    padding: 0 $space-2;
     background: #FFFFFF;
-    color: #16A34A;
+    color: $color-primary;
     border-radius: 999px;
     font-size: 15px;
     font-weight: 700;
@@ -227,7 +227,7 @@
   min-width: 120px;
   padding: $space-3;
   background: #FFFFFF;
-  border: 2px solid #E5E7EB;
+  border: 2px solid $color-border;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -238,22 +238,22 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
   &--occupied {
-    border-color: #D97706;
-    background: #FFFBEB;
+    border-color: $color-warning;
+    background: $color-warning-50;
   }
 
   &__name {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
   }
 
   &__capacity {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 14px;
-    color: #6B7280;
+    gap: $space-1;
+    font-size: $font-size-label;
+    color: $color-text-sub;
   }
 }
 
@@ -265,18 +265,18 @@
   min-height: 48px;
   padding: 0 $space-3;
   background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 999px;
   font-size: 15px;
   font-weight: 500;
-  color: #374151;
+  color: $color-text-body;
   white-space: nowrap;
   scroll-snap-align: start;
   cursor: pointer;
 
   &--active {
-    background: #16A34A;
-    border-color: #16A34A;
+    background: $color-primary;
+    border-color: $color-primary;
     color: #FFFFFF;
   }
 }
@@ -289,7 +289,7 @@
   min-height: 120px;
   padding: $space-3;
   background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -298,19 +298,19 @@
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
-  &:active { background: #F0FDF4; border-color: #16A34A; }
+  &:active { background: $color-primary-light; border-color: $color-primary; }
 
   &__name {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 600;
-    color: #111827;
+    color: $color-text-title;
     line-height: 1.3;
   }
 
   &__price {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
-    color: #16A34A;
+    color: $color-primary;
     margin-top: $space-2;
   }
 }
@@ -346,20 +346,20 @@
     align-items: flex-start;
     justify-content: space-between;
     padding: $space-4;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 1px solid $color-border;
   }
 
   &__title {
     font-size: 18px;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
     margin: 0;
   }
 
   &__meta {
-    font-size: 14px;
-    color: #6B7280;
-    margin: 4px 0 0;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    margin: $space-1 0 0;
   }
 
   &__close {
@@ -367,7 +367,7 @@
     min-height: 44px;
     border: none;
     background: transparent;
-    color: #6B7280;
+    color: $color-text-sub;
     cursor: pointer;
     font-size: 18px;
   }
@@ -382,7 +382,7 @@
 
   &__footer {
     padding: $space-3 $space-4 $space-4;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid $color-border;
     background: #FFFFFF;
   }
 
@@ -390,7 +390,7 @@
     width: 100%;
     min-height: 72px;
     padding: 0 $space-4;
-    background: #16A34A;
+    background: $color-primary;
     color: #FFFFFF;
     border: none;
     border-radius: 16px;
@@ -398,19 +398,19 @@
     align-items: center;
     justify-content: center;
     gap: $space-2;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 700;
     letter-spacing: 0.5px;
     cursor: pointer;
     box-shadow: 0 4px 16px rgba(22, 163, 74, 0.3);
 
     &:disabled {
-      background: #9CA3AF;
+      background: $color-text-muted;
       box-shadow: none;
       cursor: not-allowed;
     }
 
-    i { font-size: 22px; }
+    i { font-size: $font-size-title; }
   }
 }
 
@@ -419,28 +419,28 @@
   align-items: center;
   gap: $space-2;
   padding: $space-3 $space-4;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid $color-surface-hover;
 
   &__main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: $space-1;
     min-width: 0;
   }
 
   &__name {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 600;
-    color: #111827;
+    color: $color-text-title;
   }
 
   &__note {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: $space-1;
     font-size: 13px;
-    color: #D97706;
+    color: $color-warning;
     font-style: italic;
 
     i { font-size: 12px; }
@@ -455,16 +455,16 @@
   &__qty-btn {
     width: 40px;
     height: 40px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     background: #FFFFFF;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #111827;
+    color: $color-text-title;
     cursor: pointer;
 
-    &:active { background: #F3F4F6; }
+    &:active { background: $color-surface-hover; }
   }
 
   &__qty-value {
@@ -472,16 +472,16 @@
     text-align: center;
     font-size: 17px;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
   }
 
   &__note-btn {
     width: 40px;
     height: 40px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     background: #FFFFFF;
     border-radius: 8px;
-    color: #D97706;
+    color: $color-warning;
     cursor: pointer;
   }
 }
@@ -491,7 +491,7 @@
     width: 100%;
     min-height: 48px;
     padding: 0 $space-3;
-    font-size: 16px;
+    font-size: $font-size-base;
   }
 }
 

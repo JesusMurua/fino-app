@@ -1,3 +1,11 @@
+// LEGACY SHIM — survives until the product-form template migrates
+// to <app-dynamic-form>. No target FDD yet — see FDD-031 §3.3 for context.
+// This service keeps its existing iteration over `allFieldDescriptors()`
+// (flat list from the POC registry, shape incompatible with the shared
+// service's section-based API). It transparently delegates the validator
+// resolution layer to `product-form-validators.ts`, which now rebinds to
+// shared validator implementations per FDD-029 §12 (d).
+
 import { Injectable, inject } from '@angular/core';
 import { FormControl, FormGroup, NonNullableFormBuilder } from '@angular/forms';
 

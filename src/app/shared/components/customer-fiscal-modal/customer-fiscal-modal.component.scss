@@ -40,9 +40,9 @@
   gap: $space-2;
   align-self: flex-start;
   padding: $space-2 $space-4;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: $radius-button;
-  background: #F9FAFB;
+  background: $color-surface-muted;
   color: $color-text-sub;
   font-size: $font-size-label;
   font-weight: 500;
@@ -50,7 +50,7 @@
   cursor: pointer;
   transition: all 0.15s;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 
   &:hover {
     border-color: $color-primary;
@@ -64,14 +64,14 @@
   align-items: center;
   gap: $space-2;
   padding: $space-3;
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
+  background: $color-error-50;
+  border: 1px solid $color-error-200;
   border-radius: $radius-button;
-  color: #DC2626;
+  color: $color-error;
   font-size: 13px;
   font-weight: 500;
 
-  i { font-size: 16px; }
+  i { font-size: $font-size-base; }
 }
 
 // -----------------------------------------------------------------------
@@ -110,7 +110,7 @@
     align-items: center;
     gap: $space-1;
     font-size: 12px;
-    color: #DC2626;
+    color: $color-error;
 
     i { font-size: 12px; }
   }
@@ -210,14 +210,14 @@
     color: white;
     border: none;
 
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
   &--ghost {
     background: transparent;
     color: $color-text-sub;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
 
     &:hover {
       border-color: $color-text-sub;

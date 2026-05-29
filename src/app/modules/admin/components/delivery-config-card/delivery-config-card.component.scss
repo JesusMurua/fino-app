@@ -2,7 +2,7 @@
 
 .dcc {
   border-radius: 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   overflow: hidden;
   transition: box-shadow 0.2s;
 
@@ -39,7 +39,7 @@
   }
 
   &__chevron {
-    font-size: 14px;
+    font-size: $font-size-label;
     color: $color-text-sub;
     transition: transform 0.2s;
 
@@ -70,7 +70,7 @@
   &__status {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: $space-2;
     font-size: 13px;
     font-weight: 500;
 
@@ -81,7 +81,7 @@
 
     &--inactive {
       color: $color-text-sub;
-      .dcc__status-dot { background: #D1D5DB; }
+      .dcc__status-dot { background: $color-border-strong; }
     }
 
     &--none {
@@ -110,7 +110,7 @@
   &__field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: $space-2;
 
     &--row {
       flex-direction: row;
@@ -149,18 +149,18 @@
   &__secret-status {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: $space-2;
     font-size: 13px;
     font-weight: 500;
     color: $color-primary;
 
-    i { font-size: 14px; }
+    i { font-size: $font-size-label; }
   }
 
   &__change-btn {
     background: transparent;
     border: none;
-    color: #2563EB;
+    color: $color-info;
     font-size: 13px;
     font-weight: 500;
     font-family: inherit;
@@ -168,7 +168,7 @@
     padding: 0;
     text-decoration: underline;
 
-    &:hover { color: #1D4ED8; }
+    &:hover { color: $color-info-700; }
   }
 
   // Webhook URL
@@ -177,8 +177,8 @@
     align-items: center;
     justify-content: space-between;
     gap: $space-2;
-    padding: 10px 14px;
-    background: #F3F4F6;
+    padding: $space-2 $space-4;
+    background: $color-surface-hover;
     border-radius: 8px;
 
     code {
@@ -204,7 +204,7 @@
     flex-shrink: 0;
     transition: background 0.15s;
 
-    &:hover { background: #E5E7EB; }
+    &:hover { background: $color-border; }
 
     .pi-check { color: $color-primary; }
   }
@@ -223,9 +223,9 @@
     align-items: center;
     gap: $space-1;
     background: transparent;
-    border: 1px solid rgba(#DC2626, 0.3);
+    border: 1px solid rgba($color-error, 0.3);
     border-radius: 8px;
-    color: #DC2626;
+    color: $color-error;
     font-size: 13px;
     font-weight: 500;
     font-family: inherit;
@@ -233,18 +233,18 @@
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover { background: #FEF2F2; }
+    &:hover { background: $color-error-50; }
   }
 
   &__confirm-text {
     font-size: 13px;
     font-weight: 500;
-    color: #DC2626;
+    color: $color-error;
     margin-right: $space-2;
   }
 
   &__confirm-yes {
-    background: #DC2626;
+    background: $color-error;
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -255,13 +255,13 @@
     cursor: pointer;
     margin-right: $space-1;
 
-    &:hover { background: #B91C1C; }
+    &:hover { background: $color-error-700; }
   }
 
   &__confirm-no {
     background: transparent;
     color: $color-text-sub;
-    border: 1px solid #D1D5DB;
+    border: 1px solid $color-border-strong;
     border-radius: 6px;
     padding: $space-1 $space-3;
     font-size: 13px;
@@ -269,7 +269,7 @@
     font-family: inherit;
     cursor: pointer;
 
-    &:hover { background: #F3F4F6; }
+    &:hover { background: $color-surface-hover; }
   }
 
   &__save-btn {
@@ -288,7 +288,7 @@
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover:not(:disabled) { background: #15803D; }
+    &:hover:not(:disabled) { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 }

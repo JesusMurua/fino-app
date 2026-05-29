@@ -7,9 +7,9 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: $space-1;
   height: 22px;
-  padding: 0 8px;
+  padding: 0 $space-2;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
@@ -17,7 +17,7 @@
 
   &--sm {
     height: 18px;
-    padding: 0 6px;
+    padding: 0 $space-2;
     font-size: 11px;
     gap: 3px;
   }

@@ -27,7 +27,7 @@
     padding: $space-6 0;
     justify-content: center;
 
-    i { font-size: 20px; }
+    i { font-size: $font-size-price; }
   }
 }
 
@@ -45,12 +45,12 @@
 
   &__icon {
     font-size: 64px;
-    color: var(--text3, #D1D5DB);
+    color: var(--text3, $color-border-strong);
   }
 
   &__title {
     margin: 0;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: var(--text1, #{$color-text-title});
   }
@@ -155,7 +155,7 @@
     color: var(--text1, #{$color-text-title});
 
     &--green { color: $color-primary; }
-    &--red   { color: #DC2626; }
+    &--red   { color: $color-error; }
   }
 }
 
@@ -225,7 +225,7 @@
     font-weight: 700;
     text-align: right;
 
-    &--negative { color: #DC2626; }
+    &--negative { color: $color-error; }
   }
 }
 
@@ -239,16 +239,17 @@
   font-size: 12px;
   font-weight: 700;
 
-  &--open       { background: #DCFCE7; color: #16A34A; }
-  &--closed     { background: #F3F4F6; color: #6B7280; }
-  &--withdrawal { background: #DBEAFE; color: #2563EB; }
-  &--expense    { background: #FEF3C7; color: #D97706; }
-  &--adjustment { background: #F3F4F6; color: #6B7280; }
+  &--open       { background: var(--primary-100); color: $color-primary; }
+  &--closed     { background: $color-surface-hover; color: $color-text-sub; }
+  &--withdrawal { background: $color-info-100; color: $color-info; }
+  &--expense    { background: $color-warning-100; color: $color-warning; }
+  &--adjustment { background: $color-surface-hover; color: $color-text-sub; }
 }
 
 // -----------------------------------------------------------------------
 // Buttons
 // -----------------------------------------------------------------------
+// local override: 44px, solid disabled, --lg modifier
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -265,13 +266,13 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #15803D; }
-  &:disabled { background: #D1D5DB; cursor: not-allowed; }
+  &:hover { background: var(--primary-700); }
+  &:disabled { background: $color-border-strong; cursor: not-allowed; }
 
   &--lg {
     padding: $space-3 $space-6;
     min-height: 52px;
-    font-size: 16px;
+    font-size: $font-size-base;
     border-radius: 12px;
   }
 }
@@ -282,7 +283,7 @@
   gap: $space-2;
   padding: $space-2 $space-4;
   min-height: 44px;
-  border: 1px solid var(--border, #E5E7EB);
+  border: 1px solid var(--border, $color-border);
   border-radius: 8px;
   background: transparent;
   color: var(--text2, #{$color-text-sub});
@@ -291,7 +292,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: var(--surface2, #F3F4F6); }
+  &:hover { background: var(--surface2, $color-surface-hover); }
 }
 
 .btn-danger {
@@ -302,7 +303,7 @@
   min-height: 44px;
   border: none;
   border-radius: 8px;
-  background: #DC2626;
+  background: $color-error;
   color: white;
   font-size: $font-size-base;
   font-weight: 600;
@@ -310,7 +311,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #B91C1C; }
+  &:hover { background: $color-error-700; }
 }
 
 .btn-warning {
@@ -321,7 +322,7 @@
   min-height: 44px;
   border: none;
   border-radius: 8px;
-  background: #D97706;
+  background: $color-warning;
   color: white;
   font-size: $font-size-base;
   font-weight: 600;
@@ -329,7 +330,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #B45309; }
+  &:hover { background: $color-warning-700; }
 }
 
 // -----------------------------------------------------------------------
@@ -372,7 +373,7 @@
   .p-inputnumber-input {
     width: 100%;
     height: 64px;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     text-align: right;
     border-radius: 10px;
@@ -382,7 +383,7 @@
 .dialog-hint {
   margin: 0;
   font-size: $font-size-label;
-  color: #9CA3AF;
+  color: $color-text-muted;
   font-style: italic;
 }
 
@@ -393,13 +394,13 @@
   margin: 0;
   padding: $space-3 $space-3;
   border-radius: 10px;
-  background: #FEF3C7;
-  color: #92400E;
+  background: $color-warning-100;
+  color: $color-warning-800;
   font-size: $font-size-label;
   line-height: 1.4;
 
   i {
-    font-size: 16px;
+    font-size: $font-size-base;
     flex-shrink: 0;
     margin-top: 1px;
   }
@@ -456,16 +457,16 @@
   font-size: $font-size-base;
   font-weight: 600;
 
-  i { font-size: 16px; }
+  i { font-size: $font-size-base; }
 
   &--ok {
-    background: #DCFCE7;
-    color: #16A34A;
+    background: var(--primary-100);
+    color: $color-primary;
   }
 
   &--bad {
-    background: #FEF2F2;
-    color: #DC2626;
+    background: $color-error-50;
+    color: $color-error;
   }
 }
 
@@ -485,7 +486,7 @@
   flex: 1;
   padding: $space-3;
   min-height: 64px;
-  border: 1.5px solid var(--border, #E5E7EB);
+  border: 1.5px solid var(--border, $color-border);
   border-radius: 10px;
   background: var(--surface, white);
   font-size: $font-size-label;
@@ -495,10 +496,10 @@
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 
-  &__icon { font-size: 20px; }
+  &__icon { font-size: $font-size-price; }
 
   &:hover {
-    border-color: var(--border2, #D1D5DB);
+    border-color: var(--border2, $color-border-strong);
     background: var(--surface2, #{$color-bg-page});
   }
 
@@ -514,7 +515,7 @@
 // Text utilities
 // -----------------------------------------------------------------------
 .text-green { color: $color-primary; }
-.text-red   { color: #DC2626; }
+.text-red   { color: $color-error; }
 
 // -----------------------------------------------------------------------
 // Close confirmation dialog
@@ -526,8 +527,8 @@
   text-align: center;
   padding: $space-3 0;
 
-  &__icon { font-size: 48px; color: #D97706; margin-bottom: $space-3; }
-  &__text { font-size: 15px; color: var(--text1, #374151); line-height: 1.6; }
+  &__icon { font-size: 48px; color: $color-warning; margin-bottom: $space-3; }
+  &__text { font-size: 15px; color: var(--text1, $color-text-body); line-height: 1.6; }
 
   &__footer {
     display: flex;

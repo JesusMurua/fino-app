@@ -1,17 +1,22 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { FormBuilder, FormGroup } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
-import { DropdownModule } from 'primeng/dropdown';
 import { InputSwitchModule } from 'primeng/inputswitch';
-import { InputTextModule } from 'primeng/inputtext';
-import { PasswordModule } from 'primeng/password';
 import { TableModule } from 'primeng/table';
+import {
+  DynamicFormBuilderService,
+  DynamicFormComponent,
+  DynamicFormSchema,
+  FieldDescriptor,
+  SectionDescriptor,
+} from 'src/app/shared/forms';
 import { CreateUserRequest, UpdateUserRequest, UserDto } from '../../../../core/models';
 import { UserRoleId, USER_ROLE_LABELS } from '../../../../core/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Branch, BranchService } from '../../../../core/services/branch.service';
 import { UserService } from '../../../../core/services/user.service';
+import { ADMIN_USERS_FORM_SCHEMA, AdminUsersFormKey } from './admin-users.form';
 
 /** Role option for the dropdown */
 interface RoleOption {
@@ -25,12 +30,9 @@ interface RoleOption {
   selector: 'app-admin-users',
   standalone: true,
   imports: [
-    ReactiveFormsModule,
     DialogModule,
-    DropdownModule,
+    DynamicFormComponent,
     InputSwitchModule,
-    InputTextModule,
-    PasswordModule,
     TableModule,
   ],
   templateUrl: './admin-users.component.html',
@@ -42,7 +44,10 @@ export class AdminUsersComponent implements OnInit {
   private readonly branchService = inject(BranchService);
   private readonly messageService = inject(MessageService);
   private readonly fb = inject(FormBuilder);
+  private readonly builder = inject(DynamicFormBuilderService);
   readonly authService = inject(AuthService);
+
+  @ViewChild(DynamicFormComponent) private dynamicForm!: DynamicFormComponent<AdminUsersFormKey>;
 
   //#region Properties
 
@@ -63,14 +68,24 @@ export class AdminUsersComponent implements OnInit {
     { label: 'Host',    value: UserRoleId.Host,    icon: '🛎️', color: '#0891B2' },
   ];
 
-  readonly userForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    roleId: [UserRoleId.Cashier, Validators.required],
-    pin: [''],
-    email: [''],
-    password: [''],
-    isActive: [true],
-  });
+  readonly userForm: FormGroup = this.fb.group(
+    this.builder.buildControls<AdminUsersFormKey>(ADMIN_USERS_FORM_SCHEMA),
+  );
+
+  /** Schema with role options injected at construction time per FDD-030 §4.2. */
+  readonly schema: DynamicFormSchema<AdminUsersFormKey> = this.injectRoleOptions(
+    ADMIN_USERS_FORM_SCHEMA,
+  );
+
+  /**
+   * Snapshot pipeline merges `userForm.value` with the `_edit` flag the
+   * status section's `showSection` predicate reads. Reserved-key pattern
+   * documented in FDD-030 Open Question 1.
+   */
+  readonly formSnapshot = computed<Record<string, unknown>>(() => ({
+    ...this.userForm.value,
+    _edit: this.editingUser() !== null,
+  }));
 
   /** Track role changes for conditional fields */
   readonly selectedRole = signal<UserRoleId>(UserRoleId.Cashier);
@@ -204,13 +219,27 @@ export class AdminUsersComponent implements OnInit {
 
   //#region CRUD
 
-  /** Saves user (create or update) */
-  async saveUser(): Promise<void> {
-    if (this.userForm.invalid) return;
+  /** Click handler for the dialog footer "Guardar" button — delegates
+   *  validation + focus management to the orchestrator. The actual
+   *  persistence runs inside `onFormSubmitted` only if the form is valid. */
+  onSaveClick(): void {
+    this.dynamicForm.submit();
+  }
+
+  /** Triggered by `<app-dynamic-form>` (submitted) Output when the form
+   *  is valid. Persists the user (create or update) using the value
+   *  emitted by the orchestrator instead of reading the FormGroup
+   *  directly — keeps the consumer decoupled from internal form state. */
+  async onFormSubmitted(value: Record<AdminUsersFormKey, unknown>): Promise<void> {
     this.savingUser.set(true);
 
-    const { name, roleId: formRoleId, pin, email, password, isActive } = this.userForm.value;
-    const roleId: UserRoleId = formRoleId as UserRoleId;
+    const name = value['name'] as string;
+    const formRoleId = value['roleId'] as UserRoleId;
+    const pin = value['pin'] as string;
+    const email = value['email'] as string;
+    const password = value['password'] as string;
+    const isActive = value['isActive'] as boolean;
+    const roleId: UserRoleId = formRoleId;
 
     try {
       if (this.editingUser()) {
@@ -347,6 +376,34 @@ export class AdminUsersComponent implements OnInit {
     if (this.selectedBranchIds().includes(branchId)) {
       this.defaultBranchId.set(branchId);
     }
+  }
+
+  /**
+   * Returns a deep-cloned schema with the `roleId` dropdown's options
+   * field populated from the consumer's `roleOptions` (with emoji
+   * folded into the label string — the shared FormFieldComponent
+   * dropdown does not yet support custom templates, FDD-031 will).
+   *
+   * @param base Schema as imported from `admin-users.form.ts` (no options).
+   */
+  private injectRoleOptions(
+    base: DynamicFormSchema<AdminUsersFormKey>,
+  ): DynamicFormSchema<AdminUsersFormKey> {
+    const dropdownOptions = this.roleOptions.map(o => ({
+      label: `${o.icon} ${o.label}`,
+      value: o.value,
+    }));
+
+    return {
+      sections: base.sections.map((section: SectionDescriptor<AdminUsersFormKey>) => ({
+        ...section,
+        fields: section.fields.map((field: FieldDescriptor<AdminUsersFormKey>) =>
+          field.key === 'roleId'
+            ? { ...field, options: dropdownOptions }
+            : field,
+        ),
+      })),
+    };
   }
 
   //#endregion

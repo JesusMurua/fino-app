@@ -1,3 +1,5 @@
+@use '../../../../styles/variables' as *;
+
 .expired-overlay {
   position: fixed;
   inset: 0;
@@ -7,7 +9,7 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
-  padding: 24px;
+  padding: $space-5;
 
   &__card {
     display: flex;
@@ -16,7 +18,7 @@
     text-align: center;
     max-width: 420px;
     width: 100%;
-    padding: 48px 32px;
+    padding: $space-7 $space-6;
     background: white;
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -25,28 +27,28 @@
   &__brand {
     font-size: 28px;
     font-weight: 800;
-    color: #16a34a;
+    color: $color-primary;
     letter-spacing: -0.5px;
-    margin-bottom: 4px;
+    margin-bottom: $space-1;
   }
 
   &__business {
-    font-size: 14px;
-    color: #6b7280;
-    margin-bottom: 32px;
+    font-size: $font-size-label;
+    color: $color-text-sub;
+    margin-bottom: $space-6;
   }
 
   &__title {
-    margin: 0 0 8px;
-    font-size: 22px;
+    margin: 0 0 $space-2;
+    font-size: $font-size-title;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
   }
 
   &__subtitle {
-    margin: 0 0 32px;
-    font-size: 16px;
-    color: #6b7280;
+    margin: 0 0 $space-6;
+    font-size: $font-size-base;
+    color: $color-text-sub;
   }
 
   &__cta {
@@ -54,37 +56,37 @@
     height: 56px;
     border: none;
     border-radius: 12px;
-    background: #16a34a;
+    background: $color-primary;
     color: white;
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s;
-    margin-bottom: 24px;
+    margin-bottom: $space-5;
 
     &:active {
-      background: #15803d;
+      background: var(--primary-700);
     }
   }
 
   &__refresh {
     margin: 0;
-    font-size: 14px;
-    color: #6b7280;
+    font-size: $font-size-label;
+    color: $color-text-sub;
   }
 
   &__link {
     background: none;
     border: none;
-    color: #16a34a;
-    font-size: 14px;
+    color: $color-primary;
+    font-size: $font-size-label;
     font-weight: 600;
     cursor: pointer;
     text-decoration: underline;
     padding: 0;
 
     &:hover {
-      color: #15803d;
+      color: var(--primary-700);
     }
   }
 }

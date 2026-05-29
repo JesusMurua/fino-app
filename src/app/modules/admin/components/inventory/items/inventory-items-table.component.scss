@@ -17,10 +17,10 @@
   align-items: center;
   padding: 2px $space-2;
   border-radius: 6px;
-  background: #EFF6FF;
+  background: $color-info-50;
   font-size: 13px;
   font-weight: 600;
-  color: #2563EB;
+  color: $color-info;
 }
 
 // -----------------------------------------------------------------------
@@ -38,13 +38,13 @@
   letter-spacing: 0.03em;
 
   &--empty {
-    background: #FEE2E2;
-    color: #DC2626;
+    background: $color-error-bg;
+    color: $color-error;
   }
 
   &--low {
-    background: #FEF3C7;
-    color: #D97706;
+    background: $color-warning-100;
+    color: $color-warning;
   }
 }
 
@@ -55,7 +55,7 @@
 :host ::ng-deep {
   .p-datatable {
     .p-datatable-thead > tr > th {
-      background: #F9FAFB;
+      background: $color-surface-muted;
       color: $color-text-sub;
       font-size: 12px;
       font-weight: 600;
@@ -70,7 +70,7 @@
     }
 
     .p-datatable-tbody > tr:hover > td {
-      background: #F8FAFC;
+      background: $color-bg-page;
     }
   }
 }

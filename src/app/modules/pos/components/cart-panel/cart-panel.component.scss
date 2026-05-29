@@ -28,20 +28,20 @@
   }
 
   &__title {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 800;
     color: $color-text-title;
     flex: 1;
 
     &--adding {
-      color: #D97706;
+      color: $color-warning;
       font-size: 15px;
       font-weight: 700;
     }
   }
 
   &__table-badge {
-    padding: 4px $space-3;
+    padding: $space-1 $space-3;
     border-radius: $radius-pill;
     font-size: 13px;
     font-weight: 600;
@@ -123,7 +123,7 @@
   &__empty-hint {
     margin: 0;
     max-width: 280px;
-    font-size: 14px;
+    font-size: $font-size-label;
     color: $color-text-sub;
     line-height: 1.45;
   }
@@ -199,7 +199,7 @@
   }
 
   &__qty {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 700;
     min-width: 2rem;
     text-align: center;
@@ -235,9 +235,9 @@
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: $space-2;
   margin-top: $space-1;
-  padding: 4px $space-2;
+  padding: $space-1 $space-2;
   border-radius: $radius-pill;
   background: rgba($color-primary, 0.1);
   color: $color-primary;
@@ -260,8 +260,8 @@
     appearance: none;
     background: transparent;
     border: none;
-    padding: 0 0 0 4px;
-    margin-left: 4px;
+    padding: 0 0 0 $space-1;
+    margin-left: $space-1;
     border-left: 1px solid rgba($color-primary, 0.3);
     color: inherit;
     font-family: inherit;
@@ -270,7 +270,7 @@
     cursor: pointer;
     text-decoration: underline;
 
-    &:hover { color: #15803D; }
+    &:hover { color: var(--primary-700); }
   }
 
   &--unset {
@@ -302,12 +302,12 @@
   padding: $space-2 $space-3;
   border-radius: $radius-button;
   background: rgba(217, 119, 6, 0.08);
-  color: #B45309;
+  color: $color-warning-700;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
 
-  i { font-size: 14px; flex-shrink: 0; }
+  i { font-size: $font-size-label; flex-shrink: 0; }
 }
 
 // -----------------------------------------------------------------------
@@ -321,16 +321,16 @@
   height: 40px;
   border: none;
   border-radius: 10px;
-  background: #F1F5F9;
+  background: $color-border-soft;
   color: $color-text-title;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.1s;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 
-  &:hover { background: #E2E8F0; }
-  &:active { background: #CBD5E1; }
+  &:hover { background: $color-slate-200; }
+  &:active { background: $color-slate-300; }
 
   &:focus-visible {
     outline: 2px solid $color-primary;
@@ -351,7 +351,7 @@
   width: 100%;
   min-height: $touch-target-pos;
   padding: $space-3 $space-4;
-  border: 2px solid #D1D5DB;
+  border: 2px solid $color-border-strong;
   border-radius: $radius-button;
   background: transparent;
   color: $color-text-title;
@@ -361,7 +361,7 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
-  i { font-size: 16px; color: $color-primary; }
+  i { font-size: $font-size-base; color: $color-primary; }
 
   &:hover {
     border-color: $color-primary;
@@ -370,7 +370,7 @@
   }
 
   &:active {
-    background: #DCFCE7;
+    background: var(--primary-100);
   }
 
   &:focus-visible {
@@ -386,7 +386,7 @@
   border-radius: 14px !important;
   font-size: 18px !important;
   font-weight: 700 !important;
-  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
+  background: linear-gradient(135deg, $color-primary 0%, var(--primary-700) 100%) !important;
   border-color: $color-primary !important;
   box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
 
@@ -403,7 +403,7 @@
   border-radius: 14px !important;
   font-size: 18px !important;
   font-weight: 700 !important;
-  background: linear-gradient(135deg, $color-primary 0%, #15803D 100%) !important;
+  background: linear-gradient(135deg, $color-primary 0%, var(--primary-700) 100%) !important;
   border-color: $color-primary !important;
   box-shadow: 0 8px 24px rgba(22, 163, 74, 0.3) !important;
 
@@ -422,7 +422,7 @@
   width: 100%;
   min-height: 52px;
   padding: $space-3 $space-4;
-  border: 2px solid #E2E8F0;
+  border: 2px solid $color-slate-200;
   border-radius: 14px;
   background: transparent;
   color: $color-text-title;
@@ -441,13 +441,13 @@
   }
 
   &:active {
-    background: #DCFCE7;
+    background: var(--primary-100);
   }
 
   &:disabled {
     opacity: 0.4;
     cursor: not-allowed;
-    &:hover { border-color: #E2E8F0; background: transparent; color: $color-text-title; }
+    &:hover { border-color: $color-slate-200; background: transparent; color: $color-text-title; }
   }
 
   &:focus-visible {
@@ -471,7 +471,7 @@
   cursor: pointer;
   transition: color 0.15s;
 
-  &:hover { color: #DC2626; }
+  &:hover { color: $color-error; }
 }
 
 // Cancel order
@@ -490,12 +490,12 @@
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: #FEF2F2;
-    color: #DC2626;
+    background: $color-error-50;
+    color: $color-error;
   }
 
   &:focus-visible {
-    outline: 2px solid #DC2626;
+    outline: 2px solid $color-error;
     outline-offset: 2px;
   }
 }
@@ -506,13 +506,13 @@
 .promo-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: $radius-pill;
   font-size: 11px;
   font-weight: 500;
   background: $color-primary-light;
-  color: #15803D;
-  border: 0.5px solid rgba(#16A34A, 0.2);
+  color: var(--primary-700);
+  border: 0.5px solid rgba($color-primary, 0.2);
   white-space: nowrap;
 }
 
@@ -523,7 +523,7 @@
 }
 
 .price-discounted {
-  color: #15803D;
+  color: var(--primary-700);
   font-weight: 700;
   font-size: $font-size-base;
 }
@@ -545,20 +545,20 @@
 .discount-summary-row {
   display: flex;
   justify-content: space-between;
-  color: #15803D;
+  color: var(--primary-700);
   font-size: 13px;
   font-weight: 500;
 }
 
 .savings-banner {
   background: $color-primary-light;
-  border: 0.5px solid rgba(#16A34A, 0.2);
+  border: 0.5px solid rgba($color-primary, 0.2);
   border-radius: 10px;
   padding: $space-2 $space-3;
   text-align: center;
   font-size: 13px;
   font-weight: 500;
-  color: #15803D;
+  color: var(--primary-700);
 }
 
 // ---- Coupon ----
@@ -595,7 +595,7 @@
 
 .coupon-error {
   font-size: 12px;
-  color: #DC2626;
+  color: $color-error;
 }
 
 .coupon-active-chip {
@@ -604,11 +604,11 @@
   justify-content: space-between;
   padding: $space-2 $space-3;
   background: $color-primary-light;
-  border: 0.5px solid rgba(#16A34A, 0.2);
+  border: 0.5px solid rgba($color-primary, 0.2);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
-  color: #15803D;
+  color: var(--primary-700);
 
   i { margin-right: $space-1; font-size: 12px; }
 
@@ -620,12 +620,12 @@
     height: 32px;
     border: none;
     border-radius: 50%;
-    background: rgba(#16A34A, 0.15);
-    color: #15803D;
+    background: rgba($color-primary, 0.15);
+    color: var(--primary-700);
     cursor: pointer;
 
     i { font-size: 12px; margin: 0; }
-    &:hover { background: rgba(#16A34A, 0.3); }
+    &:hover { background: rgba($color-primary, 0.3); }
   }
 }
 

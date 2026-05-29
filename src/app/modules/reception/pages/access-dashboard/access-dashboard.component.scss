@@ -13,15 +13,15 @@
   display: block;
   height: 100vh;
   width: 100%;
-  background: #f9fafb;
+  background: $color-surface-muted;
 }
 
 .access-dashboard {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 24px;
-  gap: 16px;
+  padding: $space-5;
+  gap: $space-4;
 
   // --------------------------------------------------------------------------
   // Header
@@ -30,8 +30,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
-    padding: 16px 20px;
+    gap: $space-5;
+    padding: $space-4 $space-5;
     background: white;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -42,21 +42,21 @@
       margin: 0;
       font-size: 1.5rem;
       font-weight: 700;
-      color: #111827;
+      color: $color-text-title;
     }
 
     p {
-      margin: 4px 0 0;
+      margin: $space-1 0 0;
       font-size: 0.875rem;
-      color: #6b7280;
+      color: $color-text-sub;
     }
   }
 
   &__status {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
+    gap: $space-2;
+    padding: $space-2 $space-4;
     border-radius: 9999px;
     font-size: 0.875rem;
     font-weight: 600;
@@ -72,21 +72,21 @@
     }
 
     &--reconnecting {
-      background: #FFFBEB;
-      color: #B45309;
+      background: $color-warning-50;
+      color: $color-warning-700;
 
       .access-dashboard__dot {
-        background: #F59E0B;
+        background: $color-warning-500;
         box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
       }
     }
 
     &--disconnected {
-      background: #FEF2F2;
-      color: #B91C1C;
+      background: $color-error-50;
+      color: $color-error-700;
 
       .access-dashboard__dot {
-        background: #DC2626;
+        background: $color-error;
         box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
       }
     }
@@ -110,7 +110,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: $space-2;
   overflow-y: auto;
   flex: 1 1 auto;
 
@@ -118,22 +118,22 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 14px 18px;
+    gap: $space-4;
+    padding: $space-4 $space-4;
     background: white;
     border-radius: 10px;
-    border-left: 4px solid #E5E7EB;
+    border-left: 4px solid $color-border;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     transition: background 0.15s ease;
 
     &--granted {
       border-left-color: #10B981;
-      background: #F0FDF4;
+      background: $color-primary-light;
     }
 
     &--denied {
-      border-left-color: #DC2626;
-      background: #FEF2F2;
+      border-left-color: $color-error;
+      background: $color-error-50;
     }
   }
 
@@ -148,7 +148,7 @@
   &__customer {
     font-size: 1rem;
     font-weight: 600;
-    color: #111827;
+    color: $color-text-title;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -156,7 +156,7 @@
 
   &__time {
     font-size: 0.8125rem;
-    color: #6b7280;
+    color: $color-text-sub;
     font-variant-numeric: tabular-nums;
   }
 
@@ -166,12 +166,12 @@
     align-items: center;
     justify-content: center;
     flex: 1 1 auto;
-    padding: 48px 24px;
-    color: #9ca3af;
+    padding: $space-7 $space-5;
+    color: $color-text-muted;
 
     i {
       font-size: 3rem;
-      margin-bottom: 12px;
+      margin-bottom: $space-3;
     }
 
     p {
@@ -187,12 +187,12 @@
   &__banner {
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 24px 28px;
-    background: #FFFBEB;
-    border: 1px solid #FDE68A;
+    gap: $space-5;
+    padding: $space-5 $space-6;
+    background: $color-warning-50;
+    border: 1px solid $color-warning-200;
     border-radius: 12px;
-    color: #92400E;
+    color: $color-warning-800;
 
     i {
       font-size: 2.5rem;
@@ -210,7 +210,7 @@
   }
 
   &__banner-title {
-    margin: 0 0 4px;
+    margin: 0 0 $space-1;
     font-size: 1.125rem;
     font-weight: 700;
   }
@@ -219,6 +219,6 @@
     margin: 0;
     font-size: 0.9375rem;
     line-height: 1.4;
-    color: #78350F;
+    color: $color-warning-900;
   }
 }

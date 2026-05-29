@@ -1,0 +1,27 @@
+@use 'variables' as *;
+
+// Single source of truth for button primitives redeclared across features.
+// Promoted from 11 per-component redeclarations (AUDIT-059 §2.2 / FDD-033 §5).
+// NOTE: .form-field is intentionally NOT here — the shared <app-form-field>
+// component (FDD-029) owns it. Legacy raw .form-field usages migrate to the
+// component, not to this file (§3.3 deferral).
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: $color-primary;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #15803D; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}

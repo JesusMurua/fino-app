@@ -1,10 +1,12 @@
+@use '../../../../../styles/variables' as *;
+
 // Wall-mounted kiosk — fills the viewport, no scrolling, no chrome.
 :host {
   display: block;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #f8fafc;
+  background: $color-bg-page;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
@@ -21,19 +23,19 @@
 
   // ---- Background gradients by state -----------------------------------
   &--idle {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    background: linear-gradient(135deg, $color-bg-page 0%, $color-slate-200 100%);
   }
   &--granted {
-    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    background: linear-gradient(135deg, $color-primary 0%, var(--primary-700) 100%);
   }
   &--denied {
-    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    background: linear-gradient(135deg, $color-error 0%, $color-error-800 100%);
   }
   &--unknown {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    background: linear-gradient(135deg, $color-warning 0%, $color-warning-700 100%);
   }
   &--upsell {
-    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    background: linear-gradient(135deg, $color-slate-600 0%, $color-slate-700 100%);
   }
 
   // ---- Connection pill (top-right) ------------------------------------
@@ -43,13 +45,13 @@
     right: 24px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    gap: $space-2;
+    padding: $space-2 $space-4;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 999px;
-    font-size: 14px;
+    font-size: $font-size-label;
     font-weight: 500;
-    color: #374151;
+    color: $color-text-body;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(8px);
     z-index: 10;
@@ -59,22 +61,22 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #9ca3af;
+    background: $color-text-muted;
   }
 
   &__pill--connected &__pill-dot {
-    background: #16a34a;
+    background: $color-primary;
     animation: kiosk-pulse 2s infinite;
   }
   &__pill--reconnecting &__pill-dot {
-    background: #f59e0b;
+    background: $color-warning-500;
     animation: kiosk-pulse 1s infinite;
   }
   &__pill--offline &__pill-dot {
-    background: #dc2626;
+    background: $color-error;
   }
   &__pill--unauthorized &__pill-dot {
-    background: #64748b;
+    background: $color-slate-500;
   }
 
   // ---- IDLE state -----------------------------------------------------
@@ -82,18 +84,18 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 48px;
+    gap: $space-7;
     text-align: center;
-    color: #1e293b;
+    color: $color-slate-800;
     animation: kiosk-fade-in 0.6s ease;
-    padding: 0 64px;
+    padding: 0 $space-8;
   }
 
   &__brand {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: $space-2;
   }
 
   &__business {
@@ -101,14 +103,14 @@
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0;
-    color: #0f172a;
+    color: $color-slate-900;
     line-height: 1.1;
   }
 
   &__branch {
     font-size: clamp(20px, 2vw, 28px);
     font-weight: 400;
-    color: #64748b;
+    color: $color-slate-500;
     margin: 0;
   }
 
@@ -116,7 +118,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: $space-2;
   }
 
   &__time {
@@ -124,19 +126,19 @@
     font-weight: 200;
     font-variant-numeric: tabular-nums;
     line-height: 1;
-    color: #0f172a;
+    color: $color-slate-900;
     letter-spacing: -0.05em;
   }
 
   &__date {
     font-size: clamp(20px, 2.5vw, 32px);
-    color: #64748b;
+    color: $color-slate-500;
     text-transform: capitalize;
   }
 
   &__hint {
     font-size: clamp(18px, 2vw, 24px);
-    color: #64748b;
+    color: $color-slate-500;
     margin: 0;
     font-weight: 400;
   }
@@ -147,8 +149,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 24px;
-    padding: 64px;
+    gap: $space-5;
+    padding: $space-8;
     color: #fff;
     text-align: center;
     max-width: 90vw;
@@ -201,9 +203,9 @@
   &__action {
     font-size: clamp(18px, 2vw, 26px);
     font-weight: 400;
-    margin: 24px 0 0 0;
+    margin: $space-5 0 0 0;
     opacity: 0.85;
-    padding: 16px 32px;
+    padding: $space-4 $space-6;
     border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 12px;
   }

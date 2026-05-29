@@ -52,11 +52,11 @@ $bp-desktop: 1024px;
 .pos-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: $space-2;
   height: 52px;
-  padding: 0 12px;
+  padding: 0 $space-3;
   background: #ffffff;
-  border-bottom: 0.5px solid #e5e7eb;
+  border-bottom: 0.5px solid $color-border;
   flex-shrink: 0;
   overflow: hidden;
   min-width: 0;
@@ -65,7 +65,7 @@ $bp-desktop: 1024px;
   &__brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: $space-2;
     flex: 1;
     min-width: 0;
     flex-shrink: 1;
@@ -88,13 +88,13 @@ $bp-desktop: 1024px;
     justify-content: center;
     flex-shrink: 0;
 
-    i { color: white; font-size: 16px; }
+    i { color: white; font-size: $font-size-base; }
   }
 
   &__name {
     font-size: 13px;
     font-weight: 700;
-    color: #0f172a;
+    color: $color-slate-900;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -105,13 +105,13 @@ $bp-desktop: 1024px;
   &__status {
     display: none;
     align-items: center;
-    gap: 4px;
+    gap: $space-1;
 
     &-dot {
       width: 5px;
       height: 5px;
       border-radius: 50%;
-      background: #9CA3AF;
+      background: $color-text-muted;
       transition: background 0.3s;
     }
 
@@ -128,8 +128,8 @@ $bp-desktop: 1024px;
     }
 
     &--offline {
-      .pos-header__status-dot  { background: #DC2626; }
-      .pos-header__status-label { color: #DC2626; }
+      .pos-header__status-dot  { background: $color-error; }
+      .pos-header__status-label { color: $color-error; }
     }
   }
 
@@ -137,7 +137,7 @@ $bp-desktop: 1024px;
   &__right {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: $space-2;
     flex-shrink: 0;
     margin-left: auto;
   }
@@ -151,7 +151,7 @@ $bp-desktop: 1024px;
   &__sync {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: $space-1;
     font-size: 12px;
     font-weight: 500;
     font-family: inherit;
@@ -160,26 +160,26 @@ $bp-desktop: 1024px;
     cursor: default;
 
     &--active  { color: $color-text-sub; }
-    &--pending { color: #D97706; }
+    &--pending { color: $color-warning; }
     &--error   {
-      color: #DC2626;
+      color: $color-error;
       cursor: pointer;
-      &:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
-      .pos-header__sync-badge { background: #DC2626; }
+      &:focus-visible { outline: 2px solid $color-error; outline-offset: 2px; }
+      .pos-header__sync-badge { background: $color-error; }
     }
   }
 
   &__sync-compact {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    background: #fef2f2;
-    border: 0.5px solid #fecaca;
+    gap: $space-1;
+    background: $color-error-50;
+    border: 0.5px solid $color-error-200;
     border-radius: 8px;
-    padding: 5px 8px;
+    padding: $space-1 $space-2;
 
-    &.pos-header__sync--pending { background: #fffbeb; border-color: #fde68a; }
-    &.pos-header__sync--active  { background: #f8fafc; border-color: #e5e7eb; }
+    &.pos-header__sync--pending { background: $color-warning-50; border-color: $color-warning-200; }
+    &.pos-header__sync--active  { background: $color-bg-page; border-color: $color-border; }
   }
 
   &__sync-text { display: none; }
@@ -190,9 +190,9 @@ $bp-desktop: 1024px;
     justify-content: center;
     min-width: 18px;
     height: 18px;
-    padding: 0 5px;
+    padding: 0 $space-1;
     border-radius: 9px;
-    background: #D97706;
+    background: $color-warning;
     color: #fff;
     font-size: 10px;
     font-weight: 700;
@@ -208,16 +208,16 @@ $bp-desktop: 1024px;
     width: 32px;
     height: 32px;
     border-radius: 9px;
-    background: #f8fafc;
-    border: 0.5px solid #e5e7eb;
+    background: $color-bg-page;
+    border: 0.5px solid $color-border;
     color: $color-text-sub;
     cursor: pointer;
     flex-shrink: 0;
-    font-size: 14px;
+    font-size: $font-size-label;
     transition: background 0.15s, color 0.15s;
 
-    &:hover { background: #f1f5f9; color: $color-text-title; }
-    &:active { background: #e2e8f0; }
+    &:hover { background: $color-border-soft; color: $color-text-title; }
+    &:active { background: $color-slate-200; }
     &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
   }
 
@@ -231,7 +231,7 @@ $bp-desktop: 1024px;
     position: absolute;
     top: -4px;
     right: -4px;
-    background: #EF4444;
+    background: $color-error-500;
     color: #fff;
     border-radius: 50%;
     width: 16px;
@@ -278,12 +278,12 @@ $bp-desktop: 1024px;
     align-items: center;
     gap: $space-3;
     padding: $space-2 $space-4;
-    background: #FEF3C7;
-    border-bottom: 1px solid #FDE68A;
+    background: $color-warning-100;
+    border-bottom: 1px solid $color-warning-200;
     font-size: $font-size-label;
-    color: #92400E;
+    color: $color-warning-800;
 
-    i { font-size: 14px; flex-shrink: 0; }
+    i { font-size: $font-size-label; flex-shrink: 0; }
     strong { font-weight: 700; }
   }
 
@@ -314,12 +314,12 @@ $bp-desktop: 1024px;
 .shift-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: $space-2;
+  padding: $space-2 $space-3;
   border: 1px solid transparent;
   border-radius: 9999px;
   background: transparent;
-  color: #111827;
+  color: $color-text-title;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -342,8 +342,8 @@ $bp-desktop: 1024px;
 
   &__amount {
     font-weight: 700;
-    font-size: 14px;
-    color: #111827;
+    font-size: $font-size-label;
+    color: $color-text-title;
     margin-left: 2px;
     display: inline-flex;
     transform-origin: center;
@@ -352,8 +352,8 @@ $bp-desktop: 1024px;
     // dashboards (Stripe / Linear) without adding a literal char.
     &::before {
       content: '·';
-      margin-right: 6px;
-      color: #9CA3AF;
+      margin-right: $space-2;
+      color: $color-text-muted;
       font-weight: 400;
     }
 
@@ -369,12 +369,12 @@ $bp-desktop: 1024px;
   }
 
   &--open {
-    background: #F0FDF4;
-    border-color: #BBF7D0;
-    color: #14532D;
+    background: $color-primary-light;
+    border-color: var(--primary-200);
+    color: var(--primary-900);
 
-    .shift-chip__dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
-    .shift-chip__label { color: #14532D; }
+    .shift-chip__dot   { background: $color-primary; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
+    .shift-chip__label { color: var(--primary-900); }
 
     // Subtle continuous pulse on the green dot while a shift is open.
     // Communicates "alive, transacting" without distracting from the
@@ -386,22 +386,22 @@ $bp-desktop: 1024px;
     }
 
     &:hover {
-      background: #DCFCE7;
-      border-color: #86EFAC;
+      background: var(--primary-100);
+      border-color: var(--primary-300);
     }
   }
 
   &--closed {
-    background: #FEF3C7;
-    border-color: #FDE68A;
-    color: #92400E;
+    background: $color-warning-100;
+    border-color: $color-warning-200;
+    color: $color-warning-800;
 
-    .shift-chip__dot   { background: #D97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15); }
-    .shift-chip__label { color: #92400E; }
+    .shift-chip__dot   { background: $color-warning; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15); }
+    .shift-chip__label { color: $color-warning-800; }
 
     &:hover {
-      background: #FDE68A;
-      border-color: #FCD34D;
+      background: $color-warning-200;
+      border-color: $color-warning-300;
     }
   }
 
@@ -410,14 +410,14 @@ $bp-desktop: 1024px;
   }
 
   &:focus-visible {
-    outline: 2px solid #16A34A;
+    outline: 2px solid $color-primary;
     outline-offset: 2px;
   }
 
   // Hide the amount label on small screens — keep the dot + label so
   // the chip stays compact next to the sync indicator.
   @media (max-width: 600px) {
-    padding: 6px 10px;
+    padding: $space-2 $space-2;
     .shift-chip__amount { display: none; }
   }
 }
@@ -439,8 +439,8 @@ $bp-desktop: 1024px;
 @media (min-width: #{$bp-tablet}) and (max-width: #{$bp-desktop - 1px}) {
   .pos-header {
     height: 54px;
-    padding: 0 16px;
-    gap: 10px;
+    padding: 0 $space-4;
+    gap: $space-2;
 
     &__logo {
       width: 34px;
@@ -459,13 +459,13 @@ $bp-desktop: 1024px;
       margin-top: 1px;
     }
 
-    &__right { gap: 8px; }
+    &__right { gap: $space-2; }
 
     &__divider {
       display: block;
       width: 0.5px;
       height: 20px;
-      background: #e5e7eb;
+      background: $color-border;
       flex-shrink: 0;
     }
 
@@ -477,13 +477,13 @@ $bp-desktop: 1024px;
       display: inline;
       font-size: 11px;
       font-weight: 500;
-      color: #64748b;
-      margin-left: 4px;
+      color: $color-slate-500;
+      margin-left: $space-1;
     }
 
     &__notify-btn {
       width: auto;
-      padding: 0 10px;
+      padding: 0 $space-2;
     }
 
     &__icon-btn {
@@ -507,8 +507,8 @@ $bp-desktop: 1024px;
 @media (min-width: #{$bp-desktop}) {
   .pos-header {
     height: 56px;
-    padding: 0 24px;
-    gap: 12px;
+    padding: 0 $space-5;
+    gap: $space-3;
 
     &__logo {
       width: 36px;
@@ -518,7 +518,7 @@ $bp-desktop: 1024px;
     }
 
     &__name {
-      font-size: 14px;
+      font-size: $font-size-label;
       max-width: 200px;
     }
 
@@ -527,13 +527,13 @@ $bp-desktop: 1024px;
       margin-top: 1px;
     }
 
-    &__right { gap: 8px; }
+    &__right { gap: $space-2; }
 
     &__divider {
       display: block;
       width: 0.5px;
       height: 22px;
-      background: #e5e7eb;
+      background: $color-border;
       flex-shrink: 0;
     }
 
@@ -545,20 +545,20 @@ $bp-desktop: 1024px;
       display: inline;
       font-size: 12px;
       font-weight: 500;
-      color: #64748b;
-      margin-left: 4px;
+      color: $color-slate-500;
+      margin-left: $space-1;
     }
 
     &__notify-btn {
       width: auto;
-      padding: 0 10px;
+      padding: 0 $space-2;
     }
 
     &__icon-btn {
       width: 36px;
       height: 36px;
       border-radius: 10px;
-      font-size: 16px;
+      font-size: $font-size-base;
     }
 
     // Standalone avatar hidden — replaced by chip
@@ -567,9 +567,9 @@ $bp-desktop: 1024px;
     &__user-chip {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 4px 10px 4px 4px;
-      border: 0.5px solid #e5e7eb;
+      gap: $space-2;
+      padding: $space-1 $space-2 $space-1 $space-1;
+      border: 0.5px solid $color-border;
       border-radius: 10px;
       background: white;
       cursor: pointer;
@@ -577,7 +577,7 @@ $bp-desktop: 1024px;
       font-family: inherit;
       transition: background 0.15s;
 
-      &:hover { background: #f8fafc; }
+      &:hover { background: $color-bg-page; }
       &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 
       .pos-header__avatar {
@@ -597,18 +597,18 @@ $bp-desktop: 1024px;
     &__user-name {
       font-size: 12px;
       font-weight: 600;
-      color: #0f172a;
+      color: $color-slate-900;
       white-space: nowrap;
     }
 
     &__user-role {
       font-size: 10px;
-      color: #64748b;
+      color: $color-slate-500;
     }
 
     &__chevron {
       font-size: 10px;
-      color: #94a3b8;
+      color: $color-slate-400;
     }
   }
 }
@@ -619,12 +619,12 @@ $bp-desktop: 1024px;
 :host ::ng-deep .pos-header__user-overlay {
   &.p-overlaypanel {
     border-radius: 14px !important;
-    border: 0.5px solid #e5e7eb !important;
+    border: 0.5px solid $color-border !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
     min-width: 220px;
   }
   .p-overlaypanel-content {
-    padding: 16px !important;
+    padding: $space-4 !important;
   }
 }
 
@@ -635,8 +635,8 @@ $bp-desktop: 1024px;
   &__header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: $space-3;
+    margin-bottom: $space-4;
   }
 
   &__avatar-lg {
@@ -654,21 +654,21 @@ $bp-desktop: 1024px;
   }
 
   &__name {
-    font-size: 14px;
+    font-size: $font-size-label;
     font-weight: 600;
-    color: #0f172a;
+    color: $color-slate-900;
   }
 
   &__role {
     font-size: 11px;
-    color: #64748b;
+    color: $color-slate-500;
     margin-top: 1px;
   }
 
   &__divider {
     height: 0.5px;
-    background: #f1f5f9;
-    margin: 12px 0;
+    background: $color-border-soft;
+    margin: $space-3 0;
   }
 
   // ---- Theme toggle row ----
@@ -679,8 +679,8 @@ $bp-desktop: 1024px;
   &__theme {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 4px;
+    gap: $space-2;
+    padding: $space-2 $space-1;
     width: 100%;
     cursor: pointer;
     border-radius: 8px;
@@ -689,18 +689,18 @@ $bp-desktop: 1024px;
     font-family: inherit;
     transition: background 0.15s;
 
-    &:hover { background: var(--surface2, #F1F5F9); }
+    &:hover { background: var(--surface2, $color-border-soft); }
 
     i {
       font-size: 13px;
-      color: var(--text2, #6B7280);
+      color: var(--text2, $color-text-sub);
       width: 14px;
       text-align: center;
     }
 
     span:first-of-type {
       font-size: 13px;
-      color: var(--text1, #111827);
+      color: var(--text1, $color-text-title);
       font-weight: 500;
       flex: 1;
       text-align: left;
@@ -717,7 +717,7 @@ $bp-desktop: 1024px;
       transition: background 0.25s;
 
       &--on {
-        background: #16a34a;
+        background: $color-primary;
       }
     }
 
@@ -740,8 +740,8 @@ $bp-desktop: 1024px;
   &__logout {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 4px;
+    gap: $space-2;
+    padding: $space-2 $space-1;
     cursor: pointer;
     border-radius: 8px;
     background: transparent;
@@ -749,13 +749,13 @@ $bp-desktop: 1024px;
     font-family: inherit;
     transition: background 0.15s;
 
-    &:hover { background: #fef2f2; }
+    &:hover { background: $color-error-50; }
 
-    i { font-size: 13px; color: #dc2626; }
+    i { font-size: 13px; color: $color-error; }
 
     span {
       font-size: 13px;
-      color: #dc2626;
+      color: $color-error;
       font-weight: 500;
     }
   }
@@ -792,7 +792,7 @@ $bp-desktop: 1024px;
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2px solid #D1D5DB;
+    border: 2px solid $color-border-strong;
     background: transparent;
     transition: background 0.15s, border-color 0.15s;
 
@@ -805,7 +805,7 @@ $bp-desktop: 1024px;
   &__error {
     margin: 0;
     font-size: $font-size-label;
-    color: #DC2626;
+    color: $color-error;
     text-align: center;
   }
 
@@ -825,26 +825,26 @@ $bp-desktop: 1024px;
     height: 64px;
     border: none;
     border-radius: 12px;
-    background: #F3F4F6;
+    background: $color-surface-hover;
     color: $color-text-title;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     transition: background 0.1s, transform 0.1s;
     user-select: none;
 
-    &:hover { background: #E5E7EB; }
-    &:active { background: #D1D5DB; transform: scale(0.95); }
+    &:hover { background: $color-border; }
+    &:active { background: $color-border-strong; transform: scale(0.95); }
     &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 
     &--del {
-      background: #FEF2F2;
-      color: #DC2626;
+      background: $color-error-50;
+      color: $color-error;
       font-size: 18px;
 
-      &:hover { background: #FEE2E2; }
-      &:active { background: #FECACA; }
+      &:hover { background: $color-error-bg; }
+      &:active { background: $color-error-200; }
     }
 
     &--empty {
@@ -860,7 +860,7 @@ $bp-desktop: 1024px;
     font-size: $font-size-base;
     color: $color-text-sub;
 
-    i { font-size: 16px; }
+    i { font-size: $font-size-base; }
   }
 }
 
@@ -919,7 +919,7 @@ $bp-desktop: 1024px;
   &__scanner-input {
     flex: 1;
     min-height: 48px;
-    font-size: 16px;
+    font-size: $font-size-base;
   }
 
   // ---- Items ----
@@ -967,12 +967,12 @@ $bp-desktop: 1024px;
     display: flex;
     align-items: center;
     gap: $space-3;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 600;
   }
 
   &__summary-amount {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-primary;
   }
@@ -1012,7 +1012,7 @@ $bp-desktop: 1024px;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
   }
 
@@ -1022,7 +1022,7 @@ $bp-desktop: 1024px;
     gap: $space-2;
     padding: $space-2 $space-4;
     min-height: 40px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 8px;
     background: transparent;
     color: $color-text-sub;
@@ -1030,7 +1030,7 @@ $bp-desktop: 1024px;
     font-family: inherit;
     cursor: pointer;
 
-    &:hover { background: #F3F4F6; }
+    &:hover { background: $color-surface-hover; }
   }
 
   &__btn-icon {
@@ -1046,9 +1046,9 @@ $bp-desktop: 1024px;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover { background: #F3F4F6; color: $color-text-title; }
+    &:hover { background: $color-surface-hover; color: $color-text-title; }
 
-    &--red:hover { background: #FEF2F2; color: #DC2626; }
+    &--red:hover { background: $color-error-50; color: $color-error; }
   }
 }
 
@@ -1079,8 +1079,8 @@ $bp-desktop: 1024px;
     align-items: center;
     justify-content: space-between;
     padding: $space-3 $space-4;
-    background: #FEF2F2;
-    border: 1px solid #FECACA;
+    background: $color-error-50;
+    border: 1px solid $color-error-200;
     border-radius: 12px;
     gap: $space-3;
   }
@@ -1094,15 +1094,15 @@ $bp-desktop: 1024px;
   }
 
   &__order-num {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 700;
     color: $color-text-title;
   }
 
   &__total {
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 700;
-    color: #DC2626;
+    color: $color-error;
   }
 
   &__meta {
@@ -1132,19 +1132,19 @@ $bp-desktop: 1024px;
     &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 
     &--retry {
-      background: #F0FDF4;
+      background: $color-primary-light;
       color: $color-primary;
 
-      &:hover { background: #DCFCE7; }
-      &:active { background: #BBF7D0; }
+      &:hover { background: var(--primary-100); }
+      &:active { background: var(--primary-200); }
     }
 
     &--discard {
-      background: #FEF2F2;
-      color: #DC2626;
+      background: $color-error-50;
+      color: $color-error;
 
-      &:hover { background: #FEE2E2; }
-      &:active { background: #FECACA; }
+      &:hover { background: $color-error-bg; }
+      &:active { background: $color-error-200; }
     }
   }
 
@@ -1154,17 +1154,17 @@ $bp-desktop: 1024px;
     align-items: center;
     justify-content: space-between;
     padding: $space-3 $space-4;
-    background: #FEF2F2;
+    background: $color-error-50;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 600;
     color: $color-text-title;
   }
 
   &__summary-amount {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
-    color: #DC2626;
+    color: $color-error;
   }
 
   // ---- Empty state ----
@@ -1210,15 +1210,15 @@ $bp-desktop: 1024px;
       background: $color-primary;
       color: white;
 
-      &:hover:not(:disabled) { background: #15803D; }
+      &:hover:not(:disabled) { background: var(--primary-700); }
     }
 
     &--close {
       background: transparent;
-      border: 1px solid #E5E7EB;
+      border: 1px solid $color-border;
       color: $color-text-sub;
 
-      &:hover { background: #F3F4F6; }
+      &:hover { background: $color-surface-hover; }
     }
   }
 }
@@ -1259,8 +1259,8 @@ $bp-desktop: 1024px;
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #FEF3C7;
-    color: #D97706;
+    background: $color-warning-100;
+    color: $color-warning;
 
     i { font-size: 32px; }
   }
@@ -1319,7 +1319,7 @@ $bp-desktop: 1024px;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover:not(:disabled) { background: #15803D; }
+    &:hover:not(:disabled) { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 
     i { font-size: 18px; }
@@ -1331,12 +1331,12 @@ $bp-desktop: 1024px;
     gap: $space-2;
     padding: $space-2 $space-4;
     border-radius: 20px;
-    background: #F0FDF4;
+    background: $color-primary-light;
     color: $color-primary;
     font-size: $font-size-base;
     font-weight: 600;
 
-    i { font-size: 16px; }
+    i { font-size: $font-size-base; }
   }
 
   &__link-btn {
@@ -1349,7 +1349,7 @@ $bp-desktop: 1024px;
     padding: $space-3 $space-5;
     border: 2px solid $color-primary;
     border-radius: $radius-button;
-    background: #F0FDF4;
+    background: $color-primary-light;
     color: $color-primary;
     font-size: $font-size-base;
     font-weight: 700;
@@ -1369,9 +1369,9 @@ $bp-desktop: 1024px;
     gap: $space-2;
     padding: $space-3 $space-4;
     border-radius: 12px;
-    background: #FEF2F2;
-    color: #DC2626;
-    font-size: 14px;
+    background: $color-error-50;
+    color: $color-error;
+    font-size: $font-size-label;
     font-weight: 500;
     text-align: left;
     line-height: 1.4;
@@ -1397,7 +1397,7 @@ $bp-desktop: 1024px;
       content: '';
       flex: 1;
       height: 1px;
-      background: #E5E7EB;
+      background: $color-border;
     }
   }
 
@@ -1423,12 +1423,12 @@ $bp-desktop: 1024px;
     width: 100%;
     min-height: $touch-target-pos;
     padding: $space-3 $space-4;
-    border: 1.5px solid #E5E7EB;
+    border: 1.5px solid $color-border;
     border-radius: $radius-button;
-    background: #F8FAFC;
+    background: $color-bg-page;
     color: $color-text-title;
     font-family: monospace;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 700;
     letter-spacing: 0.25em;
     text-align: center;
@@ -1437,7 +1437,7 @@ $bp-desktop: 1024px;
 
     &::placeholder {
       letter-spacing: 0.2em;
-      color: #CBD5E1;
+      color: $color-slate-300;
       font-weight: 600;
     }
 
@@ -1471,7 +1471,7 @@ $bp-desktop: 1024px;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover:not(:disabled) { background: #15803D; }
+    &:hover:not(:disabled) { background: var(--primary-700); }
     &:disabled { opacity: 0.5; cursor: not-allowed; }
 
     i { font-size: 18px; }
@@ -1520,8 +1520,8 @@ $bp-desktop: 1024px;
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #FEF3C7;
-    color: #D97706;
+    background: $color-warning-100;
+    color: $color-warning;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1532,18 +1532,18 @@ $bp-desktop: 1024px;
   &__title {
     font-size: 24px;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
     margin: 0;
   }
 
   &__body {
     font-size: 15px;
     line-height: 1.5;
-    color: #374151;
+    color: $color-text-body;
     margin: 0;
     max-width: 360px;
 
-    strong { color: #111827; font-weight: 700; }
+    strong { color: $color-text-title; font-weight: 700; }
   }
 
   &__warning {
@@ -1551,15 +1551,15 @@ $bp-desktop: 1024px;
     align-items: flex-start;
     gap: $space-2;
     padding: $space-2 $space-3;
-    background: #FFFBEB;
-    border: 1px solid #FCD34D;
+    background: $color-warning-50;
+    border: 1px solid $color-warning-300;
     border-radius: 10px;
-    color: #92400E;
+    color: $color-warning-800;
     font-size: 13px;
     line-height: 1.4;
     text-align: left;
 
-    i { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    i { font-size: $font-size-base; flex-shrink: 0; margin-top: 1px; }
   }
 
   &__footer {
@@ -1573,7 +1573,7 @@ $bp-desktop: 1024px;
     width: 100%;
     min-height: 56px;
     padding: 0 $space-4;
-    background: #16A34A;
+    background: $color-primary;
     color: #FFFFFF;
     border: none;
     border-radius: 12px;
@@ -1587,7 +1587,7 @@ $bp-desktop: 1024px;
     box-shadow: 0 4px 16px rgba(22, 163, 74, 0.3);
 
     &:disabled {
-      background: #9CA3AF;
+      background: $color-text-muted;
       box-shadow: none;
       cursor: not-allowed;
     }
@@ -1599,13 +1599,13 @@ $bp-desktop: 1024px;
     width: 100%;
     min-height: 44px;
     background: transparent;
-    color: #6B7280;
+    color: $color-text-sub;
     border: none;
-    font-size: 14px;
+    font-size: $font-size-label;
     font-weight: 500;
     cursor: pointer;
 
-    &:hover { color: #111827; }
+    &:hover { color: $color-text-title; }
     &:disabled { cursor: not-allowed; opacity: 0.5; }
   }
 }
@@ -1645,11 +1645,11 @@ $bp-desktop: 1024px;
     background: none;
     font-size: $font-size-base;
     font-family: inherit;
-    color: #DC2626;
+    color: $color-error;
     cursor: pointer;
     transition: opacity 0.15s;
 
-    i { font-size: 14px; }
+    i { font-size: $font-size-label; }
 
     &:hover { opacity: 0.7; }
   }

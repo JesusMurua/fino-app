@@ -21,14 +21,14 @@
   align-items: center;
   justify-content: center;
   gap: $space-2;
-  background: #FEF3C7;
-  color: #92400E;
+  background: $color-warning-100;
+  color: $color-warning-800;
   padding: $space-2 $space-4;
   font-size: 12px;
   text-align: center;
-  border-bottom: 1px solid #FDE68A;
+  border-bottom: 1px solid $color-warning-200;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 }
 
 // -----------------------------------------------------------------------
@@ -66,7 +66,7 @@
   }
 
   &__title {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -92,10 +92,10 @@
 .kds-status {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: $space-1;
   font-size: 12px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: 9999px;
 
   i { font-size: 8px; }
@@ -106,14 +106,14 @@
   }
 
   &--reconnecting {
-    color: #D97706;
-    background: #FEF3C7;
+    color: $color-warning;
+    background: $color-warning-100;
     i { font-size: 12px; }
   }
 
   &--disconnected {
-    color: #DC2626;
-    background: #FEF2F2;
+    color: $color-error;
+    background: $color-error-50;
   }
 }
 

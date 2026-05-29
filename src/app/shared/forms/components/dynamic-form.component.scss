@@ -1,0 +1,11 @@
+@use '../../../../styles/variables' as *;
+
+:host {
+  display: block;
+}
+
+.dynamic-form {
+  display: flex;
+  flex-direction: column;
+  gap: $section-gap;
+}
