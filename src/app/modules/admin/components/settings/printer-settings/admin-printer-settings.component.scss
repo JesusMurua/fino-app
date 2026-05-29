@@ -1,3 +1,5 @@
+@use '../../../../../../styles/variables' as *;
+
 // ============================================================================
 // AdminPrinterSettingsComponent Styles
 // ============================================================================
@@ -5,7 +7,7 @@
 .printer-settings {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: $space-5;
 }
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
@@ -14,20 +16,20 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: $space-4;
   flex-wrap: wrap;
 }
 
 .printer-settings__title {
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
-  margin: 0 0 4px;
+  color: $color-text-title;
+  margin: 0 0 $space-1;
 }
 
 .printer-settings__subtitle {
-  font-size: 14px;
-  color: #6B7280;
+  font-size: $font-size-label;
+  color: $color-text-sub;
   margin: 0;
 }
 
@@ -43,15 +45,15 @@
 
 .dest-name {
   font-weight: 500;
-  color: #111827;
-  margin-right: 8px;
+  color: $color-text-title;
+  margin-right: $space-2;
 }
 
 .dest-badge {
   display: inline-flex;
   align-items: center;
   height: 20px;
-  padding: 0 8px;
+  padding: 0 $space-2;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
@@ -59,8 +61,8 @@
   vertical-align: middle;
 
   &--default {
-    background: #DCFCE7;
-    color: #15803D;
+    background: var(--primary-100);
+    color: var(--primary-700);
   }
 }
 
@@ -70,14 +72,14 @@
   display: inline-flex;
   align-items: center;
   height: 24px;
-  padding: 0 10px;
+  padding: 0 $space-2;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
 
-  &--none      { background: #F3F4F6; color: #374151; }
-  &--network   { background: #DBEAFE; color: #1D4ED8; }
-  &--usb       { background: #FEF3C7; color: #B45309; }
+  &--none      { background: $color-surface-hover; color: $color-text-body; }
+  &--network   { background: $color-info-100; color: $color-info-700; }
+  &--usb       { background: $color-warning-100; color: $color-warning-700; }
   &--bluetooth { background: #EDE9FE; color: #6D28D9; }
 }
 
@@ -86,14 +88,14 @@
 .dest-address {
   font-family: 'Courier New', Courier, monospace;
   font-size: 13px;
-  color: #6B7280;
+  color: $color-text-sub;
 }
 
 // ── Action buttons ───────────────────────────────────────────────────────────
 
 .dest-actions {
   display: flex;
-  gap: 4px;
+  gap: $space-1;
   align-items: center;
 }
 
@@ -101,26 +103,26 @@
 
 .destinations-empty {
   text-align: center;
-  padding: 48px 24px;
+  padding: $space-7 $space-5;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  color: #6B7280;
+  gap: $space-3;
+  color: $color-text-sub;
 
-  p { margin: 0; font-size: 14px; }
+  p { margin: 0; font-size: $font-size-label; }
 }
 
 // ── Info card ────────────────────────────────────────────────────────────────
 
 .printer-info-card {
   display: flex;
-  gap: 12px;
-  padding: 16px;
+  gap: $space-3;
+  padding: $space-4;
   border-radius: 10px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
-  color: #1D4ED8;
+  background: $color-info-50;
+  border: 1px solid $color-info-200;
+  color: $color-info-700;
   font-size: 13px;
   line-height: 1.5;
 
@@ -130,10 +132,10 @@
     margin-top: 2px;
   }
 
-  p { margin: 0 0 4px; &:last-child { margin-bottom: 0; } }
+  p { margin: 0 0 $space-1; &:last-child { margin-bottom: 0; } }
 
   strong { font-weight: 600; }
-  em     { font-style: normal; color: #1E3A8A; }
+  em     { font-style: normal; color: $color-info-900; }
 }
 
 // ── Dialog form ──────────────────────────────────────────────────────────────
@@ -141,14 +143,14 @@
 .dest-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 8px 0;
+  gap: $space-5;
+  padding: $space-2 0;
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: $space-3;
 }
 
 // ── Shared form-field reuse ──────────────────────────────────────────────────
@@ -156,18 +158,18 @@
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: $space-2;
 
   &--row {
     flex-direction: row;
     align-items: center;
-    gap: 12px;
+    gap: $space-3;
   }
 
   &__label {
     font-size: 13px;
     font-weight: 500;
-    color: #374151;
+    color: $color-text-body;
   }
 
   &__input {
@@ -177,5 +179,5 @@
 
 .form-hint {
   font-size: 12px;
-  color: #9CA3AF;
+  color: $color-text-muted;
 }

@@ -35,9 +35,9 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 
-  &:hover { background: #E5E7EB; }
+  &:hover { background: $color-border; }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 }
 
@@ -78,14 +78,14 @@
     margin-bottom: $space-1;
 
     i {
-      font-size: 22px;
+      font-size: $font-size-title;
       color: white;
     }
   }
 
   &__title {
     margin: 0;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-text-title;
   }
@@ -113,7 +113,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid #D1D5DB;
+  border: 2px solid $color-border-strong;
   background: transparent;
   transition: background 0.15s, border-color 0.15s;
 
@@ -129,7 +129,7 @@
 .pin-error {
   margin: 0;
   font-size: $font-size-label;
-  color: #DC2626;
+  color: $color-error;
   text-align: center;
 }
 
@@ -150,7 +150,7 @@
   height: 72px;
   border: none;
   border-radius: 12px;
-  background: #F3F4F6;
+  background: $color-surface-hover;
   color: $color-text-title;
   font-size: 24px;
   font-weight: 600;
@@ -159,17 +159,17 @@
   transition: background 0.1s, transform 0.1s;
   user-select: none;
 
-  &:hover { background: #E5E7EB; }
-  &:active { background: #D1D5DB; transform: scale(0.95); }
+  &:hover { background: $color-border; }
+  &:active { background: $color-border-strong; transform: scale(0.95); }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 
   &--del {
-    background: #FEF2F2;
-    color: #DC2626;
-    font-size: 20px;
+    background: $color-error-50;
+    color: $color-error;
+    font-size: $font-size-price;
 
-    &:hover { background: #FEE2E2; }
-    &:active { background: #FECACA; }
+    &:hover { background: $color-error-bg; }
+    &:active { background: $color-error-200; }
   }
 
   &--empty {
@@ -186,13 +186,13 @@
   align-items: center;
   gap: $space-2;
   padding: $space-2 $space-3;
-  background: #FEF3C7;
-  border: 1px solid #FDE68A;
+  background: $color-warning-100;
+  border: 1px solid $color-warning-200;
   border-radius: 8px;
   font-size: $font-size-label;
-  color: #92400E;
+  color: $color-warning-800;
 
-  i { font-size: 14px; flex-shrink: 0; }
+  i { font-size: $font-size-label; flex-shrink: 0; }
 }
 
 // -----------------------------------------------------------------------
@@ -208,7 +208,7 @@
 
   > i {
     font-size: 36px;
-    color: #DC2626;
+    color: $color-error;
     opacity: 0.7;
   }
 

@@ -6,18 +6,18 @@
 
 // ---- Bill color palette (background, accent) ------------------------------
 $bills: (
-  b20:   (#3b82f6, #93c5fd),
+  b20:   ($color-info-500, $color-info-300),
   b50:   (#db2777, #f9a8d4),
-  b100:  (#dc2626, #fca5a5),
-  b200:  (#{$color-primary}, #86efac),
-  b500:  (#475569, #94a3b8),
+  b100:  ($color-error, $color-error-300),
+  b200:  (#{$color-primary}, var(--primary-300)),
+  b500:  ($color-slate-600, $color-slate-400),
   b1000: (#065f46, #6ee7b7),
 );
 
 .qpay {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: $space-4;
 
   &__total {
     display: flex;
@@ -28,7 +28,7 @@ $bills: (
   &__total-label {
     font-size: 13px;
     font-weight: 500;
-    color: #64748b;
+    color: $color-slate-500;
   }
 
   &__total-amount {
@@ -42,7 +42,7 @@ $bills: (
   &__bills {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: $space-2;
 
     @media (max-width: 380px) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -52,11 +52,11 @@ $bills: (
   &__custom {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: $space-2;
     background: #{$color-bg-page};
-    border: 0.5px solid #e5e7eb;
+    border: 0.5px solid $color-border;
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: $space-2 $space-3;
     transition: border-color 0.15s;
 
     &:focus-within { border-color: #{$color-primary}; }
@@ -65,7 +65,7 @@ $bills: (
   &__custom-prefix {
     font-size: 15px;
     font-weight: 600;
-    color: #64748b;
+    color: $color-slate-500;
   }
 
   &__custom-input {
@@ -79,7 +79,7 @@ $bills: (
     outline: none;
     font-family: inherit;
 
-    &::placeholder { color: #94a3b8; font-weight: 400; }
+    &::placeholder { color: $color-slate-400; font-weight: 400; }
 
     -moz-appearance: textfield;
     &::-webkit-outer-spin-button,
@@ -93,7 +93,7 @@ $bills: (
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0 4px;
+    padding: $space-2 0 $space-1;
     border-top: 0.5px solid #{$color-border-soft};
   }
 
@@ -102,21 +102,21 @@ $bills: (
     justify-content: space-between;
     flex: 1;
     align-items: center;
-    gap: 12px;
+    gap: $space-3;
   }
 
   &__received-label {
     font-size: 13px;
-    color: #64748b;
+    color: $color-slate-500;
     font-weight: 500;
   }
 
   &__received-input {
     width: 110px;
-    border: 0.5px solid #e5e7eb;
+    border: 0.5px solid $color-border;
     border-radius: 10px;
     background: #{$color-bg-page};
-    padding: 6px 10px;
+    padding: $space-2 $space-2;
     font-size: 15px;
     font-weight: 700;
     color: #{$color-text-title};
@@ -142,49 +142,49 @@ $bills: (
     background: #{$color-border-soft};
     border: none;
     font-size: 18px;
-    color: #94a3b8;
+    color: $color-slate-400;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: 12px;
+    margin-left: $space-3;
     line-height: 1;
     font-family: inherit;
 
-    &:active { background: #e2e8f0; }
+    &:active { background: $color-slate-200; }
   }
 
   &__change {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 8px 0 0;
+    padding: $space-2 0 0;
 
     span:first-child {
-      font-size: 14px;
-      color: #64748b;
+      font-size: $font-size-label;
+      color: $color-slate-500;
       font-weight: 500;
     }
 
     strong {
       color: $color-primary;
-      font-size: 22px;
+      font-size: $font-size-title;
       font-weight: 800;
     }
   }
 
   &__hint {
     margin: 0;
-    padding: 4px 2px 0;
+    padding: $space-1 2px 0;
     font-size: 12px;
-    color: #94a3b8;
+    color: $color-slate-400;
     line-height: 1.4;
   }
 
   &__actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: $space-2;
   }
 }
 
@@ -237,7 +237,7 @@ $bills: (
     position: relative;
     z-index: 1;
     height: 100%;
-    padding: 6px 8px;
+    padding: $space-2 $space-2;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -261,7 +261,7 @@ $bills: (
     line-height: 1;
   }
 
-  &--b1000 .qpay-bill__amount { font-size: 16px; }
+  &--b1000 .qpay-bill__amount { font-size: $font-size-base; }
 }
 
 @each $name, $colors in $bills {
@@ -304,7 +304,7 @@ $bills: (
   &--ghost {
     background: transparent;
     color: $color-text-sub;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
 
     &:hover:not(:disabled) {
       border-color: $color-text-sub;
@@ -317,7 +317,7 @@ $bills: (
     color: white;
     border: none;
 
-    &:hover:not(:disabled) { background: #15803D; }
+    &:hover:not(:disabled) { background: var(--primary-700); }
   }
 }
 

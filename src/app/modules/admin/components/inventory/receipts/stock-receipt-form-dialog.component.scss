@@ -11,7 +11,7 @@
 :host ::ng-deep {
   .p-datatable {
     .p-datatable-thead > tr > th {
-      background: #F9FAFB;
+      background: $color-surface-muted;
       color: $color-text-sub;
       font-size: 12px;
       font-weight: 600;
@@ -27,7 +27,7 @@
     }
 
     .p-datatable-tbody > tr:hover > td {
-      background: #F8FAFC;
+      background: $color-bg-page;
     }
   }
 }

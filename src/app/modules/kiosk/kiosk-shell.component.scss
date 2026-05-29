@@ -37,14 +37,14 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: #FEF3C7;
+    background: $color-warning-100;
     display: flex;
     align-items: center;
     justify-content: center;
 
     i {
       font-size: 32px;
-      color: #D97706;
+      color: $color-warning;
     }
   }
 
@@ -62,7 +62,7 @@
     line-height: 1.5;
 
     strong {
-      font-size: 22px;
+      font-size: $font-size-title;
       font-weight: 700;
       color: $color-text-title;
     }
@@ -75,14 +75,14 @@
     border-radius: 16px;
     background: $color-primary;
     color: white;
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: background 0.15s;
 
-    &:hover { background: #15803D; }
-    &:active { background: #166534; }
+    &:hover { background: var(--primary-700); }
+    &:active { background: var(--primary-800); }
   }
 
   &__cancel {

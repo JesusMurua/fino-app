@@ -7,26 +7,26 @@
 .keypad-stage {
   display: flex;
   flex-direction: column;
-  padding: 18px 22px;
+  padding: $space-4 $space-5;
   background: $color-bg-page;
   height: 100%;
   overflow-y: auto;
 
   @media (max-width: 767px) {
-    padding: 14px 16px 12px;
+    padding: $space-4 $space-4 $space-3;
   }
 
   &__title {
-    margin: 0 0 14px;
-    font-size: 16px;
+    margin: 0 0 $space-4;
+    font-size: $font-size-base;
     font-weight: 700;
     color: $color-text-title;
   }
 
   &__hint {
-    margin: 18px 0 0;
+    margin: $space-4 0 0;
     font-size: 13px;
-    color: #94a3b8;
+    color: $color-slate-400;
   }
 
   // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: $space-2;
     width: 100%;
   }
 
@@ -67,27 +67,27 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #94a3b8;
+    color: $color-slate-400;
   }
 
   &__recent {
-    margin-top: 18px;
+    margin-top: $space-4;
   }
 
   &__recent-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 8px;
+    gap: $space-2;
+    margin-top: $space-2;
   }
 
   &__recent-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: $space-2;
+    padding: $space-2 $space-3;
     background: #ffffff;
-    border: 0.5px solid #e5e7eb;
+    border: 0.5px solid $color-border;
     border-radius: 10px;
     cursor: pointer;
     font-family: inherit;

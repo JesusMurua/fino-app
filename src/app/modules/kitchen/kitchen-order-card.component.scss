@@ -14,13 +14,13 @@
   transition: opacity 0.5s ease, transform 0.5s ease;
 
   &--in-progress {
-    background: #F8FAFC;
+    background: $color-bg-page;
     border-left: 4px solid $color-primary;
   }
 
   // overdue takes visual priority over in-progress (declared after)
   &--overdue {
-    border-left: 4px solid #EF4444;
+    border-left: 4px solid $color-error-500;
   }
 
   &--fading {
@@ -39,12 +39,12 @@
   align-items: center;
   justify-content: space-between;
   padding: $space-3 $space-4;
-  background: #F9FAFB;
+  background: $color-surface-muted;
   border-bottom: 1px solid $color-border-soft;
 }
 
 .kds-card__number {
-  font-size: 20px;
+  font-size: $font-size-price;
   font-weight: 700;
   color: $color-text-title;
 }
@@ -54,7 +54,7 @@
   align-items: center;
   padding: 2px $space-2;
   border-radius: $radius-pill;
-  background: #F1F5F9;
+  background: $color-border-soft;
   font-size: 11px;
   font-weight: 600;
   color: $color-text-sub;
@@ -65,14 +65,14 @@
 .kds-card__timer {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: $space-1;
   font-size: 15px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #D97706; // amber — default elapsed color
+  color: $color-warning; // amber — default elapsed color
 
   &--overdue {
-    color: #EF4444;
+    color: $color-error-500;
 
     i { font-size: 13px; }
   }
@@ -127,17 +127,17 @@
 .kds-card__note {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: $space-1;
   margin-top: $space-1;
-  padding: 4px $space-2;
-  background: #FFFBEB;
+  padding: $space-1 $space-2;
+  background: $color-warning-50;
   border-radius: 6px;
   font-size: 13px;
-  color: #92400E;
+  color: $color-warning-800;
 
   i {
     font-size: 11px;
-    color: #D97706;
+    color: $color-warning;
   }
 }
 
@@ -166,19 +166,19 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 
   &--outline {
     background: transparent;
-    border: 1.5px solid #D1D5DB;
+    border: 1.5px solid $color-border-strong;
     color: $color-text-sub;
 
     &:hover {
-      background: #F9FAFB;
-      border-color: #9CA3AF;
+      background: $color-surface-muted;
+      border-color: $color-text-muted;
     }
 
-    &:active { background: #F3F4F6; }
+    &:active { background: $color-surface-hover; }
   }
 
   &--primary {
@@ -186,8 +186,8 @@
     border: none;
     color: white;
 
-    &:hover { background: #15803D; }
-    &:active { background: #166534; }
+    &:hover { background: var(--primary-700); }
+    &:active { background: var(--primary-800); }
   }
 }
 

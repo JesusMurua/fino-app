@@ -30,13 +30,13 @@
 
     i {
       font-size: 2.25rem;
-      color: #DC2626;
+      color: $color-error;
     }
   }
 
   &__title {
     margin: 0 0 $space-3;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 800;
     color: $color-text-title;
   }
@@ -50,7 +50,7 @@
 
   &__detail {
     margin: 0 0 $space-6;
-    font-size: 14px;
+    font-size: $font-size-label;
     color: $color-text-sub;
     line-height: 1.55;
   }
@@ -65,7 +65,7 @@
     width: 100%;
     border: none;
     border-radius: $radius-button;
-    padding: 13px;
+    padding: $space-3;
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;

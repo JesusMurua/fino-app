@@ -1,16 +1,18 @@
+@use '../../../../styles/variables' as *;
+
 .trial-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
+  gap: $space-3;
+  padding: $space-2 $space-5;
   font-size: 13px;
   flex-shrink: 0;
 
   // ---- Variants ----
   &--amber {
-    background: #FFFBEB;
-    color: #92400E;
-    border-bottom: 2px solid #D97706;
+    background: $color-warning-50;
+    color: $color-warning-800;
+    border-bottom: 2px solid $color-warning;
   }
 
   &--orange {
@@ -20,13 +22,13 @@
   }
 
   &--red {
-    background: #FEF2F2;
-    color: #991B1B;
-    border-bottom: 2px solid #DC2626;
+    background: $color-error-50;
+    color: $color-error-800;
+    border-bottom: 2px solid $color-error;
   }
 
   &__icon {
-    font-size: 16px;
+    font-size: $font-size-base;
     flex-shrink: 0;
   }
 
@@ -38,7 +40,7 @@
   &__cta {
     display: inline-flex;
     align-items: center;
-    padding: 4px 12px;
+    padding: $space-1 $space-3;
     border: 1px solid currentColor;
     border-radius: 6px;
     background: transparent;
@@ -58,7 +60,7 @@
   &__link {
     display: inline-flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: $space-1 $space-2;
     border: none;
     border-radius: 6px;
     background: transparent;

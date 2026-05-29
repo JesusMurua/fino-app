@@ -5,24 +5,24 @@
 // =========================================================================
 :host {
   --dlv-card-bg:         #FFFFFF;
-  --dlv-card-head-bg:    #F9FAFB;
-  --dlv-card-border:     #E5E7EB;
-  --dlv-text-primary:    #111827;
-  --dlv-text-secondary:  #6B7280;
-  --dlv-text-item:       #374151;
-  --dlv-footer-border:   #F3F4F6;
+  --dlv-card-head-bg:    $color-surface-muted;
+  --dlv-card-border:     $color-border;
+  --dlv-text-primary:    $color-text-title;
+  --dlv-text-secondary:  $color-text-sub;
+  --dlv-text-item:       $color-text-body;
+  --dlv-footer-border:   $color-surface-hover;
 }
 
 // =========================================================================
 // Dark theme
 // =========================================================================
 :host-context(.theme-dark) {
-  --dlv-card-bg:         #1E293B;
-  --dlv-card-head-bg:    #374151;
-  --dlv-card-border:     #374151;
-  --dlv-text-primary:    #F9FAFB;
-  --dlv-text-secondary:  #9CA3AF;
-  --dlv-text-item:       #D1D5DB;
+  --dlv-card-bg:         $color-slate-800;
+  --dlv-card-head-bg:    $color-text-body;
+  --dlv-card-border:     $color-text-body;
+  --dlv-text-primary:    $color-surface-muted;
+  --dlv-text-secondary:  $color-text-muted;
+  --dlv-text-item:       $color-border-strong;
   --dlv-footer-border:   rgba(255, 255, 255, 0.06);
 }
 
@@ -38,7 +38,7 @@
 
   // Header
   &__header {
-    padding: 10px $space-3;
+    padding: $space-2 $space-3;
     background: var(--dlv-card-head-bg);
     display: flex;
     flex-direction: column;
@@ -61,18 +61,18 @@
   &__timer {
     font-size: 11px;
     font-weight: 600;
-    color: #9CA3AF;
+    color: $color-text-muted;
     font-variant-numeric: tabular-nums;
     display: inline-flex;
     align-items: center;
     gap: 3px;
 
     &--urgent {
-      color: #D97706;
+      color: $color-warning;
     }
 
     &--critical {
-      color: #EF4444;
+      color: $color-error-500;
       animation: dlv-pulse 1s infinite;
 
       i { font-size: 12px; }
@@ -90,7 +90,7 @@
   &__customer {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: $space-1;
 
     i { font-size: 11px; }
   }
@@ -103,7 +103,7 @@
   &__items {
     list-style: none;
     margin: 0;
-    padding: 10px $space-3;
+    padding: $space-2 $space-3;
     display: flex;
     flex-direction: column;
     gap: $space-1;
@@ -130,13 +130,13 @@
   &__note {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-left: 30px;
-    padding: 2px 6px;
-    background: rgba(#D97706, 0.08);
+    gap: $space-1;
+    margin-left: $space-6;
+    padding: 2px $space-2;
+    background: rgba($color-warning, 0.08);
     border-radius: 4px;
     font-size: 11px;
-    color: #D97706;
+    color: $color-warning;
     margin-top: 2px;
 
     i { font-size: 10px; }
@@ -159,7 +159,7 @@
 
   &__actions {
     display: flex;
-    gap: 6px;
+    gap: $space-2;
   }
 }
 
@@ -171,7 +171,7 @@
   align-items: center;
   gap: $space-1;
   min-height: 32px;
-  padding: 6px $space-3;
+  padding: $space-2 $space-3;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
@@ -185,28 +185,28 @@
     background: $color-primary;
     color: #fff;
     border: none;
-    &:hover { background: #15803D; }
+    &:hover { background: var(--primary-700); }
   }
 
   &--reject {
     background: transparent;
-    border: 0.5px solid #FCA5A5;
-    color: #EF4444;
-    &:hover { background: rgba(#EF4444, 0.06); }
+    border: 0.5px solid $color-error-300;
+    color: $color-error-500;
+    &:hover { background: rgba($color-error-500, 0.06); }
   }
 
   &--ready {
-    background: #D97706;
+    background: $color-warning;
     color: #fff;
     border: none;
-    &:hover { background: #B45309; }
+    &:hover { background: $color-warning-700; }
   }
 
   &--pickup {
     background: transparent;
-    border: 0.5px solid #93C5FD;
-    color: #3B82F6;
-    &:hover { background: rgba(#3B82F6, 0.06); }
+    border: 0.5px solid $color-info-300;
+    color: $color-info-500;
+    &:hover { background: rgba($color-info-500, 0.06); }
   }
 }
 

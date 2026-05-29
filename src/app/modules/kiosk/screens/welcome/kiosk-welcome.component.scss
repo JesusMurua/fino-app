@@ -12,7 +12,7 @@
   justify-content: center;
   gap: $space-6;
   min-height: 100dvh;
-  background: #111827;
+  background: $color-text-title;
   padding: $space-6 $space-5;
   text-align: center;
   user-select: none;
@@ -56,13 +56,13 @@
     border-radius: 20px;
     background: $color-primary;
     color: white;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     animation: pulse 2s ease-in-out infinite;
 
-    i { font-size: 22px; }
+    i { font-size: $font-size-title; }
 
     &:active {
       animation: none;

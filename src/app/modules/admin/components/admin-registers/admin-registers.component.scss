@@ -24,8 +24,8 @@
     align-items: center;
     gap: $space-2;
     padding: $space-2 $space-3;
-    background: #F1F5F9;
-    border: 1px dashed #CBD5E1;
+    background: $color-border-soft;
+    border: 1px dashed $color-slate-300;
     border-radius: 8px;
     font-size: $font-size-label;
     color: $color-text-sub;
@@ -37,10 +37,10 @@
   &__linked-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
+    gap: $space-1;
+    padding: 2px $space-2;
     border-radius: 12px;
-    background: #F0FDF4;
+    background: $color-primary-light;
     color: $color-primary;
     font-weight: 500;
     font-size: 13px;
@@ -49,11 +49,11 @@
   &__unlinked-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
+    gap: $space-1;
+    padding: 2px $space-2;
     border-radius: 12px;
-    background: #FEF3C7;
-    color: #D97706;
+    background: $color-warning-100;
+    color: $color-warning;
     font-weight: 500;
     font-size: 13px;
   }
@@ -78,7 +78,7 @@
 
   &__empty-icon {
     font-size: 48px;
-    color: #D1D5DB;
+    color: $color-border-strong;
   }
 
   &__empty-title {
@@ -112,7 +112,7 @@
       font-size: $font-size-label;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      border-bottom: 2px solid #E5E7EB;
+      border-bottom: 2px solid $color-border;
     }
 
     td {
@@ -126,7 +126,7 @@
       transition: background 0.15s;
 
       &:hover {
-        background: #F8FAFC;
+        background: $color-bg-page;
       }
     }
   }
@@ -148,26 +148,26 @@
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: 2px $space-2;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
 
   &--active {
-    background: #F0FDF4;
+    background: $color-primary-light;
     color: $color-primary;
   }
 
   &--inactive {
-    background: #F3F4F6;
-    color: #9CA3AF;
+    background: $color-surface-hover;
+    color: $color-text-muted;
   }
 }
 
 // ---- Skeleton rows ----
 .skeleton-row {
   height: 48px;
-  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background: linear-gradient(90deg, $color-border-soft 25%, $color-slate-200 50%, $color-border-soft 75%);
   background-size: 200% 100%;
   border-radius: 8px;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
@@ -206,7 +206,7 @@
   gap: $space-2;
   padding: $space-3 $space-4;
   min-height: $touch-target-pos;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
@@ -216,7 +216,7 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #F9FAFB; }
+  &:hover { background: $color-surface-muted; }
 }
 
 .btn-icon {
@@ -229,23 +229,23 @@
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
-  font-size: 16px;
+  font-size: $font-size-base;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    background: #F3F4F6;
+    background: $color-surface-hover;
     color: $color-text-title;
   }
 
   &--primary {
     color: $color-primary;
-    &:hover { background: #F0FDF4; }
+    &:hover { background: $color-primary-light; }
   }
 
   &--danger {
-    color: #DC2626;
-    &:hover { background: #FEF2F2; }
+    color: $color-error;
+    &:hover { background: $color-error-50; }
   }
 }
 
@@ -278,7 +278,7 @@
   }
 
   &__error {
-    color: #DC2626;
+    color: $color-error;
     font-size: 13px;
   }
 
@@ -316,7 +316,7 @@
   &__intro {
     margin: 0;
     text-align: center;
-    font-size: 14px;
+    font-size: $font-size-label;
     color: var(--text2, $color-text-sub);
     line-height: 1.5;
   }
@@ -326,8 +326,8 @@
     align-items: center;
     gap: $space-3;
     padding: $space-4 $space-5;
-    background: var(--surface2, #F8FAFC);
-    border: 1px solid var(--border, #E5E7EB);
+    background: var(--surface2, $color-bg-page);
+    border: 1px solid var(--border, $color-border);
     border-radius: 12px;
   }
 
@@ -346,27 +346,27 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    border: 1px solid var(--border, #E5E7EB);
+    border: 1px solid var(--border, $color-border);
     border-radius: 8px;
     background: var(--surface, white);
     color: var(--text2, $color-text-sub);
     cursor: pointer;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 
-    i { font-size: 16px; }
+    i { font-size: $font-size-base; }
 
     &:hover {
-      background: var(--surface2, #F3F4F6);
+      background: var(--surface2, $color-surface-hover);
       color: var(--text1, $color-text-title);
     }
 
     &--ok {
-      background: #DCFCE7;
-      border-color: #BBF7D0;
+      background: var(--primary-100);
+      border-color: var(--primary-200);
       color: $color-primary;
 
       &:hover {
-        background: #BBF7D0;
+        background: var(--primary-200);
         color: $color-primary;
       }
     }
@@ -378,7 +378,7 @@
     gap: $space-2;
     padding: $space-2 $space-3;
     border-radius: 9999px;
-    background: #F0FDF4;
+    background: $color-primary-light;
     color: $color-primary;
     font-size: 13px;
     font-weight: 600;
@@ -386,8 +386,8 @@
     i { font-size: 13px; }
 
     &--expired {
-      background: #FEF2F2;
-      color: #DC2626;
+      background: $color-error-50;
+      color: $color-error;
     }
   }
 
@@ -395,7 +395,7 @@
     margin: 0;
     text-align: center;
     font-size: 12px;
-    color: var(--text3, #9CA3AF);
+    color: var(--text3, $color-text-muted);
     line-height: 1.5;
   }
 }

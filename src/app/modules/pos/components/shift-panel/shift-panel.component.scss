@@ -21,7 +21,7 @@
     width: 100%;
     padding: $space-4 $space-5;
     background: var(--surface, #FFFFFF);
-    border-bottom: 1px solid var(--border, #E5E7EB);
+    border-bottom: 1px solid var(--border, $color-border);
   }
 
   &__title {
@@ -30,11 +30,11 @@
     gap: $space-2;
     font-size: 18px;
     font-weight: 700;
-    color: var(--text1, #111827);
+    color: var(--text1, $color-text-title);
   }
 
   &__icon {
-    font-size: 20px;
+    font-size: $font-size-price;
     color: $color-primary;
   }
 
@@ -47,15 +47,15 @@
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: var(--text2, #6B7280);
+    color: var(--text2, $color-text-sub);
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
 
     i { font-size: 18px; }
 
     &:hover {
-      background: var(--surface2, #F3F4F6);
-      color: var(--text1, #111827);
+      background: var(--surface2, $color-surface-hover);
+      color: var(--text1, $color-text-title);
     }
   }
 
@@ -71,8 +71,8 @@
 // =========================================================================
 
 :host ::ng-deep .p-sidebar.shift-sidebar {
-  background: var(--bg, #F8FAFC) !important;
-  border-left: 0.5px solid var(--border, #E5E7EB);
+  background: var(--bg, $color-bg-page) !important;
+  border-left: 0.5px solid var(--border, $color-border);
 }
 
 :host ::ng-deep .p-sidebar.shift-sidebar .p-sidebar-header {

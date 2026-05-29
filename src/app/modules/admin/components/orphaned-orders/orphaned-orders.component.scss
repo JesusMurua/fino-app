@@ -30,9 +30,9 @@
   &__refresh {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border: 0.5px solid #e5e7eb;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    border: 0.5px solid $color-border;
     border-radius: 8px;
     background: #ffffff;
     color: $color-text-sub;
@@ -43,7 +43,7 @@
     transition: background 0.15s, color 0.15s;
 
     &:hover:not(:disabled) {
-      background: #f8fafc;
+      background: $color-bg-page;
       color: $color-text-title;
     }
 
@@ -70,32 +70,32 @@
     color: $color-text-sub;
   }
 
-  &__muted { color: #cbd5e1; }
+  &__muted { color: $color-slate-300; }
 
   &__badge {
     display: inline-flex;
     align-items: center;
-    padding: 3px 10px;
+    padding: 3px $space-2;
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
 
     &--paid {
-      background: #f0fdf4;
+      background: $color-primary-light;
       color: $color-primary;
     }
 
     &--unpaid {
-      background: #fef3c7;
-      color: #92400e;
+      background: $color-warning-100;
+      color: $color-warning-800;
     }
   }
 
   &__action {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: $space-2;
+    padding: $space-2 $space-3;
     border: none;
     border-radius: 8px;
     background: $color-primary;
@@ -140,8 +140,8 @@
     flex-direction: column;
     gap: $space-2;
     padding: $space-3 $space-4;
-    background: #f8fafc;
-    border: 0.5px solid #e5e7eb;
+    background: $color-bg-page;
+    border: 0.5px solid $color-border;
     border-radius: 10px;
   }
 
@@ -152,21 +152,21 @@
     font-size: 13px;
 
     strong {
-      font-size: 14px;
+      font-size: $font-size-label;
       font-weight: 700;
-      color: #0f172a;
+      color: $color-slate-900;
     }
   }
 
   &__total {
     color: $color-primary !important;
-    font-size: 16px !important;
+    font-size: $font-size-base !important;
   }
 
   &__field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: $space-2;
   }
 
   &__label {
@@ -192,10 +192,10 @@
     border-radius: 10px;
     font-family: inherit;
     font-size: 13px;
-    padding: 10px 12px;
-    border: 0.5px solid #e5e7eb;
-    background: #f8fafc;
-    color: #0f172a;
+    padding: $space-2 $space-3;
+    border: 0.5px solid $color-border;
+    background: $color-bg-page;
+    color: $color-slate-900;
     resize: vertical;
 
     &:focus { outline: none; border-color: $color-primary; }
@@ -204,8 +204,8 @@
   &__btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
+    gap: $space-2;
+    padding: $space-2 $space-4;
     border: none;
     border-radius: 10px;
     font-size: 13px;
@@ -220,10 +220,10 @@
 
     &--ghost {
       background: transparent;
-      border: 0.5px solid #e5e7eb;
+      border: 0.5px solid $color-border;
       color: $color-text-sub;
 
-      &:hover:not(:disabled) { background: #f8fafc; color: $color-text-title; }
+      &:hover:not(:disabled) { background: $color-bg-page; color: $color-text-title; }
     }
 
     &--primary {

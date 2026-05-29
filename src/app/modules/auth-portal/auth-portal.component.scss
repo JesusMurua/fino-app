@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: center;
   padding: $space-5;
-  background: linear-gradient(180deg, #F9FAFB 0%, #F3F4F6 100%);
+  background: linear-gradient(180deg, $color-surface-muted 0%, $color-surface-hover 100%);
 }
 
 .auth-portal {
@@ -34,7 +34,7 @@
   // doesn't compete with the question prompt below.
   &__brand {
     display: inline-block;
-    font-size: 22px;
+    font-size: $font-size-title;
     font-weight: 800;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -73,7 +73,7 @@
     padding: $space-5;
     min-height: 140px;
     background: white;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 16px;
     cursor: pointer;
     text-align: left;
@@ -96,7 +96,7 @@
     width: 56px;
     height: 56px;
     border-radius: 14px;
-    background: #F0FDF4;
+    background: $color-primary-light;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -111,7 +111,7 @@
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: $space-1;
     flex: 1;
     min-width: 0;
   }
@@ -123,14 +123,14 @@
   }
 
   &__card-sub {
-    font-size: 14px;
+    font-size: $font-size-label;
     color: $color-text-sub;
     line-height: 1.4;
   }
 
   &__arrow {
     color: $color-text-sub;
-    font-size: 16px;
+    font-size: $font-size-base;
     flex-shrink: 0;
     transition: transform 0.15s, color 0.15s;
   }

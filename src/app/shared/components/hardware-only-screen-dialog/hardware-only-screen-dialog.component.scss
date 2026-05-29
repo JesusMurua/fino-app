@@ -1,3 +1,5 @@
+@use '../../../../styles/variables' as *;
+
 :host ::ng-deep .hardware-only-dialog {
   border-radius: 16px;
 }
@@ -5,32 +7,32 @@
 .hardware-only-dialog__header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: $space-3;
 }
 
 .hardware-only-dialog__icon {
   font-size: 28px;
-  color: #D97706;
+  color: $color-warning;
 }
 
 .hardware-only-dialog__title {
   margin: 0;
-  font-size: 20px;
+  font-size: $font-size-price;
   font-weight: 700;
-  color: #111827;
+  color: $color-text-title;
 }
 
 .hardware-only-dialog__body {
   margin: 0;
-  padding: 8px 0 16px;
-  font-size: 16px;
+  padding: $space-2 0 $space-4;
+  font-size: $font-size-base;
   line-height: 1.5;
-  color: #374151;
+  color: $color-text-body;
 }
 
 .hardware-only-dialog__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: $space-3;
   flex-wrap: wrap;
 }

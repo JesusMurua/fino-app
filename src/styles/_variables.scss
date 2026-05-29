@@ -92,6 +92,54 @@ $color-text-muted:      #9CA3AF;  // muted / placeholder text (35)
 $color-warning:         #D97706;  // warning / caution — CLAUDE.md (62)
 $color-info:            #2563EB;  // info / link — recurring literal, NOT in CLAUDE.md palette (21)
 
+// -----------------------------------------------------------------------------
+// Extended semantic scales — FDD-034 §3 (Sweep 0).
+// Value-preserving: each token == the exact hex already used in components.
+// The -600 shade of each family is the existing semantic alias above
+// ($color-error #DC2626, $color-warning #D97706, $color-info #2563EB);
+// slate -50/-100 alias to $color-bg-page #F8FAFC / $color-border-soft #F1F5F9.
+// -----------------------------------------------------------------------------
+
+// Red / Error scale
+$color-error-50:        #FEF2F2;
+$color-error-200:       #FECACA;
+$color-error-300:       #FCA5A5;
+$color-error-500:       #EF4444;
+$color-error-700:       #B91C1C;
+$color-error-800:       #991B1B;
+$color-error-900:       #7F1D1D;
+
+// Amber / Warning scale
+$color-warning-50:      #FFFBEB;
+$color-warning-100:     #FEF3C7;
+$color-warning-200:     #FDE68A;
+$color-warning-300:     #FCD34D;
+$color-warning-400:     #FBBF24;
+$color-warning-500:     #F59E0B;
+$color-warning-700:     #B45309;
+$color-warning-800:     #92400E;
+$color-warning-900:     #78350F;
+
+// Blue / Info scale
+$color-info-50:         #EFF6FF;
+$color-info-100:        #DBEAFE;
+$color-info-200:        #BFDBFE;
+$color-info-300:        #93C5FD;
+$color-info-500:        #3B82F6;
+$color-info-700:        #1D4ED8;
+$color-info-800:        #1E40AF;
+$color-info-900:        #1E3A8A;
+
+// Slate scale
+$color-slate-200:       #E2E8F0;
+$color-slate-300:       #CBD5E1;
+$color-slate-400:       #94A3B8;
+$color-slate-500:       #64748B;
+$color-slate-600:       #475569;
+$color-slate-700:       #334155;
+$color-slate-800:       #1E293B;
+$color-slate-900:       #0F172A;
+
 // Premium UI tokens
 $shadow-card:          0 4px 20px rgba(0, 0, 0, 0.04);   // Extremely soft
 $shadow-card-hover:    0 8px 30px rgba(0, 0, 0, 0.08);   // Lift on hover

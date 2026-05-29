@@ -8,11 +8,11 @@
 
   &__tabs {
     :host ::ng-deep .p-tabview-nav {
-      border-bottom: 1px solid #E5E7EB;
+      border-bottom: 1px solid $color-border;
     }
 
     :host ::ng-deep .p-tabview-nav li .p-tabview-nav-link {
-      font-size: 16px;
+      font-size: $font-size-base;
       font-weight: 500;
       padding: $space-2 $space-3;
       display: flex;

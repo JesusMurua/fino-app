@@ -20,9 +20,9 @@
 
   &__badge {
     display: inline-block;
-    padding: 4px 12px;
-    background: #F3F4F6;
-    color: #6B7280;
+    padding: $space-1 $space-3;
+    background: $color-surface-hover;
+    color: $color-text-sub;
     font-size: 13px;
     font-weight: 500;
     border-radius: 999px;
@@ -31,15 +31,15 @@
   &__title {
     font-size: 32px;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
     margin: 0;
     max-width: 720px;
     line-height: 1.2;
   }
 
   &__subtitle {
-    font-size: 16px;
-    color: #6B7280;
+    font-size: $font-size-base;
+    color: $color-text-sub;
     margin: 0;
     max-width: 640px;
     line-height: 1.5;
@@ -58,7 +58,7 @@
     gap: $space-3;
     padding: $space-5;
     background: #FFFFFF;
-    border: 1px solid #E5E7EB;
+    border: 1px solid $color-border;
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
@@ -67,26 +67,26 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: $space-1;
   }
 
   &__price-amount {
     font-size: 48px;
     font-weight: 700;
-    color: #16A34A;
+    color: $color-primary;
     line-height: 1;
   }
 
   &__price-unit {
-    font-size: 16px;
-    color: #6B7280;
+    font-size: $font-size-base;
+    color: $color-text-sub;
   }
 
   &__price-promo {
     font-size: 13px;
-    color: #D97706;
+    color: $color-warning;
     font-weight: 500;
-    margin-top: 4px;
+    margin-top: $space-1;
   }
 
   &__cta-btn {
@@ -104,7 +104,7 @@
 .feature-card {
   padding: $space-4;
   background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -113,19 +113,19 @@
 
   &__icon {
     font-size: 28px;
-    color: #16A34A;
+    color: $color-primary;
   }
 
   &__title {
     font-size: 17px;
     font-weight: 700;
-    color: #111827;
+    color: $color-text-title;
     margin: 0;
   }
 
   &__description {
-    font-size: 14px;
-    color: #6B7280;
+    font-size: $font-size-label;
+    color: $color-text-sub;
     margin: 0;
     line-height: 1.5;
   }

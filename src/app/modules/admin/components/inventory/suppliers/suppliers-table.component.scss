@@ -23,13 +23,13 @@
   letter-spacing: 0.03em;
 
   &--active {
-    background: #DCFCE7;
-    color: #16A34A;
+    background: var(--primary-100);
+    color: $color-primary;
   }
 
   &--inactive {
-    background: #F3F4F6;
-    color: #9CA3AF;
+    background: $color-surface-hover;
+    color: $color-text-muted;
   }
 }
 
@@ -40,7 +40,7 @@
 :host ::ng-deep {
   .p-datatable {
     .p-datatable-thead > tr > th {
-      background: #F9FAFB;
+      background: $color-surface-muted;
       color: $color-text-sub;
       font-size: 12px;
       font-weight: 600;
@@ -55,7 +55,7 @@
     }
 
     .p-datatable-tbody > tr:hover > td {
-      background: #F8FAFC;
+      background: $color-bg-page;
     }
   }
 }

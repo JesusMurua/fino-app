@@ -30,7 +30,7 @@
 // Muted placeholder for empty location cells in the branches table.
 .branch-empty-cell {
   font-style: italic;
-  color: #9CA3AF;
+  color: $color-text-muted;
 }
 
 // Card reuses the global settings-card style — only local tweaks here
@@ -47,12 +47,12 @@
 .matrix-badge {
   display: inline-block;
   margin-left: $space-2;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
   color: $color-primary;
-  background: #F0FDF4;
+  background: $color-primary-light;
   vertical-align: middle;
 }
 
@@ -61,17 +61,17 @@
 // -----------------------------------------------------------------------
 .role-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
   color: $color-text-sub;
-  background: #F3F4F6;
+  background: $color-surface-hover;
   vertical-align: middle;
 
   &--matrix {
     color: $color-primary;
-    background: #F0FDF4;
+    background: $color-primary-light;
   }
 }
 
@@ -164,7 +164,7 @@
       font-size: 15px;
       font-weight: 600;
       color: $color-text-title;
-      margin: 0 0 4px;
+      margin: 0 0 $space-1;
     }
 
     p {

@@ -62,7 +62,7 @@
 .kiosk-ticket__total-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: $space-1;
   padding: $space-4 $space-6;
   background: $color-primary-light;
   border-radius: 16px;
@@ -78,7 +78,7 @@
 }
 
 .kiosk-ticket__total-label {
-  font-size: 16px;
+  font-size: $font-size-base;
   color: $color-text-sub;
 }
 
@@ -103,7 +103,7 @@
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 
-  i { color: #1D4ED8; font-size: 20px; flex-shrink: 0; }
+  i { color: $color-info-700; font-size: $font-size-price; flex-shrink: 0; }
 }
 
 // -----------------------------------------------------------------------
@@ -128,16 +128,16 @@
   border-radius: 16px;
   background: $color-primary;
   color: white;
-  font-size: 22px;
+  font-size: $font-size-title;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 22px; }
+  i { font-size: $font-size-title; }
 
-  &:hover  { background: #15803D; }
-  &:active { background: #166534; transform: scale(0.98); }
+  &:hover  { background: var(--primary-700); }
+  &:active { background: var(--primary-800); transform: scale(0.98); }
 }
 
 .kiosk-ticket__btn-whatsapp {
@@ -151,13 +151,13 @@
   border-radius: 16px;
   background: white;
   color: #075E54;
-  font-size: 20px;
+  font-size: $font-size-price;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  i { font-size: 22px; color: #25D366; }
+  i { font-size: $font-size-title; color: #25D366; }
 
   &:hover  { background: #F0FFF4; }
   &:active { transform: scale(0.98); }

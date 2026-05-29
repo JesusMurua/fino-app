@@ -29,7 +29,7 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 2px solid #E5E7EB;
+  border: 2px solid $color-border;
   border-radius: 12px;
   background: transparent;
   color: $color-text-sub;
@@ -39,7 +39,7 @@
 
   i { font-size: 18px; }
 
-  &:hover  { background: #F3F4F6; }
+  &:hover  { background: $color-surface-hover; }
   &:active { transform: scale(0.95); }
 }
 
@@ -52,11 +52,11 @@
 }
 
 .ks__item-count {
-  font-size: 14px;
+  font-size: $font-size-label;
   font-weight: 600;
   color: $color-text-sub;
   background: $color-bg-page;
-  padding: 4px $space-3;
+  padding: $space-1 $space-3;
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -130,7 +130,7 @@
 }
 
 .ks__item-name {
-  font-size: 16px;
+  font-size: $font-size-base;
   font-weight: 600;
   color: $color-text-title;
   white-space: nowrap;
@@ -159,7 +159,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1.5px solid #E5E7EB;
+  border: 1.5px solid $color-border;
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
@@ -169,12 +169,12 @@
 
   i { font-size: 12px; }
 
-  &:hover  { background: #F3F4F6; border-color: #D1D5DB; }
+  &:hover  { background: $color-surface-hover; border-color: $color-border-strong; }
   &:active { transform: scale(0.9); }
 }
 
 .ks__qty {
-  font-size: 16px;
+  font-size: $font-size-base;
   font-weight: 700;
   color: $color-text-title;
   min-width: 24px;
@@ -185,7 +185,7 @@
 // Price & remove
 // -----------------------------------------------------------------------
 .ks__item-price {
-  font-size: 16px;
+  font-size: $font-size-base;
   font-weight: 700;
   color: $color-text-title;
   flex-shrink: 0;
@@ -208,9 +208,9 @@
 }
 
 .ks__price-discounted {
-  color: #15803D;
+  color: var(--primary-700);
   font-weight: 700;
-  font-size: 16px;
+  font-size: $font-size-base;
 }
 
 .ks__remove-btn {
@@ -222,15 +222,15 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #D1D5DB;
+  color: $color-border-strong;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
   font-family: inherit;
 
-  i { font-size: 14px; }
+  i { font-size: $font-size-label; }
 
-  &:hover { background: #FEF2F2; color: #DC2626; }
+  &:hover { background: $color-error-50; color: $color-error; }
   &:active { transform: scale(0.9); }
 }
 
@@ -273,11 +273,11 @@
 .ks__summary-row {
   display: flex;
   justify-content: space-between;
-  font-size: 16px;
+  font-size: $font-size-base;
   color: $color-text-sub;
 
   &--discount {
-    color: #15803D;
+    color: var(--primary-700);
     font-weight: 500;
   }
 }
@@ -296,14 +296,14 @@
 }
 
 .ks__savings-banner {
-  background: #F0FDF4;
-  border: 0.5px solid rgba(#16A34A, 0.2);
+  background: $color-primary-light;
+  border: 0.5px solid rgba($color-primary, 0.2);
   border-radius: 10px;
   padding: $space-2 $space-3;
   text-align: center;
   font-size: 15px;
   font-weight: 500;
-  color: #15803D;
+  color: var(--primary-700);
 }
 
 // -----------------------------------------------------------------------
@@ -325,17 +325,17 @@
   justify-content: center;
   height: 52px;
   padding: 0 $space-5;
-  border: 2px solid #E5E7EB;
+  border: 2px solid $color-border;
   border-radius: 14px;
   background: transparent;
   color: $color-text-sub;
-  font-size: 16px;
+  font-size: $font-size-base;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #FEF2F2; border-color: #FECACA; color: #DC2626; }
+  &:hover { background: $color-error-50; border-color: $color-error-200; color: $color-error; }
   &:active { transform: scale(0.97); }
 }
 
@@ -358,7 +358,7 @@
 
   i { font-size: 18px; }
 
-  &:hover  { background: #15803D; }
-  &:active { background: #166534; transform: scale(0.97); }
+  &:hover  { background: var(--primary-700); }
+  &:active { background: var(--primary-800); transform: scale(0.97); }
   &:focus-visible { outline: 2px solid $color-primary; outline-offset: 2px; }
 }

@@ -34,7 +34,7 @@
 
   &__search {
     padding: $space-3 $space-4;
-    border-bottom: 1px solid #F1F5F9;
+    border-bottom: 1px solid $color-border-soft;
   }
 
   &__list {
@@ -64,7 +64,7 @@
 
   &__input {
     width: 100%;
-    padding-left: 36px;
+    padding-left: $space-6;
   }
 }
 
@@ -78,7 +78,7 @@
   gap: $space-2;
   padding: $space-3 $space-4;
   border: none;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid $color-border-soft;
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -90,7 +90,7 @@
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: $color-bg-page;
   }
 
   &--selected {
@@ -192,7 +192,7 @@
   align-items: center;
   justify-content: space-between;
   padding: $space-4 $space-5;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid $color-border-soft;
 
   &__name {
     margin: 0 0 $space-1 0;
@@ -227,7 +227,7 @@
 .recipes-table {
   // Padding inside table cells
   :deep(.p-datatable-tbody > tr > td) {
-    padding: 10px 12px;
+    padding: $space-2 $space-3;
     vertical-align: middle;
   }
 }
@@ -245,7 +245,7 @@
 
   &__warn {
     font-size: 13px;
-    color: #D97706;
+    color: $color-warning;
     cursor: help;
   }
 }
@@ -264,7 +264,7 @@
 // Table footer: cost total row
 // -----------------------------------------------------------------------
 .recipe-footer {
-  background: #F8FAFC;
+  background: $color-bg-page;
 
   &__label {
     text-align: right;
@@ -275,7 +275,7 @@
   }
 
   &__total {
-    font-size: 20px;
+    font-size: $font-size-price;
     font-weight: 700;
     color: $color-primary;
     padding: $space-3 $space-4 !important;
@@ -291,7 +291,7 @@
   min-height: 36px;
 
   &__spinner {
-    font-size: 16px;
+    font-size: $font-size-base;
     color: $color-text-sub;
   }
 }
@@ -312,12 +312,12 @@
 // -----------------------------------------------------------------------
 .unit-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px $space-2;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
-  background: #EFF6FF;
-  color: #2563EB;
+  background: $color-info-50;
+  color: $color-info;
 }
 
 // -----------------------------------------------------------------------
@@ -325,7 +325,7 @@
 // -----------------------------------------------------------------------
 .add-line-section {
   padding: $space-4 $space-5;
-  border-top: 1px solid #F1F5F9;
+  border-top: 1px solid $color-border-soft;
 }
 
 .add-line-form {
@@ -374,7 +374,7 @@
   gap: $space-2;
   padding: $space-2 $space-4;
   min-height: 40px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid $color-border;
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
@@ -382,7 +382,7 @@
   font-family: inherit;
   cursor: pointer;
 
-  &:hover { background: #F3F4F6; }
+  &:hover { background: $color-surface-hover; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
@@ -392,7 +392,7 @@
   gap: $space-2;
   padding: $space-2 $space-4;
   min-height: 40px;
-  border: 1px dashed #D1D5DB;
+  border: 1px dashed $color-border-strong;
   border-radius: 8px;
   background: transparent;
   color: $color-text-sub;
@@ -421,10 +421,10 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #F3F4F6; color: $color-text-title; }
+  &:hover { background: $color-surface-hover; color: $color-text-title; }
 
   &--danger {
-    &:hover { background: #FEF2F2; color: #DC2626; }
+    &:hover { background: $color-error-50; color: $color-error; }
   }
 
   &:disabled { opacity: 0.35; cursor: not-allowed; }

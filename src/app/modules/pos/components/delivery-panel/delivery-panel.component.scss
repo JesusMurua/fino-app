@@ -5,33 +5,33 @@
 // =========================================================================
 :host {
   --dlv-panel-bg:        #FFFFFF;
-  --dlv-panel-header-bg: #F9FAFB;
-  --dlv-panel-border:    #E5E7EB;
-  --dlv-panel-tabs-bg:   #F9FAFB;
-  --dlv-tab-active:      #16A34A;
-  --dlv-tab-inactive:    #6B7280;
-  --dlv-tab-count-bg:    #E5E7EB;
-  --dlv-tab-count-color: #374151;
-  --dlv-tab-count-active-bg:    #DCFCE7;
-  --dlv-tab-count-active-color: #16A34A;
-  --dlv-empty-color:     #9CA3AF;
+  --dlv-panel-header-bg: $color-surface-muted;
+  --dlv-panel-border:    $color-border;
+  --dlv-panel-tabs-bg:   $color-surface-muted;
+  --dlv-tab-active:      $color-primary;
+  --dlv-tab-inactive:    $color-text-sub;
+  --dlv-tab-count-bg:    $color-border;
+  --dlv-tab-count-color: $color-text-body;
+  --dlv-tab-count-active-bg:    var(--primary-100);
+  --dlv-tab-count-active-color: $color-primary;
+  --dlv-empty-color:     $color-text-muted;
 }
 
 // =========================================================================
 // Dark theme
 // =========================================================================
 :host-context(.theme-dark) {
-  --dlv-panel-bg:        #111827;
-  --dlv-panel-header-bg: #0F172A;
-  --dlv-panel-border:    #1E293B;
-  --dlv-panel-tabs-bg:   #0F172A;
-  --dlv-tab-active:      #16A34A;
-  --dlv-tab-inactive:    #6B7280;
-  --dlv-tab-count-bg:    #1E293B;
-  --dlv-tab-count-color: #9CA3AF;
-  --dlv-tab-count-active-bg:    #14532D;
-  --dlv-tab-count-active-color: #86EFAC;
-  --dlv-empty-color:     #6B7280;
+  --dlv-panel-bg:        $color-text-title;
+  --dlv-panel-header-bg: $color-slate-900;
+  --dlv-panel-border:    $color-slate-800;
+  --dlv-panel-tabs-bg:   $color-slate-900;
+  --dlv-tab-active:      $color-primary;
+  --dlv-tab-inactive:    $color-text-sub;
+  --dlv-tab-count-bg:    $color-slate-800;
+  --dlv-tab-count-color: $color-text-muted;
+  --dlv-tab-count-active-bg:    var(--primary-900);
+  --dlv-tab-count-active-color: var(--primary-300);
+  --dlv-empty-color:     $color-text-sub;
 }
 
 // =========================================================================
@@ -75,7 +75,7 @@
     display: flex;
     align-items: center;
     gap: $space-2;
-    font-size: 16px;
+    font-size: $font-size-base;
     font-weight: 500;
     color: var(--dlv-tab-active);
   }
@@ -85,7 +85,7 @@
   }
 
   &__urgent-badge {
-    background: #EF4444;
+    background: $color-error-500;
     color: #fff;
     border-radius: 50%;
     width: 20px;
@@ -109,7 +109,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: $font-size-label;
     transition: background 0.15s;
 
     &:hover { background: var(--dlv-panel-border); }
@@ -121,12 +121,12 @@
     background: var(--dlv-panel-tabs-bg);
     border-bottom: 0.5px solid var(--dlv-panel-border);
     padding: 0 $space-4;
-    gap: 4px;
+    gap: $space-1;
   }
 
   &__tab {
     flex: 1;
-    padding: 10px $space-3;
+    padding: $space-2 $space-3;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -139,7 +139,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: $space-1;
 
     &--active {
       color: var(--dlv-tab-active);
@@ -152,7 +152,7 @@
     background: var(--dlv-tab-count-bg);
     color: var(--dlv-tab-count-color);
     border-radius: 20px;
-    padding: 1px 7px;
+    padding: 1px $space-2;
     font-size: 11px;
 
     .dlv-panel__tab--active & {
