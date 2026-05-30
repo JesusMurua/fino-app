@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 /** Supported mascot skins — matches the 4 macro categories + a neutral default. */
-export type BrioSkin = 'default' | 'restaurant' | 'cafe' | 'retail' | 'services';
+export type FinoSkin = 'default' | 'restaurant' | 'cafe' | 'retail' | 'services';
 
-const HATS: Record<Exclude<BrioSkin, 'default'>, string> = {
+const HATS: Record<Exclude<FinoSkin, 'default'>, string> = {
   restaurant: `
     <circle cx="26" cy="13" r="5" fill="#ffffff"/>
     <circle cx="32" cy="10" r="7" fill="#ffffff"/>
@@ -30,7 +30,7 @@ const HATS: Record<Exclude<BrioSkin, 'default'>, string> = {
   `,
 };
 
-const BODY_COLOR: Record<BrioSkin, string> = {
+const BODY_COLOR: Record<FinoSkin, string> = {
   default:    '#16A34A',
   restaurant: '#EF4444',
   cafe:       '#F59E0B',
@@ -39,44 +39,44 @@ const BODY_COLOR: Record<BrioSkin, string> = {
 };
 
 /**
- * Brío mascot — simple SVG character that swaps accessory/body color per
+ * Fino mascot — simple SVG character that swaps accessory/body color per
  * business vertical. Used by the onboarding wizard to give the selection
  * step a friendly, contextual face.
  */
 @Component({
-  selector: 'app-brio-mascot',
+  selector: 'app-fino-mascot',
   standalone: true,
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="brio-mascot__frame" [attr.data-skin]="skin">
-      <div class="brio-mascot__svg" [innerHTML]="renderedSvg"></div>
+    <div class="fino-mascot__frame" [attr.data-skin]="skin">
+      <div class="fino-mascot__svg" [innerHTML]="renderedSvg"></div>
     </div>
   `,
   styles: [`
     :host {
       display: inline-flex;
     }
-    .brio-mascot__frame {
+    .fino-mascot__frame {
       width: 100%;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .brio-mascot__svg {
+    .fino-mascot__svg {
       width: 100%;
       height: 100%;
       transition: transform 0.18s ease;
     }
-    .brio-mascot__frame[data-changing='true'] .brio-mascot__svg {
+    .fino-mascot__frame[data-changing='true'] .fino-mascot__svg {
       transform: scale(0.82);
     }
   `],
 })
-export class BrioMascotComponent {
+export class FinoMascotComponent {
 
-  private _skin: BrioSkin = 'default';
+  private _skin: FinoSkin = 'default';
   private _sanitized: SafeHtml;
 
   constructor(private readonly sanitizer: DomSanitizer) {
@@ -84,13 +84,13 @@ export class BrioMascotComponent {
   }
 
   /** Active skin — setting it recomputes the SVG. */
-  @Input() set skin(value: BrioSkin) {
-    const next: BrioSkin = value ?? 'default';
+  @Input() set skin(value: FinoSkin) {
+    const next: FinoSkin = value ?? 'default';
     if (next === this._skin) return;
     this._skin = next;
     this._sanitized = this.sanitizer.bypassSecurityTrustHtml(this.buildSvg(next));
   }
-  get skin(): BrioSkin {
+  get skin(): FinoSkin {
     return this._skin;
   }
 
@@ -98,7 +98,7 @@ export class BrioMascotComponent {
     return this._sanitized;
   }
 
-  private buildSvg(skin: BrioSkin): string {
+  private buildSvg(skin: FinoSkin): string {
     const hat = skin === 'default' ? '' : HATS[skin];
     const body = BODY_COLOR[skin];
     return `

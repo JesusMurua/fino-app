@@ -7,8 +7,15 @@ Always read the `.claude/` folder standards before implementing anything.
 
 ## Project Overview
 
-**POS Táctil** — A touch-first Point-of-Sale web application for small food businesses
-(fondas, food trucks, cafeterías, abarrotes) in Mexico.
+**Fino** — Plataforma de gestión y operación para negocios.
+
+Touch-first web platform for small businesses in Mexico — fondas, food trucks,
+cafeterías, abarrotes, refaccionarias, estéticas, talleres, gimnasios.
+Point-of-sale, reception, and vertical modules.
+
+This repository (`fino-app`) is the Angular 18 frontend. Sibling repos:
+`fino-api` (.NET backend), `fino-bridge` (Windows hardware service),
+`fino-landing` (public landing + registration), `fino-admin` (super admin).
 
 **Core philosophy:** Simple, fast, offline-first. Show products → add to cart → charge.
 No unnecessary complexity. Features are added incrementally based on real user feedback.

@@ -2,7 +2,7 @@ import { Injectable, effect, signal } from '@angular/core';
 
 /** localStorage key — shared with the legacy admin shell so users keep
  *  their preference when migrating to the unified theme model. */
-const DARK_MODE_KEY = 'brio.dashboard.darkMode';
+const DARK_MODE_KEY = 'fino.dashboard.darkMode';
 
 /**
  * Single source of truth for the application-wide light / dark theme.

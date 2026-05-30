@@ -36,7 +36,7 @@ import { CatalogService } from '../../core/services/catalog.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
-import { BrioMascotComponent, BrioSkin } from './brio-mascot/brio-mascot.component';
+import { FinoMascotComponent, FinoSkin } from './fino-mascot/fino-mascot.component';
 
 const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 
@@ -60,7 +60,7 @@ interface MacroDesign {
   /** CSS accent for the icon background + badge color */
   accent: string;
   /** Mascot skin to activate when this card is selected/hovered */
-  skin: BrioSkin;
+  skin: FinoSkin;
 }
 
 /** Cluster of related sub-giros (Macro 4 Services UX grouping). */
@@ -141,7 +141,7 @@ const OTRA_SUB_ID = -1;
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [FormsModule, InputTextModule, BrioMascotComponent],
+  imports: [FormsModule, InputTextModule, FinoMascotComponent],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.scss',
 })
@@ -236,7 +236,7 @@ export class OnboardingComponent implements OnInit {
 
   /** Mascot skin tracks hover → falls back to the selected macro's skin. */
   readonly hoveredMacroId = signal<MacroCategoryCode | null>(null);
-  readonly mascotSkin = computed<BrioSkin>(() => {
+  readonly mascotSkin = computed<FinoSkin>(() => {
     const hoverId = this.hoveredMacroId();
     const activeId = this.selectedMacroId();
     const focusedId = hoverId ?? activeId;

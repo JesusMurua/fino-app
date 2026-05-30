@@ -32,8 +32,8 @@ export interface ChecklistItem {
  * the current shift is closed — without pinning we would uncheck the
  * step right after the tenant's first successful close.
  */
-const FIRST_SESSION_OPENED_KEY = 'brio.checklist.firstSessionOpened';
-const HIDDEN_BY_USER_KEY = 'brio.checklist.hidden';
+const FIRST_SESSION_OPENED_KEY = 'fino.checklist.firstSessionOpened';
+const HIDDEN_BY_USER_KEY = 'fino.checklist.hidden';
 
 /**
  * Reactive source of truth for the FTUE checklist shown on the dashboard.

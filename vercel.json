@@ -1,6 +1,6 @@
 {
   "buildCommand": "ng build --configuration production",
-  "outputDirectory": "dist/restaurant-app/browser",
+  "outputDirectory": "dist/fino-app/browser",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

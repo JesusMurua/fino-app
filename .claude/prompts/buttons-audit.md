@@ -19,14 +19,14 @@ La pantalla `/admin/settings` (tab Negocio) muestra tres botones primarios verde
 
 | Ruta | Por qué |
 |---|---|
-| `/home/user/restaurant-app/CLAUDE.md` | Reglas de Touch UX, design tokens, idioma (código en inglés / chat en español). |
-| `/home/user/restaurant-app/.claude/response-guidelines.md` | "Analizar antes de codear, esperar confirmación, no agregar features extra". |
-| `/home/user/restaurant-app/.claude/html-standards.md` | Orden de atributos, convenciones HTML/PrimeNG. |
-| `/home/user/restaurant-app/.claude/coding-standards.md` | Naming, observables, regions. |
-| `/home/user/restaurant-app/src/styles/_variables.scss` | Tokens: `$color-primary #16A34A`, `$radius-button 12px`, `$touch-target-min 64px`, `$touch-target-pos 48px`, `$font-size-base 16px`. |
-| `/home/user/restaurant-app/src/styles/_touch.scss` | Override global `.p-button { min-height: 64px }`. |
-| `/home/user/restaurant-app/src/styles.scss` | Override de tema PrimeNG `lara-light-indigo` con `--primary-color: #16A34A`. |
-| `/home/user/restaurant-app/angular.json` (líneas 37-43) | Tema base de PrimeNG cargado. |
+| `/home/user/fino-app/CLAUDE.md` | Reglas de Touch UX, design tokens, idioma (código en inglés / chat en español). |
+| `/home/user/fino-app/.claude/response-guidelines.md` | "Analizar antes de codear, esperar confirmación, no agregar features extra". |
+| `/home/user/fino-app/.claude/html-standards.md` | Orden de atributos, convenciones HTML/PrimeNG. |
+| `/home/user/fino-app/.claude/coding-standards.md` | Naming, observables, regions. |
+| `/home/user/fino-app/src/styles/_variables.scss` | Tokens: `$color-primary #16A34A`, `$radius-button 12px`, `$touch-target-min 64px`, `$touch-target-pos 48px`, `$font-size-base 16px`. |
+| `/home/user/fino-app/src/styles/_touch.scss` | Override global `.p-button { min-height: 64px }`. |
+| `/home/user/fino-app/src/styles.scss` | Override de tema PrimeNG `lara-light-indigo` con `--primary-color: #16A34A`. |
+| `/home/user/fino-app/angular.json` (líneas 37-43) | Tema base de PrimeNG cargado. |
 
 **Componente con la patología más visible:**
 - `src/app/modules/admin/components/settings/admin-settings.component.html` (640 líneas, 8 botones, 5 patrones distintos).
@@ -46,7 +46,7 @@ La pantalla `/admin/settings` (tab Negocio) muestra tres botones primarios verde
 
 ```
 Eres un auditor de UI/UX para una app POS Angular 18 + PrimeNG 17 ubicada en
-/home/user/restaurant-app. Antes de responder, lee:
+/home/user/fino-app. Antes de responder, lee:
 - CLAUDE.md (sección "Touch UX" y "Design System")
 - .claude/html-standards.md
 - src/styles/_variables.scss
@@ -95,7 +95,7 @@ Pantalla a auditar: <RUTA_O_NOMBRE_DEL_COMPONENTE>
 ```
 Eres un Senior Frontend Architect (Angular 18 + PrimeNG 17). Tu tarea es
 DEFINIR (no implementar) el sistema canónico de botones para
-/home/user/restaurant-app.
+/home/user/fino-app.
 
 Contexto obligatorio a leer antes de proponer:
 - CLAUDE.md (secciones "Design System" y "Touch UX")
