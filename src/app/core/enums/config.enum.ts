@@ -177,7 +177,7 @@ export enum SubCategoryType {
  * Update this map as new vertical specializations land (e.g. when
  * Yoga / Crossfit get their own `BusinessTypeId` values).
  */
-export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
+export function subCategoryOfBusinessType(id: number): SubCategoryType {
   if (id === BusinessTypeId.Gimnasio) return SubCategoryType.Gym;
   return SubCategoryType.Generic;
 }
@@ -187,8 +187,12 @@ export function subCategoryOfBusinessType(id: BusinessTypeId): SubCategoryType {
  * If any sub-giro maps to a non-Generic vertical, that wins; otherwise
  * the result is `Generic`. Used to hydrate `currentSubCategory` from a
  * `BusinessGiroResponse`.
+ *
+ * Accepts `number[]` (not `BusinessTypeId[]`) so the catalog's expanded
+ * IDs 21-123 — which are intentionally NOT in the enum — flow through
+ * without casts. Unknown IDs map to `Generic`.
  */
-export function deriveSubCategory(ids: readonly BusinessTypeId[]): SubCategoryType {
+export function deriveSubCategory(ids: readonly number[]): SubCategoryType {
   for (const id of ids) {
     const sub = subCategoryOfBusinessType(id);
     if (sub !== SubCategoryType.Generic) return sub;
