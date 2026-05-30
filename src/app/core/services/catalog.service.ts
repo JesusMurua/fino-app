@@ -123,8 +123,8 @@ export class CatalogService {
    * — a focused follow-up — will add ETag negotiation to that service.
    */
   async loadAll(): Promise<void> {
-    // Cohorts A1 + A2 + C — Dexie + ETag (FDD-028 F1 + F2 + F4).
-    const cached = Promise.allSettled([
+    // Cohorts A1 + A2 + B + C — Dexie + ETag (FDD-028 F1 + F2 + F3 + F4).
+    await Promise.allSettled([
       // A1 (F1)
       this.hydrateRoute('/catalog/kitchen-statuses', this.kitchenStatuses),
       this.hydrateRoute('/catalog/display-statuses', this.displayStatuses),
@@ -136,21 +136,14 @@ export class CatalogService {
         '/catalog/plans',
         payload => this._planApiFeatures.set(this.parsePlanDto(payload)),
       ),
+      // B (F3) — business-types: BusinessTypeDto carries clusterCode for Macro 4 grouping.
+      this.hydrateRoute('/catalog/business-types',   this.businessTypes),
       // C (F4) — new consumer surface
       this.hydrateRoute('/catalog/macro-categories', this.macroCategories),
       this.hydrateRoute('/catalog/plan-types',       this.planTypes),
       this.hydrateRoute('/catalog/access-methods',   this.accessMethods),
       this.hydrateRoute('/catalog/access-reasons',   this.accessReasons),
     ]);
-
-    // Legacy pattern — FDD-028 F3 will migrate /catalog/business-types
-    // (Cohort B reshape: BusinessTypeDto + client-side macro join).
-    const legacy = Promise.allSettled([
-      firstValueFrom(this.api.get<BusinessTypeCatalog[]>('/catalog/business-types')),
-    ]);
-
-    const [, legacyResults] = await Promise.all([cached, legacy]);
-    if (legacyResults[0].status === 'fulfilled') this.businessTypes.set(legacyResults[0].value);
   }
 
   /**
