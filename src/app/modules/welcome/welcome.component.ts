@@ -201,11 +201,15 @@ export class WelcomeComponent {
 
   /**
    * Primary CTA: marks welcome shown, then navigates the user to the
-   * caja shell route appropriate for their vertical. Disabled during
-   * the round-trip to prevent double-submission.
+   * back office (`/admin/dashboard`) where they continue setting up
+   * their tenant. We do NOT land on the caja shell directly because
+   * a fresh tenant has no products, no taxes configured, and no
+   * device paired — the caja entry would immediately block with a
+   * "Vincular Dispositivo" dialog. Back office is the right entry
+   * point; from there the topbar exposes a "Caja" button when ready.
    */
   async enterBusiness(): Promise<void> {
-    await this.markShownAndNavigate(this.primaryRouteForMacro());
+    await this.markShownAndNavigate('/admin/dashboard');
   }
 
   /**
@@ -244,18 +248,6 @@ export class WelcomeComponent {
       this.isClosing.set(false);
       this.error.set('No pudimos guardar tu progreso. Intenta de nuevo.');
     }
-  }
-
-  /**
-   * Resolves the entry route into the caja shell based on the tenant's
-   * vertical. F&B tenants land on the omni-channel hub (`/pos`) which
-   * exposes mesas / takeout / delivery selectors; everyone else enters
-   * the Fast-Lane chameleon (`/pos/sell`).
-   */
-  private primaryRouteForMacro(): string {
-    return this.tenantContext.currentMacro() === MacroCategoryCode.FoodBeverage
-      ? '/pos'
-      : '/pos/sell';
   }
 
   /**
