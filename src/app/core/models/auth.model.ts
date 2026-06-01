@@ -7,6 +7,26 @@ export interface BranchInfo {
 }
 
 /**
+ * Cross-branch counts of the tenant, computed by the backend and
+ * embedded in every `AuthResponse`. Drives the Welcome screen's
+ * "Tu cuenta está lista" chips and "Primeros pasos sugeridos" steps
+ * without forcing the FE to issue N parallel `count` requests post-login.
+ *
+ * Refreshes on every login, `/auth/me`, switch-branch, register and
+ * `welcome-shown`. Reads are correct at the snapshot moment; reactive
+ * counts that need to update mid-session (e.g. while the user adds a
+ * product) come from local services (ProductService, etc.).
+ */
+export interface BusinessSnapshot {
+  userCount: number;
+  productCount: number;
+  branchCount: number;
+  tableCount: number;
+  cashRegisterCount: number;
+  deviceCount: number;
+}
+
+/**
  * Identifies how the current session was created.
  * - `email`: browser login with email + password (Back Office users).
  * - `pin`: terminal login with a 4-digit PIN (operational staff).
@@ -54,6 +74,22 @@ export interface AuthUser {
    * with sessions created before the `/auth/me` contract shipped.
    */
   sessionType?: AuthSessionType;
+  /**
+   * Timestamp of when this user closed the Welcome screen for the
+   * first time. `null` until they do, then immutable. Drives the
+   * `welcomeShownGuard` redirect to `/welcome` on first authenticated
+   * navigation. Stored as the same ISO 8601 string the backend emits
+   * (or empty string from the JWT claim normalized at hydration time).
+   */
+  welcomeShownAt?: string | null;
+  /**
+   * Cross-branch tenant counts emitted by the backend with every
+   * AuthResponse. Drives the Welcome screen content. Optional for
+   * backwards compatibility with sessions cached before the snapshot
+   * shipped — the welcome service falls back to local service counts
+   * when this is absent.
+   */
+  snapshot?: BusinessSnapshot;
 }
 
 /**
@@ -124,6 +160,17 @@ export interface LoginResponse {
   features?: string[];
   /** How this session was authenticated — see AuthSessionType. */
   sessionType?: AuthSessionType;
+  /**
+   * Timestamp (ISO 8601) of when the user closed the Welcome screen,
+   * or `null` if they have not yet. Empty string is treated as null
+   * to match the backend's JWT claim convention.
+   */
+  welcomeShownAt?: string | null;
+  /**
+   * Tenant counts snapshot — see {@link BusinessSnapshot}. Populated
+   * by the backend on every AuthResponse.
+   */
+  snapshot?: BusinessSnapshot;
 }
 
 /** Shape of GET /api/subscription/status response */

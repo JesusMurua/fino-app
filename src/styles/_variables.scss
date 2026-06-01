@@ -21,6 +21,13 @@ $font-size-label:     14px;   // Secondary labels (category tabs, meta info)
 $font-size-title:     22px;   // Section headings
 $font-weight-bold:      600;
 
+// Semantic scale aliases — use these for new components (preferred over
+// literal sizes). Keep numeric values in sync with the legacy tokens
+// above so existing screens remain visually identical.
+$font-size-sm:        14px;   // same as $font-size-label
+$font-size-lg:        18px;   // between base (16) and title (22) — sub-titles
+$font-size-2xl:       28px;   // hero greetings, large titles
+
 // -----------------------------------------------------------------------------
 // Spacing scale (based on PrimeFlex 8px grid)
 // -----------------------------------------------------------------------------
@@ -78,6 +85,10 @@ $color-badge-bg:       #16A34A;  // Cart item count badge
 $color-text-title:     #111827;  // Dark — headings
 $color-text-sub:       #6B7280;  // Grey — secondary labels
 $color-bg-page:        #F8FAFC;  // Premium off-white — page background
+$color-surface:        #ffffff;  // Pure white — elevated panels, cards
+$color-bg-soft:        #F9FAFB;  // Off-white — subtle chip / step background
+$color-bg-soft-hover:  #F3F4F6;  // One tick darker — soft surface hover
+$color-text-primary:   #374151;  // Alias of $color-text-body for new components
 $color-border-soft:    #F1F5F9;  // Very light slate — separators
 
 // Neutral grays — promoted from repeated hex literals (FDD-033 §2.2)

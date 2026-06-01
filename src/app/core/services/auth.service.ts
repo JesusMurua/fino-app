@@ -19,7 +19,8 @@ import {
   sha256Hex,
 } from '../models';
 import { BACK_OFFICE_ROLES, idToCode, PlanTypeId, SubCategoryType } from '../enums';
-import { extractFeaturesFromJwt } from '../utils/jwt.utils';
+import { BusinessSnapshot } from '../models';
+import { extractFeaturesFromJwt, extractWelcomeShownAtFromJwt } from '../utils/jwt.utils';
 import { ApiService } from './api.service';
 import { BranchContextService } from './branch-context.service';
 import { DatabaseService } from './database.service';
@@ -105,6 +106,32 @@ export class AuthService {
   /** Trial end date as ISO string — null if no trial */
   readonly trialEndsAt = signal<string | null>(
     this.loadUserFromStorage()?.trialEndsAt ?? null,
+  );
+
+  /**
+   * ISO 8601 timestamp of when the current user closed the Welcome
+   * screen, or `null` if they have not yet. Drives `welcomeShownGuard`
+   * and the "Ver bienvenida" menu item visibility.
+   */
+  readonly welcomeShownAt = signal<string | null>(
+    this.loadUserFromStorage()?.welcomeShownAt ?? null,
+  );
+
+  /**
+   * True when the user has already closed the Welcome screen at least
+   * once. Convenience flag for guards and templates.
+   */
+  readonly isWelcomeShown = computed(() => this.welcomeShownAt() !== null);
+
+  /**
+   * Tenant counts snapshot from the latest AuthResponse. `null` until
+   * the first authenticated request resolves. Components consuming
+   * counts mid-session should prefer live local services
+   * (ProductService, etc.) over this snapshot, which only refreshes on
+   * login / `/auth/me` / switch-branch / welcome-shown.
+   */
+  readonly businessSnapshot = signal<BusinessSnapshot | null>(
+    this.loadUserFromStorage()?.snapshot ?? null,
   );
 
   /** Computed plan metadata derived from plan signals */
@@ -414,6 +441,8 @@ export class AuthService {
     this.planTypeId.set(PlanTypeId.Free);
     this.primaryMacroCategoryId.set(null);
     this.trialEndsAt.set(null);
+    this.welcomeShownAt.set(null);
+    this.businessSnapshot.set(null);
     this.tenantContext.clear();
 
     // Defensive: if this is an attended device that ALSO holds a valid
@@ -597,6 +626,12 @@ export class AuthService {
     const sessionType: AuthSessionType | undefined =
       this.extractSessionTypeFromJwt(response.token) ?? response.sessionType;
 
+    // Prefer the JWT `welcomeShownAt` claim — it's the value the backend
+    // signed — and fall back to the response body field. Empty string
+    // normalizes to null (matches the "trialEndsAt" claim pattern).
+    const welcomeShownAt =
+      extractWelcomeShownAtFromJwt(response.token) ?? response.welcomeShownAt ?? null;
+
     const user: AuthUser = {
       token: response.token,
       roleId: response.roleId,
@@ -612,6 +647,8 @@ export class AuthService {
       currentOnboardingStep: response.currentOnboardingStep,
       features,
       sessionType,
+      welcomeShownAt,
+      snapshot: response.snapshot,
     };
 
     // Track which entry point this session uses so the routing layer can
@@ -629,6 +666,8 @@ export class AuthService {
     this.planTypeId.set(user.planTypeId);
     this.primaryMacroCategoryId.set(user.primaryMacroCategoryId);
     this.trialEndsAt.set(user.trialEndsAt ?? null);
+    this.welcomeShownAt.set(user.welcomeShownAt ?? null);
+    this.businessSnapshot.set(user.snapshot ?? null);
     this.syncTenantContext();
 
     // Kick off post-auth hydration (business settings + tax catalog) so

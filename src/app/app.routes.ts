@@ -10,6 +10,7 @@ import { roleGuard } from './core/guards/role.guard';
 import { setupGuard } from './core/guards/setup.guard';
 import { taxConfigGuard } from './core/guards/tax-config.guard';
 import { terminalGuard } from './core/guards/terminal.guard';
+import { welcomeShownGuard } from './core/guards/welcome-shown.guard';
 import { FeatureKey, UserRoleId } from './core/enums';
 
 export const appRoutes: Routes = [
@@ -42,6 +43,19 @@ export const appRoutes: Routes = [
 		loadComponent: () =>
 			import('./modules/onboarding/onboarding.component').then(
 				(m) => m.OnboardingComponent,
+			),
+	},
+	{
+		// First-Run Experience — shown once after onboarding completes
+		// (either via the wizard or via the super-admin direct-alta flow).
+		// authGuard guarantees a session; welcomeShownGuard is NOT applied
+		// here (would loop). Marking welcome shown happens inside the
+		// WelcomeComponent itself.
+		path: 'welcome',
+		canActivate: [authGuard],
+		loadComponent: () =>
+			import('./modules/welcome/welcome.component').then(
+				(m) => m.WelcomeComponent,
 			),
 	},
 	{
@@ -95,7 +109,7 @@ export const appRoutes: Routes = [
 	// --- Back Office (identity + permissions, no hardware) ---
 	{
 		path: 'admin',
-		canActivate: [authGuard, roleGuard, adminShellGuard],
+		canActivate: [authGuard, welcomeShownGuard, roleGuard, adminShellGuard],
 		data: { roles: [UserRoleId.Owner, UserRoleId.Manager] },
 		loadChildren: () =>
 			import('./modules/admin/admin.routes').then((m) => m.adminRoutes),
@@ -104,21 +118,21 @@ export const appRoutes: Routes = [
 	// --- Operational routes (identity + permissions + terminal) ---
 	{
 		path: 'pos',
-		canActivate: [authGuard, roleGuard, terminalGuard, posShellGuard, taxConfigGuard],
+		canActivate: [authGuard, welcomeShownGuard, roleGuard, terminalGuard, posShellGuard, taxConfigGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/pos/pos.routes').then((m) => m.posRoutes),
 	},
 	{
 		path: 'orders',
-		canActivate: [authGuard, roleGuard, terminalGuard],
+		canActivate: [authGuard, welcomeShownGuard, roleGuard, terminalGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter] },
 		loadChildren: () =>
 			import('./modules/orders/orders.routes').then((m) => m.ordersRoutes),
 	},
 	{
 		path: 'tables',
-		canActivate: [authGuard, roleGuard, terminalGuard, taxConfigGuard],
+		canActivate: [authGuard, welcomeShownGuard, roleGuard, terminalGuard, taxConfigGuard],
 		data: { roles: [UserRoleId.Cashier, UserRoleId.Owner, UserRoleId.Manager, UserRoleId.Waiter, UserRoleId.Host] },
 		loadComponent: () =>
 			import('./modules/tables/tables.component').then(

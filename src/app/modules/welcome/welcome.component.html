@@ -1,0 +1,112 @@
+<main class="welcome">
+  <header class="welcome__header">
+    <span class="welcome__brand">Fino</span>
+    <span class="welcome__tagline">Plataforma de gestión y operación para negocios</span>
+  </header>
+
+  <section class="welcome__hero">
+    <div class="welcome__mascot" aria-hidden="true">
+      <app-fino-mascot [skin]="mascotSkin()" />
+    </div>
+
+    <h1 class="welcome__greeting">
+      ¡Qué gusto verte, <span class="welcome__owner">{{ ownerName() }}</span>!
+    </h1>
+
+    @if (businessName()) {
+      <p class="welcome__subtitle">{{ businessName() }} ya tiene todo listo.</p>
+    } @else {
+      <p class="welcome__subtitle">Tu cuenta ya tiene todo listo.</p>
+    }
+  </section>
+
+  <section class="welcome__panel">
+    <h2 class="welcome__panel-title">Tu cuenta está lista</h2>
+    <ul class="welcome__chips" role="list">
+      @if (giroChipText()) {
+        <li class="chip">
+          <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+          <span class="chip__label">Giro</span>
+          <span class="chip__value">{{ giroChipText() }}</span>
+        </li>
+      }
+      <li class="chip">
+        <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+        <span class="chip__label">Plan</span>
+        <span class="chip__value">{{ planChipText() }}</span>
+      </li>
+      <li class="chip">
+        <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+        <span class="chip__label">Sucursal</span>
+        <span class="chip__value">{{ branchChipText() }}</span>
+      </li>
+      <li class="chip">
+        <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+        <span class="chip__label">Equipo</span>
+        <span class="chip__value">{{ teamChipText() }}</span>
+      </li>
+      @if (hasFiscalConfigured()) {
+        <li class="chip">
+          <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+          <span class="chip__label">Datos fiscales</span>
+          <span class="chip__value">{{ fiscalChipText() }}</span>
+        </li>
+      }
+      @if (hasTaxConfigured()) {
+        <li class="chip">
+          <i class="pi pi-check chip__icon" aria-hidden="true"></i>
+          <span class="chip__label">Impuestos</span>
+          <span class="chip__value">Configurado</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  @if (suggestedSteps().length > 0) {
+    <section class="welcome__panel">
+      <h2 class="welcome__panel-title">Primeros pasos sugeridos</h2>
+      <p class="welcome__panel-subtitle">Termina de configurar tu negocio cuando puedas.</p>
+      <ul class="welcome__steps" role="list">
+        @for (step of suggestedSteps(); track step.id) {
+          <li class="step">
+            <i [class]="'step__icon ' + step.icon" aria-hidden="true"></i>
+            <div class="step__body">
+              <span class="step__title">{{ step.title }}</span>
+              <span class="step__description">{{ step.description }}</span>
+            </div>
+            <a
+              [routerLink]="step.ctaLink"
+              class="step__cta"
+              [attr.aria-label]="step.ctaText + ' — ' + step.title"
+            >
+              {{ step.ctaText }}
+              <i class="pi pi-arrow-right" aria-hidden="true"></i>
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <footer class="welcome__footer">
+    @if (error()) {
+      <p class="welcome__error" role="alert">{{ error() }}</p>
+    }
+    <p-button
+      label="Abrir mi negocio"
+      styleClass="welcome__cta"
+      [disabled]="isClosing()"
+      [loading]="isClosing()"
+      (onClick)="enterBusiness()"
+    />
+    <button
+      type="button"
+      class="welcome__secondary"
+      [disabled]="isClosing()"
+      (click)="configureFirst()"
+    >
+      o configurar productos primero
+      <i class="pi pi-arrow-right" aria-hidden="true"></i>
+    </button>
+  </footer>
+</main>
