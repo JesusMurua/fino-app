@@ -8,10 +8,15 @@ import { ProductService } from './product.service';
 import { TenantContextService } from './tenant-context.service';
 
 /**
- * Single suggested step rendered on the Welcome screen. Each step is
- * derived from the tenant's vertical (macro), plan-enabled features,
- * and the latest snapshot of business state — so the list always
- * reflects what the user has left to do, not a hard-coded checklist.
+ * Single suggested step. Each step is derived from the tenant's
+ * vertical (macro), plan-enabled features, and the latest snapshot of
+ * business state — so the list always reflects what the user has left
+ * to do, not a hard-coded checklist.
+ *
+ * Two consumers:
+ *   - Welcome screen renders only `!isCompleted` (the suggestions).
+ *   - Dashboard FTUE checklist renders ALL applicable steps with check
+ *     marks for the completed ones — same source of truth.
  */
 export interface WelcomeStep {
   /** Stable identifier — used as `*ngFor` track key and analytics tag. */
@@ -23,15 +28,26 @@ export interface WelcomeStep {
   ctaLink: string;
   /** PrimeIcons class, e.g. `pi pi-tag`. */
   icon: string;
+  /**
+   * Whether this step is already satisfied. Optional steps with no live
+   * signal (e.g. "Configurar KDS") default to `false` and remain visible
+   * until the tenant dismisses the checklist or the feature gains a
+   * dedicated state hook.
+   */
+  isCompleted: boolean;
+  /**
+   * Items marked optional are excluded from the dashboard progress
+   * percentage so a tenant can reach 100% without setting up hardware
+   * or advanced features. Defaults to `false` (required).
+   */
+  isOptional?: boolean;
 }
 
 /**
- * Computes the "Primeros pasos sugeridos" list shown on the Welcome
- * screen. The output is a `computed` signal so it recalculates as
- * upstream signals (product count, printer state, tenant context,
- * snapshot from the backend) change.
+ * Computes the full applicable-step list for the current tenant and
+ * the filtered "suggestions" view consumed by the Welcome screen.
  *
- * Rules of inclusion are layered:
+ * Layered rules of inclusion:
  *   1. Universal steps — apply to every vertical when the corresponding
  *      capability is enabled (CoreHardware, etc.) and the state needs it.
  *   2. Vertical-specific steps — apply only when the macro matches AND
@@ -58,10 +74,12 @@ export class WelcomeStepsService {
   //#region Public API
 
   /**
-   * Ordered list of suggested next actions for the current tenant.
-   * Recomputes reactively as upstream signals change.
+   * ALL applicable steps for the current tenant — each with its live
+   * `isCompleted` flag. Use this for the dashboard FTUE checklist
+   * (which renders both done and pending items) or any analytics that
+   * needs the full picture.
    */
-  readonly suggestedSteps = computed<WelcomeStep[]>(() => {
+  readonly allApplicableSteps = computed<WelcomeStep[]>(() => {
     const macro = this.tenantContext.currentMacro();
     if (macro === null) return [];
 
@@ -75,27 +93,25 @@ export class WelcomeStepsService {
     const steps: WelcomeStep[] = [];
 
     // Universal — apply to every macro.
-    if (products.length === 0) {
-      steps.push({
-        id: 'products',
-        title: 'Agrega tu primer producto',
-        description: 'El catálogo es el corazón de tus ventas. Sin productos no hay cobro.',
-        ctaText: 'Ir al catálogo',
-        ctaLink: '/admin/products',
-        icon: 'pi pi-tag',
-      });
-    }
+    steps.push({
+      id: 'products',
+      title: 'Agrega tu primer producto',
+      description: 'El catálogo es el corazón de tus ventas. Sin productos no hay cobro.',
+      ctaText: 'Ir al catálogo',
+      ctaLink: '/admin/products',
+      icon: 'pi pi-tag',
+      isCompleted: products.length > 0,
+    });
 
-    if (!business?.defaultTaxId) {
-      steps.push({
-        id: 'taxes',
-        title: 'Configura tus impuestos',
-        description: 'Define el IVA por defecto o si eres exento. Necesario para operar.',
-        ctaText: 'Configurar impuestos',
-        ctaLink: '/admin/settings',
-        icon: 'pi pi-percentage',
-      });
-    }
+    steps.push({
+      id: 'taxes',
+      title: 'Configura tus impuestos',
+      description: 'Define el IVA por defecto o si eres exento. Necesario para operar.',
+      ctaText: 'Configurar impuestos',
+      ctaLink: '/admin/settings',
+      icon: 'pi pi-percentage',
+      isCompleted: business?.defaultTaxId != null,
+    });
 
     if (features.has(FeatureKey.CfdiInvoicing)) {
       steps.push({
@@ -105,10 +121,12 @@ export class WelcomeStepsService {
         ctaText: 'Completar datos',
         ctaLink: '/admin/settings',
         icon: 'pi pi-file',
+        isCompleted: false,
+        isOptional: true,
       });
     }
 
-    if (features.has(FeatureKey.CoreHardware) && !printerConnected) {
+    if (features.has(FeatureKey.CoreHardware)) {
       steps.push({
         id: 'printer',
         title: 'Conecta tu impresora',
@@ -116,21 +134,22 @@ export class WelcomeStepsService {
         ctaText: 'Configurar impresora',
         ctaLink: '/admin/settings',
         icon: 'pi pi-print',
+        isCompleted: printerConnected,
+        isOptional: true,
       });
     }
 
-    if (!hasOpenSession) {
-      steps.push({
-        id: 'register',
-        title: 'Abre tu primera caja',
-        description: 'Inicia un turno para registrar ventas y hacer cortes al cierre.',
-        ctaText: 'Abrir turno',
-        ctaLink: '/admin/registers',
-        icon: 'pi pi-wallet',
-      });
-    }
+    steps.push({
+      id: 'register',
+      title: 'Abre tu primera caja',
+      description: 'Inicia un turno para registrar ventas y hacer cortes al cierre.',
+      ctaText: 'Abrir turno',
+      ctaLink: '/admin/registers',
+      icon: 'pi pi-wallet',
+      isCompleted: hasOpenSession,
+    });
 
-    if ((snapshot?.userCount ?? 1) === 1) {
+    if ((snapshot?.userCount ?? 1) <= 1) {
       steps.push({
         id: 'team',
         title: 'Suma a tu equipo',
@@ -138,6 +157,8 @@ export class WelcomeStepsService {
         ctaText: 'Invitar usuarios',
         ctaLink: '/admin/users',
         icon: 'pi pi-users',
+        isCompleted: false,
+        isOptional: true,
       });
     }
 
@@ -151,6 +172,7 @@ export class WelcomeStepsService {
           ctaText: 'Configurar mesas',
           ctaLink: '/admin/tables',
           icon: 'pi pi-table',
+          isCompleted: (snapshot?.tableCount ?? 0) > 0,
         });
       }
       if (features.has(FeatureKey.RealtimeKds)) {
@@ -161,6 +183,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar KDS',
           ctaLink: '/admin/devices',
           icon: 'pi pi-desktop',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.DeliveryPlatforms)) {
@@ -171,6 +195,8 @@ export class WelcomeStepsService {
           ctaText: 'Conectar delivery',
           ctaLink: '/admin/settings',
           icon: 'pi pi-send',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.WaiterApp)) {
@@ -181,6 +207,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar meseros',
           ctaLink: '/admin/users',
           icon: 'pi pi-mobile',
+          isCompleted: false,
+          isOptional: true,
         });
       }
     }
@@ -194,6 +222,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar KDS',
           ctaLink: '/admin/devices',
           icon: 'pi pi-desktop',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.MaxKiosks)) {
@@ -204,6 +234,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar kiosko',
           ctaLink: '/admin/devices',
           icon: 'pi pi-shop',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.LoyaltyCrm)) {
@@ -214,6 +246,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar lealtad',
           ctaLink: '/admin/customers',
           icon: 'pi pi-star',
+          isCompleted: false,
+          isOptional: true,
         });
       }
     }
@@ -227,6 +261,8 @@ export class WelcomeStepsService {
           ctaText: 'Cargar inventario',
           ctaLink: '/admin/inventory',
           icon: 'pi pi-box',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.CustomerCredit)) {
@@ -237,6 +273,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar fiado',
           ctaLink: '/admin/customers',
           icon: 'pi pi-credit-card',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.ComparativeReports)) {
@@ -247,6 +285,8 @@ export class WelcomeStepsService {
           ctaText: 'Ver reportes',
           ctaLink: '/admin/reports',
           icon: 'pi pi-chart-line',
+          isCompleted: false,
+          isOptional: true,
         });
       }
     }
@@ -260,6 +300,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar folios',
           ctaLink: '/admin/settings',
           icon: 'pi pi-hashtag',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.CustomerHistory)) {
@@ -270,6 +312,8 @@ export class WelcomeStepsService {
           ctaText: 'Activar historial',
           ctaLink: '/admin/customers',
           icon: 'pi pi-history',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.Reminders)) {
@@ -280,6 +324,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar recordatorios',
           ctaLink: '/admin/customers',
           icon: 'pi pi-bell',
+          isCompleted: false,
+          isOptional: true,
         });
       }
       if (features.has(FeatureKey.RealtimeAccessControl)) {
@@ -290,6 +336,8 @@ export class WelcomeStepsService {
           ctaText: 'Configurar acceso',
           ctaLink: '/admin/access-dashboard',
           icon: 'pi pi-id-card',
+          isCompleted: false,
+          isOptional: true,
         });
       }
     }
@@ -304,6 +352,8 @@ export class WelcomeStepsService {
         ctaText: 'Agregar sucursal',
         ctaLink: '/admin/branches',
         icon: 'pi pi-building',
+        isCompleted: false,
+        isOptional: true,
       });
     }
 
@@ -315,11 +365,21 @@ export class WelcomeStepsService {
         ctaText: 'Agregar caja',
         ctaLink: '/admin/registers',
         icon: 'pi pi-plus-circle',
+        isCompleted: false,
+        isOptional: true,
       });
     }
 
     return steps;
   });
+
+  /**
+   * Welcome screen view: only pending items (the "Primeros pasos
+   * sugeridos" list). Filtered subset of `allApplicableSteps`.
+   */
+  readonly suggestedSteps = computed<WelcomeStep[]>(() =>
+    this.allApplicableSteps().filter(s => !s.isCompleted),
+  );
 
   //#endregion
 }
