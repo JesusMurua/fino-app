@@ -70,6 +70,14 @@ export interface BusinessTypeCatalog {
   /** FK to `MacroCategoryDto.id`. Required after F3 — backend always ships it. */
   primaryMacroCategoryId: number;
   name: string;
+  /**
+   * Stable slug grouping Macro 4 (Services) sub-giros into a cluster
+   * (`'beauty'`, `'health'`, …). Omitted by the backend (`WhenWritingNull`)
+   * for sub-giros that do not belong to any cluster — Macros 1-3 today.
+   * See `src/app/core/models/cluster.model.ts` for the canonical 10
+   * cluster slugs and their Spanish labels.
+   */
+  clusterCode?: string;
   /** @deprecated Legacy field — removed from backend wire in BDD-021. Resolve macro instead. */
   code?: string;
   /** @deprecated Now lives on `MacroCategoryDto`. Use `resolveMacro().hasKitchen`. */

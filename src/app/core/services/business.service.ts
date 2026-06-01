@@ -35,6 +35,19 @@ export class BusinessService {
     return this.api.post<LoginResponse>('/business/complete-onboarding', {});
   }
 
+  /**
+   * Marks the Welcome screen as seen by the current user. The backend
+   * sets `User.WelcomeShownAt` (only if currently null — preserving the
+   * first-seen timestamp on re-calls) and returns a fresh LoginResponse
+   * with the regenerated JWT carrying the new `welcomeShownAt` claim.
+   *
+   * Idempotent: re-calls after the timestamp is already set return the
+   * preserved value, not the latest invocation.
+   */
+  markWelcomeShown(): Observable<LoginResponse> {
+    return this.api.post<LoginResponse>('/user/welcome-shown', {});
+  }
+
   //#endregion
 
   //#region Business Giro

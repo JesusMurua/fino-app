@@ -1,8 +1,8 @@
 import { MacroCategoryCode, PlanTypeId } from '../enums';
 
 /**
- * Parses the query-param handshake between the Landing Page and the
- * restaurant-app. The Landing always emits slugs as strings; this module
+ * Parses the query-param handshake between the Landing Page and
+ * fino-app. The Landing always emits slugs as strings; this module
  * maps those slugs to the canonical macro category code the rest of
  * the app uses for comparisons.
  *

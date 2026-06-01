@@ -21,7 +21,13 @@ export interface UpdateBusinessGiroRequest {
    * verbatim on the PUT payload.
    */
   primaryMacroCategoryId: number;
-  subGiroIds: BusinessTypeId[];
+  /**
+   * Wire-shape numeric sub-giro ids — typed as `number[]` since the
+   * `BusinessTypeId` enum only carries the 20 IDs the FE references
+   * by name (FDD-028 F3 closure). New IDs 21-123 flow through verbatim
+   * from the catalog endpoint without enum membership.
+   */
+  subGiroIds: number[];
   customGiroDescription?: string;
 }
 
@@ -37,6 +43,10 @@ export interface UpdateBusinessGiroRequest {
 export interface BusinessGiroResponse {
   /** Wire-shape numeric macro id; `null` until Step 1 is submitted. */
   primaryMacroCategoryId: number | null;
-  subGiroIds: BusinessTypeId[];
+  /**
+   * Wire-shape numeric sub-giro ids. Loose `number[]` — see
+   * {@link UpdateBusinessGiroRequest.subGiroIds} for the rationale.
+   */
+  subGiroIds: number[];
   customGiroDescription: string | null;
 }

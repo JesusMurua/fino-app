@@ -17,7 +17,7 @@ El sistema POS es una plataforma de **Arquitectura Dual Inyectada**. No es un so
 
 > **Actualización 2026-05-04 (post-AUDIT-050 + AUDIT-052):** El sistema fue consolidado de 4 motores fragmentados a **2 shells permanentes** separados como contextos delimitados. La razón no es estética — es que las dos topologías transaccionales son estructuralmente incompatibles. **No se fusionan.**
 
-El Onboarding del pos-landing obliga al cliente a elegir una categoría de giro. Esta selección inyecta el `BusinessTypeId` en la base de datos, que se mapea al `PosExperience` y determina cuál de los **dos shells** carga la Caja Principal.
+El Onboarding del fino-landing obliga al cliente a elegir una categoría de giro. Esta selección inyecta el `BusinessTypeId` en la base de datos, que se mapea al `PosExperience` y determina cuál de los **dos shells** carga la Caja Principal.
 
 ### **Flujo de Asignación Automática (Onboarding)**
 

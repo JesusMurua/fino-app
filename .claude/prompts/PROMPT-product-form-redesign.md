@@ -1,4 +1,4 @@
-# PROMPT: Product Form Redesign — restaurant-app
+# PROMPT: Product Form Redesign — fino-app
 
 Lee primero los archivos en `.claude/` (response-guidelines.md, coding-standards.md, html-standards.md).
 

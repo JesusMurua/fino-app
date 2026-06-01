@@ -1,6 +1,6 @@
 <div class="onboarding">
 
-  <!-- Top bar with Brío brand + step pills -->
+  <!-- Top bar with Fino brand + step pills -->
   <header class="onboarding__topbar">
     <div class="onboarding__brand">
       <span class="onboarding__logo" aria-hidden="true">
@@ -12,7 +12,7 @@
           <circle cx="37" cy="33" r="2.8" fill="#86efac"/>
         </svg>
       </span>
-      Brío
+      Fino
     </div>
 
     <nav class="onboarding__steps" aria-label="Pasos del onboarding">
@@ -61,19 +61,20 @@
         <div class="welcome__copy">
           <h1 class="welcome__title">
             ¡Hola<span class="welcome__name">{{ ownerName() ? ', ' + ownerName() : '' }}</span>!
-            Personalicemos tu punto de venta.
+            Cuéntanos de tu negocio.
           </h1>
           <p class="welcome__subtitle">
-            Elige el tipo principal de tu negocio. Los sub-giros afinan la experiencia en tu POS.
+            Elige el tipo principal de tu negocio. Los sub-giros afinan la experiencia en Fino.
           </p>
         </div>
         <div class="welcome__mascot">
-          <app-brio-mascot [skin]="mascotSkin()" />
+          <app-fino-mascot [skin]="mascotSkin()" />
         </div>
       </div>
 
       <div class="macro-grid" role="radiogroup" aria-label="Tipo de negocio">
-        @for (card of macroCards; track card.id) {
+        @for (card of macroCards(); track card.id) {
+          @if (selectedMacroId() === null || selectedMacroId() === card.id) {
           <article
             class="macro-card"
             role="radio"
@@ -113,25 +114,81 @@
               <div class="macro-card__panel" (click)="$event.stopPropagation()">
                 <p class="macro-card__panel-title">Sub-giro — marca los que apliquen</p>
 
-                <div class="chip-grid">
-                  @for (sub of card.subGiros; track sub.label) {
+                @if (card.id === macroServices) {
+                  <!-- Services: cluster-grouped chips + "Ver más" expansion -->
+                  @for (cluster of visibleClusters(card.clusters); track cluster.code) {
+                    <div class="cluster">
+                      <h4 class="cluster__title">{{ cluster.label }}</h4>
+                      <div class="chip-grid">
+                        @for (sub of cluster.subGiros; track sub.id) {
+                          <button
+                            type="button"
+                            class="chip"
+                            [class.chip--on]="isSubGiroChecked(chipIdOf(sub))"
+                            (click)="toggleSubGiro(chipIdOf(sub))"
+                          >
+                            <span class="chip__box">
+                              @if (isSubGiroChecked(chipIdOf(sub))) {
+                                <i class="pi pi-check"></i>
+                              }
+                            </span>
+                            {{ sub.label }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (hasHiddenClusters(card.clusters)) {
                     <button
                       type="button"
-                      class="chip"
-                      [class.chip--on]="isSubGiroChecked(chipIdOf(sub))"
-                      (click)="toggleSubGiro(chipIdOf(sub))"
+                      class="ver-mas"
+                      [attr.aria-expanded]="showAllClusters()"
+                      (click)="toggleAllClusters()"
                     >
-                      <span class="chip__box">
-                        @if (isSubGiroChecked(chipIdOf(sub))) {
-                          <i class="pi pi-check"></i>
-                        }
-                      </span>
-                      @if (sub.icon) {
-                        <i class="chip__icon" [class]="sub.icon"></i>
+                      @if (showAllClusters()) {
+                        <i class="pi pi-chevron-up"></i> Ver menos sub-giros
+                      } @else {
+                        <i class="pi pi-chevron-down"></i> Ver más sub-giros
                       }
-                      {{ sub.label }}
                     </button>
                   }
+                } @else {
+                  <!-- Non-Services macros: flat chip grid -->
+                  <div class="chip-grid">
+                    @for (sub of card.subGiros; track sub.id) {
+                      <button
+                        type="button"
+                        class="chip"
+                        [class.chip--on]="isSubGiroChecked(chipIdOf(sub))"
+                        (click)="toggleSubGiro(chipIdOf(sub))"
+                      >
+                        <span class="chip__box">
+                          @if (isSubGiroChecked(chipIdOf(sub))) {
+                            <i class="pi pi-check"></i>
+                          }
+                        </span>
+                        {{ sub.label }}
+                      </button>
+                    }
+                  </div>
+                }
+
+                <!-- "Otra" chip — always rendered separately so cluster panels stay clean -->
+                <div class="chip-grid chip-grid--otra">
+                  <button
+                    type="button"
+                    class="chip"
+                    [class.chip--on]="isOtraChecked()"
+                    (click)="toggleSubGiro(otraId)"
+                  >
+                    <span class="chip__box">
+                      @if (isOtraChecked()) {
+                        <i class="pi pi-check"></i>
+                      }
+                    </span>
+                    Otra
+                  </button>
                 </div>
 
                 @if (isOtraChecked()) {
@@ -145,9 +202,51 @@
                     (click)="$event.stopPropagation()"
                   />
                 }
+
+                <!-- Cross-macro hybrid section — Services primary + Retail chips -->
+                @if (card.id === macroServices && crossMacroChips().length > 0) {
+                  <div class="cross-macro"
+                    [class.cross-macro--open]="crossMacroOpen()">
+                    <button
+                      type="button"
+                      class="cross-macro__toggle"
+                      [attr.aria-expanded]="crossMacroOpen()"
+                      (click)="toggleCrossMacro()"
+                    >
+                      <i class="pi pi-plus-circle cross-macro__icon"></i>
+                      <span class="cross-macro__label">¿También vendes productos?</span>
+                      <i [class]="crossMacroOpen() ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"></i>
+                    </button>
+                    @if (crossMacroOpen()) {
+                      <div class="cross-macro__body">
+                        <p class="cross-macro__hint">
+                          Marca los rubros que apliquen — tu catálogo de productos funciona igual sin importar el giro principal.
+                        </p>
+                        <div class="chip-grid">
+                          @for (sub of crossMacroChips(); track sub.id) {
+                            <button
+                              type="button"
+                              class="chip"
+                              [class.chip--on]="isSubGiroChecked(chipIdOf(sub))"
+                              (click)="toggleSubGiro(chipIdOf(sub))"
+                            >
+                              <span class="chip__box">
+                                @if (isSubGiroChecked(chipIdOf(sub))) {
+                                  <i class="pi pi-check"></i>
+                                }
+                              </span>
+                              {{ sub.label }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             }
           </article>
+          }
         }
       </div>
 

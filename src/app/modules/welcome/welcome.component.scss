@@ -1,0 +1,285 @@
+@use '../../../styles/variables' as *;
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
+.welcome {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: $space-6 $space-4 $space-8;
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+// --- Header (logo + tagline) ----------------------------------------------
+
+.welcome__header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.welcome__brand {
+  font-size: $font-size-2xl;
+  font-weight: 700;
+  color: $color-primary;
+  letter-spacing: -0.02em;
+}
+
+.welcome__tagline {
+  font-size: $font-size-sm;
+  color: $color-text-sub;
+}
+
+// --- Hero (mascot + greeting) ---------------------------------------------
+
+.welcome__hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-4;
+}
+
+.welcome__mascot {
+  width: 120px;
+  height: 120px;
+}
+
+.welcome__greeting {
+  margin: 0;
+  font-size: $font-size-2xl;
+  font-weight: 700;
+  color: $color-text-title;
+  line-height: 1.2;
+}
+
+.welcome__owner {
+  color: $color-primary;
+}
+
+.welcome__subtitle {
+  margin: 0;
+  font-size: $font-size-lg;
+  color: $color-text-sub;
+}
+
+// --- Panels ----------------------------------------------------------------
+
+.welcome__panel {
+  background: $color-surface;
+  border-radius: $radius-card;
+  padding: $space-5;
+  box-shadow: $shadow-panel;
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.welcome__panel-title {
+  margin: 0;
+  font-size: $font-size-lg;
+  font-weight: 700;
+  color: $color-text-title;
+}
+
+.welcome__panel-subtitle {
+  margin: -#{$space-2} 0 0 0;
+  font-size: $font-size-sm;
+  color: $color-text-sub;
+}
+
+// --- "Tu cuenta está lista" chips -----------------------------------------
+
+.welcome__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: $space-2;
+}
+
+.chip {
+  display: flex;
+  align-items: baseline;
+  gap: $space-2;
+  padding: $space-2 $space-4;
+  background: $color-bg-soft;
+  border-radius: $radius-button;
+
+  &__icon {
+    color: $color-primary;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    color: $color-text-sub;
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: $font-size-base;
+    color: $color-text-primary;
+    font-weight: 600;
+    margin-left: auto;
+    text-align: right;
+  }
+}
+
+// --- "Primeros pasos sugeridos" cards -------------------------------------
+
+.welcome__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  padding: $space-4;
+  background: $color-bg-soft;
+  border-radius: $radius-button;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: $color-bg-soft-hover;
+  }
+
+  &__icon {
+    font-size: 24px;
+    color: $color-primary;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+
+  &__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $color-text-title;
+  }
+
+  &__description {
+    font-size: $font-size-sm;
+    color: $color-text-sub;
+    line-height: 1.4;
+  }
+
+  &__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-4;
+    color: $color-primary;
+    font-weight: 600;
+    font-size: $font-size-sm;
+    text-decoration: none;
+    border-radius: $radius-button;
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgba(22, 163, 74, 0.08);
+    }
+
+    .pi {
+      font-size: 12px;
+    }
+  }
+}
+
+// --- Footer (CTAs) --------------------------------------------------------
+
+.welcome__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  margin-top: $space-4;
+}
+
+:host ::ng-deep .welcome__cta .p-button {
+  background: $color-primary;
+  border-color: $color-primary;
+  color: #ffffff;
+  font-size: $font-size-base;
+  font-weight: 600;
+  padding: $space-4 $space-6;
+  border-radius: $radius-button;
+  min-width: 240px;
+
+  &:enabled:hover {
+    background: darken($color-primary, 6%);
+    border-color: darken($color-primary, 6%);
+  }
+}
+
+.welcome__secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  background: none;
+  border: 0;
+  color: $color-text-sub;
+  font-size: $font-size-sm;
+  font-weight: 500;
+  cursor: pointer;
+  padding: $space-2 $space-4;
+  border-radius: $radius-button;
+  transition: color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    color: $color-text-title;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .pi {
+    font-size: 12px;
+  }
+}
+
+.welcome__error {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: $color-error;
+}
+
+@media (max-width: 480px) {
+  .welcome {
+    padding: $space-4 $space-2 $space-6;
+  }
+
+  .step {
+    flex-wrap: wrap;
+
+    &__cta {
+      width: 100%;
+      justify-content: center;
+      margin-top: $space-2;
+    }
+  }
+}

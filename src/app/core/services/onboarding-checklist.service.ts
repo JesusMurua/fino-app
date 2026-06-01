@@ -1,29 +1,14 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { CashRegisterService } from './cash-register.service';
-import { PrinterService } from './printer.service';
-import { ProductService } from './product.service';
-import { TenantContextService } from './tenant-context.service';
+import { WelcomeStepsService } from './welcome-steps.service';
 
 /**
- * Single step of the "Getting Started" checklist rendered on the
- * dashboard. `isOptional` items are excluded from `progressPercentage`
- * and from `isChecklistComplete`, so a tenant can reach 100% even
- * without completing them (useful for hardware peripherals that not
- * every giro needs).
+ * Re-export of {@link WelcomeStep} so callers consuming the dashboard
+ * checklist don't have to know about the underlying service. Shape is
+ * intentionally identical.
  */
-export interface ChecklistItem {
-  id: string;
-  title: string;
-  description: string;
-  ctaText: string;
-  /** Absolute router path, e.g. `/admin/products` */
-  ctaLink: string;
-  /** PrimeIcons class, e.g. `pi pi-tag` */
-  icon: string;
-  isCompleted: boolean;
-  isOptional?: boolean;
-}
+export type { WelcomeStep as ChecklistItem } from './welcome-steps.service';
 
 /**
  * localStorage key used to remember that the tenant has opened at least
@@ -32,25 +17,29 @@ export interface ChecklistItem {
  * the current shift is closed — without pinning we would uncheck the
  * step right after the tenant's first successful close.
  */
-const FIRST_SESSION_OPENED_KEY = 'brio.checklist.firstSessionOpened';
-const HIDDEN_BY_USER_KEY = 'brio.checklist.hidden';
+const FIRST_SESSION_OPENED_KEY = 'fino.checklist.firstSessionOpened';
+const HIDDEN_BY_USER_KEY = 'fino.checklist.hidden';
 
 /**
  * Reactive source of truth for the FTUE checklist shown on the dashboard.
  *
- * Every item is a `computed` slice over signals already exposed by the
- * existing services (product catalog, printer state, cash register
- * status, tenant context), so the checklist updates in real time as the
- * user performs the actions — no manual refresh required.
+ * The list itself is **delegated to {@link WelcomeStepsService.allApplicableSteps}**
+ * so the dashboard checklist, the Welcome screen, and any future analytics
+ * over "what's left to set up" share a single, plan-and-vertical-aware
+ * source of truth. This service adds the dashboard-specific concerns on
+ * top:
+ *   - Sticky "first session opened" flag so the `register` step stays
+ *     checked after the user closes their first shift.
+ *   - "Hidden by user" dismiss flag persisted in localStorage.
+ *   - Required-only progress percentage (optional items don't count
+ *     toward 100%).
  */
 @Injectable({ providedIn: 'root' })
 export class OnboardingChecklistService {
 
   //#region Injections
 
-  private readonly tenantContext = inject(TenantContextService);
-  private readonly productService = inject(ProductService);
-  private readonly printerService = inject(PrinterService);
+  private readonly welcomeSteps = inject(WelcomeStepsService);
   private readonly cashRegisterService = inject(CashRegisterService);
 
   //#endregion
@@ -92,62 +81,17 @@ export class OnboardingChecklistService {
   //#region Public API
 
   /**
-   * Full list of checklist items with live completion state. Consumers
-   * read this signal directly — it recomputes whenever any upstream
-   * signal changes (products added, printer connected, shift opened).
+   * Full list of checklist items with live completion state, sourced
+   * from {@link WelcomeStepsService.allApplicableSteps} and re-mapped so
+   * the `register` step stays sticky after the tenant's first close.
    */
-  readonly checklist = computed<ChecklistItem[]>(() => [
-    {
-      id: 'business',
-      title: 'Configura tu negocio',
-      description: 'Datos del negocio guardados durante el registro.',
-      ctaText: 'Ver configuración',
-      ctaLink: '/admin/settings',
-      icon: 'pi pi-building',
-      isCompleted: this.tenantContext.currentMacro() !== null,
-    },
-    {
-      // Inserted before "products" because the cart preview math and
-      // the POS guard both depend on this. A tenant CANNOT operate
-      // without a default tax (`taxConfigGuard` blocks `/pos`, `/tables`,
-      // `/kiosk` until this is set). See `project_tax_authority.md`.
-      id: 'taxes',
-      title: 'Configura tus impuestos',
-      description: 'Define el IVA por defecto o si tu negocio es exento. Requisito para operar.',
-      ctaText: 'Ir a Configuración Fiscal',
-      ctaLink: '/admin/settings',
-      icon: 'pi pi-percentage',
-      isCompleted: this.tenantContext.business()?.defaultTaxId != null,
-    },
-    {
-      id: 'products',
-      title: 'Agrega tu primer producto',
-      description: 'El catálogo es el corazón de tus ventas. Sin productos no puedes cobrar.',
-      ctaText: 'Ir a Catálogo',
-      ctaLink: '/admin/products',
-      icon: 'pi pi-tag',
-      isCompleted: this.productService.products().length > 0,
-    },
-    {
-      id: 'hardware',
-      title: 'Conecta tu hardware',
-      description: 'Impresora térmica, lector de código de barras o cajón de dinero.',
-      ctaText: 'Configurar impresora',
-      ctaLink: '/admin/settings',
-      icon: 'pi pi-print',
-      isCompleted: this.printerService.printerConnected(),
-      isOptional: true,
-    },
-    {
-      id: 'register',
-      title: 'Abre tu primera caja',
-      description: 'Inicia un turno para empezar a registrar ventas y hacer cortes.',
-      ctaText: 'Abrir turno',
-      ctaLink: '/admin/registers',
-      icon: 'pi pi-wallet',
-      isCompleted: this.cashRegisterService.hasOpenSession() || this._firstSessionOpened(),
-    },
-  ]);
+  readonly checklist = computed(() =>
+    this.welcomeSteps.allApplicableSteps().map(step =>
+      step.id === 'register'
+        ? { ...step, isCompleted: step.isCompleted || this._firstSessionOpened() }
+        : step,
+    ),
+  );
 
   /** Required steps only — excludes items marked `isOptional: true`. */
   readonly requiredSteps = computed(() =>
@@ -202,5 +146,4 @@ export class OnboardingChecklistService {
   }
 
   //#endregion
-
 }

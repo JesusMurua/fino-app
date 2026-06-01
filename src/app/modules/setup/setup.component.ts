@@ -123,7 +123,7 @@ export class SetupComponent implements OnInit {
 
   /** Mode + device name selection */
   selectedMode: DeviceConfig['mode'] = 'cashier';
-  deviceName = 'POS Principal';
+  deviceName = 'Caja Principal';
 
   /** Activate response data (code flow) */
   private activateData: ActivateDeviceResponse | null = null;
@@ -513,7 +513,7 @@ export class SetupComponent implements OnInit {
   async saveEmailSetup(): Promise<void> {
     if (this.isLoading()) return;
 
-    const name = this.deviceName.trim() || 'POS Principal';
+    const name = this.deviceName.trim() || 'Caja Principal';
 
     this.error.set('');
     this.isLoading.set(true);

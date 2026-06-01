@@ -86,3 +86,26 @@ export function extractMacroCategoryFromJwt(token: string): MacroCategoryCode | 
     return null;
   }
 }
+
+/**
+ * Extracts the `welcomeShownAt` claim from a JWT payload.
+ *
+ * The backend emits the claim as ISO 8601 when the user has closed the
+ * Welcome screen, or as an empty string (the same pattern used by
+ * `trialEndsAt`) when they have not. This helper normalizes both into a
+ * single shape: an ISO string OR `null`.
+ *
+ * Missing claim, malformed JWT or unrecognized payload → `null`.
+ */
+export function extractWelcomeShownAtFromJwt(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    const raw = payload.welcomeShownAt;
+    if (typeof raw !== 'string' || raw.length === 0) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}

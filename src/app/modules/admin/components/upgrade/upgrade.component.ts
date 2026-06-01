@@ -67,7 +67,7 @@ export class UpgradeComponent {
     {
       icon: 'pi-receipt',
       title: 'Facturación Electrónica (CFDI)',
-      description: 'Emite facturas al SAT desde el POS con los datos fiscales de tus clientes.',
+      description: 'Emite facturas al SAT al momento del cobro, con los datos fiscales de tus clientes.',
     },
     {
       icon: 'pi-chart-line',

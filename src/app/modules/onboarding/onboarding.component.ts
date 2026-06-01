@@ -8,13 +8,20 @@ import { InputTextModule } from 'primeng/inputtext';
 
 import { environment } from '../../../environments/environment';
 import {
+  BusinessTypeCatalog,
   FEATURE_LABELS,
   PRICING_GROUP_BY_MACRO,
   PricingGroup,
   UpdateBusinessGiroRequest,
 } from '../../core/models';
 import {
-  BusinessTypeId,
+  CLUSTER_DISPLAY_ORDER,
+  CLUSTER_LABELS,
+  ClusterCode,
+  DEFAULT_VISIBLE_CLUSTERS,
+  isClusterCode,
+} from '../../core/models/cluster.model';
+import {
   codeToId,
   FeatureKey,
   GIRO_FEATURE_MAP,
@@ -29,31 +36,53 @@ import { CatalogService } from '../../core/services/catalog.service';
 import { DeviceRoutingService } from '../../core/services/device-routing.service';
 import { BusinessService } from '../../core/services/business.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
-import { BrioMascotComponent, BrioSkin } from './brio-mascot/brio-mascot.component';
+import { FinoMascotComponent, FinoSkin } from './fino-mascot/fino-mascot.component';
 
 const ONBOARDING_KEY_PREFIX = 'onboarding-completed-';
 
 /** Sub-giro descriptor rendered as a chip inside an expanded macro card. */
 interface SubGiroOption {
-  /** Real BusinessTypeId — null only for the synthetic "Otra" chip */
-  id: BusinessTypeId | null;
+  /** Real BusinessTypeId from catalog — null only for the synthetic "Otra" chip. */
+  id: number | null;
   label: string;
-  /** Optional PrimeNG icon class — surfaces verticalized chips (e.g. Gym). */
-  icon?: string;
 }
 
-/** Macro card rendered at the top of Step 1. */
-interface MacroCard {
+/**
+ * Static design metadata for a macro card — frontend-owned presentation
+ * (icon, accent, mascot skin, description). Sub-giro data is layered on
+ * top dynamically from the catalog (`MacroCard` below).
+ */
+interface MacroDesign {
   id: MacroCategoryCode;
-  label: string;
   description: string;
   /** PrimeNG icon class, e.g. 'pi pi-shopping-bag' */
   icon: string;
   /** CSS accent for the icon background + badge color */
   accent: string;
   /** Mascot skin to activate when this card is selected/hovered */
-  skin: BrioSkin;
+  skin: FinoSkin;
+}
+
+/** Cluster of related sub-giros (Macro 4 Services UX grouping). */
+interface ClusterGroup {
+  /** Backend cluster slug, or `'uncategorized'` for graceful pre-deploy fallback. */
+  code: ClusterCode | 'uncategorized';
+  label: string;
+  isDefaultVisible: boolean;
   subGiros: SubGiroOption[];
+}
+
+/**
+ * Macro card rendered at the top of Step 1. Combines static design with
+ * dynamically-resolved sub-giros from the catalog. Services macro uses
+ * `clusters`; the other three use `subGiros` flat.
+ */
+interface MacroCard extends MacroDesign {
+  label: string;
+  /** Flat sub-giro list for non-Services macros (empty array for Services). */
+  subGiros: SubGiroOption[];
+  /** Cluster-grouped sub-giros for Services macro (empty array for others). */
+  clusters: ClusterGroup[];
 }
 
 /** Plan slug used internally and by the Stripe price matrix. */
@@ -93,75 +122,17 @@ const PLAN_DESCRIPTIONS: Record<PlanSlug, string> = {
 const FREE_BADGE_FALLBACK = 'Gratis';
 
 /**
- * Catalog of macro cards + their sub-giros. `id: null` means the chip is
- * the synthetic "Otra" option; it contributes `customGiroDescription`
- * instead of a BusinessTypeId when the wizard is submitted.
+ * Static design metadata per macro. Sub-giro data is layered on top from
+ * the catalog at render time — see `macroCards` computed below. This
+ * separation lets the backend own sub-giro labels (single source of
+ * truth, eliminates FE/BE drift) while the FE owns presentation
+ * (icon / accent / mascot skin) which is intrinsic UX decision.
  */
-const MACRO_CARDS: MacroCard[] = [
-  {
-    id: MacroCategoryCode.FoodBeverage,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.FoodBeverage],
-    description: 'Mesas, comandas y cocina',
-    icon: 'pi pi-apple',
-    accent: '#EF4444',
-    skin: 'restaurant',
-    subGiros: [
-      { id: BusinessTypeId.Restaurante, label: 'Restaurante' },
-      { id: BusinessTypeId.BarCantina,  label: 'Bar / Cantina' },
-      { id: BusinessTypeId.SportsBar,   label: 'Sports Bar / Wings' },
-      { id: null,                       label: 'Otra' },
-    ],
-  },
-  {
-    id: MacroCategoryCode.QuickService,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.QuickService],
-    description: 'Mostrador, con o sin cocina',
-    icon: 'pi pi-sun',
-    accent: '#F59E0B',
-    skin: 'cafe',
-    subGiros: [
-      { id: BusinessTypeId.Taqueria,     label: 'Taquería' },
-      { id: BusinessTypeId.Dogos,        label: 'Dogos' },
-      { id: BusinessTypeId.Hamburguesas, label: 'Hamburguesas' },
-      { id: BusinessTypeId.Cafeteria,    label: 'Cafetería' },
-      { id: BusinessTypeId.Paleteria,    label: 'Paletería / Nevería' },
-      { id: BusinessTypeId.Panaderia,    label: 'Panadería / Repostería' },
-      { id: null,                        label: 'Otra' },
-    ],
-  },
-  {
-    id: MacroCategoryCode.Retail,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Retail],
-    description: 'Inventario rápido, sin errores',
-    icon: 'pi pi-shopping-bag',
-    accent: '#3B82F6',
-    skin: 'retail',
-    subGiros: [
-      { id: BusinessTypeId.Abarrotes,     label: 'Abarrotes / Miscelánea' },
-      { id: BusinessTypeId.Expendio,      label: 'Expendio / Depósito' },
-      { id: BusinessTypeId.Refaccionaria, label: 'Refaccionaria / Autopartes' },
-      { id: BusinessTypeId.Ferreteria,    label: 'Ferretería' },
-      { id: BusinessTypeId.Papeleria,     label: 'Papelería' },
-      { id: BusinessTypeId.Farmacia,      label: 'Farmacia' },
-      { id: BusinessTypeId.Boutique,      label: 'Boutique / Ropa y Calzado' },
-      { id: null,                         label: 'Otra' },
-    ],
-  },
-  {
-    id: MacroCategoryCode.Services,
-    label: MACRO_CATEGORY_LABELS[MacroCategoryCode.Services],
-    description: 'Cobras por lo que haces',
-    icon: 'pi pi-wrench',
-    accent: '#8B5CF6',
-    skin: 'services',
-    subGiros: [
-      { id: BusinessTypeId.Estetica,       label: 'Estética / Barbería' },
-      { id: BusinessTypeId.TallerMecanico, label: 'Taller Mecánico' },
-      { id: BusinessTypeId.Consultorio,    label: 'Consultorio / Clínica' },
-      { id: BusinessTypeId.Gimnasio,       label: 'Gimnasio / Deportes', icon: 'pi pi-heart-fill' },
-      { id: null,                          label: 'Otra' },
-    ],
-  },
+const MACRO_DESIGN: readonly MacroDesign[] = [
+  { id: MacroCategoryCode.FoodBeverage, description: 'Mesas, comandas y cocina',       icon: 'pi pi-apple',         accent: '#EF4444', skin: 'restaurant' },
+  { id: MacroCategoryCode.QuickService, description: 'Mostrador, con o sin cocina',    icon: 'pi pi-sun',           accent: '#F59E0B', skin: 'cafe'       },
+  { id: MacroCategoryCode.Retail,       description: 'Inventario rápido, sin errores', icon: 'pi pi-shopping-bag',  accent: '#3B82F6', skin: 'retail'     },
+  { id: MacroCategoryCode.Services,     description: 'Cobras por lo que haces',        icon: 'pi pi-wrench',        accent: '#8B5CF6', skin: 'services'   },
 ];
 
 /** Sentinel sub-giro id used client-side only to represent the "Otra" chip. */
@@ -170,7 +141,7 @@ const OTRA_SUB_ID = -1;
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [FormsModule, InputTextModule, BrioMascotComponent],
+  imports: [FormsModule, InputTextModule, FinoMascotComponent],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.scss',
 })
@@ -193,10 +164,44 @@ export class OnboardingComponent implements OnInit {
 
   readonly totalSteps = 2;
   readonly currentStep = signal(1);
-  readonly macroCards = MACRO_CARDS;
 
   /** `OTRA_SUB_ID` sentinel exposed so the template can bind to it. */
   readonly otraId = OTRA_SUB_ID;
+
+  /** Re-exposed enum value for the template's cluster-vs-flat branching. */
+  readonly macroServices = MacroCategoryCode.Services;
+
+  /**
+   * Macro cards, hydrated dynamically from the catalog. Backend ships
+   * labels + `clusterCode` for Macro 4 entries; FE composes them into
+   * the design shell (icon / accent / mascot skin). Catalog updates
+   * propagate without redeploys (cache invalidation hook on backend).
+   */
+  readonly macroCards = computed<MacroCard[]>(() => {
+    const catalog = this.catalogService.businessTypes();
+    return MACRO_DESIGN.map(design => this.buildMacroCard(design, catalog));
+  });
+
+  /**
+   * Chips surfaced by the cross-macro hybrid section ("¿También vendes
+   * productos?") when the primary macro is Servicios — restricted to
+   * Macro 3 (Tiendas y Comercios) per the Opción 1 hybrid pattern
+   * (Square/Loyverse industry alignment, ver `SUB-GIROS-TAXONOMY.md`).
+   * Backend's permissive validator accepts cross-macro `subGiroIds`.
+   */
+  readonly crossMacroChips = computed<SubGiroOption[]>(() => {
+    if (this.selectedMacroId() !== MacroCategoryCode.Services) return [];
+    const retailMacroId = codeToId(MacroCategoryCode.Retail);
+    return this.catalogService.businessTypes()
+      .filter(entry => entry.primaryMacroCategoryId === retailMacroId)
+      .map(entry => ({ id: entry.id, label: entry.name } satisfies SubGiroOption));
+  });
+
+  /** Whether the Services macro shows all 10 clusters vs only the 5 default. */
+  readonly showAllClusters = signal(false);
+
+  /** Whether the cross-macro "También vendes productos" section is expanded. */
+  readonly crossMacroOpen = signal(false);
 
   /** Display name of the authenticated owner — welcomes them in Step 1. */
   readonly ownerName = computed(() => this.authService.currentUser()?.name ?? '');
@@ -231,12 +236,12 @@ export class OnboardingComponent implements OnInit {
 
   /** Mascot skin tracks hover → falls back to the selected macro's skin. */
   readonly hoveredMacroId = signal<MacroCategoryCode | null>(null);
-  readonly mascotSkin = computed<BrioSkin>(() => {
+  readonly mascotSkin = computed<FinoSkin>(() => {
     const hoverId = this.hoveredMacroId();
     const activeId = this.selectedMacroId();
     const focusedId = hoverId ?? activeId;
     return focusedId !== null
-      ? (MACRO_CARDS.find(c => c.id === focusedId)?.skin ?? 'default')
+      ? (MACRO_DESIGN.find(c => c.id === focusedId)?.skin ?? 'default')
       : 'default';
   });
 
@@ -435,9 +440,104 @@ export class OnboardingComponent implements OnInit {
   selectMacro(id: MacroCategoryCode): void {
     if (this.selectedMacroId() === id) return;
     this.selectedMacroId.set(id);
-    // Clear sub-giros + custom text when the active macro changes.
+    // Clear sub-giros + custom text + UX state when the active macro changes.
     this.selectedSubGiroIds.set([]);
     this.customGiroText.set('');
+    this.showAllClusters.set(false);
+    this.crossMacroOpen.set(false);
+  }
+
+  /** Toggles the "Ver más sub-giros" cluster expansion (Services macro). */
+  toggleAllClusters(): void {
+    this.showAllClusters.update(v => !v);
+  }
+
+  /** Toggles the cross-macro hybrid section ("También vendes productos"). */
+  toggleCrossMacro(): void {
+    this.crossMacroOpen.update(v => !v);
+  }
+
+  /**
+   * Filters cluster groups by current "Ver más" state. Default-visible
+   * clusters always render; the remaining 5 surface only after the user
+   * expands. Empty clusters never render (defensive — backend always
+   * sends at least one entry per cluster after the migration).
+   */
+  visibleClusters(allClusters: readonly ClusterGroup[]): ClusterGroup[] {
+    const showAll = this.showAllClusters();
+    return allClusters.filter(c =>
+      c.subGiros.length > 0 && (showAll || c.isDefaultVisible),
+    );
+  }
+
+  /** Whether the Services macro has any hidden clusters worth a "Ver más" toggle. */
+  hasHiddenClusters(allClusters: readonly ClusterGroup[]): boolean {
+    return allClusters.some(c => !c.isDefaultVisible && c.subGiros.length > 0);
+  }
+
+  // -- Card builder (private) ----------------------------------------------
+
+  /**
+   * Composes a `MacroCard` by merging static design with catalog data.
+   * Services uses cluster grouping; the other three macros stay flat.
+   */
+  private buildMacroCard(design: MacroDesign, catalog: readonly BusinessTypeCatalog[]): MacroCard {
+    const macroId = codeToId(design.id);
+    const entries = catalog.filter(e => e.primaryMacroCategoryId === macroId);
+    const isServices = design.id === MacroCategoryCode.Services;
+    return {
+      ...design,
+      label: MACRO_CATEGORY_LABELS[design.id],
+      subGiros: isServices ? [] : entries.map(this.toSubGiroOption),
+      clusters: isServices ? this.buildClusters(entries) : [],
+    };
+  }
+
+  /** Maps a catalog entry to the chip-rendering shape. */
+  private toSubGiroOption(entry: BusinessTypeCatalog): SubGiroOption {
+    return { id: entry.id, label: entry.name };
+  }
+
+  /**
+   * Groups Services entries into clusters in canonical display order.
+   * Entries without a recognized `clusterCode` (pre-deploy fallback,
+   * unknown future slugs) land in a synthetic `uncategorized` group
+   * surfaced by default — graceful degradation rather than silently
+   * dropping rows.
+   */
+  private buildClusters(entries: readonly BusinessTypeCatalog[]): ClusterGroup[] {
+    const byCluster = new Map<ClusterCode, BusinessTypeCatalog[]>();
+    const uncategorized: BusinessTypeCatalog[] = [];
+
+    for (const entry of entries) {
+      if (isClusterCode(entry.clusterCode)) {
+        const bucket = byCluster.get(entry.clusterCode) ?? [];
+        bucket.push(entry);
+        byCluster.set(entry.clusterCode, bucket);
+      } else {
+        uncategorized.push(entry);
+      }
+    }
+
+    const groups: ClusterGroup[] = CLUSTER_DISPLAY_ORDER
+      .filter(code => byCluster.has(code))
+      .map(code => ({
+        code,
+        label: CLUSTER_LABELS[code],
+        isDefaultVisible: DEFAULT_VISIBLE_CLUSTERS.has(code),
+        subGiros: (byCluster.get(code) ?? []).map(this.toSubGiroOption),
+      }));
+
+    if (uncategorized.length > 0) {
+      groups.push({
+        code: 'uncategorized',
+        label: 'Otros',
+        isDefaultVisible: true,
+        subGiros: uncategorized.map(this.toSubGiroOption),
+      });
+    }
+
+    return groups;
   }
 
   hoverMacro(id: MacroCategoryCode | null): void {
@@ -494,7 +594,7 @@ export class OnboardingComponent implements OnInit {
     this.isSavingGiro.set(true);
 
     const subGiroIds = this.selectedSubGiroIds()
-      .filter((id): id is BusinessTypeId => id !== OTRA_SUB_ID);
+      .filter(id => id !== OTRA_SUB_ID);
     const payload: UpdateBusinessGiroRequest = {
       // F5: wire shape is numeric; translate from the canonical code.
       primaryMacroCategoryId: codeToId(macro),
