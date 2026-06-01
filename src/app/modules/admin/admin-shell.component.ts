@@ -321,6 +321,16 @@ export class AdminShellComponent implements OnInit {
     this.router.navigate(['/pos']);
   }
 
+  /**
+   * Re-opens the First-Run Experience screen for the current user.
+   * The backend preserves the first-seen timestamp on re-calls, so
+   * re-visiting from this affordance is purely informational — the
+   * "first seen" metric remains anchored to the original session.
+   */
+  goToWelcome(): void {
+    this.router.navigate(['/welcome']);
+  }
+
   /** Flips the global theme — delegates to the singleton ThemeService. */
   toggleTheme(): void {
     this.themeService.toggle();

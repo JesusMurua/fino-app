@@ -118,6 +118,16 @@
           <i class="pi pi-shopping-cart"></i>
           <span>Caja</span>
         </button>
+        <button
+          type="button"
+          class="topbar__btn"
+          (click)="goToWelcome()"
+          [pTooltip]="'Vuelve a ver tu bienvenida y los primeros pasos sugeridos'"
+          tooltipPosition="bottom"
+        >
+          <i class="pi pi-bookmark"></i>
+          <span>Bienvenida</span>
+        </button>
         <button type="button" class="topbar__btn topbar__btn--logout" (click)="logout()">
           <i class="pi pi-sign-out"></i>
           <span>Cerrar sesión</span>
