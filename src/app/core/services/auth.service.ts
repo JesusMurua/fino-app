@@ -494,6 +494,29 @@ export class AuthService {
   //#region Rehydration
 
   /**
+   * Seeds an impersonation JWT issued by the super-admin's `/api/Admin/
+   * businesses/{id}/impersonate` endpoint and hydrates the session as
+   * the impersonated Owner. The token is written to localStorage first
+   * so the auth interceptor attaches it to the immediate `/auth/me`
+   * call; on success the standard `handleLoginSuccess` pipeline runs
+   * just like a fresh email login.
+   *
+   * Caller (`AuthHandoffComponent`) is responsible for clearing the
+   * fragment from the URL so the JWT does not linger in browser history.
+   */
+  handleImpersonationToken(jwt: string): Observable<AuthUser> {
+    localStorage.setItem(AUTH_TOKEN_KEY, jwt);
+    return this.api.get<LoginResponse>('/auth/me').pipe(
+      map(response => {
+        if (response.primaryMacroCategoryId === undefined || response.primaryMacroCategoryId === null) {
+          throw new Error('invalid-impersonation-token');
+        }
+        return this.handleLoginSuccess(response);
+      }),
+    );
+  }
+
+  /**
    * Refreshes the local session from `GET /api/auth/me` so that server-side
    * state (onboarding status, role, plan, `sessionType`, feature claims)
    * stays in sync across devices and across shell transitions.

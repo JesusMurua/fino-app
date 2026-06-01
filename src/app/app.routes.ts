@@ -64,6 +64,17 @@ export const appRoutes: Routes = [
 			import('./modules/login/login.component').then((m) => m.LoginComponent),
 	},
 	{
+		// Cross-domain impersonation handoff. The super-admin emits a
+		// short-lived Owner JWT and navigates here with `#token=<jwt>`;
+		// the component seeds the session and forwards to the back office.
+		// No `authGuard` — bootstrapping a session is the whole point.
+		path: 'auth/handoff',
+		loadComponent: () =>
+			import('./modules/auth-handoff/auth-handoff.component').then(
+				(m) => m.AuthHandoffComponent,
+			),
+	},
+	{
 		path: 'pin',
 		canActivate: [setupGuard],
 		loadComponent: () =>
