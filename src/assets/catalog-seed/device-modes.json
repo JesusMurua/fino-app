@@ -1,5 +1,5 @@
 [
-  { "id": 1, "code": "cashier", "name": "Cajero", "description": "POS estándar de cobro" },
+  { "id": 1, "code": "cashier", "name": "Cajero", "description": "Cobro estándar" },
   { "id": 2, "code": "kiosk",   "name": "Kiosk",  "description": "Autoservicio para clientes" },
   { "id": 3, "code": "tables",  "name": "Mesas",  "description": "Vista de mesas para meseros" },
   { "id": 4, "code": "kitchen", "name": "Cocina", "description": "Pantalla de cocina KDS" }

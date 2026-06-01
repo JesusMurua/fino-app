@@ -1,7 +1,7 @@
 {
   "name": "Fino",
   "short_name": "Fino",
-  "description": "Plataforma de gestión y operación para negocios — punto de venta, recepción y back office.",
+  "description": "Plataforma de gestión y operación para negocios.",
   "theme_color": "#6366f1",
   "background_color": "#f5f5f5",
   "display": "standalone",

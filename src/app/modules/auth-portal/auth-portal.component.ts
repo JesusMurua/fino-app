@@ -46,7 +46,7 @@ const OPERATIONAL_CARD_BY_MACRO: Partial<Record<MacroCategoryCode, OperationalCa
   },
   [MacroCategoryCode.FoodBeverage]: {
     icon: 'pi pi-shopping-cart',
-    title: 'Punto de Venta',
+    title: 'Caja',
     subtitle: 'Caja, comanderas y servicio a mesas.',
   },
 };
