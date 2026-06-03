@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, firstValueFrom, forkJoin, from, of, switchMap, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -100,18 +100,52 @@ export class ProductService {
     private readonly http: HttpClient,
     private readonly inventoryService: InventoryService,
     private readonly authService: AuthService,
-  ) {}
+  ) {
+    // Keep the catalog fresh from the server whenever an authenticated
+    // session is in place. Fires once at boot (effects always run on
+    // creation), then on every false → true transition of
+    // `isAuthenticated` (email login, PIN login, impersonate handoff,
+    // switch-branch). Without this hook the admin surfaces would read
+    // a stale or empty Dexie on browsers / devices that never visited
+    // the POS view first — the bug a user hit when the Owner saw an
+    // empty `/admin/products` while the same tenant in another browser
+    // showed three products.
+    effect(() => {
+      if (this.authService.isAuthenticated()) {
+        void this.loadCatalog();
+      }
+    });
+  }
   //#endregion
 
   //#region Catalog Methods
+
+  /**
+   * Promise of an in-flight catalog load, if any. Lets concurrent
+   * callers (the auth effect + a component's `ngOnInit` + a branch
+   * switch fired in the same microtask) share the same network round
+   * trip instead of stampeding the API.
+   */
+  private activeCatalogLoad: Promise<void> | null = null;
 
   /**
    * Stale-while-revalidate catalog load:
    *   1. Serve cached data from IndexedDB immediately
    *   2. Fetch fresh data from API in background
    *   3. Update Dexie + signals if API succeeds
+   *
+   * Idempotent: parallel calls share the same underlying promise so
+   * the server only ever sees one request at a time.
    */
-  async loadCatalog(): Promise<void> {
+  loadCatalog(): Promise<void> {
+    if (this.activeCatalogLoad) return this.activeCatalogLoad;
+    this.activeCatalogLoad = this.doLoadCatalog().finally(() => {
+      this.activeCatalogLoad = null;
+    });
+    return this.activeCatalogLoad;
+  }
+
+  private async doLoadCatalog(): Promise<void> {
     this.isLoading.set(true);
 
     // Step 1 — Serve stale data from Dexie (instant UI)
@@ -259,6 +293,20 @@ export class ProductService {
   deleteProduct(id: number): Observable<void> {
     return this.api.delete<void>(`/products/${id}`).pipe(
       switchMap(() => from(this.removeProductLocal(id))),
+    );
+  }
+
+  /**
+   * Flips the availability of a product on the backend
+   * (`PATCH /products/{id}/toggle`) and mirrors the change locally
+   * once the server confirms. Pessimistic UI: the Dexie row is only
+   * touched after the API succeeds, so a network failure leaves the
+   * local cache consistent with what the server actually knows.
+   * @param id Server-assigned product ID
+   */
+  toggleAvailability(id: number): Observable<Product> {
+    return this.api.patch<Product>(`/products/${id}/toggle`, {}).pipe(
+      switchMap(updated => from(this.persistProduct(updated))),
     );
   }
 

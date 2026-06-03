@@ -386,13 +386,18 @@ export class ProductFormComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     // Hydrate categories + printer destinations + tax catalog in parallel.
+    // `loadCatalog()` issues a server fetch so this form always reflects
+    // the same tenant state as other browsers / devices — without it
+    // the deep-linked editor used to read a stale Dexie that another
+    // admin may not have populated yet.
     // `ensureHydrated()` is idempotent (cached promise) so it's free if
     // login already kicked it off.
-    const [categories] = await Promise.all([
-      this.db.categories.orderBy('sortOrder').toArray(),
+    await Promise.all([
+      this.productService.loadCatalog(),
       this.printerDestinationService.loadFromLocal(),
       this.tenantContext.ensureHydrated(),
     ]);
+    const categories = await this.db.categories.orderBy('sortOrder').toArray();
     this.categories.set(categories);
 
     // Detect mode from route: presence of `:id` → edit, absence → create
