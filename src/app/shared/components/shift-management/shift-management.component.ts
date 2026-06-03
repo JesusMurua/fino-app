@@ -355,6 +355,7 @@ export class ShiftManagementComponent implements OnInit {
         notes: this.closeNotes.trim() || undefined,
       });
 
+      this.clearCloseDraft();
       this.closeAmount = null;
       this.closeNotes = '';
 
@@ -460,15 +461,75 @@ export class ShiftManagementComponent implements OnInit {
   }
 
   /**
-   * Opens the close dialog. Always rewinds the two-step flow to
-   * `'counting'` so a previous session never leaks into the next
-   * attempt — the cashier must count blind every single time.
+   * Opens the close dialog. Restores a draft (counted amount + notes)
+   * left by a previous attempt of the SAME session so a mid-close
+   * reload does not erase what the cashier had already entered. The
+   * blind-count state machine still rewinds to `'counting'` so the
+   * cashier re-confirms before seeing the expected total — only the
+   * input values are restored.
+   *
+   * Draft is scoped per session-id and cleared on a successful close,
+   * on explicit cancel, and naturally on tab close (sessionStorage).
    */
   openCloseDialog(): void {
-    this.closeAmount = null;
-    this.closeNotes = '';
+    const restored = this.restoreCloseDraft();
+    this.closeAmount = restored?.amount ?? null;
+    this.closeNotes = restored?.notes ?? '';
     this.closeStep.set('counting');
     this.showCloseDialog.set(true);
+  }
+
+  /**
+   * Persists the in-progress close form (counted amount + notes) to
+   * sessionStorage under the active session id. Triggered from
+   * `(ngModelChange)` on both fields so a reload mid-close does not
+   * lose the cashier's entry.
+   */
+  persistCloseDraft(): void {
+    const session = this.activeSession();
+    if (!session) return;
+    const draft = { amount: this.closeAmount, notes: this.closeNotes };
+    try {
+      sessionStorage.setItem(this.closeDraftKey(session.id), JSON.stringify(draft));
+    } catch { /* sessionStorage quota — silent, draft is best-effort */ }
+  }
+
+  private restoreCloseDraft(): { amount: number | null; notes: string } | null {
+    const session = this.activeSession();
+    if (!session) return null;
+    try {
+      const raw = sessionStorage.getItem(this.closeDraftKey(session.id));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { amount?: number | null; notes?: string };
+      return {
+        amount: typeof parsed.amount === 'number' ? parsed.amount : null,
+        notes: typeof parsed.notes === 'string' ? parsed.notes : '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private clearCloseDraft(): void {
+    const session = this.activeSession();
+    if (!session) return;
+    try {
+      sessionStorage.removeItem(this.closeDraftKey(session.id));
+    } catch { /* silent */ }
+  }
+
+  private closeDraftKey(sessionId: number): string {
+    return `pos-close-shift-draft-${sessionId}`;
+  }
+
+  /**
+   * Explicitly drops the in-progress close draft. Wired to the
+   * Cancel button so the cashier gets a clean slate next time and
+   * does not see a stale amount they thought they had discarded.
+   */
+  cancelCloseDialog(): void {
+    this.clearCloseDraft();
+    this.showCloseDialog.set(false);
   }
 
   /**

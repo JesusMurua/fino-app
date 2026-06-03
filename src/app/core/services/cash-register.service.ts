@@ -146,6 +146,27 @@ export class CashRegisterService implements OnDestroy {
       }
     }, { allowSignalWrites: true });
 
+    // Branch switch detection: the auth-mirror effect above only fires
+    // on the false → true transition, so a user changing sucursal
+    // mid-session would otherwise keep a stale `_linkedRegister` from
+    // the previous branch. We track the branchId separately and force
+    // a cache reset + re-resolve whenever it actually changes after
+    // the initial settle (cold-boot keeps the cached resolution).
+    let prevBranchId = this.authService.activeBranchId();
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      const authed = this.authService.isAuthenticated();
+      if (!authed || branchId === 0) {
+        prevBranchId = branchId;
+        return;
+      }
+      if (prevBranchId !== 0 && prevBranchId !== branchId) {
+        this.resetLinkedRegisterCache();
+        void this.runPostAuthRecovery();
+      }
+      prevBranchId = branchId;
+    }, { allowSignalWrites: true });
+
     // Auto-open the shift sidebar on the *transition* from no-session →
     // open-session, so the cashier sees the freshly opened shift summary
     // at a glance. Cold-boot guard: the very first time this effect

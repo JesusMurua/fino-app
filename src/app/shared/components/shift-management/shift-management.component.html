@@ -200,6 +200,7 @@
         <p-inputNumber
           inputId="close-amount"
           [(ngModel)]="closeAmount"
+          (ngModelChange)="persistCloseDraft()"
           mode="currency"
           currency="MXN"
           locale="es-MX"
@@ -230,6 +231,7 @@
           pInputTextarea
           id="close-notes"
           [(ngModel)]="closeNotes"
+          (ngModelChange)="persistCloseDraft()"
           [rows]="3"
           placeholder="Observaciones del cierre..."
           class="dialog-field__textarea"
@@ -245,7 +247,7 @@
         <button
           type="button"
           class="btn-ghost"
-          (click)="showCloseDialog.set(false)"
+          (click)="cancelCloseDialog()"
         >
           Cancelar
         </button>

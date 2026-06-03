@@ -298,129 +298,11 @@ $bp-desktop: 1024px;
 
 }
 
-// =========================================================================
-// Shift status chip — interactive entry point in the POS header.
-//
-// Two visual states driven by `cashRegisterService.hasOpenSession()`:
-//   --open   : green dot + "Turno abierto · $X,XXX.XX"
-//   --closed : amber dot + "Caja cerrada"
-//
-// The dot uses the same chromatic language as the connection status
-// indicator (.pos-header__status) so the cashier subconsciously parses
-// "this is a state thing", not "this is just a button". Click toggles the
-// shift sidebar via `cashRegisterService.togglePanel()`.
-// =========================================================================
-
-.shift-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: $space-2;
-  padding: $space-2 $space-3;
-  border: 1px solid transparent;
-  border-radius: 9999px;
-  background: transparent;
-  color: $color-text-title;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-
-  &__dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  &__label {
-    font-weight: 600;
-  }
-
-  &__amount {
-    font-weight: 700;
-    font-size: $font-size-label;
-    color: $color-text-title;
-    margin-left: 2px;
-    display: inline-flex;
-    transform-origin: center;
-
-    // Subtle separator between label and amount, matches enterprise
-    // dashboards (Stripe / Linear) without adding a literal char.
-    &::before {
-      content: '·';
-      margin-right: $space-2;
-      color: $color-text-muted;
-      font-weight: 400;
-    }
-
-    // Each `data-pulse` change re-runs the keyframe — the attribute
-    // selector matters more than the value, but Angular re-rendering
-    // the attribute is what re-triggers the animation. Hidden behind a
-    // reduced-motion guard so users who opt out get a still chip.
-    @media (prefers-reduced-motion: no-preference) {
-      &[data-pulse] {
-        animation: shift-chip-amount-pulse 0.45s ease-out;
-      }
-    }
-  }
-
-  &--open {
-    background: $color-primary-light;
-    border-color: var(--primary-200);
-    color: var(--primary-900);
-
-    .shift-chip__dot   { background: $color-primary; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
-    .shift-chip__label { color: var(--primary-900); }
-
-    // Subtle continuous pulse on the green dot while a shift is open.
-    // Communicates "alive, transacting" without distracting from the
-    // grid below. Disabled for users who request reduced motion.
-    @media (prefers-reduced-motion: no-preference) {
-      .shift-chip__dot {
-        animation: shift-chip-dot-pulse 2.4s ease-in-out infinite;
-      }
-    }
-
-    &:hover {
-      background: var(--primary-100);
-      border-color: var(--primary-300);
-    }
-  }
-
-  &--closed {
-    background: $color-warning-100;
-    border-color: $color-warning-200;
-    color: $color-warning-800;
-
-    .shift-chip__dot   { background: $color-warning; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15); }
-    .shift-chip__label { color: $color-warning-800; }
-
-    &:hover {
-      background: $color-warning-200;
-      border-color: $color-warning-300;
-    }
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  &:focus-visible {
-    outline: 2px solid $color-primary;
-    outline-offset: 2px;
-  }
-
-  // Hide the amount label on small screens — keep the dot + label so
-  // the chip stays compact next to the sync indicator.
-  @media (max-width: 600px) {
-    padding: $space-2 $space-2;
-    .shift-chip__amount { display: none; }
-  }
-}
+// Shift status chip styles moved to <app-shift-chip>'s own SCSS so the
+// chip can be reused on every POS surface (UnifiedPos header, F&B
+// RestaurantHub header, future home-screen tiles) without copying
+// markup or styles. The chip element keeps the same visual contract,
+// only the source of truth changed.
 
 @keyframes badge-pop {
   0%   { transform: scale(0); }
@@ -1655,32 +1537,5 @@ $bp-desktop: 1024px;
   }
 }
 
-// =========================================================================
-// Shift chip keyframes — kept at the bottom so they're easy to find when
-// tuning. Both animations are ALREADY guarded by `prefers-reduced-motion:
-// no-preference` at their consumer site, so the keyframes themselves
-// don't need a media-query wrap.
-// =========================================================================
-
-// Continuous gentle pulse on the green dot of `.shift-chip--open`.
-// The opacity dip is what reads as "alive"; the box-shadow expansion
-// adds a subtle halo without adding visual weight to the chip's
-// surrounding frame.
-@keyframes shift-chip-dot-pulse {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
-  }
-  50% {
-    opacity: 0.85;
-    box-shadow: 0 0 0 6px rgba(22, 163, 74, 0.05);
-  }
-}
-
-// One-shot scale-pulse fired when `expectedAmount` changes. Kept short
-// (~450ms) so consecutive sales stack visually instead of queueing.
-@keyframes shift-chip-amount-pulse {
-  0%   { transform: scale(1); }
-  35%  { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
+// Shift-chip keyframes moved to <app-shift-chip>'s own SCSS along
+// with the chip styles. See shift-chip.component.scss.

@@ -48,6 +48,7 @@ import { ThemeService } from '../../../../core/services/theme.service';
 import { sanitizeSecureCode } from '../../../../core/utils/secure-alphabet.utils';
 import { environment } from '../../../../../environments/environment';
 import { ShiftPanelComponent } from '../shift-panel/shift-panel.component';
+import { ShiftChipComponent } from '../../../../shared/components/shift-chip/shift-chip.component';
 
 /** PIN numpad key */
 type NumpadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'del';
@@ -87,6 +88,7 @@ interface VerifyPinResponse {
     TooltipModule,
     PricePipe,
     ShiftPanelComponent,
+    ShiftChipComponent,
   ],
   providers: [ConfirmationService],
   templateUrl: './pos-header.component.html',
@@ -261,18 +263,9 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       }
     }, { allowSignalWrites: true });
 
-    // Pulse the chip amount whenever `expectedAmount` changes. We track
-    // the value as a dependency, ignore the first emission (component
-    // mount) by comparing against a baseline, and bump a counter on
-    // every subsequent change. The template binds the counter to a CSS
-    // attribute that re-triggers a keyframe animation on each tick.
-    let lastAmount = this.cashRegisterService.expectedAmount();
-    effect(() => {
-      const next = this.cashRegisterService.expectedAmount();
-      if (next === lastAmount) return;
-      lastAmount = next;
-      this.amountPulseKey.update(v => v + 1);
-    }, { allowSignalWrites: true });
+    // The shift-chip animation (dot pulse + amount-change pulse) is
+    // owned by the <app-shift-chip> standalone component, so no chip
+    // effect lives here anymore.
   }
 
   //#region Lifecycle
@@ -591,18 +584,6 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
       },
     });
   }
-
-  //#endregion
-
-  //#region Chip Amount Pulse
-
-  /**
-   * Monotonic counter that ticks each time `expectedAmount` changes,
-   * driving a brief scale-pulse on the chip's amount node. Bound to a
-   * CSS class via `attr.data-pulse` in the template — toggling the value
-   * triggers the keyframe animation owned by `.shift-chip__amount`.
-   */
-  readonly amountPulseKey = signal(0);
 
   //#endregion
 
