@@ -80,6 +80,24 @@ export class ProductCategoryService {
     );
   }
 
+  /**
+   * Flips the active flag of a category via `PATCH /categories/{id}/toggle`.
+   *
+   * Why this exists instead of going through `update(id, {...})`:
+   * `PUT /categories/{id}` ignores the `isActive` field server-side
+   * (`CategoryService.cs:47-49` only copies Name / Icon / SortOrder),
+   * so the PUT path silently no-ops when used as a toggle. The
+   * dedicated PATCH endpoint is the only way to flip `isActive` from
+   * the API.
+   *
+   * @param id Server-assigned category ID
+   */
+  toggleActive(id: number): Observable<Category> {
+    return this.api.patch<Category>(`/categories/${id}/toggle`, {}).pipe(
+      switchMap(updated => from(this.persistAndRefresh(updated))),
+    );
+  }
+
   //#endregion
 
   //#region Private Helpers

@@ -91,6 +91,20 @@ export interface Product {
   /** Multiple product images ordered by sortOrder */
   images?: ProductImage[];
   isAvailable: boolean;
+  /**
+   * Whether this product has at least one `OrderItem` referencing it
+   * server-side. When `true`, the product is fiscally locked under
+   * SAT/CFDI rules — it cannot be hard-deleted, only deactivated via
+   * the availability toggle. Computed on the backend with an EXISTS
+   * subquery to keep the cost flat regardless of catalog size.
+   *
+   * Optional in the type signature so older API responses (and Dexie
+   * rows persisted before this field existed) keep deserialising — a
+   * missing value means "we don't know yet" and the UI falls back to
+   * the safer behaviour (allow the delete attempt and rely on the
+   * server's 409 to educate).
+   */
+  hasOrders?: boolean;
   isPopular?: boolean;
   /** Whether this product tracks its own stock (useful for retail/abarrotes) */
   trackStock?: boolean;

@@ -2,6 +2,7 @@ import { Component, OnInit, computed, effect, inject, signal } from '@angular/co
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { DialogModule } from 'primeng/dialog';
 import { DropdownModule } from 'primeng/dropdown';
@@ -211,15 +212,33 @@ export class AdminProductsComponent implements OnInit {
 
   //#region Data Loading
 
+  /**
+   * Loads the catalog server-first.
+   *
+   * Goes through `productService.loadCatalog()` so the request flows
+   * through the canonical stale-while-revalidate pipeline (Dexie cache
+   * → fresh API fetch → signal refresh). After that we read Dexie
+   * directly to expose BOTH active and inactive categories — the
+   * service's `categories` signal filters inactives out, but the admin
+   * surface needs to render them so the user can toggle them back on.
+   *
+   * Reading from the local DB *after* the network refresh guarantees
+   * the admin always reflects the server state for this tenant
+   * regardless of which browser / device the user opens the page on.
+   */
   private async loadData(): Promise<void> {
     this.isLoading.set(true);
-    const [products, categories] = await Promise.all([
-      this.db.products.toArray(),
-      this.db.categories.orderBy('sortOrder').toArray(),
-    ]);
-    this.products.set(products);
-    this.categories.set(categories);
-    this.isLoading.set(false);
+    try {
+      await this.productService.loadCatalog();
+      const [products, categories] = await Promise.all([
+        this.db.products.toArray(),
+        this.db.categories.orderBy('sortOrder').toArray(),
+      ]);
+      this.products.set(products);
+      this.categories.set(categories);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 
   //#endregion
@@ -236,9 +255,29 @@ export class AdminProductsComponent implements OnInit {
     this.router.navigate([product.id, 'edit'], { relativeTo: this.route });
   }
 
+  /**
+   * Flips a product between available / unavailable via the backend
+   * (`PATCH /products/{id}/toggle`). The previous implementation only
+   * wrote to Dexie, so the change vanished on reload and never reached
+   * other browsers of the same tenant.
+   *
+   * Pessimistic UI: we don't optimistically flip the row in the table
+   * because the service already refreshes signals from Dexie once the
+   * API confirms — the visual update happens through the same
+   * `loadData()` pass other mutations use.
+   */
   async toggleActive(product: Product): Promise<void> {
-    await this.db.products.update(product.id, { isAvailable: !product.isAvailable });
-    await this.loadData();
+    try {
+      await firstValueFrom(this.productService.toggleAvailability(product.id));
+      await this.loadData();
+    } catch (err: unknown) {
+      this.messageService.add({
+        severity: 'error',
+        summary: getHttpErrorSummary(err),
+        detail: `No se pudo actualizar "${product.name}".`,
+        life: 5000,
+      });
+    }
   }
 
   /**
@@ -255,6 +294,22 @@ export class AdminProductsComponent implements OnInit {
    */
   deleteProduct(product: Product): void {
     if (this.isDeletingProduct() !== null) return;
+
+    // Defence in depth: the trash button is already disabled in the
+    // template for products with `hasOrders === true`, but if the flag
+    // arrived after the user clicked (race between two browsers), or
+    // an older Dexie row was missing the field, surface the same
+    // SAT-aware message instead of silently letting the user bounce
+    // into a 409 round trip.
+    if (product.hasOrders === true) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'No se puede eliminar',
+        detail: `"${product.name}" ya fue vendido. Por compliance SAT debe conservarse — usa el switch para desactivarlo.`,
+        life: 6000,
+      });
+      return;
+    }
 
     this.confirmationService.confirm({
       message: `¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`,
@@ -409,29 +464,104 @@ export class AdminProductsComponent implements OnInit {
     });
   }
 
+  /**
+   * Flips a category between active / inactive on the backend via the
+   * dedicated `PATCH /categories/{id}/toggle` endpoint. The generic
+   * `PUT /categories/{id}` ignores the `isActive` field server-side,
+   * so we cannot use it for this purpose — the toggle endpoint is the
+   * single source of truth for that flag.
+   */
   async toggleCategoryActive(cat: Category): Promise<void> {
-    await this.db.categories.update(cat.id, { isActive: !cat.isActive });
-    await this.loadData();
+    try {
+      await firstValueFrom(this.categoryService.toggleActive(cat.id));
+      await this.loadData();
+    } catch (err: unknown) {
+      this.messageService.add({
+        severity: 'error',
+        summary: getHttpErrorSummary(err),
+        detail: `No se pudo actualizar la categoría "${cat.name}".`,
+        life: 5000,
+      });
+    }
   }
 
-  /** Deletes a category only if it has no active products */
+  /**
+   * Deletes a category via the backend.
+   *
+   * The local precheck blocks the call whenever the category still has
+   * ANY product attached (active or inactive). This is stricter than
+   * the server's own guard (which only blocks on active products) but
+   * it is the safer default: the server's foreign-key cascade would
+   * silently take inactive products with it — and any historical
+   * order item referencing one of those products would either yield a
+   * 500 (FK Restrict) or destroy reporting history. Forcing the user
+   * to reassign or delete the products first preserves both invariants.
+   *
+   * If the local cache disagrees with the server (a product was created
+   * from another browser since the last `loadCatalog`) the backend
+   * responds 400 with `"Cannot delete a category with active products"`
+   * — we surface a targeted toast so the user can refresh and retry.
+   */
   async deleteCategory(cat: Category): Promise<void> {
     this.catError.set('');
 
-    const activeCount = await this.db.products
+    const totalCount = await this.db.products
       .where('categoryId').equals(cat.id)
-      .and(p => p.isAvailable)
       .count();
 
-    if (activeCount > 0) {
+    if (totalCount > 0) {
+      const noun = totalCount === 1 ? 'producto' : 'productos';
       this.catError.set(
-        `No se puede eliminar "${cat.name}": tiene ${activeCount} producto(s) activo(s).`
+        `No se puede eliminar "${cat.name}": tiene ${totalCount} ${noun}. Muévelos a otra categoría o elimínalos primero.`,
       );
       return;
     }
 
-    await this.db.categories.delete(cat.id);
-    await this.loadData();
+    try {
+      await firstValueFrom(this.categoryService.delete(cat.id));
+      await this.loadData();
+    } catch (err: unknown) {
+      this.catError.set('');
+      this.handleDeleteCategoryError(err, cat);
+    }
+  }
+
+  /**
+   * Maps the backend's 409 contract (`category_has_products`) to an
+   * actionable toast with the exact server-side product count and
+   * falls back to the shared HTTP helper for any other failure.
+   *
+   * This path is only reached when the local Dexie cache lost the
+   * race against another browser that created a product after the
+   * admin's last `loadCatalog` — the in-component precheck already
+   * blocks the call when the local count > 0. We surface the count
+   * the server actually saw so the user can refresh and reconcile.
+   */
+  private handleDeleteCategoryError(err: unknown, cat: Category): void {
+    if (err instanceof HttpErrorResponse && err.status === 409) {
+      const body = err.error as { error?: string; productCount?: number } | null;
+      if (body?.error === 'category_has_products') {
+        const count = body.productCount ?? 0;
+        const noun = count === 1 ? 'producto' : 'productos';
+        const detail = count > 0
+          ? `"${cat.name}" tiene ${count} ${noun} en el servidor. Refresca la pantalla, muévelos o elimínalos primero.`
+          : `"${cat.name}" tiene productos en el servidor. Refresca la pantalla y revisa los productos asignados.`;
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'No se puede eliminar',
+          detail,
+          life: 6000,
+        });
+        return;
+      }
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: getHttpErrorSummary(err),
+      detail: `No se pudo eliminar la categoría "${cat.name}".`,
+      life: 5000,
+    });
   }
 
   //#endregion
