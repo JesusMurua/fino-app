@@ -17,7 +17,7 @@
       <i class="pi pi-wallet shift-empty__icon"></i>
       <h2 class="shift-empty__title">No hay turno abierto</h2>
       <p class="shift-empty__text">Abre un turno para comenzar a registrar ventas del día</p>
-      <button type="button" class="btn-primary btn-primary--lg" (click)="openOpenDialog()">
+      <button type="button" class="btn-primary btn-primary--lg" (click)="requestOpenShift()">
         <i class="pi pi-plus"></i>
         Abrir turno
       </button>
@@ -142,62 +142,10 @@
 <!-- POS session-blocker (z-index 1500). The blocker covers tooltips/toasts   -->
 <!-- (~1100) but must NOT cover these actionable shift dialogs.               -->
 <!-- ====================================================================== -->
-<p-dialog
-  header="Abrir turno de caja"
-  [(visible)]="showOpenDialog"
-  [modal]="true"
-  [closable]="true"
-  [style]="{ width: '420px' }"
-  [draggable]="false"
-  appendTo="body"
-  [baseZIndex]="2000"
->
-  <div class="dialog-form">
-
-    <div class="dialog-field">
-      <label class="dialog-field__label" for="open-amount">Fondo inicial</label>
-      <p-inputNumber
-        inputId="open-amount"
-        [(ngModel)]="openAmount"
-        mode="currency"
-        currency="MXN"
-        locale="es-MX"
-        [min]="0"
-        styleClass="dialog-field__input-lg"
-        inputStyleClass="dialog-field__input-lg-inner"
-        placeholder="$0.00"
-        posSelectOnFocus
-      />
-    </div>
-
-    <p class="dialog-hint">El fondo es el dinero disponible para dar cambio</p>
-
-  </div>
-
-  <ng-template pTemplate="footer">
-    <div class="dialog-footer">
-      <button
-        type="button"
-        class="btn-ghost"
-        [disabled]="isOpeningSession()"
-        (click)="showOpenDialog.set(false)"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        class="btn-primary"
-        [disabled]="openAmount == null || openAmount < 0 || isOpeningSession()"
-        (click)="openSession()"
-      >
-        @if (isOpeningSession()) {
-          <i class="pi pi-spin pi-spinner"></i>
-        }
-        Abrir turno
-      </button>
-    </div>
-  </ng-template>
-</p-dialog>
+<!-- The "Abrir turno de caja" dialog lives at the application root in
+     <app-open-shift-dialog />. The shift-management empty state and the
+     POS session-blocker both surface it through
+     CashRegisterService.requestOpenDialog(). -->
 
 <!-- ====================================================================== -->
 <!-- Dialog: Close Session                                                   -->

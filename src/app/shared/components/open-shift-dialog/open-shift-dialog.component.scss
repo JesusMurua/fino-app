@@ -1,0 +1,8 @@
+// Global "Abrir turno" dialog — visual rules come from the global
+// `dialog-form / dialog-field / dialog-hint / dialog-footer / btn-*`
+// classes in styles/_components.scss, so this file is intentionally
+// thin. Keep host-scoped overrides here when they cannot be expressed
+// globally without affecting the other shared dialogs.
+:host {
+  display: contents;
+}

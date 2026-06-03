@@ -689,11 +689,11 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Asks any mounted `<app-shift-management>` instance to open its
-   * "Open Shift" dialog. Used by the full-screen session-blocker so a
-   * single click from "Caja Cerrada" lands the cashier directly on the
-   * full-fidelity dialog (drawer-pop, $0-confirm, error mapping) instead
-   * of duplicating that flow inline.
+   * Asks the global `<app-open-shift-dialog>` (mounted at app root)
+   * to surface its "Abrir turno" dialog. Used by the full-screen POS
+   * session-blocker and by the Admin caja empty state alike — the
+   * shared dialog handles drawer-pop, $0-confirm, error mapping, and
+   * Dexie liveQuery refresh on success.
    */
   requestOpenDialog(): void {
     this._openDialogTrigger.update(v => v + 1);

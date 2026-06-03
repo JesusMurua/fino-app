@@ -112,7 +112,6 @@ export class ShiftManagementComponent implements OnInit {
   //#region Local State
 
   readonly loading = signal(false);
-  readonly isOpeningSession = signal(false);
   readonly isClosingSession = signal(false);
 
   /**
@@ -128,7 +127,6 @@ export class ShiftManagementComponent implements OnInit {
   readonly closeStep = signal<'counting' | 'reveal'>('counting');
 
   // Dialog visibility
-  readonly showOpenDialog = signal(false);
   readonly showCloseDialog = signal(false);
   readonly showMovementDialog = signal(false);
   readonly showHistoryDialog = signal(false);
@@ -143,7 +141,6 @@ export class ShiftManagementComponent implements OnInit {
 
   // Forms — currency inputs start as `null` so the PrimeNG placeholder
   // ("$0.00") is visible and the first keystroke overwrites cleanly.
-  openAmount: number | null = null;
   closeAmount: number | null = null;
   closeNotes = '';
   movementAmount = 0;
@@ -244,18 +241,10 @@ export class ShiftManagementComponent implements OnInit {
       });
     }, { allowSignalWrites: true });
 
-    // External "open dialog" triggers (e.g. the full-screen session
-    // blocker's "Abrir Turno" CTA). The service emits a monotonic
-    // counter so each request — even with the same target state —
-    // re-fires the dialog. We skip the initial `0` emission so the
-    // dialog does not auto-open on component mount.
-    let lastTrigger = this.cashRegisterService.openDialogTrigger();
-    effect(() => {
-      const current = this.cashRegisterService.openDialogTrigger();
-      if (current === lastTrigger) return;
-      lastTrigger = current;
-      this.openOpenDialog();
-    }, { allowSignalWrites: true });
+    // The "Abrir turno" dialog is owned globally by
+    // <app-open-shift-dialog>; it subscribes to
+    // CashRegisterService.openDialogTrigger directly so this
+    // component no longer mirrors that effect.
   }
 
   //#endregion
@@ -282,50 +271,14 @@ export class ShiftManagementComponent implements OnInit {
   }
 
   /**
-   * Opens a new cash register session.
-   *
-   * Guards against:
-   *   - Double-click / concurrent opens via `isOpeningSession`
-   *   - Accidental $0 float via a confirmation dialog (the cashier must
-   *     explicitly acknowledge that there is no cash for change)
-   *   - Network / validation errors via a typed toast that preserves
-   *     the dialog so the user can retry without re-entering the amount
+   * Surfaces the global "Abrir turno" dialog via the service trigger.
+   * The dialog itself lives in `<app-open-shift-dialog>` at the
+   * application root so it works from every host (POS blocker, admin
+   * empty state, sidebar) without depending on this component being
+   * mounted.
    */
-  async openSession(): Promise<void> {
-    if (this.isOpeningSession()) return;
-
-    const user = this.authService.currentUser();
-    if (!user) return;
-
-    const amount = this.openAmount ?? 0;
-    if (amount === 0) {
-      const confirmed = await this.confirmOpenWithoutFloat();
-      if (!confirmed) return;
-    }
-
-    this.isOpeningSession.set(true);
-    try {
-      await this.cashRegisterService.openSession({
-        initialAmountCents: Math.round(amount * 100),
-      });
-
-      this.showOpenDialog.set(false);
-
-      // Pop the drawer so the cashier can drop the initial float inside.
-      // Fire-and-forget: a missing or disconnected drawer must not block
-      // the happy path of opening the shift.
-      this.printerService.openCashDrawer().catch(() => { /* ignored */ });
-
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Turno abierto',
-        detail: 'Turno abierto correctamente',
-      });
-    } catch (error) {
-      this.showOpenError(error);
-    } finally {
-      this.isOpeningSession.set(false);
-    }
+  requestOpenShift(): void {
+    this.cashRegisterService.requestOpenDialog();
   }
 
   /**
@@ -346,50 +299,6 @@ export class ShiftManagementComponent implements OnInit {
         life: 4000,
       });
     }
-  }
-
-  /**
-   * Prompts the user to confirm an opening balance of zero.
-   * Resolves to `true` when the user explicitly accepts, `false` on
-   * reject / close.
-   */
-  private confirmOpenWithoutFloat(): Promise<boolean> {
-    return new Promise(resolve => {
-      this.confirmationService.confirm({
-        key: 'shiftManagementConfirm',
-        header: '¿Abrir sin fondo de cambio?',
-        message: 'Vas a abrir el turno con $0. Sin fondo no podrás dar cambio a tus clientes. ¿Estás seguro?',
-        icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Sí, abrir sin fondo',
-        rejectLabel: 'Cancelar',
-        accept: () => resolve(true),
-        reject: () => resolve(false),
-      });
-    });
-  }
-
-  /** Maps an open-session error to a human-readable toast */
-  private showOpenError(error: unknown): void {
-    let detail = 'No se pudo abrir el turno. Intenta de nuevo.';
-
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 409) {
-        detail = 'Ya existe un turno abierto para esta caja.';
-      } else if (error.status === 400) {
-        detail = 'El monto inicial no es válido.';
-      } else if (error.status === 0) {
-        detail = 'Sin conexión. Intenta de nuevo cuando vuelva internet.';
-      }
-    } else if (error instanceof Error && error.message.toLowerCase().includes('not linked')) {
-      detail = 'Este dispositivo no está vinculado a una caja física.';
-    }
-
-    this.messageService.add({
-      severity: 'error',
-      summary: 'Error al abrir turno',
-      detail,
-      life: 5000,
-    });
   }
 
   /**
@@ -548,15 +457,6 @@ export class ShiftManagementComponent implements OnInit {
       month: '2-digit',
       year: 'numeric',
     });
-  }
-
-  /**
-   * Opens the open-session dialog and clears any residual amount
-   * from a previous attempt so the cashier never sees a stale value.
-   */
-  openOpenDialog(): void {
-    this.openAmount = null;
-    this.showOpenDialog.set(true);
   }
 
   /**

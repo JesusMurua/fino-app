@@ -1,0 +1,61 @@
+<!-- "Abrir turno de caja" dialog — global, always mounted at app root. -->
+<!-- baseZIndex 2000 stays above the POS session-blocker (1500). -->
+<p-dialog
+  header="Abrir turno de caja"
+  [(visible)]="showOpenDialog"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+  appendTo="body"
+  [baseZIndex]="2000"
+>
+  <div class="dialog-form">
+
+    <div class="dialog-field">
+      <label class="dialog-field__label" for="open-amount">Fondo inicial</label>
+      <p-inputNumber
+        inputId="open-amount"
+        [(ngModel)]="openAmount"
+        mode="currency"
+        currency="MXN"
+        locale="es-MX"
+        [min]="0"
+        styleClass="dialog-field__input-lg"
+        inputStyleClass="dialog-field__input-lg-inner"
+        placeholder="$0.00"
+        posSelectOnFocus
+      />
+    </div>
+
+    <p class="dialog-hint">El fondo es el dinero disponible para dar cambio</p>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="dialog-footer">
+      <button
+        type="button"
+        class="btn-ghost"
+        [disabled]="isOpeningSession()"
+        (click)="showOpenDialog.set(false)"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="openAmount == null || openAmount < 0 || isOpeningSession()"
+        (click)="openSession()"
+      >
+        @if (isOpeningSession()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Abrir turno
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Local confirm dialog scoped via key so other ConfirmDialogs do not steal it. -->
+<p-confirmDialog key="openShiftDialogConfirm" [baseZIndex]="2100" />
