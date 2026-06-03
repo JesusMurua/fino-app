@@ -30,7 +30,12 @@ import { CashRegister } from '../models';
 describe('CashRegisterService — cold-boot race & promise cache', () => {
   let service: CashRegisterService;
   let api: jasmine.SpyObj<ApiService>;
-  let auth: { isAuthenticated: ReturnType<typeof signal<boolean>>; branchId: number; currentUser: () => null };
+  let auth: {
+    isAuthenticated: ReturnType<typeof signal<boolean>>;
+    activeBranchId: ReturnType<typeof signal<number>>;
+    branchId: number;
+    currentUser: () => null;
+  };
   let deviceService: { deviceUuid: string };
 
   const fakeRegister: CashRegister = {
@@ -81,6 +86,13 @@ describe('CashRegisterService — cold-boot race & promise cache', () => {
     deviceService = { deviceUuid: 'mock-uuid' };
     auth = {
       isAuthenticated: signal(false),
+      // `activeBranchId` is a writable signal in the real AuthService;
+      // the cash-register service constructor reads it to detect a
+      // branch switch and re-resolve the linked register. The mock
+      // exposes it as a static signal so the effect can subscribe
+      // without throwing — switching tests can `set()` it explicitly
+      // when they need to assert branch-change behaviour.
+      activeBranchId: signal(0),
       branchId: 1,
       currentUser: () => null,
     };
