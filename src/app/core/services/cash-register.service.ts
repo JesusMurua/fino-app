@@ -11,6 +11,7 @@ import {
   CashRegisterSession,
   CloseSessionRequest,
   GenerateLinkCodeResponse,
+  InitializeCashierSessionResponse,
   OpenSessionRequest,
 } from '../models';
 import { CashMovementType, CashRegisterStatus } from '../enums';
@@ -441,6 +442,54 @@ export class CashRegisterService implements OnDestroy {
       console.warn('[CashRegisterService] API unreachable — using Dexie fallback for registers:', error);
       return this.db.cashRegisters.toArray();
     }
+  }
+
+  /**
+   * One-call atomic POS provisioning for the current browser. Registers
+   * the device as cashier-mode in the active branch (or refreshes it
+   * idempotently), creates or reclaims a register with the supplied
+   * name, and binds them — all in a single server-side transaction.
+   *
+   * Replaces the legacy 3-step chain (`registerDevice` → `createRegister`
+   * → `linkDevice`) used by the session-blocker self-link button. The
+   * server handles takeover semantics automatically: a same-name
+   * register with no device or no open session is silently reassigned.
+   * The 409 `session_open_on_other_device` is only emitted when another
+   * device has an OPEN shift on the target register — that is the only
+   * case where the FE must surface a confirmation dialog and retry with
+   * `force: true`.
+   *
+   * Persists the returned register into Dexie so offline resolves
+   * continue to find it across reloads.
+   *
+   * @param options.force Re-issue the call with `force: true` to take over
+   *   a register that holds an open session in another device. The
+   *   backend closes the previous session with a `FORCE_TAKEOVER:` note
+   *   and rebinds the register to this device atomically.
+   * @param options.registerName Override the default register name. Omit
+   *   to use the backend default ("Caja Principal").
+   */
+  async initializeCashierSession(
+    options: { force?: boolean; registerName?: string } = {},
+  ): Promise<InitializeCashierSessionResponse> {
+    const response = await firstValueFrom(
+      this.api.post<InitializeCashierSessionResponse>('/pos/initialize-cashier-session', {
+        deviceUuid: this.deviceService.deviceUuid,
+        force: options.force ?? false,
+        registerName: options.registerName,
+      }),
+    );
+
+    const register: CashRegister = {
+      id: response.register.id,
+      branchId: response.device.branchId,
+      name: response.register.name,
+      isActive: response.register.isActive,
+      deviceId: response.register.deviceId ?? undefined,
+      deviceUuid: response.device.uuid,
+    };
+    await this.db.cashRegisters.put(register);
+    return response;
   }
 
   /**

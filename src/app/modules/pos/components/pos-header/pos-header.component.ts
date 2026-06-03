@@ -22,6 +22,7 @@ import {
   DEFAULT_APP_CONFIG,
   DEFAULT_DEVICE_CONFIG,
   DeviceConfig,
+  InitializeCashierSessionResponse,
   Order,
   Supplier,
 } from '../../../../core/models';
@@ -795,88 +796,75 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   private readonly DEFAULT_REGISTER_NAME = 'Caja Principal';
 
   /**
-   * One-click self-link for Owners/Managers: creates a register named
-   * "Caja Principal", links it to this device, and resolves it so the
-   * session blocker advances to `needsOpening`.
+   * One-click self-link for Owners/Managers. Calls the atomic POS
+   * provisioning endpoint, which registers this browser as a cashier
+   * device (or refreshes it idempotently), creates or silently reclaims
+   * the default register, and binds them in a single server-side
+   * transaction. Then advances the session blocker to `needsOpening`.
    *
-   * If the backend returns 409 `register_name_taken`, the takeover dialog
-   * is shown so the user can reclaim the existing register.
+   * The only case where the backend cannot resolve the call on its own
+   * is when the target register holds an open session in another
+   * device — see `handleInitError` for the dialog branch.
    */
   async linkDeviceAsRegister(): Promise<void> {
     if (this.isLinkingDevice()) return;
     this.isLinkingDevice.set(true);
 
     try {
-      await this.createAndLinkRegister(this.DEFAULT_REGISTER_NAME, false);
+      await this.runInitializeCashierSession({ force: false });
     } catch (error: unknown) {
-      await this.handleLinkError(error, this.DEFAULT_REGISTER_NAME);
+      this.handleInitError(error);
     } finally {
       this.isLinkingDevice.set(false);
     }
   }
 
   /**
-   * Performs the create + link + resolve sequence and shows the success toast.
-   * Throws the original error so callers can branch on HTTP 409.
+   * Issues the atomic init call and propagates the local state updates
+   * (linked register, active session, success toast). Throws the
+   * original HTTP error so callers can branch on the open-session 409.
    */
-  private async createAndLinkRegister(name: string, takeover: boolean): Promise<void> {
-    const register = await this.cashRegisterService.createRegister(name, true, takeover);
-    await this.cashRegisterService.linkDevice(register.id, this.deviceService.deviceUuid);
-    await this.cashRegisterService.resolveLinkedRegister();
+  private async runInitializeCashierSession(options: { force: boolean }): Promise<void> {
+    const response = await this.cashRegisterService.initializeCashierSession({
+      force: options.force,
+      registerName: this.DEFAULT_REGISTER_NAME,
+    });
 
-    // Re-fetch the active session scoped to the new register. If the
-    // takeover reclaimed a register that already had an open session
-    // (e.g. left running on another iPad), the blocker will dismiss
-    // immediately instead of asking for an opening amount.
+    await this.cashRegisterService.resolveLinkedRegister();
     await this.cashRegisterService.refreshActiveSession();
 
     this.messageService.add({
       severity: 'success',
-      summary: takeover ? 'Caja reconectada' : 'Caja vinculada',
-      detail: `"${register.name}" asignada a este dispositivo.`,
+      summary: this.outcomeToSummary(response.outcome),
+      detail: `"${response.register.name}" asignada a este dispositivo.`,
       life: 4000,
     });
   }
 
+  private outcomeToSummary(outcome: InitializeCashierSessionResponse['outcome']): string {
+    switch (outcome) {
+      case 'Created':       return 'Caja vinculada';
+      case 'LinkedOrphan':  return 'Caja vinculada';
+      case 'Idempotent':    return 'Caja ya estaba vinculada';
+      case 'Reassigned':    return 'Caja reconectada';
+      case 'ForceTakeover': return 'Caja reconectada';
+    }
+  }
+
   /**
-   * Inspects a link error.
+   * Inspects an error from `initializeCashierSession`.
    *
-   * On HTTP 409 `register_name_taken` the response carries
-   * `hasOpenSession`, which tells us whether the existing register is
-   * still in use by another device:
-   *
-   *   - `hasOpenSession === false` (orphan register): auto-reclaim it.
-   *     There is no risk of stealing another cashier's open shift — the
-   *     name collision is just leftover state from onboarding or a
-   *     previous device that was unbound. Skip the confirmation dialog
-   *     and resend the create call with `takeover: true` immediately.
-   *   - `hasOpenSession === true`: surface the takeover dialog. Claiming
-   *     a register with an active shift would yank the turn from another
-   *     iPad mid-sale, so the user must explicitly confirm.
-   *
-   * Other errors fall through to a generic toast.
+   * The atomic endpoint only emits `session_open_on_other_device` when
+   * the target register holds an OPEN shift in a different device. Every
+   * other "already exists" scenario is silently resolved server-side, so
+   * the takeover dialog is reserved exclusively for that case. Anything
+   * else falls through to a generic toast.
    */
-  private async handleLinkError(error: unknown, attemptedName: string): Promise<void> {
-    const httpError = error as { status?: number; error?: { error?: string; existingRegisterId?: number; hasOpenSession?: boolean } };
+  private handleInitError(error: unknown): void {
+    const httpError = error as { status?: number; error?: { error?: string; existingRegisterId?: number } };
 
-    if (httpError?.status === 409 && httpError.error?.error === 'register_name_taken') {
-      const hasOpenSession = httpError.error.hasOpenSession ?? false;
-
-      if (!hasOpenSession) {
-        try {
-          await this.createAndLinkRegister(attemptedName, true);
-        } catch {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'No se pudo reclamar la caja',
-            detail: 'Intenta de nuevo o usa el código de vinculación.',
-            life: 5000,
-          });
-        }
-        return;
-      }
-
-      this.pendingTakeoverName.set(attemptedName);
+    if (httpError?.status === 409 && httpError.error?.error === 'session_open_on_other_device') {
+      this.pendingTakeoverName.set(this.DEFAULT_REGISTER_NAME);
       this.pendingExistingRegisterId.set(httpError.error.existingRegisterId ?? null);
       this.pendingHasOpenSession.set(true);
       this.takeoverDialogVisible.set(true);
@@ -892,18 +880,16 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * User confirmed the takeover from the dialog. Re-runs the create flow
-   * with `takeover: true` so the backend reclaims the existing register.
+   * User confirmed the takeover from the dialog. Re-runs the atomic
+   * init call with `force: true` so the backend closes the open
+   * session in the other device and rebinds the register to this one.
    */
   async confirmTakeover(): Promise<void> {
     if (this.isLinkingDevice()) return;
 
-    const name = this.pendingTakeoverName();
-    if (!name) return;
-
     this.isLinkingDevice.set(true);
     try {
-      await this.createAndLinkRegister(name, true);
+      await this.runInitializeCashierSession({ force: true });
       this.closeTakeoverDialog();
     } catch {
       this.messageService.add({
