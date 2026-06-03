@@ -18,7 +18,8 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { Category, DiscountPreset, InventoryItem, InventoryMovement, Product, ProductConsumption, ProductImportPreview, ProductImportResult } from '../../../../core/models';
-import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES, MacroCategoryCode, SubCategoryType } from '../../../../core/enums';
+import { InventoryMovementType, INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_MOVEMENT_TYPE_CLASSES, MacroCategoryCode, SubCategoryType, UserRoleId } from '../../../../core/enums';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DatabaseService } from '../../../../core/services/database.service';
 import { TenantContextService } from '../../../../core/services/tenant-context.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -102,6 +103,25 @@ export class AdminProductsComponent implements OnInit {
   readonly products = signal<Product[]>([]);
   readonly categories = signal<Category[]>([]);
   readonly isLoading = signal(true);
+
+  /**
+   * ID of the product whose DELETE request is currently in flight.
+   * Drives the per-row spinner / disabled state on the trash icon so
+   * the user cannot double-submit while the backend resolves. `null`
+   * means no delete is in progress.
+   */
+  readonly isDeletingProduct = signal<number | null>(null);
+
+  /**
+   * Owner-only gate for the trash button. The backend already enforces
+   * the role on `DELETE /api/Products/{id}` (Owner-only), but hiding
+   * the button for Managers keeps the UI consistent with the API
+   * contract and avoids surfacing a forbidden action just to bounce
+   * with a 403 toast.
+   */
+  readonly canDeleteProducts = computed(() =>
+    this.authService.currentUser()?.roleId === UserRoleId.Owner,
+  );
   readonly savingCategory = signal(false);
 
   // ---- Category dialog ----
@@ -219,6 +239,97 @@ export class AdminProductsComponent implements OnInit {
   async toggleActive(product: Product): Promise<void> {
     await this.db.products.update(product.id, { isAvailable: !product.isAvailable });
     await this.loadData();
+  }
+
+  /**
+   * Hard-deletes a product. Wraps the backend `DELETE /api/Products/{id}`
+   * in a confirmation dialog and routes the two distinct 409 responses
+   * (`product_has_orders`, `product_in_use`) to actionable toasts that
+   * point the user to the toggle as the right tool when the product
+   * cannot be removed.
+   *
+   * The trash button is also Owner-gated client-side (see
+   * `canDeleteProducts`) to match the server-side `Authorize Owner`
+   * contract and avoid offering Managers an action that would only
+   * bounce with a 403.
+   */
+  deleteProduct(product: Product): void {
+    if (this.isDeletingProduct() !== null) return;
+
+    this.confirmationService.confirm({
+      message: `¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-trash',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.executeDeleteProduct(product),
+    });
+  }
+
+  private executeDeleteProduct(product: Product): void {
+    this.isDeletingProduct.set(product.id);
+    this.productService.deleteProduct(product.id).subscribe({
+      next: () => {
+        // ProductService already removed the row from Dexie and refreshed
+        // its own signals. Sync the local admin table from Dexie so the
+        // row disappears immediately without a full server reload.
+        void this.loadData();
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Producto eliminado',
+          detail: `"${product.name}" se eliminó del catálogo.`,
+          life: 4000,
+        });
+        this.isDeletingProduct.set(null);
+      },
+      error: (err: unknown) => {
+        this.handleDeleteProductError(err, product);
+        this.isDeletingProduct.set(null);
+      },
+    });
+  }
+
+  /**
+   * Maps the two 409 contracts emitted by the backend DELETE endpoint to
+   * targeted toasts and falls back to the shared HTTP error helper for
+   * everything else.
+   */
+  private handleDeleteProductError(err: unknown, product: Product): void {
+    if (err instanceof HttpErrorResponse && err.status === 409) {
+      const body = err.error as { error?: string; orderCount?: number } | null;
+
+      if (body?.error === 'product_has_orders') {
+        const count = body.orderCount ?? 0;
+        const detail = count > 0
+          ? `"${product.name}" ya fue vendido ${count} ${count === 1 ? 'vez' : 'veces'}. Para conservar el historial, desactívalo con el switch en lugar de eliminarlo.`
+          : `"${product.name}" tiene ventas asociadas. Para conservar el historial, desactívalo con el switch en lugar de eliminarlo.`;
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'No se puede eliminar',
+          detail,
+          life: 8000,
+        });
+        return;
+      }
+
+      if (body?.error === 'product_in_use') {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'No se puede eliminar',
+          detail: `"${product.name}" tiene historial de inventario (recetas o recepciones de stock). Desactívalo con el switch en lugar de eliminarlo.`,
+          life: 8000,
+        });
+        return;
+      }
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: getHttpErrorSummary(err),
+      detail: 'No se pudo eliminar el producto. Intenta de nuevo.',
+      life: 5000,
+    });
   }
 
   //#endregion
