@@ -299,15 +299,38 @@ export class ProductService {
   /**
    * Flips the availability of a product on the backend
    * (`PATCH /products/{id}/toggle`) and mirrors the change locally
-   * once the server confirms. Pessimistic UI: the Dexie row is only
-   * touched after the API succeeds, so a network failure leaves the
-   * local cache consistent with what the server actually knows.
+   * once the server confirms.
+   *
+   * IMPORTANT: the backend's toggle endpoint does NOT eager-load
+   * relations (`ProductsController.cs:166 + ProductService.cs:121`),
+   * so the response carries empty arrays for `sizes`, `modifierGroups`
+   * and `images`. Overwriting the Dexie row with that partial payload
+   * would wipe the local copy of those collections until the next
+   * `loadCatalog` round trip. We therefore merge ONLY the
+   * `isAvailable` flag onto the existing record and leave the
+   * relations intact.
+   *
    * @param id Server-assigned product ID
    */
   toggleAvailability(id: number): Observable<Product> {
     return this.api.patch<Product>(`/products/${id}/toggle`, {}).pipe(
-      switchMap(updated => from(this.persistProduct(updated))),
+      switchMap(updated => from(this.applyAvailabilityChange(id, updated.isAvailable))),
     );
+  }
+
+  private async applyAvailabilityChange(id: number, isAvailable: boolean): Promise<Product> {
+    const existing = await this.db.products.get(id);
+    if (!existing) {
+      // Local cache is missing this product (e.g. another browser
+      // created it after the last `loadCatalog`). Trigger a refresh so
+      // the row appears in the next render with the new state.
+      await this.loadCatalog();
+      const refreshed = await this.db.products.get(id);
+      if (!refreshed) throw new Error(`Product ${id} not found after refresh`);
+      return refreshed;
+    }
+    const merged: Product = { ...existing, isAvailable };
+    return this.persistProduct(merged);
   }
 
   /**

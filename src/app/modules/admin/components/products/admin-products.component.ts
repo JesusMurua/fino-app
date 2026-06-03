@@ -449,20 +449,15 @@ export class AdminProductsComponent implements OnInit {
   }
 
   /**
-   * Flips a category between active / inactive on the backend via
-   * `PUT /categories/{id}` (the service mirrors the change to Dexie
-   * and refreshes the catalog signals on success). The previous
-   * Dexie-only implementation made the change vanish on reload and
-   * never propagate to other browsers.
+   * Flips a category between active / inactive on the backend via the
+   * dedicated `PATCH /categories/{id}/toggle` endpoint. The generic
+   * `PUT /categories/{id}` ignores the `isActive` field server-side,
+   * so we cannot use it for this purpose — the toggle endpoint is the
+   * single source of truth for that flag.
    */
   async toggleCategoryActive(cat: Category): Promise<void> {
     try {
-      await firstValueFrom(this.categoryService.update(cat.id, {
-        name: cat.name,
-        icon: cat.icon,
-        sortOrder: cat.sortOrder,
-        isActive: !cat.isActive,
-      }));
+      await firstValueFrom(this.categoryService.toggleActive(cat.id));
       await this.loadData();
     } catch (err: unknown) {
       this.messageService.add({
@@ -475,24 +470,33 @@ export class AdminProductsComponent implements OnInit {
   }
 
   /**
-   * Deletes a category via the backend. The active-products precheck
-   * still runs locally as an early-exit UX (instant feedback without a
-   * round-trip), but the real source of truth is the server — a 409 or
-   * 400 from the API will surface as a toast if the local check misses
-   * a product created from another browser between this admin's last
-   * refresh and the click.
+   * Deletes a category via the backend.
+   *
+   * The local precheck blocks the call whenever the category still has
+   * ANY product attached (active or inactive). This is stricter than
+   * the server's own guard (which only blocks on active products) but
+   * it is the safer default: the server's foreign-key cascade would
+   * silently take inactive products with it — and any historical
+   * order item referencing one of those products would either yield a
+   * 500 (FK Restrict) or destroy reporting history. Forcing the user
+   * to reassign or delete the products first preserves both invariants.
+   *
+   * If the local cache disagrees with the server (a product was created
+   * from another browser since the last `loadCatalog`) the backend
+   * responds 400 with `"Cannot delete a category with active products"`
+   * — we surface a targeted toast so the user can refresh and retry.
    */
   async deleteCategory(cat: Category): Promise<void> {
     this.catError.set('');
 
-    const activeCount = await this.db.products
+    const totalCount = await this.db.products
       .where('categoryId').equals(cat.id)
-      .and(p => p.isAvailable)
       .count();
 
-    if (activeCount > 0) {
+    if (totalCount > 0) {
+      const noun = totalCount === 1 ? 'producto' : 'productos';
       this.catError.set(
-        `No se puede eliminar "${cat.name}": tiene ${activeCount} producto(s) activo(s).`,
+        `No se puede eliminar "${cat.name}": tiene ${totalCount} ${noun}. Muévelos a otra categoría o elimínalos primero.`,
       );
       return;
     }
@@ -502,13 +506,36 @@ export class AdminProductsComponent implements OnInit {
       await this.loadData();
     } catch (err: unknown) {
       this.catError.set('');
-      this.messageService.add({
-        severity: 'error',
-        summary: getHttpErrorSummary(err),
-        detail: `No se pudo eliminar la categoría "${cat.name}".`,
-        life: 5000,
-      });
+      this.handleDeleteCategoryError(err, cat);
     }
+  }
+
+  /**
+   * Maps the backend's 400 contract (`"Cannot delete a category with
+   * active products"`) to an actionable toast and falls back to the
+   * shared HTTP helper for any other failure.
+   */
+  private handleDeleteCategoryError(err: unknown, cat: Category): void {
+    if (err instanceof HttpErrorResponse && err.status === 400) {
+      const body = err.error as { message?: string } | string | null;
+      const message = typeof body === 'string' ? body : body?.message ?? '';
+      if (message.toLowerCase().includes('active products')) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'No se puede eliminar',
+          detail: `"${cat.name}" tiene productos activos en el servidor. Refresca la pantalla y revisa los productos asignados.`,
+          life: 6000,
+        });
+        return;
+      }
+    }
+
+    this.messageService.add({
+      severity: 'error',
+      summary: getHttpErrorSummary(err),
+      detail: `No se pudo eliminar la categoría "${cat.name}".`,
+      life: 5000,
+    });
   }
 
   //#endregion
