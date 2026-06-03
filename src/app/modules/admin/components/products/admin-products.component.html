@@ -137,10 +137,10 @@
                   <button
                     type="button"
                     class="btn-icon btn-icon--danger"
-                    aria-label="Eliminar producto"
-                    pTooltip="Eliminar"
+                    [attr.aria-label]="product.hasOrders ? 'Producto vendido — desactívalo con el switch' : 'Eliminar producto'"
+                    [pTooltip]="product.hasOrders ? 'Ya fue vendido. Usa el switch para desactivarlo.' : 'Eliminar'"
                     tooltipPosition="left"
-                    [disabled]="isDeletingProduct() === product.id"
+                    [disabled]="isDeletingProduct() === product.id || product.hasOrders === true"
                     (click)="deleteProduct(product)"
                   >
                     @if (isDeletingProduct() === product.id) {

@@ -295,6 +295,22 @@ export class AdminProductsComponent implements OnInit {
   deleteProduct(product: Product): void {
     if (this.isDeletingProduct() !== null) return;
 
+    // Defence in depth: the trash button is already disabled in the
+    // template for products with `hasOrders === true`, but if the flag
+    // arrived after the user clicked (race between two browsers), or
+    // an older Dexie row was missing the field, surface the same
+    // SAT-aware message instead of silently letting the user bounce
+    // into a 409 round trip.
+    if (product.hasOrders === true) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'No se puede eliminar',
+        detail: `"${product.name}" ya fue vendido. Por compliance SAT debe conservarse — usa el switch para desactivarlo.`,
+        life: 6000,
+      });
+      return;
+    }
+
     this.confirmationService.confirm({
       message: `¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`,
       header: 'Confirmar eliminación',
