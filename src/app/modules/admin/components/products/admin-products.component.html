@@ -133,6 +133,23 @@
                     <i class="pi pi-history"></i>
                   </button>
                 }
+                @if (canDeleteProducts()) {
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon--danger"
+                    aria-label="Eliminar producto"
+                    pTooltip="Eliminar"
+                    tooltipPosition="left"
+                    [disabled]="isDeletingProduct() === product.id"
+                    (click)="deleteProduct(product)"
+                  >
+                    @if (isDeletingProduct() === product.id) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    } @else {
+                      <i class="pi pi-trash"></i>
+                    }
+                  </button>
+                }
               </td>
             </tr>
           </ng-template>
