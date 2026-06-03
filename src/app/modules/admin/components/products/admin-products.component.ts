@@ -527,19 +527,29 @@ export class AdminProductsComponent implements OnInit {
   }
 
   /**
-   * Maps the backend's 400 contract (`"Cannot delete a category with
-   * active products"`) to an actionable toast and falls back to the
-   * shared HTTP helper for any other failure.
+   * Maps the backend's 409 contract (`category_has_products`) to an
+   * actionable toast with the exact server-side product count and
+   * falls back to the shared HTTP helper for any other failure.
+   *
+   * This path is only reached when the local Dexie cache lost the
+   * race against another browser that created a product after the
+   * admin's last `loadCatalog` — the in-component precheck already
+   * blocks the call when the local count > 0. We surface the count
+   * the server actually saw so the user can refresh and reconcile.
    */
   private handleDeleteCategoryError(err: unknown, cat: Category): void {
-    if (err instanceof HttpErrorResponse && err.status === 400) {
-      const body = err.error as { message?: string } | string | null;
-      const message = typeof body === 'string' ? body : body?.message ?? '';
-      if (message.toLowerCase().includes('active products')) {
+    if (err instanceof HttpErrorResponse && err.status === 409) {
+      const body = err.error as { error?: string; productCount?: number } | null;
+      if (body?.error === 'category_has_products') {
+        const count = body.productCount ?? 0;
+        const noun = count === 1 ? 'producto' : 'productos';
+        const detail = count > 0
+          ? `"${cat.name}" tiene ${count} ${noun} en el servidor. Refresca la pantalla, muévelos o elimínalos primero.`
+          : `"${cat.name}" tiene productos en el servidor. Refresca la pantalla y revisa los productos asignados.`;
         this.messageService.add({
           severity: 'warn',
           summary: 'No se puede eliminar',
-          detail: `"${cat.name}" tiene productos activos en el servidor. Refresca la pantalla y revisa los productos asignados.`,
+          detail,
           life: 6000,
         });
         return;
