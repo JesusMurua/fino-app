@@ -146,6 +146,27 @@ export class CashRegisterService implements OnDestroy {
       }
     }, { allowSignalWrites: true });
 
+    // Branch switch detection: the auth-mirror effect above only fires
+    // on the false → true transition, so a user changing sucursal
+    // mid-session would otherwise keep a stale `_linkedRegister` from
+    // the previous branch. We track the branchId separately and force
+    // a cache reset + re-resolve whenever it actually changes after
+    // the initial settle (cold-boot keeps the cached resolution).
+    let prevBranchId = this.authService.activeBranchId();
+    effect(() => {
+      const branchId = this.authService.activeBranchId();
+      const authed = this.authService.isAuthenticated();
+      if (!authed || branchId === 0) {
+        prevBranchId = branchId;
+        return;
+      }
+      if (prevBranchId !== 0 && prevBranchId !== branchId) {
+        this.resetLinkedRegisterCache();
+        void this.runPostAuthRecovery();
+      }
+      prevBranchId = branchId;
+    }, { allowSignalWrites: true });
+
     // Auto-open the shift sidebar on the *transition* from no-session →
     // open-session, so the cashier sees the freshly opened shift summary
     // at a glance. Cold-boot guard: the very first time this effect
@@ -689,11 +710,11 @@ export class CashRegisterService implements OnDestroy {
   }
 
   /**
-   * Asks any mounted `<app-shift-management>` instance to open its
-   * "Open Shift" dialog. Used by the full-screen session-blocker so a
-   * single click from "Caja Cerrada" lands the cashier directly on the
-   * full-fidelity dialog (drawer-pop, $0-confirm, error mapping) instead
-   * of duplicating that flow inline.
+   * Asks the global `<app-open-shift-dialog>` (mounted at app root)
+   * to surface its "Abrir turno" dialog. Used by the full-screen POS
+   * session-blocker and by the Admin caja empty state alike — the
+   * shared dialog handles drawer-pop, $0-confirm, error mapping, and
+   * Dexie liveQuery refresh on success.
    */
   requestOpenDialog(): void {
     this._openDialogTrigger.update(v => v + 1);

@@ -1,0 +1,19 @@
+<button
+  type="button"
+  class="shift-chip"
+  [class.shift-chip--open]="cashRegisterService.hasOpenSession()"
+  [class.shift-chip--closed]="!cashRegisterService.hasOpenSession()"
+  [attr.aria-label]="cashRegisterService.hasOpenSession() ? 'Caja abierta — abrir panel de turno' : 'Caja cerrada — abrir panel de turno'"
+  (click)="cashRegisterService.togglePanel()"
+>
+  <span class="shift-chip__dot" aria-hidden="true"></span>
+  @if (cashRegisterService.hasOpenSession()) {
+    <span class="shift-chip__label">Turno abierto</span>
+    <span
+      class="shift-chip__amount"
+      [attr.data-pulse]="amountPulseKey()"
+    >{{ cashRegisterService.expectedAmount() | price }}</span>
+  } @else {
+    <span class="shift-chip__label">Caja cerrada</span>
+  }
+</button>

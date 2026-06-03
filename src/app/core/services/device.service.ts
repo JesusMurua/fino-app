@@ -72,8 +72,19 @@ export class DeviceService implements OnDestroy {
 
   //#region Properties
 
-  /** Stable UUID for this device — generated on first access, then reused */
-  readonly deviceUuid: string;
+  /**
+   * Stable UUID for this device. Generated on first access and reused
+   * across reloads. Owners/Managers logging out will call
+   * `regenerateDeviceUuid()` so a back-office account using another
+   * tenant on the same browser does not inherit the previous
+   * tenant's device binding (which would surface as confusing 409s on
+   * the next self-link attempt).
+   */
+  private _deviceUuid: string;
+
+  get deviceUuid(): string {
+    return this._deviceUuid;
+  }
 
   private readonly api = inject(ApiService);
   private readonly deviceConfigStore = inject(DeviceConfigStore);
@@ -90,7 +101,7 @@ export class DeviceService implements OnDestroy {
       uuid = crypto.randomUUID();
       localStorage.setItem(DEVICE_UUID_KEY, uuid);
     }
-    this.deviceUuid = uuid;
+    this._deviceUuid = uuid;
 
     // Cold-boot recovery for unattended hardware shells (kiosk / kitchen
     // / reception): the user-login path that normally hydrates the
@@ -300,6 +311,21 @@ export class DeviceService implements OnDestroy {
    */
   clearDeviceToken(): void {
     localStorage.removeItem(DEVICE_TOKEN_KEY);
+  }
+
+  /**
+   * Regenerates the local device UUID, persists it, and returns the new
+   * value. Called from `AuthService.logout()` for back-office users
+   * (Owner / Manager) so a subsequent re-login under a different tenant
+   * starts with a clean device identity. Cashier (PIN) logout does NOT
+   * regenerate — the device is physically tied to the cash register, so
+   * its UUID must survive shift handovers.
+   */
+  regenerateDeviceUuid(): string {
+    const uuid = crypto.randomUUID();
+    this._deviceUuid = uuid;
+    localStorage.setItem(DEVICE_UUID_KEY, uuid);
+    return uuid;
   }
 
   /**

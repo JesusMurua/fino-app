@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { SelectButtonModule } from 'primeng/selectbutton';
 
 import { NotificationToggleComponent } from '../../../../shared/components/notification-toggle/notification-toggle.component';
+import { ShiftChipComponent } from '../../../../shared/components/shift-chip/shift-chip.component';
+import { ShiftPanelComponent } from '../../components/shift-panel/shift-panel.component';
 import { TablesComponent } from '../../../tables/tables.component';
 import { ProductGridComponent } from '../../components/product-grid/product-grid.component';
 
@@ -33,6 +35,8 @@ const CHANNEL_STORAGE_KEY = 'pos-restaurant-hub-channel';
     FormsModule,
     SelectButtonModule,
     NotificationToggleComponent,
+    ShiftChipComponent,
+    ShiftPanelComponent,
     TablesComponent,
     ProductGridComponent,
   ],

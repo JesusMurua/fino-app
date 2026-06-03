@@ -427,15 +427,27 @@ export class AuthService {
    * remembers who was using the browser even after the session is wiped.
    */
   logout(): void {
-    const lastEntry: LastAuthEntry =
-      this.sessionType() === 'email' || BACK_OFFICE_ROLES.includes(this.currentUser()?.roleId as never)
-        ? 'email'
-        : 'pin';
+    const wasBackOffice =
+      this.sessionType() === 'email'
+      || BACK_OFFICE_ROLES.includes(this.currentUser()?.roleId as never);
+    const lastEntry: LastAuthEntry = wasBackOffice ? 'email' : 'pin';
 
     localStorage.setItem(LAST_AUTH_ENTRY_KEY, lastEntry);
 
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+
+    // Regenerate the device UUID when a back-office account (Owner /
+    // Manager) logs out. Back-office users are portable across tenants
+    // — the same laptop can sign in to several businesses via the
+    // super-admin impersonate handoff — and keeping the previous
+    // tenant's UUID would cause confusing 409s on the next self-link
+    // attempt (the deviceUuid is already bound to a register that the
+    // new tenant cannot see). Cashier (PIN) logouts keep the UUID
+    // because the device is physically tied to the cash register.
+    if (wasBackOffice) {
+      this.deviceService.regenerateDeviceUuid();
+    }
     this.currentUser.set(null);
     this.branchContext.clear();
     this.planTypeId.set(PlanTypeId.Free);

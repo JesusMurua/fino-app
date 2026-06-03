@@ -2,6 +2,7 @@
 
   <header class="restaurant-hub__header">
     <h1 class="restaurant-hub__title">Caja Principal</h1>
+    <app-shift-chip />
     <app-notification-toggle variant="compact" />
     <p-selectButton
       [options]="channelOptions"
@@ -17,6 +18,10 @@
       </ng-template>
     </p-selectButton>
   </header>
+
+  <!-- Shift panel sidebar — opens via the chip click or via
+       cashRegisterService.openPanel() (e.g. after a fresh shift open). -->
+  <app-shift-panel />
 
   <section class="restaurant-hub__viewport">
     @switch (activeChannel()) {

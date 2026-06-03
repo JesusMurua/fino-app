@@ -14,12 +14,13 @@ import { SyncService } from './core/services/sync.service';
 import { ThemeService } from './core/services/theme.service';
 import { ExpiredOverlayComponent } from './shared/components/expired-overlay/expired-overlay.component';
 import { InstallBannerComponent } from './shared/components/install-banner/install-banner.component';
+import { OpenShiftDialogComponent } from './shared/components/open-shift-dialog/open-shift-dialog.component';
 import { UpdateBannerComponent } from './shared/components/update-banner/update-banner.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ExpiredOverlayComponent, InstallBannerComponent, UpdateBannerComponent, ToastModule, NgHttpLoaderComponent],
+  imports: [RouterOutlet, ExpiredOverlayComponent, InstallBannerComponent, OpenShiftDialogComponent, UpdateBannerComponent, ToastModule, NgHttpLoaderComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
