@@ -809,7 +809,7 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
     try {
       await this.createAndLinkRegister(this.DEFAULT_REGISTER_NAME, false);
     } catch (error: unknown) {
-      this.handleLinkError(error, this.DEFAULT_REGISTER_NAME);
+      await this.handleLinkError(error, this.DEFAULT_REGISTER_NAME);
     } finally {
       this.isLinkingDevice.set(false);
     }
@@ -839,16 +839,46 @@ export class PosHeaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Inspects a link error: if it is HTTP 409 with `register_name_taken`,
-   * opens the takeover dialog. Otherwise shows a generic error toast.
+   * Inspects a link error.
+   *
+   * On HTTP 409 `register_name_taken` the response carries
+   * `hasOpenSession`, which tells us whether the existing register is
+   * still in use by another device:
+   *
+   *   - `hasOpenSession === false` (orphan register): auto-reclaim it.
+   *     There is no risk of stealing another cashier's open shift — the
+   *     name collision is just leftover state from onboarding or a
+   *     previous device that was unbound. Skip the confirmation dialog
+   *     and resend the create call with `takeover: true` immediately.
+   *   - `hasOpenSession === true`: surface the takeover dialog. Claiming
+   *     a register with an active shift would yank the turn from another
+   *     iPad mid-sale, so the user must explicitly confirm.
+   *
+   * Other errors fall through to a generic toast.
    */
-  private handleLinkError(error: unknown, attemptedName: string): void {
+  private async handleLinkError(error: unknown, attemptedName: string): Promise<void> {
     const httpError = error as { status?: number; error?: { error?: string; existingRegisterId?: number; hasOpenSession?: boolean } };
 
     if (httpError?.status === 409 && httpError.error?.error === 'register_name_taken') {
+      const hasOpenSession = httpError.error.hasOpenSession ?? false;
+
+      if (!hasOpenSession) {
+        try {
+          await this.createAndLinkRegister(attemptedName, true);
+        } catch {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'No se pudo reclamar la caja',
+            detail: 'Intenta de nuevo o usa el código de vinculación.',
+            life: 5000,
+          });
+        }
+        return;
+      }
+
       this.pendingTakeoverName.set(attemptedName);
       this.pendingExistingRegisterId.set(httpError.error.existingRegisterId ?? null);
-      this.pendingHasOpenSession.set(httpError.error.hasOpenSession ?? false);
+      this.pendingHasOpenSession.set(true);
       this.takeoverDialogVisible.set(true);
       return;
     }
