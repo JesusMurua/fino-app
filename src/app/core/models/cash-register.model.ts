@@ -132,3 +132,59 @@ export interface RedeemLinkCodeRequest {
   /** Alphanumeric uppercase 6-char code dictated by the admin */
   code: string;
 }
+
+/**
+ * Outcome variants emitted by `POST /api/Pos/initialize-cashier-session`.
+ *
+ * The atomic endpoint returns a textual outcome so the frontend can pick
+ * the right toast wording without re-deriving the action from the
+ * response shape:
+ *   - `Created`        → no register existed; one was inserted.
+ *   - `LinkedOrphan`   → a same-name register existed without a device;
+ *                        the backend silently bound this device to it.
+ *   - `Idempotent`     → register already linked to this same device.
+ *   - `Reassigned`     → register was linked to another device without
+ *                        an open session; silently reassigned to this one.
+ *   - `ForceTakeover`  → register had an open session in another device
+ *                        and the user confirmed with `force: true`; the
+ *                        previous session was closed server-side and the
+ *                        register reassigned.
+ */
+export type InitializeCashierSessionOutcome =
+  | 'Created'
+  | 'LinkedOrphan'
+  | 'Idempotent'
+  | 'Reassigned'
+  | 'ForceTakeover';
+
+/** Response from `POST /api/Pos/initialize-cashier-session`. */
+export interface InitializeCashierSessionResponse {
+  device: {
+    id: number;
+    uuid: string;
+    mode: string;
+    name: string;
+    branchId: number;
+  };
+  register: {
+    id: number;
+    name: string;
+    deviceId: number | null;
+    isActive: boolean;
+  };
+  outcome: InitializeCashierSessionOutcome;
+}
+
+/**
+ * Body of the 409 returned by `initialize-cashier-session` when the
+ * target register has an open session on a different device. The
+ * frontend opens the takeover confirmation dialog and, if the user
+ * agrees, retries the call with `force: true` to close that session
+ * server-side and rebind the register to the calling device.
+ */
+export interface SessionOpenOnOtherDeviceError {
+  error: 'session_open_on_other_device';
+  existingRegisterId: number;
+  openSessionId: number;
+  message: string;
+}
