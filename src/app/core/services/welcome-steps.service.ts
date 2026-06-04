@@ -1,6 +1,6 @@
 import { Injectable, computed, inject } from '@angular/core';
 
-import { FeatureKey, MacroCategoryCode, SubCategoryType } from '../enums';
+import { FeatureKey, MacroCategoryCode } from '../enums';
 import { AuthService } from './auth.service';
 import { CashRegisterService } from './cash-register.service';
 import { PrinterService } from './printer.service';
@@ -328,18 +328,7 @@ export class WelcomeStepsService {
           isOptional: true,
         });
       }
-      // Access control is gated by sub-category, not just the macro.
-      // The feature flag (`RealtimeAccessControl`) tells us the plan
-      // includes it, but a nail salon or barber shop never needs
-      // fingerprint / QR entry — only gym-type tenants do. Without
-      // this second gate the step shows up for every Services tenant
-      // on a plan that bundles the feature, which is exactly the
-      // category of "irrelevant suggestion" the welcome screen is
-      // supposed to avoid.
-      if (
-        features.has(FeatureKey.RealtimeAccessControl)
-        && this.tenantContext.currentSubCategory() === SubCategoryType.Gym
-      ) {
+      if (features.has(FeatureKey.RealtimeAccessControl)) {
         steps.push({
           id: 'access',
           title: 'Configura control de acceso',
