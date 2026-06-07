@@ -78,7 +78,7 @@ export interface PaymentMethodSalesDto {
 export interface DashboardChartsDto {
   salesOverTime: SalesPointDto[];
   topProducts: TopProductDto[];       // Max 10
-  paymentMethods: PaymentMethodSalesDto[];
+  salesByPaymentMethod: PaymentMethodSalesDto[];
 }
 
 // ---------------------------------------------------------------------------

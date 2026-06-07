@@ -545,7 +545,7 @@
         <div class="chart-card__body chart-card__body--doughnut">
           @if (isLoadingCharts()) {
             <p-skeleton width="100%" height="100%" borderRadius="8px" />
-          } @else if (!chartData()?.paymentMethods?.length) {
+          } @else if (!chartData()?.salesByPaymentMethod?.length) {
             <div class="chart-card__empty">
               <i class="pi pi-credit-card"></i>
               <span>Sin datos en este período</span>
