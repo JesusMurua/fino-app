@@ -242,7 +242,7 @@ export class DashboardComponent implements OnInit {
 
   /** Dataset for the Doughnut chart (payment methods breakdown). */
   readonly paymentDoughnutData = computed<object>(() => {
-    const slices = this.chartData()?.paymentMethods ?? [];
+    const slices = this.chartData()?.salesByPaymentMethod ?? [];
     return {
       labels: slices.map(s => this.catalogService.getPaymentMethodName(s.paymentMethod)),
       datasets: [{
