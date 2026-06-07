@@ -82,7 +82,7 @@
       </div>
 
       <div class="kpi-card">
-        <span class="kpi-card__label">Movimientos</span>
+        <span class="kpi-card__label">Entradas y salidas</span>
         <span class="kpi-card__value" [class.kpi-card__value--red]="movementsTotal() > 0">
           @if (movementsTotal() > 0) { - }{{ movementsTotal() | price }}
         </span>
@@ -97,10 +97,11 @@
 
     <!-- Movements table -->
     <section class="section-card">
-      <h2 class="section-card__title">Movimientos del turno</h2>
+      <h2 class="section-card__title">Entradas y salidas manuales</h2>
+      <p class="section-card__subtitle">Retiros, gastos y depósitos del cajón. Las ventas se reflejan en <strong>Ventas efectivo</strong>.</p>
 
       @if (movements().length === 0) {
-        <p class="section-card__empty">Sin movimientos en este turno</p>
+        <p class="section-card__empty">Sin entradas ni salidas manuales en este turno</p>
       } @else {
         <div class="table-wrap">
           <table class="data-table">
@@ -183,7 +184,7 @@
             <span>{{ cashSalesTotalCents() | price }}</span>
           </div>
           <div class="close-summary__row">
-            <span>Movimientos</span>
+            <span>Entradas y salidas</span>
             <span>-{{ movementsTotal() | price }}</span>
           </div>
           <div class="close-summary__row close-summary__row--total">

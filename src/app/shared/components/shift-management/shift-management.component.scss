@@ -170,10 +170,17 @@
   padding: $space-4 $space-5;
 
   &__title {
-    margin: 0 0 $space-4;
+    margin: 0 0 $space-2;
     font-size: $font-size-base;
     font-weight: 700;
     color: var(--text1, #{$color-text-title});
+  }
+
+  &__subtitle {
+    margin: 0 0 $space-4;
+    font-size: $font-size-label;
+    color: var(--text2, #{$color-text-sub});
+    line-height: 1.4;
   }
 
   &__empty {

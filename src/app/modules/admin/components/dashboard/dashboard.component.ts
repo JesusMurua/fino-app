@@ -232,7 +232,7 @@ export class DashboardComponent implements OnInit {
       labels: items.map(p => p.productName),
       datasets: [{
         label: 'Ingresos (MXN)',
-        data: items.map(p => p.revenueCents / 100),
+        data: items.map(p => p.totalRevenueCents / 100),
         backgroundColor: '#16A34A',
         borderRadius: 6,
         borderSkipped: false,
@@ -244,7 +244,7 @@ export class DashboardComponent implements OnInit {
   readonly paymentDoughnutData = computed<object>(() => {
     const slices = this.chartData()?.paymentMethods ?? [];
     return {
-      labels: slices.map(s => s.label),
+      labels: slices.map(s => this.catalogService.getPaymentMethodName(s.paymentMethod)),
       datasets: [{
         data: slices.map(s => s.totalCents / 100),
         backgroundColor: ['#16A34A', '#D97706', '#2563EB', '#7C3AED', '#DC2626'],

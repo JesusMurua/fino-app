@@ -332,7 +332,7 @@ export class WelcomeStepsService {
         steps.push({
           id: 'access',
           title: 'Configura control de acceso',
-          description: 'Para gimnasios: lectura de huella o QR a la entrada.',
+          description: 'Lectura de huella o QR a la entrada del gimnasio.',
           ctaText: 'Configurar acceso',
           ctaLink: '/admin/access-dashboard',
           icon: 'pi pi-id-card',
