@@ -62,16 +62,16 @@ export interface SalesPointDto {
 export interface TopProductDto {
   productId: number;
   productName: string;
-  quantity: number;
-  revenueCents: number;
+  quantitySold: number;
+  totalRevenueCents: number;
 }
 
 /** Single slice for the payment-methods doughnut chart */
 export interface PaymentMethodSalesDto {
-  method: string;      // Internal code (e.g. 'cash', 'card')
-  label: string;       // Display label (e.g. 'Efectivo')
-  orderCount: number;
+  paymentMethod: string;          // Internal code (e.g. 'Cash', 'Card')
+  provider: string | null;        // Card provider when present (e.g. 'Stripe')
   totalCents: number;
+  transactionCount: number;
 }
 
 /** Aggregate BI chart response — all three datasets in one request */
