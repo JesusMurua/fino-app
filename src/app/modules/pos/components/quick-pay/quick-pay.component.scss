@@ -551,5 +551,39 @@ $bills: (
   margin-top: $space-2;
 }
 
+// =============================================================================
+// Customer-balance methods (Credit / Points) — info card with current balance
+// =============================================================================
+
+.qpay__balance {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px $space-3;
+  padding: $space-3;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: 8px;
+  font-size: 13px;
+
+  strong {
+    color: $color-text-title;
+    font-size: 14px;
+  }
+}
+
+.qpay__balance-label {
+  color: $color-text-sub;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.qpay__balance-amount {
+  color: $color-primary !important;
+  font-weight: 700;
+  font-size: 15px !important;
+}
+
 
 

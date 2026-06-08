@@ -7,10 +7,12 @@ import { CartItem, Order, OrderPayment, PaymentMethod } from '../../../../core/m
 import { AvailablePaymentMethod } from '../../../../core/models/available-payment-method.model';
 import { PaymentCategory } from '../../../../core/enums/payment-category.enum';
 import { PaymentStatus, SyncStatusId } from '../../../../core/enums';
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { CustomerService } from '../../../../core/services/customer.service';
 import { PaymentMethodService } from '../../../../core/services/payment-method.service';
 import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
 import { PrintService } from '../../../../core/services/print.service';
@@ -28,17 +30,13 @@ const BILL_DENOMINATIONS = [
 ];
 
 /**
- * Categories that, in this PR's MVP scope, surface as informational placeholders
- * rather than functional inputs. Customer-balance (`Credit`, `Points`) needs a
- * customer selector + balance validation; provider-backed methods need the
- * `PaymentProcessingDialog` integration. Both will land in follow-up commits
- * within this same branch — listing them here keeps `selectMethod()` aware of
- * which catalog rows are merely visible vs interactive.
+ * Categories whose UX is still placeholder-only. Empty after this commit —
+ * Credit/Points now consume the customer's balance, Voucher uses the
+ * exact-amount + reference flow, providers run through the processing dialog.
+ * Kept as a structure so future categories (e.g. a hypothetical `Crypto`)
+ * can be added without re-introducing the const elsewhere.
  */
-const DEFERRED_CATEGORIES: ReadonlySet<PaymentCategory> = new Set([
-  PaymentCategory.Credit,
-  PaymentCategory.Points,
-]);
+const DEFERRED_CATEGORIES: ReadonlySet<PaymentCategory> = new Set<PaymentCategory>();
 
 const CATEGORY_DEFAULT_ICON: Record<PaymentCategory, string> = {
   [PaymentCategory.Cash]: 'pi pi-money-bill',
@@ -89,6 +87,7 @@ export class QuickPayComponent {
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
+  readonly customerService = inject(CustomerService);
   private readonly paymentMethodService = inject(PaymentMethodService);
   readonly paymentProviderService = inject(PaymentProviderService);
   private readonly syncService = inject(SyncService);
@@ -136,6 +135,23 @@ export class QuickPayComponent {
 
   /** Reference field for methods with `requiresReference: true` (folio, last-4, etc.) */
   readonly referenceInput = signal('');
+
+  /**
+   * Centavos the selected customer can apply to this method right now.
+   * Returns `Infinity` for methods that don't `requiresCustomer` so generic
+   * cap checks stay clean. For `Credit` it's the customer's `creditBalanceCents`
+   * directly; for `Points` we currently assume 1 point = $1 (100 centavos)
+   * until a per-tenant `pointRedemptionValueCents` lands.
+   */
+  readonly customerAvailableCents = computed<number>(() => {
+    const m = this.selectedMethod();
+    if (!m || !m.requiresCustomer) return Number.POSITIVE_INFINITY;
+    const customer = this.customerService.selectedCustomer();
+    if (!customer) return 0;
+    if (m.category === PaymentCategory.Credit) return customer.creditBalanceCents ?? 0;
+    if (m.category === PaymentCategory.Points) return (customer.pointsBalance ?? 0) * 100;
+    return Number.POSITIVE_INFINITY;
+  });
 
   /**
    * Partial payments accumulated by the cashier when splitting a sale across
@@ -218,6 +234,12 @@ export class QuickPayComponent {
     // Wire DTO accepts an empty `reference`, but operational reconciliation
     // demands it — gate the confirm.
     if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    // Customer-balance methods (Credit/Points): need a customer assigned and
+    // sufficient balance for the tendered amount.
+    if (m.requiresCustomer) {
+      if (!this.customerService.selectedCustomer()) return false;
+      if (this.currentTenderedCents() > this.customerAvailableCents()) return false;
+    }
 
     const tendered = this.currentTenderedCents();
     if (m.category === PaymentCategory.Cash) {
@@ -244,6 +266,10 @@ export class QuickPayComponent {
     if (DEFERRED_CATEGORIES.has(m.category)) return false;
     if (m.providerKey) return false;
     if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    if (m.requiresCustomer) {
+      if (!this.customerService.selectedCustomer()) return false;
+      if (this.currentTenderedCents() > this.customerAvailableCents()) return false;
+    }
     const tendered = this.currentTenderedCents();
     if (tendered <= 0) return false;
     return tendered < this.remainingCents();
@@ -330,9 +356,22 @@ export class QuickPayComponent {
     this.selectedMethod.set(method);
     this.receivedAmount.set(0);
     this.customAmountInput.set('');
-    this.exactAmountPesos.set(method.category === PaymentCategory.Cash
-      ? 0
-      : this.remainingCents() / 100);
+    if (method.category === PaymentCategory.Cash) {
+      this.exactAmountPesos.set(0);
+    } else if (method.requiresCustomer) {
+      // Cap to whichever is smaller: what's left on the cart, or what the
+      // customer actually has on file. If no customer is assigned yet, the
+      // tab will surface the warning and the cashier must attach one.
+      const customer = this.customerService.selectedCustomer();
+      const balance = customer
+        ? (method.category === PaymentCategory.Credit
+            ? customer.creditBalanceCents ?? 0
+            : (customer.pointsBalance ?? 0) * 100)
+        : 0;
+      this.exactAmountPesos.set(Math.min(this.remainingCents(), balance) / 100);
+    } else {
+      this.exactAmountPesos.set(this.remainingCents() / 100);
+    }
     this.referenceInput.set('');
   }
 
@@ -560,6 +599,7 @@ export class QuickPayComponent {
       const orderNumber = this.syncService.consumeOrderNumber();
       const items: CartItem[] = this.cartService.getSnapshot();
 
+      const customer = this.customerService.selectedCustomer();
       const order: Order = {
         id: crypto.randomUUID(),
         orderNumber,
@@ -574,6 +614,8 @@ export class QuickPayComponent {
         syncStatusId: SyncStatusId.Pending,
         branchId: this.authService.branchId,
         cashRegisterSessionId: sessionId,
+        customerId: customer?.id,
+        customerName: formatCustomerName(customer) || undefined,
       };
 
       await this.syncService.saveOrder(order);
