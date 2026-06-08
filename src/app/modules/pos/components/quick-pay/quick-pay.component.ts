@@ -247,7 +247,14 @@ export class QuickPayComponent {
 
   /** Resolves the icon for a method — catalog override wins, then a sensible default. */
   iconFor(method: AvailablePaymentMethod): string {
-    return method.icon ?? CATEGORY_DEFAULT_ICON[method.category] ?? 'pi pi-credit-card';
+    // The wire `icon` (or our category default) carries the icon name only —
+    // we always prepend the PrimeIcons base class `pi`. Without that class
+    // PrimeIcons' `font-family: 'primeicons'` doesn't apply and the `::before`
+    // glyph renders as a generic-font tofu square. Defensive against the
+    // backend shipping the value either way (`"pi-money-bill"` or
+    // `"pi pi-money-bill"`).
+    const raw = (method.icon?.trim()) || CATEGORY_DEFAULT_ICON[method.category] || 'pi-credit-card';
+    return raw.startsWith('pi ') ? raw : `pi ${raw}`;
   }
 
   /**
