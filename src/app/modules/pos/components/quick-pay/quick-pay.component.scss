@@ -538,5 +538,18 @@ $bills: (
   }
 }
 
+// =============================================================================
+// Provider-method launcher
+// =============================================================================
+
+.qpay__provider-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  margin-top: $space-2;
+}
+
 
 

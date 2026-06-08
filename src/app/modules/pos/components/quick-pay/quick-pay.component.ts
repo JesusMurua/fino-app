@@ -12,8 +12,10 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
 import { PaymentMethodService } from '../../../../core/services/payment-method.service';
+import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 
 /** Bill denominations in MXN (in centavos) — modifier maps to SCSS color theme */
 const BILL_DENOMINATIONS = [
@@ -76,7 +78,7 @@ const CATEGORY_DEFAULT_ICON: Record<PaymentCategory, string> = {
 @Component({
   selector: 'app-quick-pay',
   standalone: true,
-  imports: [ButtonModule, DialogModule, PricePipe],
+  imports: [ButtonModule, DialogModule, PricePipe, PaymentProcessingDialogComponent],
   templateUrl: './quick-pay.component.html',
   styleUrl: './quick-pay.component.scss',
 })
@@ -88,6 +90,7 @@ export class QuickPayComponent {
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
   private readonly paymentMethodService = inject(PaymentMethodService);
+  readonly paymentProviderService = inject(PaymentProviderService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
   private readonly messageService = inject(MessageService);
@@ -207,7 +210,10 @@ export class QuickPayComponent {
 
     // Otherwise the active tab must contribute a valid payment for the rest.
     if (DEFERRED_CATEGORIES.has(m.category)) return false;
-    if (m.providerKey) return false; // provider methods covered in their own commit
+    // Provider methods go through `startProviderPayment()` → PaymentProcessingDialog
+    // → emits an OrderPayment into `pendingPayments`. The cashier never closes
+    // a provider sale via this normal confirm path until that emission lands.
+    if (m.providerKey) return false;
     // Reference is declarative on the catalog (e.g. SPEI folio, terminal auth).
     // Wire DTO accepts an empty `reference`, but operational reconciliation
     // demands it — gate the confirm.
@@ -291,13 +297,14 @@ export class QuickPayComponent {
   //#region Method selection
 
   /**
-   * Whether the method can be picked in this PR. Returns false for the
-   * categories whose UX is deferred (customer balance + providers) so the
-   * tabs render disabled rather than mid-flow erroring.
+   * Whether the method can be picked. Customer-balance categories
+   * (`Credit`, `Points`) are still deferred at this commit (need the
+   * customer-selector flow). Provider methods are now interactive — their
+   * flow goes through `PaymentProcessingDialog` rather than the normal
+   * confirm path.
    */
   canSelect(method: AvailablePaymentMethod): boolean {
     if (DEFERRED_CATEGORIES.has(method.category)) return false;
-    if (method.providerKey) return false;
     return true;
   }
 
@@ -369,6 +376,65 @@ export class QuickPayComponent {
   /** Display label for a pending OrderPayment — uses catalog name when resolvable. */
   partialLabel(payment: OrderPayment): string {
     return this.paymentMethodService.getByCode(payment.method)?.name ?? payment.method;
+  }
+
+  //#endregion
+
+  //#region Provider methods (Clip / MercadoPago / BankTerminal)
+
+  /** Two-way bound visibility of the processing dialog (shared component). */
+  readonly showProcessingDialog = signal(false);
+
+  /** Stable order id passed to the provider intent endpoints; survives retries. */
+  readonly preGeneratedOrderId = crypto.randomUUID();
+
+  /**
+   * Whether the cashier may launch a provider transaction from the active
+   * tab. Mirrors `canAddPartial` constraints (positive amount, reference if
+   * required, doesn't exceed remaining), restricted to provider methods.
+   */
+  readonly canStartProvider = computed<boolean>(() => {
+    const m = this.selectedMethod();
+    if (!m || !m.providerKey) return false;
+    if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    const amount = this.currentTenderedCents();
+    if (amount <= 0) return false;
+    return amount <= this.remainingCents();
+  });
+
+  /**
+   * Kicks the provider transaction off: opens the processing dialog and asks
+   * `PaymentProviderService` to start the intent on the backend. The dialog
+   * is responsible for the rest of the lifecycle (polling for MercadoPago,
+   * manual reference for Clip, terminal capture for BankTerminal).
+   */
+  async startProviderPayment(): Promise<void> {
+    const m = this.selectedMethod();
+    if (!m || !m.providerKey || !this.canStartProvider()) return;
+    this.showProcessingDialog.set(true);
+    await this.paymentProviderService.startTransaction(
+      this.resolveMethodEnum(m),
+      this.currentTenderedCents(),
+      this.preGeneratedOrderId,
+    );
+  }
+
+  /**
+   * The processing dialog resolved successfully — push the OrderPayment into
+   * `pendingPayments`, close the dialog, and clear the turn inputs so the
+   * cashier can keep collecting if the sale isn't fully covered yet.
+   */
+  onProviderConfirmed(payment: OrderPayment): void {
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showProcessingDialog.set(false);
+    this.exactAmountPesos.set(this.remainingCents() / 100);
+    this.referenceInput.set('');
+  }
+
+  /** The cashier cancelled the provider flow — close the dialog, leave inputs intact. */
+  onProviderCancelled(): void {
+    this.paymentProviderService.cancelTransaction();
+    this.showProcessingDialog.set(false);
   }
 
   //#endregion

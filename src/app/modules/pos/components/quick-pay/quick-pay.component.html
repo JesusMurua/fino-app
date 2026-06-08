@@ -70,9 +70,63 @@
     @if (selectedMethod(); as m) {
 
       <!-- ============================================================== -->
+      <!-- Provider-backed (Clip / MercadoPago / BankTerminal) — short-    -->
+      <!-- circuits BEFORE the category branches because Clip has          -->
+      <!-- category=Card too; we want the provider flow, not the exact-    -->
+      <!-- amount card flow.                                               -->
+      <!-- ============================================================== -->
+      @if (m.providerKey) {
+        <div class="qpay__exact">
+          <label class="qpay__exact-label" [for]="'qpay-amount-' + m.code">Monto</label>
+          <div class="qpay__exact-input-wrap">
+            <span class="qpay__custom-prefix">$</span>
+            <input
+              [id]="'qpay-amount-' + m.code"
+              type="number"
+              inputmode="decimal"
+              class="qpay__custom-input"
+              min="0"
+              [value]="exactAmountPesos().toFixed(2)"
+              (input)="onExactAmountInput($event)"
+            />
+          </div>
+        </div>
+
+        @if (m.requiresReference) {
+          <div class="qpay__exact">
+            <label class="qpay__exact-label" [for]="'qpay-ref-' + m.code">
+              Referencia / Folio <span class="qpay__required" aria-hidden="true">*</span>
+            </label>
+            <input
+              [id]="'qpay-ref-' + m.code"
+              type="text"
+              class="qpay__custom-input"
+              [class.qpay__custom-input--invalid]="referenceInput().trim() === ''"
+              [value]="referenceInput()"
+              (input)="onReferenceInput($event)"
+            />
+          </div>
+        }
+
+        <button
+          type="button"
+          class="customer-form__btn customer-form__btn--primary qpay__provider-btn"
+          [disabled]="!canStartProvider() || isProcessing()"
+          (click)="startProviderPayment()"
+        >
+          <i class="pi pi-external-link"></i>
+          Procesar con {{ m.name }}
+        </button>
+
+        <p class="qpay__hint">
+          Conecta con la terminal o muestra el QR al cliente. El pago se confirma desde la siguiente ventana.
+        </p>
+      }
+
+      <!-- ============================================================== -->
       <!-- Cash — bill denominations + custom amount + change              -->
       <!-- ============================================================== -->
-      @if (m.category === PaymentCategory.Cash) {
+      @else if (m.category === PaymentCategory.Cash) {
         <div class="qpay__bills">
           @for (bill of bills; track bill.cents) {
             <button
@@ -140,7 +194,7 @@
       <!-- ============================================================== -->
       <!-- Card / Digital / Voucher / Other — exact amount + reference     -->
       <!-- ============================================================== -->
-      @if (m.category === PaymentCategory.Card
+      @else if (m.category === PaymentCategory.Card
            || m.category === PaymentCategory.Digital
            || m.category === PaymentCategory.Voucher
            || m.category === PaymentCategory.Other) {
@@ -187,26 +241,13 @@
       }
 
       <!-- ============================================================== -->
-      <!-- Customer-balance methods — deferred placeholder                 -->
+      <!-- Customer-balance methods — deferred placeholder (commit 4)      -->
       <!-- ============================================================== -->
-      @if (m.category === PaymentCategory.Credit || m.category === PaymentCategory.Points) {
+      @else if (m.category === PaymentCategory.Credit || m.category === PaymentCategory.Points) {
         <div class="qpay__deferred">
           <i class="pi pi-info-circle"></i>
           <p>
             <strong>{{ m.name }}</strong> requiere asignar un cliente con saldo disponible.
-            Disponible próximamente.
-          </p>
-        </div>
-      }
-
-      <!-- ============================================================== -->
-      <!-- Provider-backed methods — deferred placeholder                  -->
-      <!-- ============================================================== -->
-      @if (m.providerKey) {
-        <div class="qpay__deferred">
-          <i class="pi pi-info-circle"></i>
-          <p>
-            <strong>{{ m.name }}</strong> se procesa con terminal/QR del proveedor.
             Disponible próximamente.
           </p>
         </div>
@@ -251,3 +292,15 @@
     </div>
   </ng-template>
 </p-dialog>
+
+<!-- Provider transaction dialog — opens on top of the quick-pay modal for
+     Clip / MercadoPago / BankTerminal. Emits an OrderPayment on success,
+     which we push into `pendingPayments` (the cashier can keep collecting
+     more or close the sale via Confirmar cobro). -->
+<app-payment-processing-dialog
+  [(visible)]="showProcessingDialog"
+  [transaction]="paymentProviderService.activeTransaction()"
+  [orderId]="preGeneratedOrderId"
+  (paymentConfirmed)="onProviderConfirmed($event)"
+  (paymentCancelled)="onProviderCancelled()"
+/>
