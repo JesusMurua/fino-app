@@ -10,76 +10,177 @@
 >
   <div class="qpay">
 
+    @if (usedFallback()) {
+      <div class="qpay__fallback" role="status">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Modo de respaldo — sin catálogo de métodos. Cobra con efectivo, tarjeta, transferencia u otro.</span>
+      </div>
+    }
+
     <!-- Total -->
     <div class="qpay__total">
       <span class="qpay__total-label">Total a cobrar</span>
       <span class="qpay__total-amount">{{ cartTotal() | price }}</span>
     </div>
 
-    <!-- Bill denomination strip -->
-    <div class="qpay__bills">
-      @for (bill of bills; track bill.cents) {
-        <button
-          type="button"
-          class="qpay-bill qpay-bill--{{ bill.modifier }}"
-          [disabled]="cartItemCount() === 0"
-          (click)="addBillAmount(bill.cents)"
-        >
-          <div class="qpay-bill__circle"></div>
-          <div class="qpay-bill__stripe"></div>
-          <div class="qpay-bill__stripe-thin"></div>
-          <div class="qpay-bill__content">
-            <span class="qpay-bill__mxn">MXN</span>
-            <span class="qpay-bill__amount">{{ bill.label }}</span>
-          </div>
-        </button>
-      }
-    </div>
+    <!-- Method tabs -->
+    @if (availableMethods().length > 0) {
+      <div class="qpay__methods" role="tablist" aria-label="Método de pago">
+        @for (m of availableMethods(); track m.code) {
+          <button
+            type="button"
+            class="qpay-method"
+            role="tab"
+            [class.qpay-method--active]="selectedMethod()?.code === m.code"
+            [class.qpay-method--disabled]="!canSelect(m)"
+            [disabled]="!canSelect(m)"
+            [attr.aria-selected]="selectedMethod()?.code === m.code"
+            (click)="selectMethod(m)"
+          >
+            <i [class]="iconFor(m)"></i>
+            <span>{{ m.name }}</span>
+          </button>
+        }
+      </div>
+    }
 
-    <!-- Custom amount input -->
-    <div class="qpay__custom">
-      <span class="qpay__custom-prefix">$</span>
-      <input
-        type="number"
-        inputmode="decimal"
-        placeholder="Otro monto"
-        class="qpay__custom-input"
-        min="0"
-        [value]="customAmountInput()"
-        (input)="onCustomAmountInput($event)"
-      />
-    </div>
+    @if (selectedMethod(); as m) {
 
-    <!-- Recibido + cambio rows -->
-    @if (receivedAmount() > 0) {
-      <div class="qpay__received">
-        <div class="qpay__received-info">
-          <span class="qpay__received-label">Recibido</span>
+      <!-- ============================================================== -->
+      <!-- Cash — bill denominations + custom amount + change              -->
+      <!-- ============================================================== -->
+      @if (m.category === PaymentCategory.Cash) {
+        <div class="qpay__bills">
+          @for (bill of bills; track bill.cents) {
+            <button
+              type="button"
+              class="qpay-bill qpay-bill--{{ bill.modifier }}"
+              [disabled]="cartItemCount() === 0"
+              (click)="addBillAmount(bill.cents)"
+            >
+              <div class="qpay-bill__circle"></div>
+              <div class="qpay-bill__stripe"></div>
+              <div class="qpay-bill__stripe-thin"></div>
+              <div class="qpay-bill__content">
+                <span class="qpay-bill__mxn">MXN</span>
+                <span class="qpay-bill__amount">{{ bill.label }}</span>
+              </div>
+            </button>
+          }
+        </div>
+
+        <div class="qpay__custom">
+          <span class="qpay__custom-prefix">$</span>
           <input
             type="number"
             inputmode="decimal"
-            class="qpay__received-input"
+            placeholder="Otro monto"
+            class="qpay__custom-input"
             min="0"
-            [value]="(receivedAmount() / 100).toFixed(2)"
-            (input)="onDialogReceivedInput($event)"
+            [value]="customAmountInput()"
+            (input)="onCustomAmountInput($event)"
           />
         </div>
-        <button
-          type="button"
-          class="qpay__received-reset"
-          (click)="resetReceived()"
-          aria-label="Limpiar monto recibido"
-        >×</button>
-      </div>
 
-      <div class="qpay__change">
-        <span>Cambio</span>
-        <strong>{{ changeAmount() | price }}</strong>
-      </div>
-    } @else {
-      <p class="qpay__hint">
-        Toca un billete o escribe el monto recibido. También puedes cobrar el monto exacto.
-      </p>
+        @if (receivedAmount() > 0) {
+          <div class="qpay__received">
+            <div class="qpay__received-info">
+              <span class="qpay__received-label">Recibido</span>
+              <input
+                type="number"
+                inputmode="decimal"
+                class="qpay__received-input"
+                min="0"
+                [value]="(receivedAmount() / 100).toFixed(2)"
+                (input)="onDialogReceivedInput($event)"
+              />
+            </div>
+            <button
+              type="button"
+              class="qpay__received-reset"
+              (click)="resetReceived()"
+              aria-label="Limpiar monto recibido"
+            >×</button>
+          </div>
+
+          <div class="qpay__change">
+            <span>Cambio</span>
+            <strong>{{ changeAmount() | price }}</strong>
+          </div>
+        } @else {
+          <p class="qpay__hint">
+            Toca un billete o escribe el monto recibido. También puedes cobrar el monto exacto.
+          </p>
+        }
+      }
+
+      <!-- ============================================================== -->
+      <!-- Card / Digital / Voucher / Other — exact amount + reference     -->
+      <!-- ============================================================== -->
+      @if (m.category === PaymentCategory.Card
+           || m.category === PaymentCategory.Digital
+           || m.category === PaymentCategory.Voucher
+           || m.category === PaymentCategory.Other) {
+        <div class="qpay__exact">
+          <label class="qpay__exact-label" [for]="'qpay-amount-' + m.code">Monto</label>
+          <div class="qpay__exact-input-wrap">
+            <span class="qpay__custom-prefix">$</span>
+            <input
+              [id]="'qpay-amount-' + m.code"
+              type="number"
+              inputmode="decimal"
+              class="qpay__custom-input"
+              min="0"
+              [value]="exactAmountPesos().toFixed(2)"
+              (input)="onExactAmountInput($event)"
+            />
+          </div>
+        </div>
+
+        @if (m.requiresReference) {
+          <div class="qpay__exact">
+            <label class="qpay__exact-label" [for]="'qpay-ref-' + m.code">Referencia / Folio</label>
+            <input
+              [id]="'qpay-ref-' + m.code"
+              type="text"
+              class="qpay__custom-input"
+              [value]="referenceInput()"
+              (input)="onReferenceInput($event)"
+            />
+          </div>
+        }
+
+        <p class="qpay__hint">
+          Pago exacto por <strong>{{ remainingCents() | price }}</strong>. Este método no genera cambio.
+        </p>
+      }
+
+      <!-- ============================================================== -->
+      <!-- Customer-balance methods — deferred placeholder                 -->
+      <!-- ============================================================== -->
+      @if (m.category === PaymentCategory.Credit || m.category === PaymentCategory.Points) {
+        <div class="qpay__deferred">
+          <i class="pi pi-info-circle"></i>
+          <p>
+            <strong>{{ m.name }}</strong> requiere asignar un cliente con saldo disponible.
+            Disponible próximamente.
+          </p>
+        </div>
+      }
+
+      <!-- ============================================================== -->
+      <!-- Provider-backed methods — deferred placeholder                  -->
+      <!-- ============================================================== -->
+      @if (m.providerKey) {
+        <div class="qpay__deferred">
+          <i class="pi pi-info-circle"></i>
+          <p>
+            <strong>{{ m.name }}</strong> se procesa con terminal/QR del proveedor.
+            Disponible próximamente.
+          </p>
+        </div>
+      }
+
     }
 
   </div>

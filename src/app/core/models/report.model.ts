@@ -92,7 +92,15 @@ export interface DashboardSales {
   averageTicketCents: number;
   cashCents: number;
   cardCents: number;
+  /**
+   * @deprecated Backend keeps this as an alias for `digitalCents` until the
+   * FE fully migrates (PR-A1 note). New code should read `digitalCents`.
+   */
   transferCents: number;
+  digitalCents: number;
+  creditCents: number;
+  pointsCents: number;
+  voucherCents: number;
   otherCents: number;
   topPaymentMethod: string;
 }

@@ -21,6 +21,7 @@ export * from './invoice.model';
 export * from './metadata.model';
 export * from './order.model';
 export * from './orphaned-order.model';
+export * from './available-payment-method.model';
 export * from './payment.model';
 export * from './plan.model';
 export * from './plan-catalog.model';

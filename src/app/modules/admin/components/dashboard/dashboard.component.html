@@ -236,10 +236,28 @@
           <span class="badge badge--card">Tarjeta</span>
           <span class="cutoff-row__amount">{{ d.sales.cardCents | price }}</span>
         </div>
-        @if (d.sales.transferCents > 0) {
+        @if (d.sales.digitalCents > 0) {
           <div class="cutoff-row">
-            <span class="badge badge--transfer">Transferencia</span>
-            <span class="cutoff-row__amount">{{ d.sales.transferCents | price }}</span>
+            <span class="badge badge--transfer">Digital</span>
+            <span class="cutoff-row__amount">{{ d.sales.digitalCents | price }}</span>
+          </div>
+        }
+        @if (d.sales.creditCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--other">Saldo cliente</span>
+            <span class="cutoff-row__amount">{{ d.sales.creditCents | price }}</span>
+          </div>
+        }
+        @if (d.sales.pointsCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--other">Puntos</span>
+            <span class="cutoff-row__amount">{{ d.sales.pointsCents | price }}</span>
+          </div>
+        }
+        @if (d.sales.voucherCents > 0) {
+          <div class="cutoff-row">
+            <span class="badge badge--other">Vale</span>
+            <span class="cutoff-row__amount">{{ d.sales.voucherCents | price }}</span>
           </div>
         }
         @if (d.sales.otherCents > 0) {
