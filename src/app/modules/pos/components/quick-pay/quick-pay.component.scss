@@ -467,5 +467,76 @@ $bills: (
   line-height: 1.3;
 }
 
+// =============================================================================
+// Split-payment list (Dividir)
+// =============================================================================
+
+.qpay__partials {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-3;
+  background: $color-surface-muted;
+  border: 1px solid $color-border;
+  border-radius: 8px;
+}
+
+.qpay__partials-summary {
+  font-size: 13px;
+  color: $color-text-sub;
+
+  strong {
+    color: $color-text-title;
+    margin: 0 4px;
+  }
+}
+
+.qpay__partials-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qpay__partials-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: $space-2;
+  padding: 6px $space-2;
+  background: white;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.qpay__partials-method {
+  font-weight: 600;
+  color: $color-text-title;
+}
+
+.qpay__partials-amount {
+  font-weight: 700;
+  color: $color-primary;
+}
+
+.qpay__partials-remove {
+  background: transparent;
+  border: none;
+  color: $color-text-sub;
+  font-size: 18px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background: $color-error-50;
+    color: $color-error;
+  }
+}
+
 
 

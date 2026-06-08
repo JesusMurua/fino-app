@@ -23,6 +23,29 @@
       <span class="qpay__total-amount">{{ cartTotal() | price }}</span>
     </div>
 
+    <!-- Partial payments accumulated via Dividir -->
+    @if (pendingPayments().length > 0) {
+      <div class="qpay__partials">
+        <div class="qpay__partials-summary">
+          <span>Pagado <strong>{{ committedCents() | price }}</strong> · Falta <strong>{{ remainingCents() | price }}</strong></span>
+        </div>
+        <ul class="qpay__partials-list">
+          @for (p of pendingPayments(); track $index; let i = $index) {
+            <li class="qpay__partials-item">
+              <span class="qpay__partials-method">{{ partialLabel(p) }}</span>
+              <span class="qpay__partials-amount">{{ p.amountCents | price }}</span>
+              <button
+                type="button"
+                class="qpay__partials-remove"
+                (click)="removePartial(i)"
+                aria-label="Quitar pago parcial"
+              >×</button>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
     <!-- Method tabs -->
     @if (availableMethods().length > 0) {
       <div class="qpay__methods" role="tablist" aria-label="Método de pago">
@@ -203,6 +226,17 @@
       >
         Cancelar
       </button>
+      @if (canAddPartial()) {
+        <button
+          type="button"
+          class="customer-form__btn customer-form__btn--ghost"
+          [disabled]="isProcessing()"
+          (click)="addPartialPayment()"
+        >
+          <i class="pi pi-plus"></i>
+          Dividir
+        </button>
+      }
       <button
         type="button"
         class="customer-form__btn customer-form__btn--primary"
