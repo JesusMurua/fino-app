@@ -37,23 +37,6 @@
           />
         </div>
       </div>
-
-      <ng-template pTemplate="footer">
-        <div class="ppd__footer">
-          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="ppd__btn ppd__btn--primary"
-            [disabled]="!canConfirmClip()"
-            (click)="onConfirmClip()"
-          >
-            <i class="pi pi-check"></i>
-            Confirmar pago
-          </button>
-        </div>
-      </ng-template>
     }
 
     <!-- ================================================================ -->
@@ -85,14 +68,6 @@
           styleClass="ppd__progress"
         />
       </div>
-
-      <ng-template pTemplate="footer">
-        <div class="ppd__footer ppd__footer--center">
-          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
-            Cancelar
-          </button>
-        </div>
-      </ng-template>
     }
 
     <!-- ================================================================ -->
@@ -112,14 +87,6 @@
           <p class="ppd__detail ppd__detail--muted">ID: {{ tx.externalTransactionId }}</p>
         }
       </div>
-
-      <ng-template pTemplate="footer">
-        <div class="ppd__footer ppd__footer--center">
-          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onAcceptApproved()">
-            Continuar
-          </button>
-        </div>
-      </ng-template>
     }
 
     <!-- ================================================================ -->
@@ -135,18 +102,6 @@
           <p class="ppd__detail">{{ tx.errorMessage }}</p>
         }
       </div>
-
-      <ng-template pTemplate="footer">
-        <div class="ppd__footer">
-          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
-            Cancelar
-          </button>
-          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onRetry()">
-            <i class="pi pi-refresh"></i>
-            Reintentar
-          </button>
-        </div>
-      </ng-template>
     }
 
     <!-- ================================================================ -->
@@ -160,8 +115,59 @@
         <p class="ppd__title">Tiempo expirado</p>
         <p class="ppd__detail">No se recibió confirmación del pago</p>
       </div>
+    }
 
-      <ng-template pTemplate="footer">
+  }
+
+  <!-- =================================================================== -->
+  <!-- Footer — MUST live as a direct child of p-dialog. PrimeNG scans for  -->
+  <!-- ng-templates with `pTemplate="footer"` on its own children at init,  -->
+  <!-- so nesting this template inside the `@if (transaction()…)` blocks    -->
+  <!-- above hid the footer from the dialog entirely (the cashier saw the   -->
+  <!-- Clip reference input but no confirm/cancel buttons). The body still  -->
+  <!-- branches by state via `@if (transaction(); as tx)` inside.           -->
+  <!-- =================================================================== -->
+  <ng-template pTemplate="footer">
+    @if (transaction(); as tx) {
+
+      <!-- Clip — confirm + cancel -->
+      @if (tx.provider === 'clip' && (tx.status === 'processing' || tx.status === 'awaiting_reference')) {
+        <div class="ppd__footer">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="ppd__btn ppd__btn--primary"
+            [disabled]="!canConfirmClip()"
+            (click)="onConfirmClip()"
+          >
+            <i class="pi pi-check"></i>
+            Confirmar pago
+          </button>
+        </div>
+      }
+
+      <!-- MercadoPago — cancel-only while polling -->
+      @if (tx.provider === 'mercadopago' && tx.status === 'processing') {
+        <div class="ppd__footer ppd__footer--center">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+        </div>
+      }
+
+      <!-- Approved — single continue button -->
+      @if (tx.status === 'approved') {
+        <div class="ppd__footer ppd__footer--center">
+          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onAcceptApproved()">
+            Continuar
+          </button>
+        </div>
+      }
+
+      <!-- Declined — cancel + retry -->
+      @if (tx.status === 'declined') {
         <div class="ppd__footer">
           <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
             Cancelar
@@ -171,8 +177,21 @@
             Reintentar
           </button>
         </div>
-      </ng-template>
-    }
+      }
 
-  }
+      <!-- Timeout — cancel + retry -->
+      @if (tx.status === 'timeout') {
+        <div class="ppd__footer">
+          <button type="button" class="ppd__btn ppd__btn--ghost" (click)="onCancel()">
+            Cancelar
+          </button>
+          <button type="button" class="ppd__btn ppd__btn--primary" (click)="onRetry()">
+            <i class="pi pi-refresh"></i>
+            Reintentar
+          </button>
+        </div>
+      }
+
+    }
+  </ng-template>
 </p-dialog>
