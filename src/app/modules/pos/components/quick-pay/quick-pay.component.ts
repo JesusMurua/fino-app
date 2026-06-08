@@ -1,14 +1,17 @@
-import { Component, EventEmitter, Output, computed, inject, input, signal } from '@angular/core';
+import { Component, EventEmitter, Output, computed, effect, inject, input, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 
 import { CartItem, Order, OrderPayment, PaymentMethod } from '../../../../core/models';
+import { AvailablePaymentMethod } from '../../../../core/models/available-payment-method.model';
+import { PaymentCategory } from '../../../../core/enums/payment-category.enum';
 import { PaymentStatus, SyncStatusId } from '../../../../core/enums';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { PaymentMethodService } from '../../../../core/services/payment-method.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { SyncService } from '../../../../core/services/sync.service';
 
@@ -23,18 +26,52 @@ const BILL_DENOMINATIONS = [
 ];
 
 /**
- * Inline cash quick-pay dialog used by non-F&B verticals (Services, Retail,
+ * Categories that, in this PR's MVP scope, surface as informational placeholders
+ * rather than functional inputs. Customer-balance (`Credit`, `Points`) needs a
+ * customer selector + balance validation; provider-backed methods need the
+ * `PaymentProcessingDialog` integration. Both will land in follow-up commits
+ * within this same branch — listing them here keeps `selectMethod()` aware of
+ * which catalog rows are merely visible vs interactive.
+ */
+const DEFERRED_CATEGORIES: ReadonlySet<PaymentCategory> = new Set([
+  PaymentCategory.Credit,
+  PaymentCategory.Points,
+]);
+
+const CATEGORY_DEFAULT_ICON: Record<PaymentCategory, string> = {
+  [PaymentCategory.Cash]: 'pi pi-money-bill',
+  [PaymentCategory.Card]: 'pi pi-credit-card',
+  [PaymentCategory.Digital]: 'pi pi-arrows-h',
+  [PaymentCategory.Credit]: 'pi pi-wallet',
+  [PaymentCategory.Points]: 'pi pi-star',
+  [PaymentCategory.Voucher]: 'pi pi-ticket',
+  [PaymentCategory.Other]: 'pi pi-ellipsis-h',
+};
+
+/**
+ * Inline quick-pay dialog used by non-F&B verticals (Services, Retail,
  * Counter, Quick) to skip the full `/pos/checkout` page and complete the
  * sale in a single tap.
  *
- * Owns:
- *   - Bill denomination strip
- *   - Free-form custom amount input
- *   - Change calculation
- *   - Order persistence via SyncService + ticket print
+ * Multi-method aware: the available methods come from
+ * `PaymentMethodService` (which loads `GET /api/payment-methods/available`
+ * with offline fallback). The cashier picks a method tab and the inputs
+ * adapt to its category:
  *
- * The cart snapshot is read directly from `CartService` so this component
- * has no inputs other than dialog visibility.
+ *   - Cash       → bill denominations + custom amount + change
+ *   - Card / Digital / Voucher / Other → exact amount + optional reference
+ *   - Credit / Points (customer balance) → deferred placeholder (next commit)
+ *   - Provider methods (Clip / MercadoPago / BankTerminal) → deferred placeholder
+ *
+ * Multi-payment architecture is in place (signal `pendingPayments` + the
+ * derived totals) but the UI is single-method in this PR — `confirmPayment()`
+ * always builds a one-row `payments[]`. The follow-up "Dividir" UI will only
+ * append entries to `pendingPayments`; the persistence path stays the same.
+ *
+ * Stays in the Fast-Lane bounded context: it does **not** import any
+ * `/pos/checkout` component. Provider integration when it lands will reuse
+ * the *shared* `PaymentProcessingDialog` + the *singleton*
+ * `PaymentProviderService`, not the F&B checkout itself.
  */
 @Component({
   selector: 'app-quick-pay',
@@ -50,6 +87,7 @@ export class QuickPayComponent {
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
+  private readonly paymentMethodService = inject(PaymentMethodService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
   private readonly messageService = inject(MessageService);
@@ -61,35 +99,105 @@ export class QuickPayComponent {
   /** Bill denomination buttons */
   readonly bills = BILL_DENOMINATIONS;
 
+  /** Catalog state proxied from the service so the template stays declarative. */
+  readonly availableMethods = this.paymentMethodService.availableMethods;
+  readonly usedFallback = this.paymentMethodService.usedFallback;
+
+  /** Currently selected method tab. `null` until the catalog resolves. */
+  readonly selectedMethod = signal<AvailablePaymentMethod | null>(null);
+
   /** Cart total proxied from the shared CartService */
   readonly cartTotal = this.cartService.totalCents;
 
   /** Number of items in cart proxied from the shared CartService */
   readonly cartItemCount = this.cartService.itemCount;
 
-  /** Amount received from customer in centavos — accumulates with each bill tap */
+  /**
+   * Cash-only state: amount tendered (in centavos), accumulated via bill taps
+   * or the free-form input. Reset on cart clear or method change away from
+   * cash.
+   */
   readonly receivedAmount = signal(0);
 
-  /** Free-form amount typed by the cashier (raw string in pesos) */
+  /** Free-form amount typed by the cashier in the Cash tab (raw string in pesos) */
   readonly customAmountInput = signal('');
 
-  /** Change to return in centavos (0 when nothing has been received yet) */
+  /**
+   * Non-cash exact-amount input (pesos). Defaults to the full cart total when
+   * the cashier switches to a card/digital/voucher/other tab and lets them
+   * adjust if needed. Capped at the remaining balance by template binding
+   * (`max`) so the cashier cannot overpay on a method whose
+   * `supportsOverpay` is false.
+   */
+  readonly exactAmountPesos = signal(0);
+
+  /** Reference field for methods with `requiresReference: true` (folio, last-4, etc.) */
+  readonly referenceInput = signal('');
+
+  /**
+   * Multi-payment architecture (single-method UI in this PR). Stays empty for
+   * now; the follow-up "Dividir" feature will start pushing entries into it.
+   * Persistence already reads `[…pendingPayments, currentPayment].filter(…)`
+   * so flipping the UI later is a template change, not a logic change.
+   */
+  readonly pendingPayments = signal<OrderPayment[]>([]);
+
+  /** Total already-committed (in pendingPayments). Today always 0. */
+  readonly committedCents = computed(() =>
+    this.pendingPayments().reduce((sum, p) => sum + p.amountCents, 0),
+  );
+
+  /** Cart total minus what's already committed via pendingPayments. */
+  readonly remainingCents = computed(() =>
+    Math.max(0, this.cartTotal() - this.committedCents()),
+  );
+
+  /**
+   * Centavos that *this turn's* tab will tender. Reads from `receivedAmount`
+   * when the active method is cash; from `exactAmountPesos` otherwise.
+   * Defaults to the remaining balance for non-cash so the cashier rarely has
+   * to type the exact figure.
+   */
+  readonly currentTenderedCents = computed(() => {
+    const m = this.selectedMethod();
+    if (!m) return 0;
+    if (m.category === PaymentCategory.Cash) return this.receivedAmount();
+    const pesos = this.exactAmountPesos();
+    if (pesos > 0) return Math.round(pesos * 100);
+    // No explicit amount entered yet → default to remaining (typed on confirm).
+    return this.remainingCents();
+  });
+
+  /** Change to return to the customer in centavos (cash overpay only). */
   readonly changeAmount = computed(() => {
-    const received = this.receivedAmount();
-    if (received === 0) return 0;
-    return Math.max(0, received - this.cartTotal());
+    const m = this.selectedMethod();
+    if (!m || !m.supportsOverpay) return 0;
+    return Math.max(0, this.currentTenderedCents() - this.remainingCents());
   });
 
   /**
-   * True when the cashier can confirm the cobro. Mirrors the F&B
-   * checkout's `canConfirm` short-circuit: a $0 total (e.g. a 100%-off
-   * promo) confirms instantly; otherwise the received amount must
-   * cover the total. Empty carts are still blocked separately on the
-   * confirm button so this signal stays focused on the payment math.
+   * True when the cashier can confirm the cobro. Branches by category:
+   *
+   *   - $0 total (full promo discount) confirms instantly.
+   *   - Cash: tendered must cover the remaining.
+   *   - Card / Digital / Voucher / Other: exact-amount must equal remaining
+   *     (no overpay because `supportsOverpay` is false).
+   *   - Methods in `DEFERRED_CATEGORIES`: never confirmable in this PR — the
+   *     tabs are visible but interaction is blocked.
+   *
+   * Empty cart is also blocked separately at the button.
    */
   readonly canConfirmQuickPay = computed<boolean>(() => {
     if (this.cartTotal() === 0) return true;
-    return this.receivedAmount() >= this.cartTotal();
+    const m = this.selectedMethod();
+    if (!m) return false;
+    if (DEFERRED_CATEGORIES.has(m.category)) return false;
+    if (m.providerKey) return false; // provider methods deferred
+    if (m.category === PaymentCategory.Cash) {
+      return this.currentTenderedCents() >= this.remainingCents();
+    }
+    // Non-cash: must match remaining exactly (no overpay).
+    return this.currentTenderedCents() === this.remainingCents();
   });
 
   /** Guards against double-tap on confirm */
@@ -97,7 +205,70 @@ export class QuickPayComponent {
 
   //#endregion
 
-  //#region Bills + change
+  //#region Lifecycle
+
+  constructor() {
+    // Lazy-load the catalog the first time the dialog opens. Idempotent — the
+    // service is safe to invoke repeatedly and resolves to fallback on offline.
+    effect(() => {
+      if (!this.visible()) return;
+      if (this.paymentMethodService.loaded()) return;
+      void this.paymentMethodService.loadAvailable();
+    });
+
+    // Default-select the first interactive method once the catalog resolves.
+    // Cash wins when present (most common cashier flow); otherwise the first
+    // method sorted by `sortOrder` that isn't deferred.
+    effect(() => {
+      if (this.selectedMethod() !== null) return;
+      const methods = this.availableMethods();
+      if (methods.length === 0) return;
+      const preferred =
+        methods.find(m => m.category === PaymentCategory.Cash && this.canSelect(m))
+        ?? methods.find(m => this.canSelect(m));
+      if (preferred) this.selectMethod(preferred);
+    });
+  }
+
+  //#endregion
+
+  //#region Method selection
+
+  /**
+   * Whether the method can be picked in this PR. Returns false for the
+   * categories whose UX is deferred (customer balance + providers) so the
+   * tabs render disabled rather than mid-flow erroring.
+   */
+  canSelect(method: AvailablePaymentMethod): boolean {
+    if (DEFERRED_CATEGORIES.has(method.category)) return false;
+    if (method.providerKey) return false;
+    return true;
+  }
+
+  /** Resolves the icon for a method — catalog override wins, then a sensible default. */
+  iconFor(method: AvailablePaymentMethod): string {
+    return method.icon ?? CATEGORY_DEFAULT_ICON[method.category] ?? 'pi pi-credit-card';
+  }
+
+  /**
+   * Switches the active tab and resets the per-method input state. Keeps the
+   * `pendingPayments` accumulation untouched — only the current turn's inputs
+   * clear so the cashier can't carry a stale amount across methods.
+   */
+  selectMethod(method: AvailablePaymentMethod): void {
+    if (!this.canSelect(method)) return;
+    this.selectedMethod.set(method);
+    this.receivedAmount.set(0);
+    this.customAmountInput.set('');
+    this.exactAmountPesos.set(method.category === PaymentCategory.Cash
+      ? 0
+      : this.remainingCents() / 100);
+    this.referenceInput.set('');
+  }
+
+  //#endregion
+
+  //#region Cash inputs (bills + custom)
 
   /** Adds a bill denomination to the running received amount (accumulates) */
   addBillAmount(cents: number): void {
@@ -117,10 +288,37 @@ export class QuickPayComponent {
     }
   }
 
+  /** Updates the received amount from the dialog's editable Recibido field */
+  onDialogReceivedInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const pesos = parseFloat(raw);
+    if (!isNaN(pesos) && pesos > 0) {
+      this.receivedAmount.set(Math.round(pesos * 100));
+    } else if (raw.trim() === '') {
+      this.receivedAmount.set(0);
+    }
+  }
+
   /** Resets the received amount and the custom-amount input together */
   resetReceived(): void {
     this.receivedAmount.set(0);
     this.customAmountInput.set('');
+  }
+
+  //#endregion
+
+  //#region Non-cash inputs
+
+  /** Reads the exact-amount input for card/digital/voucher/other methods (pesos). */
+  onExactAmountInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const pesos = parseFloat(raw);
+    this.exactAmountPesos.set(!isNaN(pesos) && pesos > 0 ? pesos : 0);
+  }
+
+  /** Reads the reference/folio input. */
+  onReferenceInput(event: Event): void {
+    this.referenceInput.set((event.target as HTMLInputElement).value);
   }
 
   //#endregion
@@ -140,12 +338,17 @@ export class QuickPayComponent {
 
   /**
    * Persists the order via SyncService, prints the ticket, and clears the
-   * cart. Mirrors the flow that lived in the legacy `quick-pos`/`retail-pos`
-   * components — same SyncStatusId.Pending + offline-first guarantees.
+   * cart. Mirrors the previous cash-only flow but now sources the method
+   * from `selectedMethod()` and ships `MethodCode` resolved from the catalog
+   * (the backend freezes the snapshot at sync time per PR-A1).
    */
   async confirmPayment(): Promise<void> {
     if (this.isProcessing()) return;
     if (this.cartItemCount() === 0) return;
+    if (!this.canConfirmQuickPay()) return;
+
+    const method = this.selectedMethod();
+    if (!method) return;
 
     const sessionId = this.cashRegisterService.activeSession()?.id;
     if (sessionId == null) {
@@ -162,15 +365,21 @@ export class QuickPayComponent {
 
     try {
       const totalCents = this.cartTotal();
-      const paidCents = Math.max(this.receivedAmount(), totalCents);
+      const tendered = this.currentTenderedCents();
+      const currentPayment: OrderPayment = {
+        method: this.resolveMethodEnum(method),
+        paymentStatusId: PaymentStatus.Completed,
+        amountCents: method.category === PaymentCategory.Cash
+          ? Math.max(tendered, this.remainingCents())
+          : this.remainingCents(),
+        reference: this.referenceInput().trim() || undefined,
+      };
+
+      const payments: OrderPayment[] = [...this.pendingPayments(), currentPayment];
+      const paidCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
+
       const orderNumber = this.syncService.consumeOrderNumber();
       const items: CartItem[] = this.cartService.getSnapshot();
-
-      const payment: OrderPayment = {
-        method: PaymentMethod.Cash,
-        paymentStatusId: PaymentStatus.Completed,
-        amountCents: paidCents,
-      };
 
       const order: Order = {
         id: crypto.randomUUID(),
@@ -178,7 +387,7 @@ export class QuickPayComponent {
         items,
         subtotalCents: totalCents,
         totalCents,
-        payments: [payment],
+        payments,
         paidCents,
         changeCents: Math.max(0, paidCents - totalCents),
         paymentProvider: null,
@@ -212,7 +421,7 @@ export class QuickPayComponent {
       // customer, applied coupon, and order context cannot leak into
       // the next transaction (see CartService.resetTransactionState).
       await this.cartService.resetTransactionState();
-      this.resetReceived();
+      this.resetTurnState();
       this.visibleChange.emit(false);
     } finally {
       this.isProcessing.set(false);
@@ -223,16 +432,28 @@ export class QuickPayComponent {
 
   //#region Helpers
 
-  /** Updates the received amount from the dialog's editable Recibido field */
-  onDialogReceivedInput(event: Event): void {
-    const raw = (event.target as HTMLInputElement).value;
-    const pesos = parseFloat(raw);
-    if (!isNaN(pesos) && pesos > 0) {
-      this.receivedAmount.set(Math.round(pesos * 100));
-    } else if (raw.trim() === '') {
-      this.receivedAmount.set(0);
-    }
+  /**
+   * Maps the catalog's `code` (the backend's freeze key) to the legacy
+   * `PaymentMethod` enum that `OrderPayment` still types its `method` field
+   * against. Once PR-C drops that enum, this collapses to passing the code
+   * through verbatim. Unknown codes fall back to `Other` — the backend will
+   * record `WasUnknownMethod: true` per PR-A2.
+   */
+  private resolveMethodEnum(method: AvailablePaymentMethod): PaymentMethod {
+    return (PaymentMethod as Record<string, PaymentMethod>)[method.code] ?? PaymentMethod.Other;
   }
+
+  /** Clears all per-turn inputs after a successful confirm. */
+  private resetTurnState(): void {
+    this.pendingPayments.set([]);
+    this.receivedAmount.set(0);
+    this.customAmountInput.set('');
+    this.exactAmountPesos.set(0);
+    this.referenceInput.set('');
+  }
+
+  /** Expose for template */
+  readonly PaymentCategory = PaymentCategory;
 
   //#endregion
 }
