@@ -193,6 +193,10 @@ export class QuickPayComponent {
     if (!m) return false;
     if (DEFERRED_CATEGORIES.has(m.category)) return false;
     if (m.providerKey) return false; // provider methods deferred
+    // Reference is declarative on the catalog. When set, FE must collect it
+    // before the sale closes — the wire DTO accepts an empty `reference` but
+    // the operational intent (SPEI folio, terminal auth) requires it.
+    if (m.requiresReference && this.referenceInput().trim() === '') return false;
     if (m.category === PaymentCategory.Cash) {
       return this.currentTenderedCents() >= this.remainingCents();
     }

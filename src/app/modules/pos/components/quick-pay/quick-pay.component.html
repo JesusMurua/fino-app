@@ -139,14 +139,22 @@
 
         @if (m.requiresReference) {
           <div class="qpay__exact">
-            <label class="qpay__exact-label" [for]="'qpay-ref-' + m.code">Referencia / Folio</label>
+            <label class="qpay__exact-label" [for]="'qpay-ref-' + m.code">
+              Referencia / Folio <span class="qpay__required" aria-hidden="true">*</span>
+            </label>
             <input
               [id]="'qpay-ref-' + m.code"
               type="text"
               class="qpay__custom-input"
+              [class.qpay__custom-input--invalid]="referenceInput().trim() === ''"
               [value]="referenceInput()"
               (input)="onReferenceInput($event)"
+              [attr.aria-required]="true"
+              [attr.aria-invalid]="referenceInput().trim() === ''"
             />
+            @if (referenceInput().trim() === '') {
+              <p class="qpay__error">Captura el folio para confirmar el cobro.</p>
+            }
           </div>
         }
 
