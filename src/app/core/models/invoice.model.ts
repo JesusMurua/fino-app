@@ -127,7 +127,10 @@ export const PAYMENT_METHOD_SAT_MAP: Record<string, string> = {
   [PaymentMethod.Card]:          '04',
   [PaymentMethod.Transfer]:      '03',
   [PaymentMethod.Clip]:          '04',
-  [PaymentMethod.MercadoPagoQR]: '31',
+  [PaymentMethod.MercadoPago]:   '04',
+  [PaymentMethod.BankTerminal]:  '04',
+  [PaymentMethod.StoreCredit]:   '05',
+  [PaymentMethod.LoyaltyPoints]: '05',
   [PaymentMethod.Other]:         '99',
 };
 

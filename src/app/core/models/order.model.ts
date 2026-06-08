@@ -3,14 +3,15 @@ import { DeliveryStatus, KitchenStatusId, OrderSource, PaymentStatus, SyncStatus
 import { InvoiceRequest } from './invoice.model';
 import { OrderMetadata, PaymentMetadata } from './metadata.model';
 
-/** Supported payment methods */
+/** Supported payment methods — aligned with the backend's PaymentMethodCatalog `code` values. */
 export enum PaymentMethod {
   Cash = 'Cash',
   Card = 'Card',
   Transfer = 'Transfer',
   Other = 'Other',
   Clip = 'Clip',
-  MercadoPagoQR = 'MercadoPagoQR',
+  MercadoPago = 'MercadoPago',
+  BankTerminal = 'BankTerminal',
   StoreCredit = 'StoreCredit',
   LoyaltyPoints = 'LoyaltyPoints',
 }
@@ -70,7 +71,8 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
 /** Provider-backed payment method options — shown only when enabled in branch config */
 export const PROVIDER_PAYMENT_OPTIONS: PaymentMethodOption[] = [
   { method: PaymentMethod.Clip,          label: 'Clip',        icon: 'pi-credit-card', requiresProvider: true },
-  { method: PaymentMethod.MercadoPagoQR, label: 'MercadoPago', icon: 'pi-qrcode',      requiresProvider: true },
+  { method: PaymentMethod.MercadoPago,   label: 'MercadoPago', icon: 'pi-qrcode',      requiresProvider: true },
+  { method: PaymentMethod.BankTerminal,  label: 'Terminal bancaria', icon: 'pi-credit-card', requiresProvider: true },
 ];
 
 /** Customer-balance payment options — shown only when a customer is attached */

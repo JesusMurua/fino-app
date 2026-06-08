@@ -78,7 +78,7 @@ export class PaymentProviderService {
       options.push(PROVIDER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.Clip)!);
     }
     if (this.hasMercadoPago()) {
-      options.push(PROVIDER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.MercadoPagoQR)!);
+      options.push(PROVIDER_PAYMENT_OPTIONS.find(o => o.method === PaymentMethod.MercadoPago)!);
     }
 
     return options;
@@ -88,7 +88,7 @@ export class PaymentProviderService {
    * Returns true if the given payment method requires async provider processing.
    */
   requiresProcessing(method: PaymentMethod): boolean {
-    return method === PaymentMethod.Clip || method === PaymentMethod.MercadoPagoQR;
+    return method === PaymentMethod.Clip || method === PaymentMethod.MercadoPago;
   }
 
   /**
@@ -186,7 +186,7 @@ export class PaymentProviderService {
   private resolveProvider(method: PaymentMethod): PaymentProviderId {
     switch (method) {
       case PaymentMethod.Clip: return 'clip';
-      case PaymentMethod.MercadoPagoQR: return 'mercadopago';
+      case PaymentMethod.MercadoPago: return 'mercadopago';
       default: throw new Error(`No provider for method: ${method}`);
     }
   }

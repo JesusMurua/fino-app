@@ -7,13 +7,17 @@ import { CartItem, Order, OrderPayment, PaymentMethod } from '../../../../core/m
 import { AvailablePaymentMethod } from '../../../../core/models/available-payment-method.model';
 import { PaymentCategory } from '../../../../core/enums/payment-category.enum';
 import { PaymentStatus, SyncStatusId } from '../../../../core/enums';
+import { formatCustomerName } from '../../../../shared/pipes/customer-name.pipe';
 import { PricePipe } from '../../../../shared/pipes/price.pipe';
 import { AuthService } from '../../../../core/services/auth.service';
 import { CartService } from '../../../../core/services/cart.service';
 import { CashRegisterService } from '../../../../core/services/cash-register.service';
+import { CustomerService } from '../../../../core/services/customer.service';
 import { PaymentMethodService } from '../../../../core/services/payment-method.service';
+import { PaymentProviderService } from '../../../../core/services/payment-provider.service';
 import { PrintService } from '../../../../core/services/print.service';
 import { SyncService } from '../../../../core/services/sync.service';
+import { PaymentProcessingDialogComponent } from '../payment-processing-dialog/payment-processing-dialog.component';
 
 /** Bill denominations in MXN (in centavos) — modifier maps to SCSS color theme */
 const BILL_DENOMINATIONS = [
@@ -26,17 +30,13 @@ const BILL_DENOMINATIONS = [
 ];
 
 /**
- * Categories that, in this PR's MVP scope, surface as informational placeholders
- * rather than functional inputs. Customer-balance (`Credit`, `Points`) needs a
- * customer selector + balance validation; provider-backed methods need the
- * `PaymentProcessingDialog` integration. Both will land in follow-up commits
- * within this same branch — listing them here keeps `selectMethod()` aware of
- * which catalog rows are merely visible vs interactive.
+ * Categories whose UX is still placeholder-only. Empty after this commit —
+ * Credit/Points now consume the customer's balance, Voucher uses the
+ * exact-amount + reference flow, providers run through the processing dialog.
+ * Kept as a structure so future categories (e.g. a hypothetical `Crypto`)
+ * can be added without re-introducing the const elsewhere.
  */
-const DEFERRED_CATEGORIES: ReadonlySet<PaymentCategory> = new Set([
-  PaymentCategory.Credit,
-  PaymentCategory.Points,
-]);
+const DEFERRED_CATEGORIES: ReadonlySet<PaymentCategory> = new Set<PaymentCategory>();
 
 const CATEGORY_DEFAULT_ICON: Record<PaymentCategory, string> = {
   [PaymentCategory.Cash]: 'pi pi-money-bill',
@@ -76,7 +76,7 @@ const CATEGORY_DEFAULT_ICON: Record<PaymentCategory, string> = {
 @Component({
   selector: 'app-quick-pay',
   standalone: true,
-  imports: [ButtonModule, DialogModule, PricePipe],
+  imports: [ButtonModule, DialogModule, PricePipe, PaymentProcessingDialogComponent],
   templateUrl: './quick-pay.component.html',
   styleUrl: './quick-pay.component.scss',
 })
@@ -87,7 +87,9 @@ export class QuickPayComponent {
   private readonly authService = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly cashRegisterService = inject(CashRegisterService);
+  readonly customerService = inject(CustomerService);
   private readonly paymentMethodService = inject(PaymentMethodService);
+  readonly paymentProviderService = inject(PaymentProviderService);
   private readonly syncService = inject(SyncService);
   private readonly printService = inject(PrintService);
   private readonly messageService = inject(MessageService);
@@ -135,10 +137,29 @@ export class QuickPayComponent {
   readonly referenceInput = signal('');
 
   /**
-   * Multi-payment architecture (single-method UI in this PR). Stays empty for
-   * now; the follow-up "Dividir" feature will start pushing entries into it.
-   * Persistence already reads `[…pendingPayments, currentPayment].filter(…)`
-   * so flipping the UI later is a template change, not a logic change.
+   * Centavos the selected customer can apply to this method right now.
+   * Returns `Infinity` for methods that don't `requiresCustomer` so generic
+   * cap checks stay clean. For `Credit` it's the customer's `creditBalanceCents`
+   * directly; for `Points` we currently assume 1 point = $1 (100 centavos)
+   * until a per-tenant `pointRedemptionValueCents` lands.
+   */
+  readonly customerAvailableCents = computed<number>(() => {
+    const m = this.selectedMethod();
+    if (!m || !m.requiresCustomer) return Number.POSITIVE_INFINITY;
+    const customer = this.customerService.selectedCustomer();
+    if (!customer) return 0;
+    if (m.category === PaymentCategory.Credit) return customer.creditBalanceCents ?? 0;
+    if (m.category === PaymentCategory.Points) return (customer.pointsBalance ?? 0) * 100;
+    return Number.POSITIVE_INFINITY;
+  });
+
+  /**
+   * Partial payments accumulated by the cashier when splitting a sale across
+   * methods (e.g. $300 in cash + $200 on card for a $500 sale). Each entry is
+   * a fully-formed `OrderPayment` captured by `addPartialPayment()` from the
+   * active tab's inputs at the moment of tap. `confirmPayment()` ships
+   * `[…pendingPayments, currentTurn?]` so a single-method flow still works
+   * unchanged when the cashier never touches "Dividir".
    */
   readonly pendingPayments = signal<OrderPayment[]>([]);
 
@@ -191,13 +212,80 @@ export class QuickPayComponent {
     if (this.cartTotal() === 0) return true;
     const m = this.selectedMethod();
     if (!m) return false;
-    if (DEFERRED_CATEGORIES.has(m.category)) return false;
-    if (m.providerKey) return false; // provider methods deferred
-    if (m.category === PaymentCategory.Cash) {
-      return this.currentTenderedCents() >= this.remainingCents();
+
+    const committed = this.committedCents();
+
+    // Multi-pay path: if pending payments already cover the cart and the
+    // cashier hasn't typed anything new this turn, the sale is closeable as-is.
+    if (committed >= this.cartTotal() && this.currentTurnHasInput()) {
+      // The cashier still has a draft entry showing — block until they clear
+      // or finalize it. Prevents accidentally dropping a half-typed amount.
+      return false;
     }
-    // Non-cash: must match remaining exactly (no overpay).
-    return this.currentTenderedCents() === this.remainingCents();
+    if (committed >= this.cartTotal()) return true;
+
+    // Otherwise the active tab must contribute a valid payment for the rest.
+    if (DEFERRED_CATEGORIES.has(m.category)) return false;
+    // Provider methods go through `startProviderPayment()` → PaymentProcessingDialog
+    // → emits an OrderPayment into `pendingPayments`. The cashier never closes
+    // a provider sale via this normal confirm path until that emission lands.
+    if (m.providerKey) return false;
+    // Reference is declarative on the catalog (e.g. SPEI folio, terminal auth).
+    // Wire DTO accepts an empty `reference`, but operational reconciliation
+    // demands it — gate the confirm.
+    if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    // Customer-balance methods (Credit/Points): need a customer assigned and
+    // sufficient balance for the tendered amount.
+    if (m.requiresCustomer) {
+      if (!this.customerService.selectedCustomer()) return false;
+      if (this.currentTenderedCents() > this.customerAvailableCents()) return false;
+    }
+
+    const tendered = this.currentTenderedCents();
+    if (m.category === PaymentCategory.Cash) {
+      // Cash may exceed the remaining (generates change).
+      return tendered >= this.remainingCents();
+    }
+    // Non-cash: must match the remaining exactly (no phantom overpay).
+    return tendered === this.remainingCents();
+  });
+
+  /**
+   * Whether the cashier may push the current turn's payment into
+   * `pendingPayments` and continue collecting with a different method
+   * (the "Dividir" action).
+   *
+   *   - Method must be interactive (not deferred / not provider).
+   *   - Reference must be filled when required.
+   *   - The current entry must contribute > 0 AND less than the remaining —
+   *     equal-or-more means the sale is already coverable, just confirm.
+   */
+  readonly canAddPartial = computed<boolean>(() => {
+    const m = this.selectedMethod();
+    if (!m) return false;
+    if (DEFERRED_CATEGORIES.has(m.category)) return false;
+    if (m.providerKey) return false;
+    if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    if (m.requiresCustomer) {
+      if (!this.customerService.selectedCustomer()) return false;
+      if (this.currentTenderedCents() > this.customerAvailableCents()) return false;
+    }
+    const tendered = this.currentTenderedCents();
+    if (tendered <= 0) return false;
+    return tendered < this.remainingCents();
+  });
+
+  /**
+   * `true` when the active turn has any cashier input we should warn about
+   * before letting the sale close on pending alone. Cash counts the bill
+   * strip / custom input; non-cash counts a user-edited amount or a non-empty
+   * reference (a typed folio without an amount is still meaningful intent).
+   */
+  private readonly currentTurnHasInput = computed<boolean>(() => {
+    const m = this.selectedMethod();
+    if (!m) return false;
+    if (m.category === PaymentCategory.Cash) return this.receivedAmount() > 0;
+    return this.exactAmountPesos() > 0 || this.referenceInput().trim() !== '';
   });
 
   /** Guards against double-tap on confirm */
@@ -235,13 +323,14 @@ export class QuickPayComponent {
   //#region Method selection
 
   /**
-   * Whether the method can be picked in this PR. Returns false for the
-   * categories whose UX is deferred (customer balance + providers) so the
-   * tabs render disabled rather than mid-flow erroring.
+   * Whether the method can be picked. Customer-balance categories
+   * (`Credit`, `Points`) are still deferred at this commit (need the
+   * customer-selector flow). Provider methods are now interactive — their
+   * flow goes through `PaymentProcessingDialog` rather than the normal
+   * confirm path.
    */
   canSelect(method: AvailablePaymentMethod): boolean {
     if (DEFERRED_CATEGORIES.has(method.category)) return false;
-    if (method.providerKey) return false;
     return true;
   }
 
@@ -267,10 +356,124 @@ export class QuickPayComponent {
     this.selectedMethod.set(method);
     this.receivedAmount.set(0);
     this.customAmountInput.set('');
-    this.exactAmountPesos.set(method.category === PaymentCategory.Cash
+    if (method.category === PaymentCategory.Cash) {
+      this.exactAmountPesos.set(0);
+    } else if (method.requiresCustomer) {
+      // Cap to whichever is smaller: what's left on the cart, or what the
+      // customer actually has on file. If no customer is assigned yet, the
+      // tab will surface the warning and the cashier must attach one.
+      const customer = this.customerService.selectedCustomer();
+      const balance = customer
+        ? (method.category === PaymentCategory.Credit
+            ? customer.creditBalanceCents ?? 0
+            : (customer.pointsBalance ?? 0) * 100)
+        : 0;
+      this.exactAmountPesos.set(Math.min(this.remainingCents(), balance) / 100);
+    } else {
+      this.exactAmountPesos.set(this.remainingCents() / 100);
+    }
+    this.referenceInput.set('');
+  }
+
+  //#endregion
+
+  //#region Split-payment (Dividir)
+
+  /**
+   * Captures the current turn's input as an OrderPayment, pushes it into
+   * `pendingPayments`, and clears the turn so the cashier can keep collecting
+   * with another method. Guarded by `canAddPartial()` so the cashier cannot
+   * push a zero-amount entry or one that already covers the remaining (in
+   * that case they should just hit Confirmar).
+   */
+  addPartialPayment(): void {
+    if (!this.canAddPartial()) return;
+    const m = this.selectedMethod()!;
+    const partial: OrderPayment = {
+      method: this.resolveMethodEnum(m),
+      paymentStatusId: PaymentStatus.Completed,
+      amountCents: this.currentTenderedCents(),
+      reference: this.referenceInput().trim() || undefined,
+    };
+    this.pendingPayments.update(arr => [...arr, partial]);
+    // Reset the turn but keep the same tab active. Bill amount goes to zero
+    // (Cash) or to the new remaining (non-cash) so the cashier can keep going
+    // with the same method or pick a new one.
+    this.receivedAmount.set(0);
+    this.customAmountInput.set('');
+    this.exactAmountPesos.set(m.category === PaymentCategory.Cash
       ? 0
       : this.remainingCents() / 100);
     this.referenceInput.set('');
+  }
+
+  /** Removes a partial payment by its index; the cashier may then re-collect it. */
+  removePartial(index: number): void {
+    this.pendingPayments.update(arr => arr.filter((_, i) => i !== index));
+  }
+
+  /** Display label for a pending OrderPayment — uses catalog name when resolvable. */
+  partialLabel(payment: OrderPayment): string {
+    return this.paymentMethodService.getByCode(payment.method)?.name ?? payment.method;
+  }
+
+  //#endregion
+
+  //#region Provider methods (Clip / MercadoPago / BankTerminal)
+
+  /** Two-way bound visibility of the processing dialog (shared component). */
+  readonly showProcessingDialog = signal(false);
+
+  /** Stable order id passed to the provider intent endpoints; survives retries. */
+  readonly preGeneratedOrderId = crypto.randomUUID();
+
+  /**
+   * Whether the cashier may launch a provider transaction from the active
+   * tab. Mirrors `canAddPartial` constraints (positive amount, reference if
+   * required, doesn't exceed remaining), restricted to provider methods.
+   */
+  readonly canStartProvider = computed<boolean>(() => {
+    const m = this.selectedMethod();
+    if (!m || !m.providerKey) return false;
+    if (m.requiresReference && this.referenceInput().trim() === '') return false;
+    const amount = this.currentTenderedCents();
+    if (amount <= 0) return false;
+    return amount <= this.remainingCents();
+  });
+
+  /**
+   * Kicks the provider transaction off: opens the processing dialog and asks
+   * `PaymentProviderService` to start the intent on the backend. The dialog
+   * is responsible for the rest of the lifecycle (polling for MercadoPago,
+   * manual reference for Clip, terminal capture for BankTerminal).
+   */
+  async startProviderPayment(): Promise<void> {
+    const m = this.selectedMethod();
+    if (!m || !m.providerKey || !this.canStartProvider()) return;
+    this.showProcessingDialog.set(true);
+    await this.paymentProviderService.startTransaction(
+      this.resolveMethodEnum(m),
+      this.currentTenderedCents(),
+      this.preGeneratedOrderId,
+    );
+  }
+
+  /**
+   * The processing dialog resolved successfully — push the OrderPayment into
+   * `pendingPayments`, close the dialog, and clear the turn inputs so the
+   * cashier can keep collecting if the sale isn't fully covered yet.
+   */
+  onProviderConfirmed(payment: OrderPayment): void {
+    this.pendingPayments.update(arr => [...arr, payment]);
+    this.showProcessingDialog.set(false);
+    this.exactAmountPesos.set(this.remainingCents() / 100);
+    this.referenceInput.set('');
+  }
+
+  /** The cashier cancelled the provider flow — close the dialog, leave inputs intact. */
+  onProviderCancelled(): void {
+    this.paymentProviderService.cancelTransaction();
+    this.showProcessingDialog.set(false);
   }
 
   //#endregion
@@ -373,21 +576,30 @@ export class QuickPayComponent {
     try {
       const totalCents = this.cartTotal();
       const tendered = this.currentTenderedCents();
-      const currentPayment: OrderPayment = {
-        method: this.resolveMethodEnum(method),
-        paymentStatusId: PaymentStatus.Completed,
-        amountCents: method.category === PaymentCategory.Cash
-          ? Math.max(tendered, this.remainingCents())
-          : this.remainingCents(),
-        reference: this.referenceInput().trim() || undefined,
-      };
+      const turnContributes = this.currentTurnHasInput() || this.committedCents() < totalCents;
 
-      const payments: OrderPayment[] = [...this.pendingPayments(), currentPayment];
+      // Build the final payments array. If the cashier already covered the
+      // total via partials and didn't type anything else this turn, ship just
+      // the pending list. Otherwise append the active tab's payment.
+      const payments: OrderPayment[] = turnContributes
+        ? [
+            ...this.pendingPayments(),
+            {
+              method: this.resolveMethodEnum(method),
+              paymentStatusId: PaymentStatus.Completed,
+              amountCents: method.category === PaymentCategory.Cash
+                ? Math.max(tendered, this.remainingCents())
+                : this.remainingCents(),
+              reference: this.referenceInput().trim() || undefined,
+            },
+          ]
+        : [...this.pendingPayments()];
       const paidCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
 
       const orderNumber = this.syncService.consumeOrderNumber();
       const items: CartItem[] = this.cartService.getSnapshot();
 
+      const customer = this.customerService.selectedCustomer();
       const order: Order = {
         id: crypto.randomUUID(),
         orderNumber,
@@ -402,6 +614,8 @@ export class QuickPayComponent {
         syncStatusId: SyncStatusId.Pending,
         branchId: this.authService.branchId,
         cashRegisterSessionId: sessionId,
+        customerId: customer?.id,
+        customerName: formatCustomerName(customer) || undefined,
       };
 
       await this.syncService.saveOrder(order);
